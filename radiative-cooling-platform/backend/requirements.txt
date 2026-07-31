@@ -1,0 +1,9 @@
+fastapi[standard]
+pydantic-settings
+numpy
+scipy
+pandas
+sqlalchemy
+psycopg[binary]
+celery[redis]
+redis
