@@ -63,7 +63,7 @@ export default function Home() {
         </p>
 
         <h1 className="text-4xl font-bold tracking-tight">
-          輻射製冷服裝全球氣候適應性模擬平台
+          輻射製冷服裝全球氣候適應性模擬平台－自動更新測試
         </h1>
 
         <p className="mt-4 max-w-2xl text-slate-400">

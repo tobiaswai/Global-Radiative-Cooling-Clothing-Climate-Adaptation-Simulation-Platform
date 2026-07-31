@@ -38,6 +38,7 @@ def health_check():
         "status": "healthy",
         "service": "radiative-cooling-api",
         "time": datetime.now(timezone.utc).isoformat(),
+        
     }
 
 

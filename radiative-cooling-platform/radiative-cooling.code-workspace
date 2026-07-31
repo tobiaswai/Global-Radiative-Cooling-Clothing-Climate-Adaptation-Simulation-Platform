@@ -1,0 +1,25 @@
+{
+  "folders": [
+    {
+      "name": "Platform",
+      "path": "."
+    },
+    {
+      "name": "Frontend",
+      "path": "frontend"
+    },
+    {
+      "name": "Backend",
+      "path": "backend"
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "js/ts.tsdk.path": "frontend/node_modules/typescript/lib",
+    "python.defaultInterpreterPath": "backend/.venv/Scripts/python.exe",
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.next": true
+    }
+  }
+}
