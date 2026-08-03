@@ -5,6 +5,7 @@ import {
   useState,
 } from "react";
 
+import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
 import { TemperatureChart } from "@/components/charts/temperature-chart";
 import { runSimulation } from "@/lib/api-client";
@@ -414,6 +415,7 @@ export default function NewSimulationPage() {
 
             <TemperatureChart result={result} />
             <HeatFluxChart result={result} />
+            <ModelQualityPanel result={result} />
           </section>
         )}
       </div>

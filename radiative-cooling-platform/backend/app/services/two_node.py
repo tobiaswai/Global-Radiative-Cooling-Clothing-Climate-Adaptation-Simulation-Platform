@@ -7,6 +7,7 @@ import numpy as np
 from scipy.integrate import solve_ivp
 
 from app.schemas.simulation import (
+    EnergyDiagnostics,
     EnvironmentInput,
     MaterialInput,
     PersonInput,
@@ -235,6 +236,131 @@ def calculate_fluxes(
         metabolism=metabolism,
     )
 
+def calculate_energy_diagnostics(
+    times_seconds: np.ndarray,
+    core_temperatures: np.ndarray,
+    skin_temperatures: np.ndarray,
+    environment: EnvironmentInput,
+    person: PersonInput,
+    material: MaterialInput,
+    solver_function_evaluations: int,
+) -> EnergyDiagnostics:
+    """
+    計算整個模擬期間的人體總能量守恆殘差。
+
+    人體核心與皮膚之間的熱交換 core_to_skin 是內部熱流，
+    在人體總能量平衡中會互相抵消，因此不放入總淨熱流。
+    """
+
+    net_heat_fluxes: list[float] = []
+
+    for core_temperature, skin_temperature in zip(
+        core_temperatures,
+        skin_temperatures,
+        strict=True,
+    ):
+        fluxes = calculate_fluxes(
+            core_temperature_c=float(core_temperature),
+            skin_temperature_c=float(skin_temperature),
+            environment=environment,
+            person=person,
+            material=material,
+        )
+
+        net_heat_flux = (
+            fluxes.metabolism
+            - fluxes.respiration
+            + fluxes.absorbed_solar
+            - fluxes.convection
+            - fluxes.longwave_radiation
+            - fluxes.evaporation
+        )
+
+        net_heat_fluxes.append(net_heat_flux)
+
+    net_heat_array = np.asarray(
+        net_heat_fluxes,
+        dtype=float,
+    )
+
+    integrated_net_heat = float(
+        np.trapezoid(
+            y=net_heat_array,
+            x=times_seconds,
+        )
+    )
+
+    stored_energy_change = float(
+        CORE_HEAT_CAPACITY
+        * (
+            core_temperatures[-1]
+            - core_temperatures[0]
+        )
+        + SKIN_HEAT_CAPACITY
+        * (
+            skin_temperatures[-1]
+            - skin_temperatures[0]
+        )
+    )
+
+    energy_residual = (
+        stored_energy_change
+        - integrated_net_heat
+    )
+
+    normalization_denominator = max(
+        abs(stored_energy_change),
+        abs(integrated_net_heat),
+        1.0,
+    )
+
+    normalized_residual_percent = (
+        abs(energy_residual)
+        / normalization_denominator
+        * 100.0
+    )
+
+    maximum_core_step = (
+        float(np.max(np.abs(np.diff(core_temperatures))))
+        if len(core_temperatures) > 1
+        else 0.0
+    )
+
+    maximum_skin_step = (
+        float(np.max(np.abs(np.diff(skin_temperatures))))
+        if len(skin_temperatures) > 1
+        else 0.0
+    )
+
+    return EnergyDiagnostics(
+        stored_energy_change_j_m2=round(
+            stored_energy_change,
+            4,
+        ),
+        integrated_net_heat_j_m2=round(
+            integrated_net_heat,
+            4,
+        ),
+        energy_residual_j_m2=round(
+            energy_residual,
+            4,
+        ),
+        normalized_residual_percent=round(
+            normalized_residual_percent,
+            6,
+        ),
+        maximum_core_step_c=round(
+            maximum_core_step,
+            6,
+        ),
+        maximum_skin_step_c=round(
+            maximum_skin_step,
+            6,
+        ),
+        solver_function_evaluations=int(
+            solver_function_evaluations
+        ),
+    )
 
 def simulate_material(
     duration_minutes: int,
@@ -316,6 +442,29 @@ def simulate_material(
             f"數值求解失敗：{solution.message}"
         )
 
+    core_temperature_array = np.asarray(
+    solution.y[0],
+    dtype=float,
+    )
+
+    skin_temperature_array = np.asarray(
+    solution.y[1],
+    dtype=float,
+    )
+
+    diagnostics = calculate_energy_diagnostics(
+    times_seconds=np.asarray(
+        solution.t,
+        dtype=float,
+    ),
+    core_temperatures=core_temperature_array,
+    skin_temperatures=skin_temperature_array,
+    environment=environment,
+    person=person,
+    material=material,
+    solver_function_evaluations=solution.nfev,
+    )
+    
     time_series: list[TimeSeriesPoint] = []
 
     for index, time_seconds in enumerate(solution.t):
@@ -380,4 +529,5 @@ def simulate_material(
         final_skin_temperature_c=skin_temperatures[-1],
         peak_core_temperature_c=max(core_temperatures),
         peak_skin_temperature_c=max(skin_temperatures),
+        diagnostics=diagnostics,
     )

@@ -1,9 +1,20 @@
+import os
 from datetime import datetime, timezone
+from pathlib import Path
+
+NUMBA_CACHE_DIR = Path("C:/nc")
+NUMBA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+os.environ.setdefault(
+    "NUMBA_CACHE_DIR",
+    str(NUMBA_CACHE_DIR),
+)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.simulations import router as simulations_router
+from app.api.benchmarks import router as benchmarks_router
 
 
 app = FastAPI(
@@ -26,7 +37,7 @@ app.add_middleware(
 )
 
 app.include_router(simulations_router)
-
+app.include_router(benchmarks_router)
 
 @app.get("/api/v1/health")
 def health_check():

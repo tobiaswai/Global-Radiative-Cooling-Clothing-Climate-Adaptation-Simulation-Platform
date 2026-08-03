@@ -124,7 +124,15 @@ class SimulationRequest(BaseModel):
     control_material: MaterialInput
     rc_material: MaterialInput
 
-
+class EnergyDiagnostics(BaseModel):
+    stored_energy_change_j_m2: float
+    integrated_net_heat_j_m2: float
+    energy_residual_j_m2: float
+    normalized_residual_percent: float
+    maximum_core_step_c: float
+    maximum_skin_step_c: float
+    solver_function_evaluations: int
+    
 class TimeSeriesPoint(BaseModel):
     minute: float
     core_temperature_c: float
@@ -143,6 +151,7 @@ class ScenarioResult(BaseModel):
     final_skin_temperature_c: float
     peak_core_temperature_c: float
     peak_skin_temperature_c: float
+    diagnostics: EnergyDiagnostics
 
 
 class SimulationSummary(BaseModel):
@@ -159,4 +168,45 @@ class SimulationResponse(BaseModel):
     control: ScenarioResult
     radiative_cooling: ScenarioResult
     summary: SimulationSummary
+    warning: str
+    
+
+    
+class GaggeBenchmarkRequest(BaseModel):
+    duration_minutes: int = Field(
+        default=60,
+        ge=1,
+        le=240,
+    )
+    environment: EnvironmentInput
+    person: PersonInput
+    material: MaterialInput
+
+
+class GaggeModelOutput(BaseModel):
+    core_temperature_c: float
+    skin_temperature_c: float
+    skin_evaporation_w_m2: float
+    skin_heat_loss_w_m2: float
+    respiratory_heat_loss_w_m2: float
+    skin_blood_flow_kg_h_m2: float
+    skin_wettedness: float
+    standard_effective_temperature_c: float
+
+
+class PrototypeBenchmarkOutput(BaseModel):
+    core_temperature_c: float
+    skin_temperature_c: float
+    evaporation_w_m2: float
+    energy_residual_percent: float
+
+
+class GaggeBenchmarkResponse(BaseModel):
+    reference_model: str
+    reference_library: str
+    environment_note: str
+    prototype: PrototypeBenchmarkOutput
+    gagge: GaggeModelOutput
+    difference_core_temperature_c: float
+    difference_skin_temperature_c: float
     warning: str

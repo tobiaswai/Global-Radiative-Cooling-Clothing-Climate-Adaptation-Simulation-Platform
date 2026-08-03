@@ -53,6 +53,7 @@ export type ScenarioResult = {
   final_skin_temperature_c: number;
   peak_core_temperature_c: number;
   peak_skin_temperature_c: number;
+  diagnostics: EnergyDiagnostics;
 };
 
 export type SimulationResponse = {
@@ -68,4 +69,14 @@ export type SimulationResponse = {
     average_skin_temperature_improvement_c: number;
   };
   warning: string;
+};
+
+export type EnergyDiagnostics = {
+  stored_energy_change_j_m2: number;
+  integrated_net_heat_j_m2: number;
+  energy_residual_j_m2: number;
+  normalized_residual_percent: number;
+  maximum_core_step_c: number;
+  maximum_skin_step_c: number;
+  solver_function_evaluations: number;
 };
