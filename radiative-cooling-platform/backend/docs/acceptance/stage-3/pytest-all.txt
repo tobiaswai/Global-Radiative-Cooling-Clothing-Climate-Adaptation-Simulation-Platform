@@ -1,0 +1,51 @@
+Python:
+C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
+Numba cache:
+C:/nc
+pythermalcomfort:
+C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\pythermalcomfort\__init__.py
+開始執行測試...
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, cov-7.1.0
+collecting ... collected 27 items
+
+tests/test_api.py::test_health_endpoint PASSED                           [  3%]
+tests/test_api.py::test_simulation_endpoint PASSED                       [  7%]
+tests/test_api.py::test_invalid_material_is_rejected PASSED              [ 11%]
+tests/test_api.py::test_identical_material_api_improvement_is_zero PASSED [ 14%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_dry-42.0-20.0-2.0-900.0] PASSED [ 18%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_humid-34.0-85.0-1.0-700.0] PASSED [ 22%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[high_altitude_solar-24.0-25.0-2.5-1000.0] PASSED [ 25%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[night-30.0-60.0-0.5-0.0] PASSED [ 29%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_returns_finite_values PASSED [ 33%]
+tests/test_gagge_benchmark.py::test_gagge_output_is_in_broad_range PASSED [ 37%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_api PASSED           [ 40%]
+tests/test_physics.py::test_saturation_pressure_increases_with_temperature PASSED [ 44%]
+tests/test_physics.py::test_saturation_pressure_near_reference_value PASSED [ 48%]
+tests/test_physics.py::test_invalid_optical_sum_is_rejected PASSED       [ 51%]
+tests/test_physics.py::test_higher_reflectance_reduces_solar_absorption PASSED [ 55%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.0] PASSED       [ 59%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.1] PASSED       [ 62%]
+tests/test_physics.py::test_flux_calculation_is_finite[1.0] PASSED       [ 66%]
+tests/test_physics.py::test_flux_calculation_is_finite[3.0] PASSED       [ 70%]
+tests/test_physics.py::test_flux_calculation_is_finite[8.0] PASSED       [ 74%]
+tests/test_two_node.py::test_simulation_returns_expected_number_of_points PASSED [ 77%]
+tests/test_two_node.py::test_initial_temperatures_are_preserved PASSED   [ 81%]
+tests/test_two_node.py::test_all_temperatures_are_finite PASSED          [ 85%]
+tests/test_two_node.py::test_temperature_stays_in_broad_physiological_range PASSED [ 88%]
+tests/test_two_node.py::test_energy_balance_residual_is_small PASSED     [ 92%]
+tests/test_two_node.py::test_rc_material_reduces_skin_temperature PASSED [ 96%]
+tests/test_two_node.py::test_identical_materials_produce_identical_results PASSED [100%]
+
+============================== warnings summary ===============================
+.venv\Lib\site-packages\fastapi\testclient.py:1
+  C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\fastapi\testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 27 passed, 1 warning in 0.31s ========================
