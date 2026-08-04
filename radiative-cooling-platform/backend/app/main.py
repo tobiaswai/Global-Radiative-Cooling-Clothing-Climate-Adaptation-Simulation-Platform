@@ -13,8 +13,10 @@ os.environ.setdefault(
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+
 from app.api.simulations import router as simulations_router
 from app.api.benchmarks import router as benchmarks_router
+from app.api.weather import router as weather_router
 
 
 app = FastAPI(
@@ -38,6 +40,7 @@ app.add_middleware(
 
 app.include_router(simulations_router)
 app.include_router(benchmarks_router)
+app.include_router(weather_router)
 
 @app.get("/api/v1/health")
 def health_check():
@@ -49,3 +52,16 @@ def health_check():
             timezone.utc
         ).isoformat(),
     }
+    
+from app.core.config import settings
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        settings.frontend_origin,
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
