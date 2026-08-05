@@ -137,3 +137,38 @@ export type WeatherSimulationResponse =
     weather: WeatherTimeSeries;
     environment_model_note: string;
   };
+
+export type SimulationJobStatus =
+  | "queued"
+  | "running"
+  | "cancelling"
+  | "cancelled"
+  | "completed"
+  | "failed";
+
+export type SimulationJob = {
+  id: string;
+  celery_task_id: string | null;
+  status: SimulationJobStatus;
+  stage: string;
+  progress: number;
+  city_id: string;
+  summary: Record<string, number> | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+export type SimulationJobDetail =
+  SimulationJob & {
+    request: WeatherSimulationRequest;
+  };
+
+export type SimulationJobList = {
+  items: SimulationJob[];
+  total: number;
+  limit: number;
+  offset: number;
+};

@@ -32,3 +32,15 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Weather cache
+backend/data/cache/
+data/cache/
+
+# Simulation results
+backend/data/results/
+backend/data/cache/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid

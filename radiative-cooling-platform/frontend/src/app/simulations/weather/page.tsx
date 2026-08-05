@@ -1,22 +1,19 @@
 "use client";
 
 import {
-  FormEvent,
+  type FormEvent,
   useEffect,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 
-import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
-import { TemperatureChart } from "@/components/charts/temperature-chart";
-import { WeatherChart } from "@/components/charts/weather-chart";
 import {
+  createSimulationJob,
   getCities,
-  runWeatherSimulation,
 } from "@/lib/api-client";
 import type {
   City,
   WeatherSimulationRequest,
-  WeatherSimulationResponse,
 } from "@/types/simulation";
 
 
@@ -56,57 +53,92 @@ const initialRequest: WeatherSimulationRequest = {
 
 
 export default function WeatherSimulationPage() {
+  const router = useRouter();
+
   const [cities, setCities] =
     useState<City[]>([]);
 
   const [request, setRequest] =
-    useState(initialRequest);
-
-  const [result, setResult] =
-    useState<WeatherSimulationResponse | null>(
-      null,
+    useState<WeatherSimulationRequest>(
+      initialRequest,
     );
 
-  const [loading, setLoading] =
+  const [loadingCities, setLoadingCities] =
+    useState(true);
+
+  const [submitting, setSubmitting] =
     useState(false);
 
   const [error, setError] =
     useState("");
 
+
   useEffect(() => {
-    getCities()
-      .then(setCities)
-      .catch((caughtError) => {
-        setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : "無法載入城市",
-        );
-      });
+    let cancelled = false;
+
+    async function loadCities() {
+      setLoadingCities(true);
+      setError("");
+
+      try {
+        const cityList = await getCities();
+
+        if (!cancelled) {
+          setCities(cityList);
+        }
+      } catch (caughtError) {
+        if (!cancelled) {
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "無法載入城市列表",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingCities(false);
+        }
+      }
+    }
+
+    void loadCities();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
+
   async function handleSubmit(
-    event: FormEvent,
+    event: FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
-    setLoading(true);
+
+    if (submitting) {
+      return;
+    }
+
+    setSubmitting(true);
     setError("");
 
     try {
-      const response =
-        await runWeatherSimulation(request);
+      const job =
+        await createSimulationJob(request);
 
-      setResult(response);
+      router.push(
+        `/simulations/${job.id}`,
+      );
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "模擬失敗",
+          : "建立模擬任務失敗",
       );
-    } finally {
-      setLoading(false);
+
+      setSubmitting(false);
     }
   }
+
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -120,9 +152,9 @@ export default function WeatherSimulationPage() {
             歷史氣象驅動模擬
           </h1>
 
-          <p className="mt-3 text-slate-400">
+          <p className="mt-3 max-w-3xl text-slate-400">
             使用 ERA5 歷史逐小時氣象資料，
-            模擬普通服裝與輻射製冷服裝的動態熱反應。
+            建立普通服裝與輻射製冷服裝的異步動態模擬任務。
           </p>
         </header>
 
@@ -130,22 +162,39 @@ export default function WeatherSimulationPage() {
           onSubmit={handleSubmit}
           className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6"
         >
-          <div className="grid gap-5 md:grid-cols-4">
-            <label>
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
                 城市
               </span>
 
               <select
                 value={request.city_id}
-                onChange={(event) =>
-                  setRequest({
-                    ...request,
-                    city_id: event.target.value,
-                  })
+                disabled={
+                  loadingCities
+                  || submitting
                 }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                onChange={(event) => {
+                  setRequest((current) => ({
+                    ...current,
+                    city_id: event.target.value,
+                  }));
+                }}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                {loadingCities && (
+                  <option value="">
+                    正在載入城市……
+                  </option>
+                )}
+
+                {!loadingCities
+                  && cities.length === 0 && (
+                    <option value="">
+                      沒有可用城市
+                    </option>
+                  )}
+
                 {cities.map((city) => (
                   <option
                     key={city.id}
@@ -158,160 +207,190 @@ export default function WeatherSimulationPage() {
               </select>
             </label>
 
-            <label>
+            <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
                 當地開始時間
               </span>
 
               <input
                 type="datetime-local"
-                value={request.start_time_local}
-                onChange={(event) =>
-                  setRequest({
-                    ...request,
+                required
+                value={
+                  request.start_time_local
+                }
+                disabled={submitting}
+                onChange={(event) => {
+                  setRequest((current) => ({
+                    ...current,
                     start_time_local:
                       event.target.value,
-                  })
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                  }));
+                }}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
 
-            <label>
+            <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
                 模擬時長（分鐘）
               </span>
 
               <input
                 type="number"
+                required
                 min={1}
                 max={1440}
-                value={request.duration_minutes}
-                onChange={(event) =>
-                  setRequest({
-                    ...request,
+                step={1}
+                value={
+                  request.duration_minutes
+                }
+                disabled={submitting}
+                onChange={(event) => {
+                  setRequest((current) => ({
+                    ...current,
                     duration_minutes: Number(
                       event.target.value,
                     ),
-                  })
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                  }));
+                }}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
 
-            <label>
+            <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
                 活動強度（MET）
               </span>
 
               <input
                 type="number"
+                required
                 min={0.7}
                 max={10}
                 step={0.1}
                 value={request.person.met}
-                onChange={(event) =>
-                  setRequest({
-                    ...request,
+                disabled={submitting}
+                onChange={(event) => {
+                  const met = Number(
+                    event.target.value,
+                  );
+
+                  setRequest((current) => ({
+                    ...current,
                     person: {
-                      ...request.person,
-                      met: Number(
-                        event.target.value,
-                      ),
+                      ...current.person,
+                      met,
                     },
-                  })
-                }
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+                  }));
+                }}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
           </div>
 
+          <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              模擬配置摘要
+            </h2>
+
+            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <dt className="text-slate-500">
+                  輸出間隔
+                </dt>
+                <dd className="mt-1 text-slate-200">
+                  {
+                    request
+                      .output_interval_minutes
+                  }{" "}
+                  分鐘
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-slate-500">
+                  普通服裝
+                </dt>
+                <dd className="mt-1 text-slate-200">
+                  {
+                    request.control_material
+                      .clothing_insulation_clo
+                  }{" "}
+                  clo
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-slate-500">
+                  普通服裝太陽反射率
+                </dt>
+                <dd className="mt-1 text-slate-200">
+                  {
+                    request.control_material
+                      .solar_reflectance
+                  }
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-slate-500">
+                  RC 服裝太陽反射率
+                </dt>
+                <dd className="mt-1 text-slate-200">
+                  {
+                    request.rc_material
+                      .solar_reflectance
+                  }
+                </dd>
+              </div>
+            </dl>
+          </section>
+
           <button
             type="submit"
-            disabled={loading}
-            className="mt-6 rounded-xl bg-cyan-400 px-7 py-3 font-semibold text-slate-950 disabled:opacity-50"
+            disabled={
+              submitting
+              || loadingCities
+              || cities.length === 0
+            }
+            className="mt-6 rounded-xl bg-cyan-400 px-7 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading
-              ? "正在下載氣象資料並計算……"
-              : "開始歷史氣象模擬"}
+            {submitting
+              ? "正在建立模擬任務……"
+              : "建立歷史氣象模擬任務"}
           </button>
 
           {error && (
-            <div className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
+            <div
+              role="alert"
+              className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300"
+            >
               {error}
             </div>
           )}
         </form>
 
-        {result && (
-          <section className="mt-10 space-y-8">
-            <div className="grid gap-4 md:grid-cols-3">
-              <SummaryCard
-                label="最終皮膚溫度改善"
-                value={
-                  result.summary
-                    .final_skin_temperature_improvement_c
-                }
-              />
+        <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 p-5 text-sm text-slate-400">
+          <h2 className="font-semibold text-slate-200">
+            異步任務流程
+          </h2>
 
-              <SummaryCard
-                label="平均皮膚溫度改善"
-                value={
-                  result.summary
-                    .average_skin_temperature_improvement_c
-                }
-              />
-
-              <SummaryCard
-                label="核心溫度改善"
-                value={
-                  result.summary
-                    .final_core_temperature_improvement_c
-                }
-              />
-            </div>
-
-            <div className="rounded-xl border border-amber-800 bg-amber-950/50 p-4 text-amber-200">
-              <p>{result.warning}</p>
-              <p className="mt-2 text-sm">
-                {result.environment_model_note}
-              </p>
-            </div>
-
-            <WeatherChart
-              weather={result.weather}
-            />
-
-            <TemperatureChart result={result} />
-
-            <HeatFluxChart result={result} />
-          </section>
-        )}
+          <ol className="mt-3 list-inside list-decimal space-y-2">
+            <li>
+              前端將模擬配置提交至 FastAPI。
+            </li>
+            <li>
+              後端在 PostgreSQL 中建立任務記錄。
+            </li>
+            <li>
+              Celery Worker 下載氣象資料並執行數值模擬。
+            </li>
+            <li>
+              建立成功後，頁面會自動跳轉至任務進度頁。
+            </li>
+          </ol>
+        </section>
       </div>
     </main>
-  );
-}
-
-
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-2 text-3xl font-bold text-cyan-300">
-        {value.toFixed(3)}
-        <span className="ml-1 text-base font-normal">
-          °C
-        </span>
-      </p>
-    </article>
   );
 }
