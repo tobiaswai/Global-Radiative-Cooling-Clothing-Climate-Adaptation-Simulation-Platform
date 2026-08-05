@@ -1,5 +1,8 @@
 from pydantic import BaseModel, Field, model_validator
 
+from datetime import datetime
+
+from app.schemas.weather import WeatherTimeSeries
 
 class EnvironmentInput(BaseModel):
     air_temperature_c: float = Field(
@@ -210,3 +213,30 @@ class GaggeBenchmarkResponse(BaseModel):
     difference_core_temperature_c: float
     difference_skin_temperature_c: float
     warning: str
+    
+class WeatherSimulationRequest(BaseModel):
+    city_id: str = Field(
+        default="dubai",
+        min_length=1,
+    )
+    start_time_local: datetime
+    duration_minutes: int = Field(
+        default=120,
+        ge=1,
+        le=1440,
+    )
+    output_interval_minutes: int = Field(
+        default=1,
+        ge=1,
+        le=60,
+    )
+    person: PersonInput
+    control_material: MaterialInput
+    rc_material: MaterialInput
+
+
+class WeatherSimulationResponse(
+    SimulationResponse
+):
+    weather: WeatherTimeSeries
+    environment_model_note: str

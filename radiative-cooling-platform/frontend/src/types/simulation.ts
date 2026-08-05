@@ -80,3 +80,95 @@ export type EnergyDiagnostics = {
   maximum_skin_step_c: number;
   solver_function_evaluations: number;
 };
+
+export type City = {
+  id: string;
+  name: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  elevation_m: number;
+  timezone: string;
+  climate_type: string;
+};
+
+export type WeatherPoint = {
+  timestamp: string;
+  air_temperature_c: number;
+  relative_humidity_percent: number;
+  wind_speed_m_s: number;
+  ghi_w_m2: number;
+  direct_radiation_w_m2: number;
+  diffuse_radiation_w_m2: number;
+  dni_w_m2: number;
+};
+
+export type WeatherTimeSeries = {
+  city: City;
+  requested_start_time: string;
+  requested_end_time: string;
+  points: WeatherPoint[];
+  source: {
+    provider: string;
+    dataset: string;
+    model: string;
+    latitude: number;
+    longitude: number;
+    elevation_m: number;
+    timezone: string;
+    downloaded_at: string;
+    from_cache: boolean;
+    attribution: string;
+  };
+};
+
+export type WeatherSimulationRequest = {
+  city_id: string;
+  start_time_local: string;
+  duration_minutes: number;
+  output_interval_minutes: number;
+  person: PersonInput;
+  control_material: MaterialInput;
+  rc_material: MaterialInput;
+};
+
+export type WeatherSimulationResponse =
+  SimulationResponse & {
+    weather: WeatherTimeSeries;
+    environment_model_note: string;
+  };
+
+export type SimulationJobStatus =
+  | "queued"
+  | "running"
+  | "cancelling"
+  | "cancelled"
+  | "completed"
+  | "failed";
+
+export type SimulationJob = {
+  id: string;
+  celery_task_id: string | null;
+  status: SimulationJobStatus;
+  stage: string;
+  progress: number;
+  city_id: string;
+  summary: Record<string, number> | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+};
+
+export type SimulationJobDetail =
+  SimulationJob & {
+    request: WeatherSimulationRequest;
+  };
+
+export type SimulationJobList = {
+  items: SimulationJob[];
+  total: number;
+  limit: number;
+  offset: number;
+};
