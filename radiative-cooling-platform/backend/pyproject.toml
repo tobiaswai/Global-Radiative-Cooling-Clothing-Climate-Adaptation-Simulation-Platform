@@ -9,6 +9,6 @@ addopts = [
 ]
 markers = [
     "unit: fast unit tests",
-    "integration: API integration tests",
+    "integration: API and database integration tests",
     "benchmark: external model comparison tests",
 ]

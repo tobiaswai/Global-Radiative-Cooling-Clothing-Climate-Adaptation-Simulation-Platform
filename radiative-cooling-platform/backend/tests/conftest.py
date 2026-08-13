@@ -1,5 +1,9 @@
 import pytest, os
 from pathlib import Path
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+from app.core.config import settings
 
 NUMBA_CACHE_DIR = Path("C:/nc")
 NUMBA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -90,3 +94,29 @@ def simulation_request(
         control_material=control_material,
         rc_material=rc_material,
     )
+    
+@pytest.fixture
+def db_session():
+    engine = create_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+    )
+
+    connection = engine.connect()
+    transaction = connection.begin()
+
+    TestingSessionLocal = sessionmaker(
+        bind=connection,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    session = TestingSessionLocal()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
+        engine.dispose()
