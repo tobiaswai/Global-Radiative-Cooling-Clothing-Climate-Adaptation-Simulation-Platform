@@ -361,3 +361,149 @@ export function getSimulationEventsUrl(
     `${encodeURIComponent(jobId)}/events`
   );
 }
+
+import type {
+  Material,
+  MaterialCreate,
+  MaterialListResponse,
+} from "@/types/material";
+import type {
+  MaterialInput,
+} from "@/types/simulation";
+
+
+export async function getMaterials(
+  search = "",
+): Promise<MaterialListResponse> {
+  const parameters = new URLSearchParams();
+
+  if (search) {
+    parameters.set("search", search);
+  }
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials?${parameters}`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("無法取得材料列表");
+  }
+
+  return response.json();
+}
+
+
+export async function getMaterial(
+  materialId: string,
+): Promise<Material> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${materialId}`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error("無法取得材料");
+  }
+
+  return response.json();
+}
+
+
+export async function createMaterial(
+  request: MaterialCreate,
+): Promise<Material> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(
+      body?.detail ?? "建立材料失敗",
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function uploadMaterialSpectrum(
+  versionId: string,
+  spectrumType: string,
+  file: File,
+) {
+  const formData = new FormData();
+
+  formData.append(
+    "spectrum_type",
+    spectrumType,
+  );
+
+  formData.append(
+    "file",
+    file,
+  );
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions/${versionId}/spectra`,
+    {
+      method: "POST",
+      body: formData,
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(
+      body?.detail ?? "上傳光譜失敗",
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function getMaterialSimulationInput(
+  versionId: string,
+): Promise<MaterialInput> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions/${versionId}/simulation-input`,
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "無法轉換材料模擬參數",
+    );
+  }
+
+  return response.json();
+}
+
+
+export function getSimulationExportUrl(
+  jobId: string,
+  format: "csv" | "json",
+): string {
+  return (
+    `${API_BASE_URL}/api/v1/simulations/jobs/` +
+    `${jobId}/export?format=${format}`
+  );
+}

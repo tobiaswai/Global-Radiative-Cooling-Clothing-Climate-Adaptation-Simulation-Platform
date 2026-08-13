@@ -1,6 +1,6 @@
 # Node
-frontend/node_modules/
-frontend/.next/
+frontend/package.json
+frontend/package-lock.json
 frontend/out/
 frontend/.env.local
 

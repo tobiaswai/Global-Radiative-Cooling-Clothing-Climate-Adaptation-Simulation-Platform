@@ -19,6 +19,9 @@ import type {
   SimulationJob,
   WeatherSimulationResponse,
 } from "@/types/simulation";
+import {
+  getSimulationExportUrl,
+} from "@/lib/api-client";
 
 
 const terminalStatuses =
@@ -237,8 +240,7 @@ export default function SimulationJobPage() {
       setCancelling(false);
     }
   }
-
-
+  
   if (!job) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
@@ -445,6 +447,27 @@ export default function SimulationJobPage() {
             <HeatFluxChart
               result={result}
             />
+            <div className="flex flex-wrap gap-3">
+              <a
+                href={getSimulationExportUrl(
+                  jobId,
+                  "csv",
+                )}
+                className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950"
+              >
+                導出 CSV
+              </a>
+
+              <a
+                href={getSimulationExportUrl(
+                  jobId,
+                  "json",
+                )}
+                className="rounded-lg border border-slate-700 px-5 py-2"
+              >
+                導出 JSON
+              </a>
+            </div>
           </section>
         )}
       </div>
@@ -476,3 +499,4 @@ function SummaryCard({
     </article>
   );
 }
+
