@@ -18,3 +18,5 @@ redis
 
 pytest
 pytest-cov
+
+python-multipart

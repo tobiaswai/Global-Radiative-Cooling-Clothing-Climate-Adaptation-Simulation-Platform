@@ -564,3 +564,73 @@ async def simulation_job_events(
             "X-Accel-Buffering": "no",
         },
     )
+    
+from fastapi.responses import Response
+
+from app.services.result_export import (
+    export_result_csv,
+    export_result_json,
+)
+
+@router.get(
+    "/jobs/{job_id}/export",
+)
+def export_simulation_result(
+    job_id: str,
+    format: str = Query(
+        default="csv",
+        pattern="^(csv|json)$",
+    ),
+    session: Session = Depends(get_db),
+) -> Response:
+    job = get_job_or_none(
+        session,
+        job_id,
+    )
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="找不到模擬任務",
+        )
+
+    if job.status != "completed":
+        raise HTTPException(
+            status_code=409,
+            detail="模擬尚未完成",
+        )
+
+    if not job.result_path:
+        raise HTTPException(
+            status_code=500,
+            detail="任務缺少結果文件",
+        )
+
+    try:
+        result = load_simulation_result(
+            job.result_path
+        )
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=500,
+            detail=str(error),
+        ) from error
+
+    if format == "json":
+        content = export_result_json(result)
+        media_type = "application/json"
+        filename = f"simulation-{job_id}.json"
+    else:
+        content = export_result_csv(result)
+        media_type = "text/csv"
+        filename = f"simulation-{job_id}.csv"
+
+    return Response(
+        content=content.encode("utf-8-sig"),
+        media_type=media_type,
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"'
+            )
+        },
+    )

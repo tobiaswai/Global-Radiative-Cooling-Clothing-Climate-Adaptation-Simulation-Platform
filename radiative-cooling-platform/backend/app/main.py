@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.simulations import router as simulations_router
 from app.api.benchmarks import router as benchmarks_router
 from app.api.weather import router as weather_router
+from app.api.materials import ( router as materials_router,)
 
 
 app = FastAPI(
@@ -41,6 +42,7 @@ app.add_middleware(
 app.include_router(simulations_router)
 app.include_router(benchmarks_router)
 app.include_router(weather_router)
+app.include_router(materials_router)
 
 @app.get("/api/v1/health")
 def health_check():
