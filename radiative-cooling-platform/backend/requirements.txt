@@ -18,5 +18,5 @@ redis
 
 pytest
 pytest-cov
-
+pytest-asyncio
 python-multipart

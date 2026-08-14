@@ -1,4 +1,5 @@
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
@@ -11,4 +12,5 @@ markers = [
     "unit: fast unit tests",
     "integration: API and database integration tests",
     "benchmark: external model comparison tests",
+    "asyncio: mark a test as an asyncio coroutine",
 ]
