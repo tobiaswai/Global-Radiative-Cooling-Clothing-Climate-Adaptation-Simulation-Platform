@@ -38,7 +38,7 @@ export function ModelQualityPanel({
       </p>
 
       <div className="mt-5 overflow-x-auto">
-        <table className="w-full min-w-[700px] text-left text-sm">
+        <table className="w-full min-w-175 text-left text-sm">
           <thead className="border-b border-slate-700 text-slate-400">
             <tr>
               <th className="px-3 py-3">
