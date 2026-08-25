@@ -104,7 +104,7 @@ class MaterialInput(BaseModel):
 
         if total > 1.0 + 1e-6:
             raise ValueError(
-                "solar_reflectance + solar_transmittance 不能大於 1"
+                "solar_reflectance + solar_transmittance Cannot be greater than 1"
             )
 
         return self

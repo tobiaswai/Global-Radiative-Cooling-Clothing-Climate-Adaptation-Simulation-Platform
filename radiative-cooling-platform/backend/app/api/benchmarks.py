@@ -27,5 +27,5 @@ def compare_with_gagge(
     except (ValueError, RuntimeError) as error:
         raise HTTPException(
             status_code=500,
-            detail=f"Gagge 基準計算失敗：{error}",
+            detail=f"Gagge benchmark calculation failed：{error}",
         ) from error

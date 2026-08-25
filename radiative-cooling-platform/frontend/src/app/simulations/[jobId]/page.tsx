@@ -33,24 +33,24 @@ const terminalStatuses =
 
 
 const stageLabels: Record<string, string> = {
-  queued: "等待計算資源",
-  initializing: "正在初始化模型",
+  queued: "Waiting for computing resources",
+  initializing: "Initializing model",
   downloading_weather:
-    "正在取得歷史氣象資料",
+    "Downloading historical weather data",
   running_control_simulation:
-    "正在模擬普通對照服裝",
+    "Running control simulation",
   running_radiative_cooling_simulation:
-    "正在模擬輻射製冷服裝",
+    "Running radiative cooling simulation",
   generating_summary:
-    "正在生成結果摘要",
+    "Generating summary",
   saving_result:
-    "正在保存結果",
-  completed: "模擬完成",
-  failed: "模擬失敗",
-  cancelling: "正在取消",
+    "Saving result",
+  completed: "Simulation completed",
+  failed: "Simulation failed",
+  cancelling: "Cancelling simulation",
   waiting_for_cooperative_cancel:
-    "正在等待安全取消",
-  cancelled: "已取消",
+    "Waiting for cooperative cancel",
+  cancelled: "Cancelled",
 };
 
 
@@ -107,7 +107,7 @@ export default function SimulationJobPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "載入模擬任務失敗",
+          : "Failed to load simulation job",
       );
     }
 
@@ -130,7 +130,7 @@ export default function SimulationJobPage() {
           handleJobUpdate(nextJob);
         } catch {
           if (!ignore) {
-            setError("無法解析任務進度資料");
+            setError("Failed to parse job progress data");
           }
         }
       },
@@ -147,7 +147,7 @@ export default function SimulationJobPage() {
           handleJobUpdate(nextJob);
         } catch {
           if (!ignore) {
-            setError("無法解析任務終止狀態");
+            setError("Failed to parse job terminal state");
           }
         } finally {
           eventSource.close();
@@ -197,7 +197,7 @@ export default function SimulationJobPage() {
           setError(
             caughtError instanceof Error
               ? caughtError.message
-              : "載入模擬結果失敗",
+              : "Failed to load simulation result",
           );
         }
       });
@@ -234,7 +234,7 @@ export default function SimulationJobPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "取消模擬任務失敗",
+          : "Failed to cancel simulation job",
       );
     } finally {
       setCancelling(false);
@@ -254,7 +254,7 @@ export default function SimulationJobPage() {
             </div>
           ) : (
             <p className="text-slate-400">
-              正在載入模擬任務……
+              Loading simulation job…
             </p>
           )}
         </div>
@@ -280,7 +280,7 @@ export default function SimulationJobPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold">
-            模擬任務
+            Simulation Job
           </h1>
 
           <p className="mt-2 break-all text-sm text-slate-400">
@@ -292,7 +292,7 @@ export default function SimulationJobPage() {
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm text-slate-400">
-                目前階段
+                Current Stage
               </p>
 
               <p className="mt-1 text-xl font-semibold">
@@ -309,8 +309,8 @@ export default function SimulationJobPage() {
                 className="rounded-lg border border-red-800 px-4 py-2 text-red-300 transition hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {cancelling
-                  ? "正在取消……"
-                  : "取消任務"}
+                  ? "Cancelling…"
+                  : "Cancel Job"}
               </button>
             )}
           </div>
@@ -332,7 +332,7 @@ export default function SimulationJobPage() {
           <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt className="text-slate-500">
-                城市
+                City
               </dt>
               <dd className="mt-1">
                 {job.city_id}
@@ -341,7 +341,7 @@ export default function SimulationJobPage() {
 
             <div>
               <dt className="text-slate-500">
-                建立時間
+                Created At
               </dt>
               <dd className="mt-1">
                 {new Date(
@@ -352,27 +352,27 @@ export default function SimulationJobPage() {
 
             <div>
               <dt className="text-slate-500">
-                開始時間
+                Started At
               </dt>
               <dd className="mt-1">
                 {job.started_at
                   ? new Date(
                       job.started_at,
                     ).toLocaleString()
-                  : "尚未開始"}
+                  : "Not started"}
               </dd>
             </div>
 
             <div>
               <dt className="text-slate-500">
-                完成時間
+                Completed At
               </dt>
               <dd className="mt-1">
                 {job.completed_at
                   ? new Date(
                       job.completed_at,
                     ).toLocaleString()
-                  : "尚未完成"}
+                  : "Not completed"}
               </dd>
             </div>
           </dl>
@@ -396,7 +396,7 @@ export default function SimulationJobPage() {
         {job.status === "completed"
           && !result && (
             <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
-              正在載入完整模擬結果……
+              Loading complete simulation results…
             </section>
           )}
 
@@ -404,7 +404,7 @@ export default function SimulationJobPage() {
           <section className="mt-10 space-y-8">
             <div className="grid gap-4 md:grid-cols-3">
               <SummaryCard
-                label="最終皮膚溫度改善"
+                label="final skin temperature improvement"
                 value={
                   result.summary
                     .final_skin_temperature_improvement_c
@@ -412,7 +412,7 @@ export default function SimulationJobPage() {
               />
 
               <SummaryCard
-                label="平均皮膚溫度改善"
+                label="average skin temperature improvement"
                 value={
                   result.summary
                     .average_skin_temperature_improvement_c
@@ -420,7 +420,7 @@ export default function SimulationJobPage() {
               />
 
               <SummaryCard
-                label="核心溫度改善"
+                label="final core temperature improvement"
                 value={
                   result.summary
                     .final_core_temperature_improvement_c
@@ -455,7 +455,7 @@ export default function SimulationJobPage() {
                 )}
                 className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950"
               >
-                導出 CSV
+                Export CSV
               </a>
 
               <a
@@ -465,7 +465,7 @@ export default function SimulationJobPage() {
                 )}
                 className="rounded-lg border border-slate-700 px-5 py-2"
               >
-                導出 JSON
+                Export JSON
               </a>
             </div>
           </section>

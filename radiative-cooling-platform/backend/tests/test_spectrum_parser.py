@@ -37,7 +37,7 @@ def test_reject_value_above_one():
 
     with pytest.raises(
         ValueError,
-        match="0 至 1",
+        match="0 and 1",
     ):
         parse_spectrum_csv(content)
 
@@ -52,6 +52,6 @@ def test_reject_unsorted_wavelengths():
 
     with pytest.raises(
         ValueError,
-        match="嚴格遞增",
+        match="strictly increasing",
     ):
         parse_spectrum_csv(content)

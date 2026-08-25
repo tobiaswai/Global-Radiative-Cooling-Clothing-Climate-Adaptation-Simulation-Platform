@@ -21,7 +21,7 @@ export function WeatherChart({
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
       <h2 className="text-xl font-semibold">
-        歷史氣象時間序列
+        Historical Weather Time Series
       </h2>
 
       <Plot
@@ -34,7 +34,7 @@ export function WeatherChart({
               (point) =>
                 point.air_temperature_c,
             ),
-            name: "氣溫（°C）",
+            name: "Air Temperature (°C)",
             type: "scatter",
             mode: "lines+markers",
             yaxis: "y",
@@ -46,7 +46,7 @@ export function WeatherChart({
             y: points.map(
               (point) => point.ghi_w_m2,
             ),
-            name: "GHI（W/m²）",
+            name: "GHI (W/m²)",
             type: "scatter",
             mode: "lines+markers",
             yaxis: "y2",
@@ -59,7 +59,7 @@ export function WeatherChart({
               (point) =>
                 point.relative_humidity_percent,
             ),
-            name: "相對濕度（%）",
+            name: "Relative Humidity (%)",
             type: "scatter",
             mode: "lines",
             yaxis: "y3",
@@ -82,19 +82,19 @@ export function WeatherChart({
           },
           xaxis: {
             title: {
-              text: "當地時間",
+              text: "Local Time",
             },
             gridcolor: "#334155",
           },
           yaxis: {
             title: {
-              text: "氣溫（°C）",
+              text: "Air Temperature (°C)",
             },
             gridcolor: "#334155",
           },
           yaxis2: {
             title: {
-              text: "太陽輻射（W/m²）",
+              text: "GHI (W/m²)",
             },
             overlaying: "y",
             side: "right",
@@ -124,19 +124,19 @@ export function WeatherChart({
 
       <div className="mt-4 border-t border-slate-800 pt-4 text-sm text-slate-400">
         <p>
-          數據來源：{weather.source.provider} /{" "}
+          Data source:{weather.source.provider} /{" "}
           {weather.source.model}
         </p>
         <p>
-          網格位置：
+          Grid Location:
           {weather.source.latitude.toFixed(4)},{" "}
           {weather.source.longitude.toFixed(4)}
         </p>
         <p>
-          緩存：
+          Cache:
           {weather.source.from_cache
-            ? "本地緩存"
-            : "本次 API 下載"}
+            ? "Local Cache"
+            : "Current API Download"}
         </p>
 
         <p className="mt-2">

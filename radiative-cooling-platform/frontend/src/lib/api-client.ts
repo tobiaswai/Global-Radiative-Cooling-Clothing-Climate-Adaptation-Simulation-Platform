@@ -55,13 +55,6 @@ async function getErrorMessage(
   return `${fallbackMessage}：HTTP ${response.status}`;
 }
 
-
-/**
- * 手動環境參數模擬。
- *
- * 對應後端：
- * POST /api/v1/simulations/run
- */
 export async function runSimulation(
   request: SimulationRequest,
 ): Promise<SimulationResponse> {
@@ -80,7 +73,7 @@ export async function runSimulation(
     throw new Error(
       await getErrorMessage(
         response,
-        "模擬請求失敗",
+        "Simulation request failed",
       ),
     );
   }
@@ -89,12 +82,6 @@ export async function runSimulation(
 }
 
 
-/**
- * 取得系統目前支援的城市。
- *
- * 對應後端：
- * GET /api/v1/weather/cities
- */
 export async function getCities(): Promise<City[]> {
   const response = await fetch(
     `${API_BASE_URL}/api/v1/weather/cities`,
@@ -107,7 +94,7 @@ export async function getCities(): Promise<City[]> {
     throw new Error(
       await getErrorMessage(
         response,
-        "無法取得城市列表",
+        "Failed to fetch city list",
       ),
     );
   }
@@ -116,12 +103,6 @@ export async function getCities(): Promise<City[]> {
 }
 
 
-/**
- * 取得指定城市的歷史氣象資料。
- *
- * 對應後端：
- * GET /api/v1/weather/history
- */
 export async function getWeatherHistory(
   cityId: string,
   startTimeLocal: string,
@@ -144,7 +125,7 @@ export async function getWeatherHistory(
     throw new Error(
       await getErrorMessage(
         response,
-        "無法取得歷史氣象資料",
+        "Failed to fetch weather history",
       ),
     );
   }
@@ -152,16 +133,6 @@ export async function getWeatherHistory(
   return response.json() as Promise<WeatherTimeSeries>;
 }
 
-
-/**
- * 同步執行氣象驅動模擬。
- *
- * 主要保留給開發、測試和除錯使用。
- * 正式前端應優先使用 createSimulationJob()。
- *
- * 對應後端：
- * POST /api/v1/simulations/run-weather
- */
 export async function runWeatherSimulation(
   request: WeatherSimulationRequest,
 ): Promise<WeatherSimulationResponse> {
@@ -180,7 +151,7 @@ export async function runWeatherSimulation(
     throw new Error(
       await getErrorMessage(
         response,
-        "氣象模擬失敗",
+        "Weather simulation failed",
       ),
     );
   }
@@ -189,12 +160,6 @@ export async function runWeatherSimulation(
 }
 
 
-/**
- * 建立異步模擬任務。
- *
- * 對應後端：
- * POST /api/v1/simulations/jobs
- */
 export async function createSimulationJob(
   request: WeatherSimulationRequest,
 ): Promise<SimulationJob> {
@@ -213,7 +178,7 @@ export async function createSimulationJob(
     throw new Error(
       await getErrorMessage(
         response,
-        "建立模擬任務失敗",
+        "Failed to create simulation job",
       ),
     );
   }
@@ -221,13 +186,6 @@ export async function createSimulationJob(
   return response.json() as Promise<SimulationJob>;
 }
 
-
-/**
- * 查詢單一模擬任務。
- *
- * 對應後端：
- * GET /api/v1/simulations/jobs/{jobId}
- */
 export async function getSimulationJob(
   jobId: string,
 ): Promise<SimulationJobDetail> {
@@ -242,7 +200,7 @@ export async function getSimulationJob(
     throw new Error(
       await getErrorMessage(
         response,
-        "無法取得模擬任務",
+        "Failed to fetch simulation job",
       ),
     );
   }
@@ -251,12 +209,7 @@ export async function getSimulationJob(
 }
 
 
-/**
- * 取得模擬任務列表。
- *
- * 對應後端：
- * GET /api/v1/simulations/jobs
- */
+
 export async function getSimulationJobs(
   limit = 20,
   offset = 0,
@@ -277,7 +230,7 @@ export async function getSimulationJobs(
     throw new Error(
       await getErrorMessage(
         response,
-        "無法取得模擬任務列表",
+        "Failed to fetch simulation job list",
       ),
     );
   }
@@ -286,12 +239,6 @@ export async function getSimulationJobs(
 }
 
 
-/**
- * 讀取已完成任務的完整模擬結果。
- *
- * 對應後端：
- * GET /api/v1/simulations/jobs/{jobId}/result
- */
 export async function getSimulationResult(
   jobId: string,
 ): Promise<WeatherSimulationResponse> {
@@ -306,7 +253,7 @@ export async function getSimulationResult(
     throw new Error(
       await getErrorMessage(
         response,
-        "無法取得模擬結果",
+        "Failed to fetch simulation result",
       ),
     );
   }
@@ -315,12 +262,6 @@ export async function getSimulationResult(
 }
 
 
-/**
- * 取消排隊中或執行中的模擬任務。
- *
- * 對應後端：
- * POST /api/v1/simulations/jobs/{jobId}/cancel
- */
 export async function cancelSimulationJob(
   jobId: string,
 ): Promise<SimulationJob> {
@@ -335,7 +276,7 @@ export async function cancelSimulationJob(
     throw new Error(
       await getErrorMessage(
         response,
-        "取消模擬任務失敗",
+        "Failed to cancel simulation job",
       ),
     );
   }
@@ -344,15 +285,6 @@ export async function cancelSimulationJob(
 }
 
 
-/**
- * 產生 SSE 任務進度地址。
- *
- * 使用方式：
- *
- * const eventSource = new EventSource(
- *   getSimulationEventsUrl(jobId),
- * );
- */
 export function getSimulationEventsUrl(
   jobId: string,
 ): string {
@@ -389,7 +321,7 @@ export async function getMaterials(
   );
 
   if (!response.ok) {
-    throw new Error("無法取得材料列表");
+    throw new Error("Failed to fetch material list");
   }
 
   return response.json();
@@ -407,7 +339,7 @@ export async function getMaterial(
   );
 
   if (!response.ok) {
-    throw new Error("無法取得材料");
+    throw new Error("Failed to fetch material");
   }
 
   return response.json();
@@ -434,7 +366,7 @@ export async function createMaterial(
       .catch(() => null);
 
     throw new Error(
-      body?.detail ?? "建立材料失敗",
+      body?.detail ?? "Failed to create material",
     );
   }
 
@@ -473,7 +405,7 @@ export async function uploadMaterialSpectrum(
       .catch(() => null);
 
     throw new Error(
-      body?.detail ?? "上傳光譜失敗",
+      body?.detail ?? "Failed to upload spectrum",
     );
   }
 
@@ -490,7 +422,7 @@ export async function getMaterialSimulationInput(
 
   if (!response.ok) {
     throw new Error(
-      "無法轉換材料模擬參數",
+      "Failed to fetch material simulation input",
     );
   }
 

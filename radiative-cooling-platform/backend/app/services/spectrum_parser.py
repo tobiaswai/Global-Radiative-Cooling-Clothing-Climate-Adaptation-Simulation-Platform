@@ -33,18 +33,18 @@ def parse_spectrum_csv(
     file_bytes: bytes,
 ) -> ParsedSpectrum:
     if not file_bytes:
-        raise ValueError("上傳文件為空")
+        raise ValueError("Uploaded file is empty")
 
     if len(file_bytes) > MAX_SPECTRUM_FILE_SIZE:
         raise ValueError(
-            "光譜 CSV 不能超過 2 MB"
+            "Spectrum CSV cannot exceed 2 MB"
         )
 
     try:
         text = file_bytes.decode("utf-8-sig")
     except UnicodeDecodeError as error:
         raise ValueError(
-            "CSV 必須使用 UTF-8 編碼"
+            "CSV must use UTF-8 encoding"
         ) from error
 
     reader = csv.DictReader(
@@ -52,7 +52,7 @@ def parse_spectrum_csv(
     )
 
     if not reader.fieldnames:
-        raise ValueError("CSV 缺少表頭")
+        raise ValueError("CSV is missing headers")
 
     header_map = {
         _normalize_header(name): name
@@ -92,12 +92,12 @@ def parse_spectrum_csv(
 
     if wavelength_column is None:
         raise ValueError(
-            "CSV 必須包含 wavelength_um 欄位"
+            "CSV must include a 'wavelength_um' column"
         )
 
     if value_column is None:
         raise ValueError(
-            "CSV 必須包含 value 欄位"
+            "CSV must include a 'value' column"
         )
 
     points: list[dict[str, float]] = []
@@ -119,27 +119,27 @@ def parse_spectrum_csv(
             KeyError,
         ) as error:
             raise ValueError(
-                f"第 {row_number} 行包含無效數值"
+                f"Row {row_number} contains invalid values"
             ) from error
 
         if not math.isfinite(wavelength):
             raise ValueError(
-                f"第 {row_number} 行波長不是有限數值"
+                f"Row {row_number} wavelength is not a finite value"
             )
 
         if not math.isfinite(value):
             raise ValueError(
-                f"第 {row_number} 行光譜值不是有限數值"
+                f"Row {row_number} spectrum value is not a finite value"
             )
 
         if wavelength <= 0:
             raise ValueError(
-                f"第 {row_number} 行波長必須大於 0"
+                f"Row {row_number} wavelength must be positive"
             )
 
         if not 0 <= value <= 1:
             raise ValueError(
-                f"第 {row_number} 行光譜值必須位於 0 至 1"
+                f"Row {row_number} spectrum value must be between 0 and 1"
             )
 
         points.append(
@@ -151,12 +151,12 @@ def parse_spectrum_csv(
 
         if len(points) > MAX_SPECTRUM_POINTS:
             raise ValueError(
-                "光譜點數不能超過 20000"
+                "Row {row_number} spectrum points cannot exceed 20000"
             )
 
     if len(points) < 2:
         raise ValueError(
-            "光譜文件至少需要兩個數據點"
+            "Row {row_number} spectrum file must contain at least two data points"
         )
 
     wavelengths = [
@@ -171,7 +171,7 @@ def parse_spectrum_csv(
     ):
         if current <= previous:
             raise ValueError(
-                "波長必須嚴格遞增且不能重複"
+                "Row {row_number} wavelengths must be strictly increasing and unique"
             )
 
     return ParsedSpectrum(

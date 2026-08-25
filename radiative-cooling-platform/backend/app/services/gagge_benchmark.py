@@ -150,8 +150,8 @@ def run_gagge_benchmark(
             4,
         ),
         warning=(
-            "這是模型診斷比較，不是等價性驗證。"
-            "自研原型與 Gagge 模型的熱容量、"
-            "服裝模型、血流控制和蒸發控制方程不同。"
+            "This is a model diagnostic comparison, not an equivalence verification."
+            "The heat capacity of the self-developed prototype differs from that of the Gagge model."
+            "The clothing model, blood flow control, and evaporation control equations are different."
         ),
     )

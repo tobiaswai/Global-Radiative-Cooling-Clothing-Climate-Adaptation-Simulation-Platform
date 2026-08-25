@@ -66,7 +66,7 @@ export default function NewMaterialPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "建立材料失敗",
+          : "Failed to load materials.",
       );
     } finally {
       setLoading(false);
@@ -90,7 +90,7 @@ export default function NewMaterialPage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-4xl px-6 py-10">
         <h1 className="text-3xl font-bold">
-          新建材料
+          New Material
         </h1>
 
         <form
@@ -99,12 +99,12 @@ export default function NewMaterialPage() {
         >
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-xl font-semibold">
-              基本資料
+              Basic Information
             </h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2">
               <TextInput
-                label="材料名稱"
+                label="Material Name"
                 value={material.name}
                 onChange={(value) =>
                   setMaterial({
@@ -132,7 +132,7 @@ export default function NewMaterialPage() {
               />
 
               <TextInput
-                label="研究機構"
+                label="Institution"
                 value={
                   material.institution ?? ""
                 }
@@ -145,7 +145,7 @@ export default function NewMaterialPage() {
               />
 
               <TextInput
-                label="資料來源"
+                label="Source Reference"
                 value={
                   material.initial_version
                     .source_reference ?? ""
@@ -162,12 +162,12 @@ export default function NewMaterialPage() {
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-xl font-semibold">
-              初始物理參數
+              Initial Physical Parameters
             </h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2">
               <NumberInput
-                label="服裝熱阻（clo）"
+                label="Clothing Insulation (clo)"
                 value={
                   material.initial_version
                     .clothing_insulation_clo
@@ -181,7 +181,7 @@ export default function NewMaterialPage() {
               />
 
               <NumberInput
-                label="太陽反射率"
+                label="Solar Reflectance"
                 value={
                   material.initial_version
                     .solar_reflectance
@@ -195,7 +195,7 @@ export default function NewMaterialPage() {
               />
 
               <NumberInput
-                label="太陽透射率"
+                label="Solar Transmittance"
                 value={
                   material.initial_version
                     .solar_transmittance
@@ -209,7 +209,7 @@ export default function NewMaterialPage() {
               />
 
               <NumberInput
-                label="中紅外發射率"
+                label="Infrared Emissivity"
                 value={
                   material.initial_version
                     .infrared_emissivity
@@ -223,7 +223,7 @@ export default function NewMaterialPage() {
               />
 
               <NumberInput
-                label="中紅外透射率"
+                label="Infrared Transmittance"
                 value={
                   material.initial_version
                     .infrared_transmittance
@@ -237,7 +237,7 @@ export default function NewMaterialPage() {
               />
 
               <NumberInput
-                label="面密度（g/m²）"
+                label="Areal Density (g/m²)"
                 value={
                   material.initial_version
                     .areal_density_g_m2 ?? 0
@@ -264,8 +264,8 @@ export default function NewMaterialPage() {
             className="rounded-lg bg-cyan-400 px-7 py-3 font-semibold text-slate-950 disabled:opacity-50"
           >
             {loading
-              ? "正在建立……"
-              : "建立材料"}
+              ? "Creating Material…"
+              : "Create Material"}
           </button>
         </form>
       </div>

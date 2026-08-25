@@ -19,7 +19,6 @@ export default function MaterialsPage() {
   const [search, setSearch] =
     useState("");
 
-  // 初始畫面本來就是載入狀態，不需要 Effect 再設為 true
   const [loading, setLoading] =
     useState(true);
 
@@ -40,7 +39,7 @@ export default function MaterialsPage() {
           setError(
             caughtError instanceof Error
               ? caughtError.message
-              : "載入材料失敗",
+              : "Failed to load materials.",
           );
         }
       })
@@ -51,7 +50,6 @@ export default function MaterialsPage() {
       });
 
     return () => {
-      // 防止元件卸載後，過期請求繼續更新 state
       ignore = true;
     };
   }, []);
@@ -61,8 +59,6 @@ export default function MaterialsPage() {
   ) {
     event.preventDefault();
 
-    // 這些更新由使用者提交表單觸發，
-    // 因此應該放在事件處理函式中。
     setLoading(true);
     setError("");
 
@@ -76,7 +72,7 @@ export default function MaterialsPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "載入材料失敗",
+          : "Failed to load materials.",
       );
     } finally {
       setLoading(false);
@@ -93,7 +89,7 @@ export default function MaterialsPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">
-              輻射製冷材料
+              Radiative Cooling Materials
             </h1>
           </div>
 
@@ -101,7 +97,7 @@ export default function MaterialsPage() {
             href="/materials/new"
             className="rounded-lg bg-cyan-400 px-5 py-2.5 font-semibold text-slate-950"
           >
-            新建材料
+            New materials
           </Link>
         </header>
 
@@ -114,7 +110,7 @@ export default function MaterialsPage() {
             onChange={(event) =>
               setSearch(event.target.value)
             }
-            placeholder="搜尋材料名稱"
+            placeholder="Search materials"
             className="max-w-md flex-1 rounded-lg border border-slate-700 bg-slate-900 px-4 py-2"
           />
 
@@ -123,7 +119,7 @@ export default function MaterialsPage() {
             disabled={loading}
             className="rounded-lg border border-slate-700 px-5 py-2 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? "載入中……" : "搜尋"}
+            {loading ? "Loading…" : "Search"}
           </button>
         </form>
 
@@ -138,16 +134,16 @@ export default function MaterialsPage() {
             <thead className="bg-slate-900 text-sm text-slate-400">
               <tr>
                 <th className="px-5 py-4">
-                  材料
+                  Material
                 </th>
                 <th className="px-5 py-4">
-                  機構
+                  Institution
                 </th>
                 <th className="px-5 py-4">
-                  最新版本
+                  Latest Version
                 </th>
                 <th className="px-5 py-4">
-                  建立時間
+                  Created At
                 </th>
               </tr>
             </thead>
@@ -193,14 +189,14 @@ export default function MaterialsPage() {
 
           {loading && (
             <div className="p-10 text-center text-slate-400">
-              正在載入……
+              Loading…
             </div>
           )}
 
           {!loading &&
             materials.length === 0 && (
               <div className="p-10 text-center text-slate-400">
-                尚未建立材料
+                No materials available.
               </div>
             )}
         </section>

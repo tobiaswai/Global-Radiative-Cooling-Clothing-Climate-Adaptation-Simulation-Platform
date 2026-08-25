@@ -37,7 +37,7 @@ def update_job(
 
         if job is None:
             raise RuntimeError(
-                f"找不到模擬任務：{job_id}"
+                f"Simulation task not found:{job_id}"
             )
 
         for field, value in values.items():
@@ -57,7 +57,7 @@ def ensure_not_cancelled(
 
         if job is None:
             raise RuntimeError(
-                f"找不到模擬任務：{job_id}"
+                f"Simulation task not found:{job_id}"
             )
 
         if job.status in {
@@ -85,7 +85,7 @@ def run_weather_simulation_task(
 
             if job is None:
                 raise RuntimeError(
-                    f"找不到模擬任務：{job_id}"
+                    f"Simulation task not found:{job_id}"
                 )
 
             request = (

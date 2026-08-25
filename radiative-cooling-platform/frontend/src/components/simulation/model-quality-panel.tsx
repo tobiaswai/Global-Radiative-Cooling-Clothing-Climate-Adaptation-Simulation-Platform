@@ -30,11 +30,11 @@ export function ModelQualityPanel({
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
       <h2 className="text-xl font-semibold">
-        數值計算品質
+        Numerical computation quality
       </h2>
 
       <p className="mt-2 text-sm text-slate-400">
-        能量殘差越接近 0%，表示積分熱流與人體儲能變化越一致。
+        The closer the energy residual is to 0%, the more consistent the integral heat flux is with the changes in human body energy storage.
       </p>
 
       <div className="mt-5 overflow-x-auto">
@@ -42,19 +42,19 @@ export function ModelQualityPanel({
           <thead className="border-b border-slate-700 text-slate-400">
             <tr>
               <th className="px-3 py-3">
-                情景
+                Scenario
               </th>
               <th className="px-3 py-3">
-                能量殘差
+                Energy Residual
               </th>
               <th className="px-3 py-3">
-                儲能變化
+                Stored Energy Change
               </th>
               <th className="px-3 py-3">
-                積分淨熱量
+                Integrated Net Heat
               </th>
               <th className="px-3 py-3">
-                求值次數
+                Solver Function Evaluations
               </th>
             </tr>
           </thead>

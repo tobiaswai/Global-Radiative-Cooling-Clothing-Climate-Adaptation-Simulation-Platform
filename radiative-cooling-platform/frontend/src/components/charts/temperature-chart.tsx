@@ -10,7 +10,7 @@ const Plot = dynamic(
     ssr: false,
     loading: () => (
       <div className="flex h-96 items-center justify-center text-slate-400">
-        正在載入圖表……
+        Loading charts...
       </div>
     ),
   },
@@ -31,7 +31,7 @@ export function TemperatureChart({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
       <h2 className="mb-4 text-xl font-semibold">
-        人體溫度動態曲線
+        Human Body Temperature Dynamics
       </h2>
 
       <Plot
@@ -43,7 +43,7 @@ export function TemperatureChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "普通服裝：皮膚溫度",
+            name: "Standard Clothing: Skin Temperature",
             line: {
               color: "#f97316",
               width: 3,
@@ -56,7 +56,7 @@ export function TemperatureChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "輻射製冷：皮膚溫度",
+            name: "Radiative Cooling: Skin Temperature",
             line: {
               color: "#22d3ee",
               width: 3,
@@ -69,7 +69,7 @@ export function TemperatureChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "普通服裝：核心溫度",
+            name: "Standard Clothing: Core Temperature",
             line: {
               color: "#ef4444",
               width: 2,
@@ -83,7 +83,7 @@ export function TemperatureChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "輻射製冷：核心溫度",
+            name: "Radiative Cooling: Core Temperature",
             line: {
               color: "#3b82f6",
               width: 2,
@@ -107,13 +107,13 @@ export function TemperatureChart({
           },
           xaxis: {
             title: {
-              text: "時間（分鐘）",
+              text: "Time (min)",
             },
             gridcolor: "#334155",
           },
           yaxis: {
             title: {
-              text: "溫度（°C）",
+              text: "Temperature (°C)",
             },
             gridcolor: "#334155",
           },

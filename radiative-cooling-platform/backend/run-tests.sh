@@ -8,8 +8,8 @@ export NUMBA_CACHE_DIR="C:/nc"
 PYTHON="./.venv/Scripts/python.exe"
 
 if [ ! -f "$PYTHON" ]; then
-  echo "錯誤：找不到 $PYTHON"
-  echo "請先在 backend 目錄建立 .venv"
+  echo "Error: Not found $PYTHON"
+  echo "Please create the .venv directory in the backend folder first"
   exit 1
 fi
 
@@ -24,5 +24,5 @@ echo "pythermalcomfort:"
 "$PYTHON" -c \
   "import pythermalcomfort; print(pythermalcomfort.__file__)"
 
-echo "開始執行測試..."
+echo "Starting test execution..."
 "$PYTHON" -m pytest -vv

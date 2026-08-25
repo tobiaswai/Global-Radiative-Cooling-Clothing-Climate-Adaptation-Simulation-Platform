@@ -53,8 +53,8 @@ def get_city(city_id: str) -> CityConfig:
     if normalized_id not in CITIES:
         supported = ", ".join(sorted(CITIES))
         raise ValueError(
-            f"不支持城市 '{city_id}'。"
-            f"目前支持：{supported}"
+            f"City not supported '{city_id}'."
+            f"Currently supported: {supported}"
         )
 
     return CITIES[normalized_id]

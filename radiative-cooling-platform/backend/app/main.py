@@ -21,9 +21,10 @@ from app.api.materials import ( router as materials_router,)
 
 
 app = FastAPI(
-    title="Radiative Cooling Simulation API",
+    title="Global Radiative Cooling Clothing Climate Adaptation API",
     description=(
-        "輻射製冷服裝全球氣候適應性模擬平台後端"
+        "Backend API for simulating and evaluating radiative cooling "
+        "clothing under global climate conditions."
     ),
     version="0.2.0",
 )

@@ -54,7 +54,7 @@ def load_simulation_result(
 
     if not path.exists():
         raise FileNotFoundError(
-            f"結果文件不存在：{path}"
+            f"The result file does not exist:{path}"
         )
 
     with gzip.open(

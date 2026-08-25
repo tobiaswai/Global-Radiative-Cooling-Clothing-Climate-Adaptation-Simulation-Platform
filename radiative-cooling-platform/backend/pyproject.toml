@@ -1,4 +1,5 @@
 [tool.pytest.ini_options]
+strict_markers = true
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
@@ -9,8 +10,8 @@ addopts = [
     "--strict-config",
 ]
 markers = [
-    "unit: fast unit tests",
-    "integration: API and database integration tests",
-    "benchmark: external model comparison tests",
+    "unit: marks fast, isolated unit tests",
+    "integration: marks tests involving multiple components or external interfaces",
+    "benchmark: marks model comparison and benchmark tests",
     "asyncio: mark a test as an asyncio coroutine",
 ]

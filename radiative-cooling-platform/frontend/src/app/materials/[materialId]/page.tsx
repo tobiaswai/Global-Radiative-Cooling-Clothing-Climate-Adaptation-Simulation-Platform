@@ -26,10 +26,6 @@ export default function MaterialDetailPage() {
 
   const materialId = parameters.materialId;
 
-  /*
-   * materialId 改變時，React 會把它視為另一個材料詳情元件，
-   * 自動重設 material、file、message 等內部狀態。
-   */
   return (
     <MaterialDetailContent
       key={materialId}
@@ -69,10 +65,6 @@ function MaterialDetailContent({
   useEffect(() => {
     let ignore = false;
 
-    /*
-     * Effect 負責讓頁面和外部 API 同步。
-     * 不要在 Effect 中呼叫一個會同步 setState 的函式。
-     */
     getMaterial(materialId)
       .then((response) => {
         if (!ignore) {
@@ -84,7 +76,7 @@ function MaterialDetailContent({
           setError(
             caughtError instanceof Error
               ? caughtError.message
-              : "載入材料失敗",
+              : "Loading material failed",
           );
         }
       })
@@ -95,10 +87,7 @@ function MaterialDetailContent({
       });
 
     return () => {
-      /*
-       * 如果元件卸載或 materialId 改變，
-       * 忽略舊請求的結果，防止競態條件。
-       */
+
       ignore = true;
     };
   }, [materialId]);
@@ -122,21 +111,17 @@ function MaterialDetailContent({
         file,
       );
 
-      /*
-       * 上傳是由使用者點擊按鈕觸發，
-       * 所以重新取得材料資料應放在事件處理函式中。
-       */
       const refreshedMaterial =
         await getMaterial(materialId);
 
       setMaterial(refreshedMaterial);
       setFile(null);
-      setMessage("光譜上傳成功");
+      setMessage("Spectrum uploaded successfully");
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "上傳失敗",
+          : "Upload failed",
       );
     } finally {
       setUploading(false);
@@ -146,7 +131,7 @@ function MaterialDetailContent({
   if (loading) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
-        正在載入材料……
+        Loading material…
       </main>
     );
   }
@@ -164,7 +149,7 @@ function MaterialDetailContent({
   if (!material) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
-        找不到材料
+        Material not found
       </main>
     );
   }
@@ -186,7 +171,7 @@ function MaterialDetailContent({
 
           <p className="mt-2 text-slate-400">
             {material.description ||
-              "尚未提供材料說明"}
+              "Material description not available"}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
@@ -195,7 +180,7 @@ function MaterialDetailContent({
             </span>
 
             <span>
-              機構：
+              Institution:
               {material.institution ?? "—"}
             </span>
           </div>
@@ -233,28 +218,28 @@ function MaterialDetailContent({
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
                   <Metric
-                    label="太陽反射率"
+                    label="solar reflectance"
                     value={
                       version.solar_reflectance
                     }
                   />
 
                   <Metric
-                    label="中紅外發射率"
+                    label="infrared emissivity"
                     value={
                       version.infrared_emissivity
                     }
                   />
 
                   <Metric
-                    label="中紅外透射率"
+                    label="infrared transmittance"
                     value={
                       version.infrared_transmittance
                     }
                   />
 
                   <Metric
-                    label="服裝熱阻"
+                    label="clothing insulation"
                     value={
                       version.clothing_insulation_clo
                     }
@@ -264,7 +249,7 @@ function MaterialDetailContent({
 
                 <div className="mt-5">
                   <p className="text-sm text-slate-400">
-                    已上傳光譜：
+                    Spectra uploaded:
                     {version.spectra.length}
                   </p>
 
@@ -287,7 +272,7 @@ function MaterialDetailContent({
                               {
                                 spectrum.point_count
                               }{" "}
-                              個數據點
+                              data points
                             </span>
 
                             <span className="ml-3 text-slate-500">
@@ -314,15 +299,15 @@ function MaterialDetailContent({
         {latestVersion && (
           <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-xl font-semibold">
-              上傳 Version{" "}
+              Upload Version{" "}
               {latestVersion.version_number}{" "}
-              光譜
+              Spectra
             </h2>
 
             <p className="mt-2 text-sm text-slate-400">
-              CSV 必須包含
-              wavelength_um 和 value
-              兩個欄位。
+              CSV must contain
+              wavelength_um and value
+              two columns.
             </p>
 
             <div className="mt-5 flex flex-wrap gap-4">
@@ -338,28 +323,24 @@ function MaterialDetailContent({
                 className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
               >
                 <option value="solar_reflectance">
-                  太陽反射光譜
+                  Solar Reflectance Spectra
                 </option>
 
                 <option value="solar_transmittance">
-                  太陽透射光譜
+                  Solar Transmittance Spectra
                 </option>
 
                 <option value="mir_emissivity">
-                  中紅外發射光譜
+                  Infrared Emissivity Spectra
                 </option>
 
                 <option value="mir_transmittance">
-                  中紅外透射光譜
+                  Infrared Transmittance Spectra
                 </option>
               </select>
 
               <input
                 key={
-                  /*
-                   * 上傳成功後 file 被設為 null。
-                   * key 改變可重建原生文件輸入。
-                   */
                   file?.name ??
                   "empty-file-input"
                 }
@@ -384,14 +365,14 @@ function MaterialDetailContent({
                 className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {uploading
-                  ? "正在上傳……"
-                  : "上傳"}
+                  ? "Uploading…"
+                  : "Upload"}
               </button>
             </div>
 
             {file && (
               <p className="mt-4 text-sm text-slate-400">
-                已選擇文件：{file.name}
+                File selected: {file.name}
               </p>
             )}
           </section>

@@ -22,7 +22,7 @@ export function HeatFluxChart({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
       <h2 className="mb-4 text-xl font-semibold">
-        輻射製冷服裝熱流分解
+        Radiative Cooling Clothing Heat Flux Components
       </h2>
 
       <Plot
@@ -34,7 +34,7 @@ export function HeatFluxChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "對流",
+            name: "Convection",
           },
           {
             x: points.map((point) => point.minute),
@@ -44,7 +44,7 @@ export function HeatFluxChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "長波輻射",
+            name: "Longwave Radiation",
           },
           {
             x: points.map((point) => point.minute),
@@ -53,7 +53,7 @@ export function HeatFluxChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "蒸發",
+            name: "Evaporation",
           },
           {
             x: points.map((point) => point.minute),
@@ -62,7 +62,7 @@ export function HeatFluxChart({
             ),
             type: "scatter",
             mode: "lines",
-            name: "太陽吸收",
+            name: "Absorbed Solar Radiation",
           },
         ]}
         layout={{
@@ -81,13 +81,13 @@ export function HeatFluxChart({
           },
           xaxis: {
             title: {
-              text: "時間（分鐘）",
+              text: "Time (min)",
             },
             gridcolor: "#334155",
           },
           yaxis: {
             title: {
-              text: "熱流密度（W/m²）",
+              text: "Heat Flux (W/m²)",
             },
             gridcolor: "#334155",
           },
@@ -105,8 +105,8 @@ export function HeatFluxChart({
       />
 
       <p className="mt-3 text-sm text-slate-400">
-        正長波輻射和正對流代表人體向外散熱；
-        太陽吸收代表環境向服裝／人體增加的熱負荷。
+        Positive longwave radiation and convection represent heat loss from the human body.
+        Absorbed solar radiation represents heat gained by the clothing–body system from the environment.
       </p>
     </div>
   );

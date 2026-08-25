@@ -138,15 +138,15 @@ async def execute_weather_simulation(
             ),
         ),
         warning=(
-            "本結果來自氣象驅動的簡化人體"
-            "熱平衡原型，尚未完成JOS-3、"
-            "熱人偶或人體實驗驗證。"
+            "This result comes from a weather-driven simplified human model."
+            "Thermal equilibrium prototype, not yet completed in JOS-3."
+            "Verification through thermal doll or human experiments."
         ),
         weather=weather,
         environment_model_note=(
-            "氣溫、濕度、風速及短波輻射"
-            "來自ERA5；平均輻射溫度和有效"
-            "天空溫度目前使用經驗公式估計。"
+            "Air temperature, humidity, wind speed, and shortwave radiation"
+            "From ERA5; mean radiant temperature and effective radiant temperature"
+            "Sky temperature is currently estimated using empirical formulas."
         ),
     )
     

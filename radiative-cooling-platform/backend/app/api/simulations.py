@@ -102,9 +102,10 @@ def run_simulation(
             ),
         ),
         warning=(
-            "本結果來自簡化瞬態原型，尚未完成熱人偶、"
-            "人體實驗或 JOS-3 基準驗證，不可用於醫療、"
-            "職業安全或產品認證。"
+                    "These results are from a simplified transient prototype "
+                    "and have not yet been validated using thermal dolls, human trials, "
+                    "or JOS-3 benchmarks. They are not suitable for medical, occupational safety, "
+                    "or product certification purposes."
         ),
     )
     
@@ -207,14 +208,16 @@ async def run_weather_simulation(
             ),
         ),
         warning=(
-            "這是氣象驅動的簡化人體熱平衡原型，"
-            "尚未完成 JOS-3、熱人偶或人體實驗驗證。"
+            "These results are from a simplified transient prototype "
+            "and have not yet been validated using thermal dolls, human trials, "
+            "or JOS-3 benchmarks. They are not suitable for medical, "
+            "occupational safety, or product certification purposes."
         ),
         weather=weather,
         environment_model_note=(
-            "氣溫、濕度、風速和短波輻射來自 ERA5；"
-            "平均輻射溫度和有效天空溫度目前使用"
-            "經驗公式估計。"
+            "Air temperature, humidity, wind speed, and shortwave radiation are from ERA5;"
+            "the average radiative temperature and effective sky temperature are currently "
+            "estimated using empirical formulas."
         ),
     )
 
@@ -305,7 +308,7 @@ def create_simulation_job(
         raise HTTPException(
             status_code=503,
             detail=(
-                "無法將任務提交給Celery："
+                "Unable to submit task to Celery:"
                 f"{error}"
             ),
         ) from error
@@ -368,7 +371,7 @@ def get_simulation_job(
     if job is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到模擬任務",
+            detail="Unable to find simulation job",
         )
 
     return job_to_detail(job)
@@ -389,22 +392,22 @@ def get_simulation_result(
     if job is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到模擬任務",
+            detail="Unable to find simulation job",
         )
 
     if job.status != "completed":
         raise HTTPException(
             status_code=409,
             detail=(
-                "模擬尚未完成，"
-                f"目前狀態：{job.status}"
+                "Simulation not yet completed, "
+                f"current status: {job.status}"
             ),
         )
 
     if not job.result_path:
         raise HTTPException(
             status_code=500,
-            detail="任務完成但缺少結果路徑",
+            detail="Simulation completed but missing result path",
         )
 
     try:
@@ -433,7 +436,7 @@ def cancel_simulation_job(
     if job is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到模擬任務",
+            detail="Unable to find simulation job",
         )
 
     if job.status in {
@@ -444,7 +447,7 @@ def cancel_simulation_job(
         raise HTTPException(
             status_code=409,
             detail=(
-                "終止狀態的任務不能取消"
+                "Simulation job in terminal state cannot be cancelled"
             ),
         )
 
@@ -505,7 +508,7 @@ async def simulation_job_events(
     if initial is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到模擬任務",
+            detail="Unable to find simulation job",
         )
 
     async def event_generator():
@@ -591,19 +594,19 @@ def export_simulation_result(
     if job is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到模擬任務",
+            detail="Unable to find simulation job",
         )
 
     if job.status != "completed":
         raise HTTPException(
             status_code=409,
-            detail="模擬尚未完成",
+            detail="Simulation not yet completed",
         )
 
     if not job.result_path:
         raise HTTPException(
             status_code=500,
-            detail="任務缺少結果文件",
+            detail="Simulation completed but missing result path",
         )
 
     try:

@@ -94,7 +94,7 @@ def create_material(
 
         raise HTTPException(
             status_code=409,
-            detail="材料 slug 已存在",
+            detail="The material slug already exists",
         ) from error
 
     created = load_material(
@@ -105,7 +105,7 @@ def create_material(
     if created is None:
         raise HTTPException(
             status_code=500,
-            detail="材料建立後無法重新讀取",
+            detail="Failed to reload the created material",
         )
 
     return MaterialResponse.model_validate(
@@ -209,7 +209,7 @@ def get_material(
     if material is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到材料",
+            detail="Material not found",
         )
 
     return MaterialResponse.model_validate(
@@ -234,7 +234,7 @@ def update_material(
     if material is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到材料",
+            detail="Material not found",
         )
 
     update_data = request.model_dump(
@@ -274,7 +274,7 @@ def create_material_version(
     if material is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到材料",
+            detail="Material not found",
         )
 
     latest_version = session.scalar(
@@ -327,7 +327,7 @@ def material_version_to_simulation_input(
     if version is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到材料版本",
+            detail="Material version not found",
         )
 
     return MaterialInput(
@@ -382,7 +382,7 @@ async def upload_material_spectrum(
     if spectrum_type not in allowed_types:
         raise HTTPException(
             status_code=422,
-            detail="不支持的光譜類型",
+            detail="Unsupported spectrum type",
         )
 
     version = session.get(
@@ -393,13 +393,13 @@ async def upload_material_spectrum(
     if version is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到材料版本",
+            detail="Material version not found",
         )
 
     if not file.filename:
         raise HTTPException(
             status_code=422,
-            detail="缺少文件名稱",
+            detail="Missing filename",
         )
 
     if not file.filename.lower().endswith(
@@ -407,7 +407,7 @@ async def upload_material_spectrum(
     ):
         raise HTTPException(
             status_code=422,
-            detail="只接受 CSV 文件",
+            detail="Only CSV files are accepted",
         )
 
     file_bytes = await file.read()
@@ -503,7 +503,7 @@ def get_material_spectrum(
     if spectrum is None:
         raise HTTPException(
             status_code=404,
-            detail="找不到光譜資料",
+            detail="Spectrum data not found",
         )
 
     return SpectrumResponse(

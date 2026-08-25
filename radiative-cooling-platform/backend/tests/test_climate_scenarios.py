@@ -81,4 +81,4 @@ def test_typical_climate_scenarios_run_successfully(
         result.diagnostics
         .normalized_residual_percent
         < 1.0
-    ), f"{name} 能量殘差過大"
+    ), f"{name} Excessive energy residual"

@@ -1,0 +1,110 @@
+./alembic/env.py:10:# 必須導入模型，才能註冊到 Base.metadata。
+./app/api/benchmarks.py:30:            detail=f"Gagge 基準計算失敗：{error}",
+./app/api/materials.py:97:            detail="材料 slug 已存在",
+./app/api/materials.py:108:            detail="材料建立後無法重新讀取",
+./app/api/materials.py:212:            detail="找不到材料",
+./app/api/materials.py:237:            detail="找不到材料",
+./app/api/materials.py:277:            detail="找不到材料",
+./app/api/materials.py:330:            detail="找不到材料版本",
+./app/api/materials.py:385:            detail="不支持的光譜類型",
+./app/api/materials.py:396:            detail="找不到材料版本",
+./app/api/materials.py:402:            detail="缺少文件名稱",
+./app/api/materials.py:410:            detail="只接受 CSV 文件",
+./app/api/materials.py:506:            detail="找不到光譜資料",
+./app/api/simulations.py:105:            "本結果來自簡化瞬態原型，尚未完成熱人偶、"
+./app/api/simulations.py:106:            "人體實驗或 JOS-3 基準驗證，不可用於醫療、"
+./app/api/simulations.py:107:            "職業安全或產品認證。"
+./app/api/simulations.py:210:            "這是氣象驅動的簡化人體熱平衡原型，"
+./app/api/simulations.py:211:            "尚未完成 JOS-3、熱人偶或人體實驗驗證。"
+./app/api/simulations.py:215:            "氣溫、濕度、風速和短波輻射來自 ERA5；"
+./app/api/simulations.py:216:            "平均輻射溫度和有效天空溫度目前使用"
+./app/api/simulations.py:217:            "經驗公式估計。"
+./app/api/simulations.py:308:                "無法將任務提交給Celery："
+./app/api/simulations.py:371:            detail="找不到模擬任務",
+./app/api/simulations.py:392:            detail="找不到模擬任務",
+./app/api/simulations.py:399:                "模擬尚未完成，"
+./app/api/simulations.py:400:                f"目前狀態：{job.status}"
+./app/api/simulations.py:407:            detail="任務完成但缺少結果路徑",
+./app/api/simulations.py:436:            detail="找不到模擬任務",
+./app/api/simulations.py:447:                "終止狀態的任務不能取消"
+./app/api/simulations.py:508:            detail="找不到模擬任務",
+./app/api/simulations.py:594:            detail="找不到模擬任務",
+./app/api/simulations.py:600:            detail="模擬尚未完成",
+./app/api/simulations.py:606:            detail="任務缺少結果文件",
+./app/core/cities.py:56:            f"不支持城市 '{city_id}'。"
+./app/core/cities.py:57:            f"目前支持：{supported}"
+./app/main.py:26:        "輻射製冷服裝全球氣候適應性模擬平台後端"
+./app/schemas/material.py:104:                "solar_transmittance 不能大於 1"
+./app/schemas/simulation.py:107:                "solar_reflectance + solar_transmittance 不能大於 1"
+./app/schemas/weather.py:54:                "動態模擬至少需要兩個氣象時間點"
+./app/schemas/weather.py:64:                "氣象時間序列必須按時間升序排列"
+./app/services/gagge_benchmark.py:14:    將 Python float、NumPy scalar 或單元素陣列轉為 float。
+./app/services/gagge_benchmark.py:27:    將自研原型與 pythermalcomfort Gagge Two-Node 比較。
+./app/services/gagge_benchmark.py:29:    注意：
+./app/services/gagge_benchmark.py:30:    Gagge 的標準接口不直接處理材料太陽光譜屬性，
+./app/services/gagge_benchmark.py:31:    因此基準情景會把太陽輻射設為零。
+./app/services/gagge_benchmark.py:92:            "為確保模型邊界條件可比較，"
+./app/services/gagge_benchmark.py:93:            "基準計算已將直接太陽輻射設為 0 W/m²。"
+./app/services/gagge_benchmark.py:153:            "這是模型診斷比較，不是等價性驗證。"
+./app/services/gagge_benchmark.py:154:            "自研原型與 Gagge 模型的熱容量、"
+./app/services/gagge_benchmark.py:155:            "服裝模型、血流控制和蒸發控制方程不同。"
+./app/services/result_storage.py:57:            f"結果文件不存在：{path}"
+./app/services/spectrum_parser.py:36:        raise ValueError("上傳文件為空")
+./app/services/spectrum_parser.py:40:            "光譜 CSV 不能超過 2 MB"
+./app/services/spectrum_parser.py:47:            "CSV 必須使用 UTF-8 編碼"
+./app/services/spectrum_parser.py:55:        raise ValueError("CSV 缺少表頭")
+./app/services/spectrum_parser.py:95:            "CSV 必須包含 wavelength_um 欄位"
+./app/services/spectrum_parser.py:100:            "CSV 必須包含 value 欄位"
+./app/services/spectrum_parser.py:122:                f"第 {row_number} 行包含無效數值"
+./app/services/spectrum_parser.py:127:                f"第 {row_number} 行波長不是有限數值"
+./app/services/spectrum_parser.py:132:                f"第 {row_number} 行光譜值不是有限數值"
+./app/services/spectrum_parser.py:137:                f"第 {row_number} 行波長必須大於 0"
+./app/services/spectrum_parser.py:142:                f"第 {row_number} 行光譜值必須位於 0 至 1"
+./app/services/spectrum_parser.py:154:                "光譜點數不能超過 20000"
+./app/services/spectrum_parser.py:159:            "光譜文件至少需要兩個數據點"
+./app/services/spectrum_parser.py:174:                "波長必須嚴格遞增且不能重複"
+./app/services/two_node.py:26:# 人體核心與皮膚的面積歸一化有效熱容量，J/(m²·K)
+./app/services/two_node.py:48:    Magnus 型近似飽和水汽壓，單位 kPa。
+./app/services/two_node.py:81:    # 強制對流與自然對流中取較大者
+./app/services/two_node.py:85:    # 服裝熱阻造成皮膚熱量傳到外表面的衰減
+./app/services/two_node.py:254:    計算整個模擬期間的人體總能量守恆殘差。
+./app/services/two_node.py:256:    人體核心與皮膚之間的熱交換 core_to_skin 是內部熱流，
+./app/services/two_node.py:257:    在人體總能量平衡中會互相抵消，因此不放入總淨熱流。
+./app/services/two_node.py:447:            f"數值求解失敗：{solution.message}"
+./app/services/two_node.py:621:            f"動態氣象數值求解失敗："
+./app/services/weather.py:74:    # ERA5 通常約有五天延遲。
+./app/services/weather.py:82:            "ERA5 歷史數據通常有約 5 天延遲。"
+./app/services/weather.py:83:            f"請選擇不晚於 {latest_safe_date.isoformat()} "
+./app/services/weather.py:84:            "的日期。"
+./app/services/weather.py:162:            "Open-Meteo 請求失敗："
+./app/services/weather.py:188:            f"Open-Meteo 回應缺少變量：{name}"
+./app/services/weather.py:193:            f"氣象變量 {name} 長度不一致"
+./app/services/weather.py:206:            f"{variable_name} 在索引 {index} 缺失"
+./app/services/weather.py:220:            "Open-Meteo 回應缺少 hourly 數據"
+./app/services/weather.py:228:            "Open-Meteo 沒有返回氣象時間點"
+./app/services/weather.py:271:        # Open-Meteo 在指定 timezone 時返回當地時間，
+./app/services/weather.py:272:        # 字符串本身通常不附帶 UTC offset。
+./app/services/weather.py:349:    # 前後各多取得一小時，供線性插值使用。
+./app/services/weather.py:376:            "氣象數據不足，無法進行時間插值"
+./app/services/weather_interpolation.py:108:        # MVP 經驗估計：
+./app/services/weather_interpolation.py:109:        # 戶外平均輻射溫度會因短波太陽輻射上升。
+./app/services/weather_interpolation.py:115:        # Open-Meteo 歷史接口未直接提供有效天空溫度，
+./app/services/weather_interpolation.py:116:        # 第一版按濕度估計天空相對空氣的溫差。
+./app/services/weather_simulation.py:141:            "本結果來自氣象驅動的簡化人體"
+./app/services/weather_simulation.py:142:            "熱平衡原型，尚未完成JOS-3、"
+./app/services/weather_simulation.py:143:            "熱人偶或人體實驗驗證。"
+./app/services/weather_simulation.py:147:            "氣溫、濕度、風速及短波輻射"
+./app/services/weather_simulation.py:148:            "來自ERA5；平均輻射溫度和有效"
+./app/services/weather_simulation.py:149:            "天空溫度目前使用經驗公式估計。"
+./app/worker/tasks.py:40:                f"找不到模擬任務：{job_id}"
+./app/worker/tasks.py:60:                f"找不到模擬任務：{job_id}"
+./app/worker/tasks.py:88:                    f"找不到模擬任務：{job_id}"
+./docs/acceptance/stage-3/pytest-all.txt:7:開始執行測試...
+./run-tests.sh:11:  echo "錯誤：找不到 $PYTHON"
+./run-tests.sh:12:  echo "請先在 backend 目錄建立 .venv"
+./run-tests.sh:27:echo "開始執行測試..."
+./tests/test_climate_scenarios.py:84:    ), f"{name} 能量殘差過大"
+./tests/test_result_export.py:12:    # 可使用現有模擬 fixture 建立結果，
+./tests/test_result_export.py:13:    # 或在此使用已保存的測試結果 fixture。
+./tests/test_spectrum_parser.py:40:        match="0 至 1",
+./tests/test_spectrum_parser.py:55:        match="嚴格遞增",

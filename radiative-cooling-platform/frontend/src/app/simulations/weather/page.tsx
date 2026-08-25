@@ -31,7 +31,7 @@ const initialRequest: WeatherSimulationRequest = {
   },
 
   control_material: {
-    name: "普通服裝",
+    name: "Ordinary clothing",
     clothing_insulation_clo: 0.5,
     solar_reflectance: 0.4,
     solar_transmittance: 0,
@@ -41,7 +41,7 @@ const initialRequest: WeatherSimulationRequest = {
   },
 
   rc_material: {
-    name: "輻射製冷服裝",
+    name: "Radiative Cooling Clothing",
     clothing_insulation_clo: 0.4,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
@@ -91,7 +91,7 @@ export default function WeatherSimulationPage() {
           setError(
             caughtError instanceof Error
               ? caughtError.message
-              : "無法載入城市列表",
+              : "Unable to load city list",
           );
         }
       } finally {
@@ -132,7 +132,7 @@ export default function WeatherSimulationPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "建立模擬任務失敗",
+          : "Unable to create simulation job",
       );
 
       setSubmitting(false);
@@ -149,12 +149,12 @@ export default function WeatherSimulationPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold">
-            歷史氣象驅動模擬
+            Historical Weather-Driven Simulation
           </h1>
 
           <p className="mt-3 max-w-3xl text-slate-400">
-            使用 ERA5 歷史逐小時氣象資料，
-            建立普通服裝與輻射製冷服裝的異步動態模擬任務。
+            Using ERA5 historical hourly weather data,
+            create asynchronous dynamic simulation tasks for ordinary clothing and radiative cooling clothing.
           </p>
         </header>
 
@@ -165,7 +165,7 @@ export default function WeatherSimulationPage() {
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
-                城市
+                City
               </span>
 
               <select
@@ -184,14 +184,14 @@ export default function WeatherSimulationPage() {
               >
                 {loadingCities && (
                   <option value="">
-                    正在載入城市……
+                    Loading cities…
                   </option>
                 )}
 
                 {!loadingCities
                   && cities.length === 0 && (
                     <option value="">
-                      沒有可用城市
+                      No available cities
                     </option>
                   )}
 
@@ -209,7 +209,7 @@ export default function WeatherSimulationPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
-                當地開始時間
+                Local Start Time
               </span>
 
               <input
@@ -232,7 +232,7 @@ export default function WeatherSimulationPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
-                模擬時長（分鐘）
+                Simulation Duration (Minutes)
               </span>
 
               <input
@@ -259,7 +259,7 @@ export default function WeatherSimulationPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm text-slate-300">
-                活動強度（MET）
+                Activity Intensity (MET)
               </span>
 
               <input
@@ -290,26 +290,26 @@ export default function WeatherSimulationPage() {
 
           <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
             <h2 className="text-lg font-semibold">
-              模擬配置摘要
+              Simulation Configuration Summary
             </h2>
 
             <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <dt className="text-slate-500">
-                  輸出間隔
+                  Output Interval
                 </dt>
                 <dd className="mt-1 text-slate-200">
                   {
                     request
                       .output_interval_minutes
                   }{" "}
-                  分鐘
+                  minutes
                 </dd>
               </div>
 
               <div>
                 <dt className="text-slate-500">
-                  普通服裝
+                  Control Clothing
                 </dt>
                 <dd className="mt-1 text-slate-200">
                   {
@@ -322,7 +322,7 @@ export default function WeatherSimulationPage() {
 
               <div>
                 <dt className="text-slate-500">
-                  普通服裝太陽反射率
+                  Control Clothing Solar Reflectance
                 </dt>
                 <dd className="mt-1 text-slate-200">
                   {
@@ -334,7 +334,7 @@ export default function WeatherSimulationPage() {
 
               <div>
                 <dt className="text-slate-500">
-                  RC 服裝太陽反射率
+                  RC Clothing Solar Reflectance
                 </dt>
                 <dd className="mt-1 text-slate-200">
                   {
@@ -356,8 +356,8 @@ export default function WeatherSimulationPage() {
             className="mt-6 rounded-xl bg-cyan-400 px-7 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting
-              ? "正在建立模擬任務……"
-              : "建立歷史氣象模擬任務"}
+              ? "Simulation task being set up..."
+              : "Create Historical Weather Simulation Task"}
           </button>
 
           {error && (
@@ -372,21 +372,21 @@ export default function WeatherSimulationPage() {
 
         <section className="mt-8 rounded-xl border border-slate-800 bg-slate-900/50 p-5 text-sm text-slate-400">
           <h2 className="font-semibold text-slate-200">
-            異步任務流程
+            Asynchronous Task Flow
           </h2>
 
           <ol className="mt-3 list-inside list-decimal space-y-2">
             <li>
-              前端將模擬配置提交至 FastAPI。
+              The frontend submits the simulation configuration to FastAPI.
             </li>
             <li>
-              後端在 PostgreSQL 中建立任務記錄。
+              The backend creates a task record in PostgreSQL.
             </li>
             <li>
-              Celery Worker 下載氣象資料並執行數值模擬。
+              The Celery Worker downloads weather data and executes the numerical simulation.
             </li>
             <li>
-              建立成功後，頁面會自動跳轉至任務進度頁。
+              Upon successful creation, the page will automatically redirect to the task progress page.
             </li>
           </ol>
         </section>

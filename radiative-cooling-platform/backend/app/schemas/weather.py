@@ -51,7 +51,7 @@ class WeatherTimeSeries(BaseModel):
     def validate_points(self):
         if len(self.points) < 2:
             raise ValueError(
-                "動態模擬至少需要兩個氣象時間點"
+                "Dynamic simulation requires at least two weather data points"
             )
 
         timestamps = [
@@ -61,7 +61,7 @@ class WeatherTimeSeries(BaseModel):
 
         if timestamps != sorted(timestamps):
             raise ValueError(
-                "氣象時間序列必須按時間升序排列"
+                "Weather time series must be sorted in ascending order"
             )
 
         return self

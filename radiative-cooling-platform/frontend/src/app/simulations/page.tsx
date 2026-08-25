@@ -55,7 +55,7 @@ export default function SimulationJobsPage() {
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">
-              模擬任務
+              Simulation Jobs
             </h1>
           </div>
 
@@ -63,7 +63,7 @@ export default function SimulationJobsPage() {
             href="/simulations/weather"
             className="rounded-lg bg-cyan-400 px-5 py-2.5 font-semibold text-slate-950"
           >
-            新建模擬
+            New Simulation
           </Link>
         </header>
 
@@ -72,19 +72,19 @@ export default function SimulationJobsPage() {
             <thead className="bg-slate-900 text-sm text-slate-400">
               <tr>
                 <th className="px-5 py-4">
-                  任務
+                  Job
                 </th>
                 <th className="px-5 py-4">
-                  城市
+                  City
                 </th>
                 <th className="px-5 py-4">
-                  狀態
+                  Status
                 </th>
                 <th className="px-5 py-4">
-                  進度
+                  Progress
                 </th>
                 <th className="px-5 py-4">
-                  建立時間
+                  Created At
                 </th>
               </tr>
             </thead>
@@ -130,7 +130,7 @@ export default function SimulationJobsPage() {
 
           {loading && (
             <div className="p-10 text-center text-slate-400">
-              正在載入……
+              Loading…
             </div>
           )}
         </section>

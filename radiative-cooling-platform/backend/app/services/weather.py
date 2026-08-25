@@ -79,9 +79,9 @@ def validate_archive_date(
 
     if end_time.date() > latest_safe_date:
         raise ValueError(
-            "ERA5 歷史數據通常有約 5 天延遲。"
-            f"請選擇不晚於 {latest_safe_date.isoformat()} "
-            "的日期。"
+            "ERA5 historical data are typically delayed by approximately "
+            "five days. Please select a date no later than "
+            f"{latest_safe_date.isoformat()}."
         )
 
 
@@ -159,7 +159,7 @@ async def request_open_meteo(
             reason = response.text
 
         raise RuntimeError(
-            "Open-Meteo 請求失敗："
+            "Open-Meteo request failed: "
             f"HTTP {response.status_code}: {reason}"
         )
 
@@ -185,12 +185,12 @@ def require_hourly_array(
 
     if values is None:
         raise RuntimeError(
-            f"Open-Meteo 回應缺少變量：{name}"
+            f"Open-Meteo response is missing variable: {name}"
         )
 
     if len(values) != expected_length:
         raise RuntimeError(
-            f"氣象變量 {name} 長度不一致"
+            f"Open-Meteo variable {name} has inconsistent length"
         )
 
     return values
@@ -203,7 +203,7 @@ def safe_float(
 ) -> float:
     if value is None:
         raise RuntimeError(
-            f"{variable_name} 在索引 {index} 缺失"
+            f"{variable_name} is missing at index {index}"
         )
 
     return float(value)
@@ -217,7 +217,7 @@ def parse_weather_points(
 
     if not hourly:
         raise RuntimeError(
-            "Open-Meteo 回應缺少 hourly 數據"
+            "Open-Meteo response is missing hourly data"
         )
 
     times = hourly.get("time", [])
@@ -225,7 +225,7 @@ def parse_weather_points(
 
     if expected_length == 0:
         raise RuntimeError(
-            "Open-Meteo 沒有返回氣象時間點"
+            "Open-Meteo response is missing weather time points"
         )
 
     temperature = require_hourly_array(
@@ -373,7 +373,7 @@ async def get_historical_weather(
 
     if len(selected_points) < 2:
         raise RuntimeError(
-            "氣象數據不足，無法進行時間插值"
+            "Open-Meteo response is missing weather time points"
         )
 
     return WeatherTimeSeries(

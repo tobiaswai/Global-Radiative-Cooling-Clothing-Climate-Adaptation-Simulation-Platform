@@ -618,7 +618,7 @@ def simulate_material_with_weather(
 
     if not solution.success:
         raise RuntimeError(
-            f"動態氣象數值求解失敗："
+            f"Dynamic meteorological numerical solution failed:"
             f"{solution.message}"
         )
 

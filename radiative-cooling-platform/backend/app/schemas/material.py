@@ -101,7 +101,7 @@ class MaterialVersionCreate(BaseModel):
         ):
             raise ValueError(
                 "solar_reflectance + "
-                "solar_transmittance 不能大於 1"
+                "solar_transmittance Cannot be greater than 1"
             )
 
         return self

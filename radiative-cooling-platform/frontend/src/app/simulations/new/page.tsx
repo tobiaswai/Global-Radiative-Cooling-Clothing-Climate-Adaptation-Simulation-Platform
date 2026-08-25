@@ -37,7 +37,7 @@ const initialRequest: SimulationRequest = {
   },
 
   control_material: {
-    name: "普通服裝",
+    name: "Ordinary clothing",
     clothing_insulation_clo: 0.5,
     solar_reflectance: 0.4,
     solar_transmittance: 0,
@@ -47,7 +47,7 @@ const initialRequest: SimulationRequest = {
   },
 
   rc_material: {
-    name: "輻射製冷服裝",
+    name: "Radiative Cooling Clothing",
     clothing_insulation_clo: 0.4,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
@@ -125,7 +125,7 @@ export default function NewSimulationPage() {
       setError(
         caughtError instanceof Error
           ? caughtError.message
-          : "模擬失敗",
+          : "Simulation failed",
       );
     } finally {
       setLoading(false);
@@ -141,12 +141,12 @@ export default function NewSimulationPage() {
           </p>
 
           <h1 className="mt-2 text-3xl font-bold">
-            新建輻射製冷服裝模擬
+            Create New Radiative Cooling Clothing Simulation
           </h1>
 
           <p className="mt-3 max-w-3xl text-slate-400">
-            比較普通服裝與輻射製冷服裝在指定環境下的
-            瞬態核心溫度、皮膚溫度與熱流變化。
+            Compare the thermal performance of ordinary clothing and radiative cooling clothing under specified environmental conditions.
+            This simulation will track transient core temperature, skin temperature, and heat flux changes.
           </p>
         </header>
 
@@ -156,13 +156,13 @@ export default function NewSimulationPage() {
         >
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-xl font-semibold">
-              基本情景
+              Basic Scenario
             </h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-3">
               <label className="block">
                 <span className="mb-2 block text-sm text-slate-300">
-                  城市
+                  City
                 </span>
 
                 <input
@@ -178,7 +178,7 @@ export default function NewSimulationPage() {
               </label>
 
               <NumberField
-                label="模擬時長（分鐘）"
+                label="Simulation Duration (Minutes)"
                 value={request.duration_minutes}
                 min={1}
                 max={1440}
@@ -192,7 +192,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="輸出間隔（分鐘）"
+                label="Output Interval (Minutes)"
                 value={
                   request.output_interval_minutes
                 }
@@ -211,12 +211,12 @@ export default function NewSimulationPage() {
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <h2 className="text-xl font-semibold">
-              環境參數
+              Environmental Parameters
             </h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
               <NumberField
-                label="空氣溫度（°C）"
+                label="Air Temperature (°C)"
                 value={
                   request.environment
                     .air_temperature_c
@@ -233,7 +233,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="平均輻射溫度（°C）"
+                label="Mean Radiant Temperature (°C)"
                 value={
                   request.environment
                     .mean_radiant_temperature_c
@@ -251,7 +251,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="天空溫度（°C）"
+                label="Sky Temperature (°C)"
                 value={
                   request.environment
                     .sky_temperature_c ?? 23
@@ -268,7 +268,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="相對濕度（%）"
+                label="Relative Humidity (%)"
                 value={
                   request.environment
                     .relative_humidity_percent
@@ -288,7 +288,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="風速（m/s）"
+                label="Wind Speed (m/s)"
                 value={
                   request.environment
                     .wind_speed_m_s
@@ -307,7 +307,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="太陽輻射（W/m²）"
+                label="Solar Radiation (W/m²)"
                 value={
                   request.environment
                     .solar_radiation_w_m2
@@ -327,7 +327,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="天空視角係數"
+                label="Sky View Factor"
                 value={
                   request.environment
                     .sky_view_factor
@@ -347,7 +347,7 @@ export default function NewSimulationPage() {
               />
 
               <NumberField
-                label="活動強度（MET）"
+                label="Activity Level (MET)"
                 value={request.person.met}
                 min={0.7}
                 max={10}
@@ -366,7 +366,7 @@ export default function NewSimulationPage() {
 
           <div className="grid gap-8 lg:grid-cols-2">
             <MaterialSection
-              title="普通對照服裝"
+              title="Control Clothing"
               material={request.control_material}
               onChange={(material) =>
                 setRequest({
@@ -377,7 +377,7 @@ export default function NewSimulationPage() {
             />
 
             <MaterialSection
-              title="輻射製冷服裝"
+              title="Radiative Cooling Clothing"
               material={request.rc_material}
               onChange={(material) =>
                 setRequest({
@@ -394,8 +394,8 @@ export default function NewSimulationPage() {
             className="rounded-xl bg-cyan-400 px-8 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading
-              ? "正在進行數值求解……"
-              : "開始模擬"}
+              ? "Numerical solution in progress..."
+              : "Start simulation"}
           </button>
 
           {error && (
@@ -444,7 +444,7 @@ function MaterialSection({
 
       <div className="mt-5 grid gap-5 sm:grid-cols-2">
         <NumberField
-          label="服裝熱阻（clo）"
+          label="Clothing Insulation (clo)"
           value={material.clothing_insulation_clo}
           min={0}
           max={5}
@@ -458,7 +458,7 @@ function MaterialSection({
         />
 
         <NumberField
-          label="太陽反射率"
+          label="Solar Reflectance"
           value={material.solar_reflectance}
           min={0}
           max={1}
@@ -472,7 +472,7 @@ function MaterialSection({
         />
 
         <NumberField
-          label="太陽透射率"
+          label="Solar Transmittance"
           value={material.solar_transmittance}
           min={0}
           max={1}
@@ -486,7 +486,7 @@ function MaterialSection({
         />
 
         <NumberField
-          label="中紅外發射率"
+          label="Infrared Emissivity"
           value={material.infrared_emissivity}
           min={0}
           max={1}
@@ -510,28 +510,28 @@ function SummaryCards({
 }) {
   const cards = [
     {
-      label: "最終皮膚溫度改善",
+      label: "Final Skin Temperature Improvement",
       value:
         result.summary
           .final_skin_temperature_improvement_c,
       unit: "°C",
     },
     {
-      label: "平均皮膚溫度改善",
+      label: "Average Skin Temperature Improvement",
       value:
         result.summary
           .average_skin_temperature_improvement_c,
       unit: "°C",
     },
     {
-      label: "最終核心溫度改善",
+      label: "Final Core Temperature Improvement",
       value:
         result.summary
           .final_core_temperature_improvement_c,
       unit: "°C",
     },
     {
-      label: "RC 最終皮膚溫度",
+      label: "RC Final Skin Temperature",
       value:
         result.radiative_cooling
           .final_skin_temperature_c,
