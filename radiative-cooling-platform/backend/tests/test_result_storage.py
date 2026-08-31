@@ -9,7 +9,7 @@ from app.services import result_storage
 
 
 class FakeSimulationResult:
-    """提供 save_simulation_result 所需的最小介面。"""
+    """Provides the minimum interface required for save_simulation_result."""
 
     def __init__(self, payload):
         self.payload = payload
@@ -36,7 +36,7 @@ def test_save_simulation_result_creates_gzip_json_file(
     payload = {
         "city": "Dubai",
         "duration_minutes": 120,
-        "warning": "測試警告",
+        "warning": "warning",
     }
     result = FakeSimulationResult(payload)
 
@@ -137,9 +137,9 @@ def test_save_simulation_result_preserves_unicode(
     )
 
     payload = {
-        "city": "臺北",
-        "environment_model_note": "模擬結果測試",
-        "warning": "高溫警告",
+        "city": "taipei",
+        "environment_model_note": "Simulation results test",
+        "warning": "high temperature warning",
     }
     result = FakeSimulationResult(payload)
 
@@ -155,9 +155,9 @@ def test_save_simulation_result_preserves_unicode(
     ) as file:
         raw_json = file.read()
 
-    assert "臺北" in raw_json
-    assert "模擬結果測試" in raw_json
-    assert "高溫警告" in raw_json
+    assert "taipei" in raw_json
+    assert "Simulation results test" in raw_json
+    assert "high temperature warning" in raw_json
     assert "\\u81fa" not in raw_json
 
     assert json.loads(raw_json) == payload
