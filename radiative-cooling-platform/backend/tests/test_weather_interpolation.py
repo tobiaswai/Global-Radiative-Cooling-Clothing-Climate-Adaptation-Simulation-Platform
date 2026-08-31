@@ -152,3 +152,99 @@ def test_weather_interpolation_at_half_hour(
         environment.solar_radiation_w_m2
         == pytest.approx(800)
     )
+
+import numpy as np
+
+
+@pytest.mark.unit
+def test_environment_clamps_negative_wind_and_solar():
+    interpolator = WeatherInterpolator(
+        relative_seconds=np.array(
+            [0.0, 3600.0]
+        ),
+        temperatures=np.array(
+            [30.0, 30.0]
+        ),
+        humidities=np.array(
+            [50.0, 50.0]
+        ),
+        wind_speeds=np.array(
+            [-2.0, -1.0]
+        ),
+        ghi_values=np.array(
+            [-100.0, -50.0]
+        ),
+    )
+
+    environment = interpolator.environment_at(
+        1800
+    )
+
+    assert environment.wind_speed_m_s == 0
+    assert (
+        environment.solar_radiation_w_m2
+        == 0
+    )
+    assert (
+        environment.mean_radiant_temperature_c
+        == pytest.approx(30.0)
+    )
+
+
+@pytest.mark.unit
+def test_mean_radiant_temperature_increase_is_capped():
+    interpolator = WeatherInterpolator(
+        relative_seconds=np.array(
+            [0.0, 3600.0]
+        ),
+        temperatures=np.array(
+            [30.0, 30.0]
+        ),
+        humidities=np.array(
+            [50.0, 50.0]
+        ),
+        wind_speeds=np.array(
+            [1.0, 1.0]
+        ),
+        ghi_values=np.array(
+            [1500.0, 1500.0]
+        ),
+    )
+
+    environment = interpolator.environment_at(
+        0
+    )
+    
+    assert (
+        environment.solar_radiation_w_m2
+        == pytest.approx(1500.0)
+    )
+    
+    assert (
+        environment.mean_radiant_temperature_c
+        == pytest.approx(45.0)
+    )
+
+
+@pytest.mark.unit
+def test_interpolation_after_last_point_uses_last_value(
+    weather_series,
+):
+    interpolator = (
+        WeatherInterpolator.from_series(
+            weather_series
+        )
+    )
+
+    environment = interpolator.environment_at(
+        24 * 60 * 60
+    )
+
+    assert (
+        environment.air_temperature_c
+        == pytest.approx(42.0)
+    )
+    assert (
+        environment.wind_speed_m_s
+        == pytest.approx(4.0)
+    )

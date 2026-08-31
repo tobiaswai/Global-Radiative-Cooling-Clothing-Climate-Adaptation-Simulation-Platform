@@ -1,6 +1,5 @@
 from datetime import datetime
 
-import httpx
 import pytest
 
 from app.core.cities import get_city
@@ -79,7 +78,6 @@ OPEN_METEO_RESPONSE = {
 @pytest.mark.asyncio
 async def test_historical_weather_with_mock(
     monkeypatch,
-    tmp_path,
 ):
     async def mock_request_open_meteo(
         params,

@@ -103,3 +103,37 @@ def test_gagge_benchmark_api(
 
     assert "prototype" in body
     assert "gagge" in body
+
+import pytest
+from fastapi import HTTPException
+
+from app.api import benchmarks
+
+
+@pytest.mark.unit
+def test_gagge_api_converts_service_error_to_500(
+    monkeypatch,
+):
+    def fake_run_gagge_benchmark(request):
+        raise ValueError(
+            "invalid benchmark input"
+        )
+
+    monkeypatch.setattr(
+        benchmarks,
+        "run_gagge_benchmark",
+        fake_run_gagge_benchmark,
+    )
+
+    with pytest.raises(
+        HTTPException,
+    ) as error:
+        benchmarks.compare_with_gagge(
+            object()
+        )
+
+    assert error.value.status_code == 500
+    assert (
+        "invalid benchmark input"
+        in error.value.detail
+    )

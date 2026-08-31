@@ -151,12 +151,12 @@ def parse_spectrum_csv(
 
         if len(points) > MAX_SPECTRUM_POINTS:
             raise ValueError(
-                "Row {row_number} spectrum points cannot exceed 20000"
+                f"Row {row_number} spectrum points cannot exceed 20000"
             )
 
     if len(points) < 2:
         raise ValueError(
-            "Row {row_number} spectrum file must contain at least two data points"
+            f"Row {row_number} spectrum file must contain at least two data points"
         )
 
     wavelengths = [
@@ -171,7 +171,7 @@ def parse_spectrum_csv(
     ):
         if current <= previous:
             raise ValueError(
-                "Row {row_number} wavelengths must be strictly increasing and unique"
+                f"Row {row_number} wavelengths must be strictly increasing and unique"
             )
 
     return ParsedSpectrum(

@@ -1,20 +1,32 @@
-import pytest, os
+import os
+import tempfile
 from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.core.config import settings
 
-NUMBA_CACHE_DIR = Path("C:/nc")
-NUMBA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-
-os.environ.setdefault(
-    "NUMBA_CACHE_DIR",
-    str(NUMBA_CACHE_DIR),
+NUMBA_CACHE_DIR = Path(
+    os.environ.get(
+        "NUMBA_CACHE_DIR",
+        Path(tempfile.gettempdir())
+        / "radiative-cooling-numba-cache",
+    )
 )
 
-from fastapi.testclient import TestClient
+NUMBA_CACHE_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
 
+os.environ["NUMBA_CACHE_DIR"] = str(
+    NUMBA_CACHE_DIR
+)
+
+
+from app.core.config import settings
 from app.main import app
 from app.schemas.simulation import (
     EnvironmentInput,
@@ -22,6 +34,8 @@ from app.schemas.simulation import (
     PersonInput,
     SimulationRequest,
 )
+
+
 
 
 @pytest.fixture
