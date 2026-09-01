@@ -1,70 +1,52 @@
-# Node
-frontend/package.json
-frontend/package-lock.json
-frontend/out/
-frontend/.env.local
-
-# Python
-backend/.venv/
-backend/__pycache__/
-backend/**/*.pyc
-backend/.pytest_cache/
-backend/.mypy_cache/
-backend/.env
+# Python bytecode and caches
 __pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Python environments
+.venv/
+venv/
+env/
+
+# Python coverage
 .coverage
 .coverage.*
 htmlcov/
-.mypy_cache/
-.ruff_cache/
-.venv/
-venv/
+coverage.xml
 
-# Numba
+# Numba cache
 .numba_cache/
 *.nbc
 *.nbi
 
-# Node.js and Next.js
+# Node.js dependencies
 node_modules/
+
+# Next.js
 .next/
 out/
-coverage/
 *.tsbuildinfo
 
-# Data
-data/raw/
-data/processed/
-*.parquet
-*.grib
-*.grib2
-*.nc
-
-# IDE and operating system
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
-
-# OS
-.DS_Store
-Thumbs.db
+# Frontend coverage
+coverage/
 
 # Environment files
 .env
 .env.*
 !.env.example
+!**/.env.example
 
-# Weather cache
-backend/data/cache/
-data/cache/
+# Local API contract snapshots
+.stage-4-0-api-contract-before.json
+.stage-4-0-api-contract-after.json
 
-# Simulation results
-backend/data/results/
-backend/data/cache/
+# IDE files
+.vscode/
+.idea/
 
-# Celery
-celerybeat-schedule
-celerybeat.pid
+# Operating system files
+.DS_Store
+Thumbs.db
