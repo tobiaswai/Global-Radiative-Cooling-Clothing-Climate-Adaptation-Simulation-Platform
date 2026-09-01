@@ -11,6 +11,28 @@ backend/**/*.pyc
 backend/.pytest_cache/
 backend/.mypy_cache/
 backend/.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Numba
+.numba_cache/
+*.nbc
+*.nbi
+
+# Node.js and Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
 
 # Data
 data/raw/
@@ -20,15 +42,17 @@ data/processed/
 *.grib2
 *.nc
 
-# IDE
+# IDE and operating system
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Environment
+# Environment files
 .env
 .env.*
 !.env.example
