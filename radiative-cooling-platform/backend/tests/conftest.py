@@ -6,7 +6,14 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.core.config import get_settings
+from app.core.runtime import configure_runtime
 
+_test_settings = get_settings()
+
+configure_runtime(
+    numba_cache_dir=_test_settings.numba_cache_dir,
+)
 
 NUMBA_CACHE_DIR = Path(
     os.environ.get(
