@@ -21,7 +21,7 @@ from fastapi import FastAPI  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
 from app.core.cors import add_cors_middleware  # noqa: E402
 from app.core.runtime import configure_runtime
-from app.api.router import api_router  
+
 
 from app.api.benchmarks import (  # noqa: E402
     router as benchmarks_router,
@@ -42,6 +42,7 @@ configure_runtime(
     numba_cache_dir=settings.numba_cache_dir,
 )
 
+from app.api.router import api_router  
 
 app = FastAPI(
     title=(

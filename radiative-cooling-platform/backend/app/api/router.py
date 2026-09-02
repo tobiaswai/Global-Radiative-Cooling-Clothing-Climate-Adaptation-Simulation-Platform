@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from app.api.routes import materials, simulations
+from app.api import materials, simulations
 
 
 api_router = APIRouter()

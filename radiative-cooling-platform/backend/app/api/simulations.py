@@ -20,6 +20,8 @@ from app.schemas.simulation import (
 )
 from app.services.two_node import simulate_material
 
+from app.api.routes import simulation_events
+from app.api.routes import simulation_jobs
 
 router = APIRouter(
     prefix="/api/v1/simulations",
@@ -637,3 +639,6 @@ def export_simulation_result(
             )
         },
     )
+
+router.include_router(simulation_jobs.router)
+router.include_router(simulation_events.router)
