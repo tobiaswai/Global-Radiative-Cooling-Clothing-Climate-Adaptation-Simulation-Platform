@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-
+from app.api import materials, simulations
 
 # 必須在匯入可能使用 Numba 的模組之前設定。
 NUMBA_CACHE_DIR = Path("C:/nc")
@@ -20,6 +20,8 @@ from fastapi import FastAPI  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.cors import add_cors_middleware  # noqa: E402
+from app.core.runtime import configure_runtime
+from app.api.router import api_router  
 
 from app.api.benchmarks import (  # noqa: E402
     router as benchmarks_router,
@@ -36,6 +38,9 @@ from app.api.weather import (  # noqa: E402
 
 
 settings = get_settings()
+configure_runtime(
+    numba_cache_dir=settings.numba_cache_dir,
+)
 
 
 app = FastAPI(
@@ -66,6 +71,7 @@ app.include_router(simulations_router)
 app.include_router(benchmarks_router)
 app.include_router(weather_router)
 app.include_router(materials_router)
+app.include_router(api_router)
 
 
 @app.get("/api/v1/health")

@@ -2,6 +2,8 @@
 
 from functools import lru_cache
 from pathlib import Path
+from pydantic import Field
+
 
 from pydantic_settings import (
     BaseSettings,
@@ -41,7 +43,10 @@ class Settings(BaseSettings):
     )
 
     # Leave this empty to use the operating system temporary directory.
-    numba_cache_dir: str | None = None
+    numba_cache_dir: str | None = Field(
+        default=None,
+        validation_alias="NUMBA_CACHE_DIR",
+    )
 
     cors_origins: str = "http://localhost:3000"
     cors_methods: str = (
