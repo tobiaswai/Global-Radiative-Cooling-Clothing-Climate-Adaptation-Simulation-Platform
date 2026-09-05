@@ -562,3 +562,37 @@ export async function cancelGlobalBatch(
 
   return response.json();
 }
+
+export async function retryFailedGlobalBatchCities(
+  batchId: string,
+): Promise<GlobalBatch> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${batchId}/retry-failed`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(
+      body?.detail
+      ?? "Unable to retry failed cities",
+    );
+  }
+
+  return response.json();
+}
+
+
+export function getGlobalBatchExportUrl(
+  batchId: string,
+): string {
+  return (
+    `${API_BASE_URL}/api/v1/` +
+    `global-batches/${batchId}/export`
+  );
+}

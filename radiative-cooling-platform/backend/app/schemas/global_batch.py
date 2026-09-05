@@ -31,10 +31,15 @@ GlobalCityStatus = Literal[
     "failed",
 ]
 
+ExposureMatchMode = Literal[
+    "all",
+    "any",
+]
+
 
 class GlobalBatchCreate(BaseModel):
     name: str = Field(
-        default="Global annual adaptation analysis",
+        default="Global multi-day climate adaptation analysis",
         min_length=1,
         max_length=200,
     )
@@ -62,8 +67,16 @@ class GlobalBatchCreate(BaseModel):
         le=12,
     )
 
-    representative_day: int = Field(
-        default=15,
+    # 4.2：每月多個代表日。
+    sample_days_per_month: int = Field(
+        default=3,
+        ge=1,
+        le=7,
+    )
+
+    # 保留供讀取舊有 4.1 request_json。
+    representative_day: int | None = Field(
+        default=None,
         ge=1,
         le=28,
     )
@@ -92,6 +105,20 @@ class GlobalBatchCreate(BaseModel):
         le=10,
     )
 
+    minimum_air_temperature_c: float | None = Field(
+        default=30.0,
+        ge=-50,
+        le=70,
+    )
+
+    minimum_solar_radiation_w_m2: float | None = Field(
+        default=300.0,
+        ge=0,
+        le=1500,
+    )
+
+    exposure_match_mode: ExposureMatchMode = "all"
+
     person: PersonInput
     control_material: MaterialInput
     rc_material: MaterialInput
@@ -113,19 +140,62 @@ class GlobalBatchCreate(BaseModel):
                 "start_month cannot be greater than end_month"
             )
 
+        if (
+            "representative_day" in self.model_fields_set
+            and "sample_days_per_month" not in self.model_fields_set
+        ):
+            self.sample_days_per_month = 1
+
         self.city_ids = normalized_ids
         return self
 
 
-class MonthlyAdaptationResult(BaseModel):
-    month: int
-    representative_date_local: datetime
+class DailyAdaptationResult(BaseModel):
+    sample_date_local: datetime
     weight_days: int
+
+    mean_air_temperature_c: float
+    maximum_air_temperature_c: float
+    mean_solar_radiation_w_m2: float
+    maximum_solar_radiation_w_m2: float
+
+    exposure_eligible: bool
+    beneficial: bool
+
     average_skin_improvement_c: float
     final_skin_improvement_c: float
     average_core_improvement_c: float
     maximum_skin_improvement_c: float
-    beneficial: bool
+
+    weather_from_cache: bool
+
+
+class MonthlyAdaptationResult(BaseModel):
+    month: int
+
+    sampled_day_count: int = 1
+    eligible_sample_count: int = 0
+
+    total_weighted_days: int = 0
+    evaluated_weighted_days: int = 0
+    beneficial_weighted_days: int = 0
+
+    exposure_coverage_percent: float = 0.0
+    climate_adaptation_rate_percent: float | None = None
+
+    average_skin_improvement_c: float | None = None
+    average_core_improvement_c: float | None = None
+    maximum_skin_improvement_c: float | None = None
+
+    samples: list[DailyAdaptationResult] = Field(
+        default_factory=list
+    )
+
+    # 4.1 backward compatibility。
+    representative_date_local: datetime | None = None
+    weight_days: int | None = None
+    final_skin_improvement_c: float | None = None
+    beneficial: bool | None = None
 
 
 class GlobalCityResultResponse(BaseModel):
@@ -144,13 +214,20 @@ class GlobalCityResultResponse(BaseModel):
     progress: int
 
     climate_adaptation_rate_percent: float | None
+    exposure_coverage_percent: float | None
+
     annual_average_skin_improvement_c: float | None
     annual_average_core_improvement_c: float | None
     maximum_skin_improvement_c: float | None
     effective_cooling_hours: float | None
 
+    sampled_day_count: int | None
+    eligible_sample_count: int | None
+
     evaluated_weighted_days: int | None
     beneficial_weighted_days: int | None
+
+    retry_count: int
 
     monthly_results: list[MonthlyAdaptationResult] | None
 

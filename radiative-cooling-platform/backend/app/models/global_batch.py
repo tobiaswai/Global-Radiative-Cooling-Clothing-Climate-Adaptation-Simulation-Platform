@@ -233,6 +233,28 @@ class GlobalCityResult(Base):
         Float,
         nullable=True,
     )
+    
+    exposure_coverage_percent: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    sampled_day_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    eligible_sample_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    retry_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
 
     evaluated_weighted_days: Mapped[int | None] = mapped_column(
         Integer,

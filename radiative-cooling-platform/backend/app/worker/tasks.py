@@ -366,7 +366,13 @@ def run_global_city_analysis_task(
                     "climate_adaptation_rate_percent"
                 ]
             )
-
+            
+            result.exposure_coverage_percent = (
+                analysis[
+                    "exposure_coverage_percent"
+                ]
+            )
+            
             result.annual_average_skin_improvement_c = (
                 analysis[
                     "annual_average_skin_improvement_c"
@@ -390,7 +396,15 @@ def run_global_city_analysis_task(
                     "effective_cooling_hours"
                 ]
             )
+            
+            result.sampled_day_count = analysis[
+                "sampled_day_count"
+            ]
 
+            result.eligible_sample_count = analysis[
+                "eligible_sample_count"
+            ]
+            
             result.evaluated_weighted_days = (
                 analysis[
                     "evaluated_weighted_days"
@@ -411,6 +425,11 @@ def run_global_city_analysis_task(
                 timezone.utc
             )
 
+            result.error_message = None
+            result.completed_at = datetime.now(
+                timezone.utc
+            )
+            
             session.commit()
 
             refresh_batch_status(

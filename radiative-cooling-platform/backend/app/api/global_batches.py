@@ -8,6 +8,7 @@ from fastapi import (
     Query,
     status,
 )
+from requests import session
 from sqlalchemy import (
     func,
     select,
@@ -32,9 +33,16 @@ from app.schemas.global_batch import (
     GlobalBatchListResponse,
     GlobalBatchResponse,
 )
+from fastapi.responses import Response
+
+from app.services.global_batch_export import (
+    build_batch_export_zip,
+    build_batch_geojson,
+)
 from app.services.global_batch_service import (
     batch_to_detail,
     batch_to_response,
+    refresh_batch_status,
 )
 from app.worker.celery_app import celery_app
 from app.worker.tasks import (
@@ -316,6 +324,12 @@ def cancel_global_batch(
             )
 
     session.commit()
+
+    refresh_batch_status(
+        session,
+        batch.id,
+    )
+
     session.refresh(batch)
 
     return batch_to_response(batch)
@@ -339,62 +353,187 @@ def get_global_batch_geojson(
             detail="Global batch not found",
         )
 
-    features = []
+    return build_batch_geojson(batch)
 
-    for result in batch.city_results:
-        if result.status != "completed":
-            continue
+@router.get(
+    "/{batch_id}/export",
+)
+def export_global_batch(
+    batch_id: str,
+    session: Session = Depends(get_db),
+) -> Response:
+    batch = load_batch(
+        session,
+        batch_id,
+    )
 
-        features.append(
-            {
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [
-                        result.longitude,
-                        result.latitude,
-                    ],
-                },
-                "properties": {
-                    "city_id": result.city_id,
-                    "city_name": result.city_name,
-                    "country": result.country,
-                    "status": result.status,
-                    "climate_adaptation_rate_percent": (
-                        result
-                        .climate_adaptation_rate_percent
-                    ),
-                    "annual_average_skin_improvement_c": (
-                        result
-                        .annual_average_skin_improvement_c
-                    ),
-                    "annual_average_core_improvement_c": (
-                        result
-                        .annual_average_core_improvement_c
-                    ),
-                    "maximum_skin_improvement_c": (
-                        result
-                        .maximum_skin_improvement_c
-                    ),
-                    "effective_cooling_hours": (
-                        result
-                        .effective_cooling_hours
-                    ),
-                },
-            }
+    if batch is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Global batch not found",
         )
 
-    return {
-        "type": "FeatureCollection",
-        "metadata": {
-            "batch_id": batch.id,
-            "status": batch.status,
-            "year": batch.request_json.get(
-                "year"
-            ),
-            "method": (
-                "monthly_representative_day"
+    export_content = build_batch_export_zip(
+        batch
+    )
+
+    filename = (
+        f"global-climate-adaptation-"
+        f"{batch.id}.zip"
+    )
+
+    return Response(
+        content=export_content,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="{filename}"'
             ),
         },
-        "features": features,
-    }
+    )
+    
+@router.post(
+    "/{batch_id}/retry-failed",
+    response_model=GlobalBatchResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def retry_failed_cities(
+    batch_id: str,
+    session: Session = Depends(get_db),
+) -> GlobalBatchResponse:
+    batch = load_batch(
+        session,
+        batch_id,
+    )
+
+    if batch is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Global batch not found",
+        )
+
+    if batch.status not in {
+        "failed",
+        "partial_completed",
+    }:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "Only failed or partially completed "
+                "batches can be retried"
+            ),
+        )
+
+    failed_results = [
+        result
+        for result in batch.city_results
+        if result.status == "failed"
+    ]
+
+    if not failed_results:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "The batch contains no failed cities"
+            ),
+        )
+
+    now = datetime.now(
+        timezone.utc
+    )
+
+    for result in failed_results:
+        result.status = "queued"
+        result.stage = "queued_for_retry"
+        result.progress = 0
+        result.retry_count += 1
+
+        result.error_message = None
+        result.started_at = None
+        result.completed_at = None
+
+        result.climate_adaptation_rate_percent = None
+        result.exposure_coverage_percent = None
+        result.annual_average_skin_improvement_c = None
+        result.annual_average_core_improvement_c = None
+        result.maximum_skin_improvement_c = None
+        result.effective_cooling_hours = None
+
+        result.sampled_day_count = None
+        result.eligible_sample_count = None
+        result.evaluated_weighted_days = None
+        result.beneficial_weighted_days = None
+        result.monthly_json = None
+
+    batch.status = "running"
+    batch.stage = "retrying_failed_cities"
+    batch.progress = round(
+        (
+            batch.total_city_count
+            - len(failed_results)
+        )
+        / batch.total_city_count
+        * 100
+    )
+
+    batch.failed_city_count = 0
+    batch.completed_at = None
+    batch.error_message = None
+
+    if batch.started_at is None:
+        batch.started_at = now
+
+    session.commit()
+
+    try:
+        retry_group = group(
+            run_global_city_analysis_task.s(
+                result.id
+            )
+            for result in failed_results
+        )
+
+        group_result = retry_group.apply_async()
+
+        batch.celery_group_id = group_result.id
+
+        for result, async_result in zip(
+            failed_results,
+            group_result.results,
+            strict=True,
+        ):
+            result.celery_task_id = (
+                async_result.id
+            )
+
+        session.commit()
+        session.refresh(batch)
+
+    except Exception as error:
+        batch.status = "partial_completed"
+        batch.stage = "retry_submission_failed"
+        batch.error_message = str(
+            error
+        )[:4000]
+
+        for result in failed_results:
+            result.status = "failed"
+            result.stage = (
+                "retry_submission_failed"
+            )
+            result.error_message = str(
+                error
+            )[:4000]
+            result.completed_at = now
+
+        session.commit()
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Unable to submit retry tasks: "
+                f"{error}"
+            ),
+        ) from error
+
+    return batch_to_response(batch)

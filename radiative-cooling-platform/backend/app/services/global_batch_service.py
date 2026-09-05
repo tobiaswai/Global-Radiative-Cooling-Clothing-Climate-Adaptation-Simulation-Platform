@@ -42,6 +42,9 @@ def city_result_to_response(
         climate_adaptation_rate_percent=(
             result.climate_adaptation_rate_percent
         ),
+        exposure_coverage_percent=(
+            result.exposure_coverage_percent
+        ),
         annual_average_skin_improvement_c=(
             result.annual_average_skin_improvement_c
         ),
@@ -54,12 +57,17 @@ def city_result_to_response(
         effective_cooling_hours=(
             result.effective_cooling_hours
         ),
+        sampled_day_count=result.sampled_day_count,
+        eligible_sample_count=(
+            result.eligible_sample_count
+        ),
         evaluated_weighted_days=(
             result.evaluated_weighted_days
         ),
         beneficial_weighted_days=(
             result.beneficial_weighted_days
         ),
+        retry_count=result.retry_count,
         monthly_results=result.monthly_json,
         error_message=result.error_message,
         started_at=result.started_at,
@@ -224,6 +232,12 @@ def refresh_batch_status(
             )
         ]
 
+        coverage_values = [
+            item.exposure_coverage_percent
+            for item in completed_results
+            if item.exposure_coverage_percent is not None
+        ]
+        
         batch.summary_json = {
             "completed_city_count": len(
                 completed_results
@@ -234,6 +248,15 @@ def refresh_batch_status(
                     4,
                 )
                 if rates
+                else None
+            ),
+            "mean_exposure_coverage_percent": (
+                round(
+                    sum(coverage_values)
+                    / len(coverage_values),
+                    4,
+                )
+                if coverage_values
                 else None
             ),
             "mean_annual_skin_improvement_c": (
@@ -248,3 +271,4 @@ def refresh_batch_status(
         }
 
     session.commit()
+

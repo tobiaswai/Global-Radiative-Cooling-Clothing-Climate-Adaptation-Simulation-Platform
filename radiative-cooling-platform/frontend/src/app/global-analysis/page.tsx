@@ -14,16 +14,25 @@ import type {
 } from "@/types/global-batch";
 
 const initialRequest: GlobalBatchCreate = {
-  name: "Global annual adaptation analysis",
+  name: "Global multi-day climate adaptation analysis",
   city_ids: [],
+
   year: 2023,
   start_month: 1,
   end_month: 12,
-  representative_day: 15,
+
+  sample_days_per_month: 3,
+  representative_day: null,
+
   local_start_hour: 12,
   duration_minutes: 120,
   output_interval_minutes: 10,
+
   minimum_skin_improvement_c: 0.2,
+
+  minimum_air_temperature_c: 30,
+  minimum_solar_radiation_w_m2: 300,
+  exposure_match_mode: "all",
 
   person: {
     met: 2.0,
@@ -129,9 +138,9 @@ export default function GlobalAnalysisPage() {
           </h1>
 
           <p className="mt-3 max-w-3xl text-slate-400">
-            Compare conventional clothing with radiative cooling clothing
-            using a representative day for each month and weighting the
-            results by the number of days in that month.
+            Analyze multiple representative days per month.
+            Only samples matching the configured heat-exposure
+            criteria are included in the climate adaptation rate.
           </p>
         </header>
 
@@ -140,7 +149,7 @@ export default function GlobalAnalysisPage() {
             Analysis Settings
           </h2>
 
-          <div className="mt-5 grid gap-5 md:grid-cols-4">
+          <div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             <NumberField
               label="Year"
               value={request.year}
@@ -185,6 +194,76 @@ export default function GlobalAnalysisPage() {
                 }))
               }
             />
+            <NumberField
+              label="Sample Days per Month"
+              value={request.sample_days_per_month}
+              onChange={(sample_days_per_month) =>
+                setRequest((current) => ({
+                  ...current,
+                  sample_days_per_month,
+                }))
+              }
+            />
+
+            <NumberField
+              label="Minimum Air Temperature (°C)"
+              value={
+                request.minimum_air_temperature_c
+                ?? 30
+              }
+              step={0.5}
+              onChange={(minimum_air_temperature_c) =>
+                setRequest((current) => ({
+                  ...current,
+                  minimum_air_temperature_c,
+                }))
+              }
+            />
+
+            <NumberField
+              label="Minimum Solar Radiation (W/m²)"
+              value={
+                request.minimum_solar_radiation_w_m2
+                ?? 300
+              }
+              step={10}
+              onChange={(
+                minimum_solar_radiation_w_m2,
+              ) =>
+                setRequest((current) => ({
+                  ...current,
+                  minimum_solar_radiation_w_m2,
+                }))
+              }
+            />
+
+            <label>
+              <span className="mb-2 block text-sm text-slate-300">
+                Exposure Match Mode
+              </span>
+
+              <select
+                value={request.exposure_match_mode}
+                onChange={(event) =>
+                  setRequest((current) => ({
+                    ...current,
+                    exposure_match_mode:
+                      event.target.value as
+                        | "all"
+                        | "any",
+                  }))
+                }
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
+              >
+                <option value="all">
+                  Match All Thresholds
+                </option>
+
+                <option value="any">
+                  Match Any Threshold
+                </option>
+              </select>
+            </label>
           </div>
         </section>
 
