@@ -439,3 +439,126 @@ export function getSimulationExportUrl(
     `${jobId}/export?format=${format}`
   );
 }
+
+import type {
+  GeoJsonFeatureCollection,
+  GlobalBatch,
+  GlobalBatchCreate,
+  GlobalBatchDetail,
+  GlobalCity,
+} from "@/types/global-batch";
+
+export async function getGlobalCities(): Promise<
+  GlobalCity[]
+> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/cities`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Unable to load supported cities",
+    );
+  }
+
+  const body = await response.json();
+
+  return body.items;
+}
+
+
+export async function createGlobalBatch(
+  request: GlobalBatchCreate,
+): Promise<GlobalBatch> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(
+      body?.detail
+      ?? "Unable to create global batch",
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function getGlobalBatch(
+  batchId: string,
+): Promise<GlobalBatchDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${batchId}`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Unable to load global batch",
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function getGlobalBatchGeoJson(
+  batchId: string,
+): Promise<GeoJsonFeatureCollection> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${batchId}/geojson`,
+    {
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      "Unable to load global map data",
+    );
+  }
+
+  return response.json();
+}
+
+
+export async function cancelGlobalBatch(
+  batchId: string,
+): Promise<GlobalBatch> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${batchId}/cancel`,
+    {
+      method: "POST",
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(
+      body?.detail
+      ?? "Unable to cancel global batch",
+    );
+  }
+
+  return response.json();
+}

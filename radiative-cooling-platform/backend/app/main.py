@@ -35,7 +35,9 @@ from app.api.simulations import (  # noqa: E402
 from app.api.weather import (  # noqa: E402
     router as weather_router,
 )
-
+from app.api.global_batches import (
+    router as global_batches_router,
+)
 
 settings = get_settings()
 configure_runtime(
@@ -72,6 +74,7 @@ app.include_router(simulations_router)
 app.include_router(benchmarks_router)
 app.include_router(weather_router)
 app.include_router(materials_router)
+app.include_router(global_batches_router)
 app.include_router(api_router)
 
 
