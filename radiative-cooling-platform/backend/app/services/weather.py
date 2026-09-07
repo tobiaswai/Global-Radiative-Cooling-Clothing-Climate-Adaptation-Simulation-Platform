@@ -344,11 +344,45 @@ async def get_historical_weather(
         minutes=duration_minutes
     )
 
+    return await get_historical_weather_range(
+        city=city,
+        start_time_local=start_time,
+        end_time_local=end_time,
+        padding_hours=1,
+    )
+
+async def get_historical_weather_range(
+    *,
+    city: CityConfig,
+    start_time_local: datetime,
+    end_time_local: datetime,
+    padding_hours: int = 1,
+) -> WeatherTimeSeries:
+    start_time = normalize_local_datetime(
+        start_time_local,
+        city.timezone,
+    )
+
+    end_time = normalize_local_datetime(
+        end_time_local,
+        city.timezone,
+    )
+
+    if end_time <= start_time:
+        raise ValueError(
+            "end_time_local must be after "
+            "start_time_local"
+        )
+
     validate_archive_date(end_time)
 
-    # 前後各多取得一小時，供線性插值使用。
-    query_start = start_time - timedelta(hours=1)
-    query_end = end_time + timedelta(hours=1)
+    query_start = start_time - timedelta(
+        hours=padding_hours
+    )
+
+    query_end = end_time + timedelta(
+        hours=padding_hours
+    )
 
     params = build_request_params(
         city=city,
@@ -356,8 +390,8 @@ async def get_historical_weather(
         end_date=query_end.date(),
     )
 
-    payload, from_cache = (
-        await request_open_meteo(params)
+    payload, from_cache = await request_open_meteo(
+        params
     )
 
     all_points = parse_weather_points(
@@ -368,12 +402,15 @@ async def get_historical_weather(
     selected_points = [
         point
         for point in all_points
-        if query_start <= point.timestamp <= query_end
+        if query_start
+        <= point.timestamp
+        <= query_end
     ]
 
     if len(selected_points) < 2:
         raise RuntimeError(
-            "Open-Meteo response is missing weather time points"
+            "Open-Meteo response is missing "
+            "weather time points"
         )
 
     return WeatherTimeSeries(
@@ -416,4 +453,52 @@ async def get_historical_weather(
                 "underlying reanalysis: ERA5."
             ),
         ),
+    )
+
+
+def slice_weather_time_series(
+    *,
+    weather: WeatherTimeSeries,
+    start_time_local: datetime,
+    duration_minutes: int,
+    padding_hours: int = 1,
+) -> WeatherTimeSeries:
+    start_time = normalize_local_datetime(
+        start_time_local,
+        weather.city.timezone,
+    )
+
+    end_time = start_time + timedelta(
+        minutes=duration_minutes
+    )
+
+    query_start = start_time - timedelta(
+        hours=padding_hours
+    )
+
+    query_end = end_time + timedelta(
+        hours=padding_hours
+    )
+
+    selected_points = [
+        point
+        for point in weather.points
+        if query_start
+        <= point.timestamp
+        <= query_end
+    ]
+
+    if len(selected_points) < 2:
+        raise RuntimeError(
+            "Prefetched weather does not cover "
+            f"{start_time.isoformat()} to "
+            f"{end_time.isoformat()}"
+        )
+
+    return WeatherTimeSeries(
+        city=weather.city,
+        requested_start_time=start_time,
+        requested_end_time=end_time,
+        points=selected_points,
+        source=weather.source,
     )

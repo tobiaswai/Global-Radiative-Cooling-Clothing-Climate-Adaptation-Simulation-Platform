@@ -36,6 +36,10 @@ ExposureMatchMode = Literal[
     "any",
 ]
 
+AnalysisResolution = Literal[
+    "representative",
+    "daily",
+]
 
 class GlobalBatchCreate(BaseModel):
     name: str = Field(
@@ -67,9 +71,21 @@ class GlobalBatchCreate(BaseModel):
         le=12,
     )
 
+    analysis_resolution: AnalysisResolution = (
+        "representative"
+    )
+    
     # 4.2：每月多個代表日。
     sample_days_per_month: int = Field(
         default=3,
+        ge=1,
+        le=7,
+    )
+
+    # daily 模式下每隔多少天執行一次。
+    # 1 = 每日；2 = 每兩日；7 = 每週。
+    daily_stride_days: int = Field(
+        default=1,
         ge=1,
         le=7,
     )
@@ -268,3 +284,12 @@ class GlobalBatchListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+    
+class GlobalBatchEstimateResponse(BaseModel):
+    city_count: int
+    month_count: int
+    samples_per_city: int
+    total_samples: int
+    thermal_simulation_count: int
+    estimated_weather_requests: int
+    analysis_resolution: AnalysisResolution

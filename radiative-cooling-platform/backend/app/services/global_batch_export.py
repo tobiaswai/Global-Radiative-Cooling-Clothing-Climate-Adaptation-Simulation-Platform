@@ -74,18 +74,34 @@ def build_batch_geojson(
             "year": batch.request_json.get(
                 "year"
             ),
-            "method": (
-                "multi_day_heat_exposure_weighted"
-            ),
-            "sample_days_per_month": (
-                batch.request_json.get(
-                    "sample_days_per_month",
-                    1,
-                )
-            ),
-        },
-        "features": features,
-    }
+        "method": (
+            "daily_heat_exposure_weighted"
+            if batch.request_json.get(
+                "analysis_resolution"
+            ) == "daily"
+            else "multi_day_heat_exposure_weighted"
+        ),
+        "analysis_resolution": (
+            batch.request_json.get(
+                "analysis_resolution",
+                "representative",
+            )
+        ),
+        "sample_days_per_month": (
+            batch.request_json.get(
+                "sample_days_per_month",
+                1,
+            )
+        ),
+        "daily_stride_days": (
+            batch.request_json.get(
+                "daily_stride_days",
+                1,
+            )
+        ),
+                },
+                "features": features,
+            }
 
 
 def build_city_summary_csv(

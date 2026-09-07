@@ -30,6 +30,7 @@ from app.models.global_batch import (
 from app.schemas.global_batch import (
     GlobalBatchCreate,
     GlobalBatchDetail,
+    GlobalBatchEstimateResponse,
     GlobalBatchListResponse,
     GlobalBatchResponse,
 )
@@ -43,6 +44,9 @@ from app.services.global_batch_service import (
     batch_to_detail,
     batch_to_response,
     refresh_batch_status,
+)
+from app.services.annual_sampling import (
+    estimate_sample_count,
 )
 from app.worker.celery_app import celery_app
 from app.worker.tasks import (
@@ -93,6 +97,49 @@ def get_supported_cities() -> dict:
         ]
     }
 
+@router.post(
+    "/estimate",
+    response_model=GlobalBatchEstimateResponse,
+)
+def estimate_global_batch(
+    request: GlobalBatchCreate,
+) -> GlobalBatchEstimateResponse:
+    samples_per_city = (
+        estimate_sample_count(request)
+    )
+
+    city_count = len(
+        request.city_ids
+    )
+
+    month_count = (
+        request.end_month
+        - request.start_month
+        + 1
+    )
+
+    total_samples = (
+        samples_per_city
+        * city_count
+    )
+
+    return GlobalBatchEstimateResponse(
+        city_count=city_count,
+        month_count=month_count,
+        samples_per_city=(
+            samples_per_city
+        ),
+        total_samples=total_samples,
+        thermal_simulation_count=(
+            total_samples * 2
+        ),
+        estimated_weather_requests=(
+            city_count * month_count
+        ),
+        analysis_resolution=(
+            request.analysis_resolution
+        ),
+    )
 
 @router.post(
     "",

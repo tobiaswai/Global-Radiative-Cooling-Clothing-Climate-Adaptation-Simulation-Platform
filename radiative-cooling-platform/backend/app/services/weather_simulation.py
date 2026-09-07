@@ -6,6 +6,9 @@ from app.schemas.simulation import (
     WeatherSimulationRequest,
     WeatherSimulationResponse,
 )
+from app.schemas.weather import (
+    WeatherTimeSeries,
+)
 from app.services.two_node import (
     simulate_material_with_weather,
 )
@@ -20,10 +23,12 @@ ProgressCallback = Callable[
 ]
 
 
-async def execute_weather_simulation(
+def execute_weather_simulation_with_weather(
+    *,
     request: WeatherSimulationRequest,
-    progress_callback: ProgressCallback
-    | None = None,
+    weather: WeatherTimeSeries,
+    city_name: str | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> WeatherSimulationResponse:
     def report(
         progress: int,
@@ -35,23 +40,9 @@ async def execute_weather_simulation(
                 stage,
             )
 
-    city = get_city(request.city_id)
-
-    report(
-        10,
-        "downloading_weather",
-    )
-
-    weather = await get_historical_weather(
-        city=city,
-        start_time_local=(
-            request.start_time_local
-        ),
-        duration_minutes=(
-            request.duration_minutes
-        ),
-    )
-
+    if city_name is None:
+        city_name = get_city(request.city_id).name
+        
     report(
         30,
         "running_control_simulation",
@@ -111,7 +102,7 @@ async def execute_weather_simulation(
             "two-node prototype"
         ),
         model_version="0.4.0",
-        city=city.name,
+        city=city_name,
         duration_minutes=(
             request.duration_minutes
         ),
@@ -138,15 +129,57 @@ async def execute_weather_simulation(
             ),
         ),
         warning=(
-            "This result comes from a weather-driven simplified human model."
-            "Thermal equilibrium prototype, not yet completed in JOS-3."
-            "Verification through thermal doll or human experiments."
+            "This result comes from a "
+            "weather-driven simplified human "
+            "thermal equilibrium prototype. "
+            "Verification through thermal mannequin "
+            "or human experiments is still required."
         ),
         weather=weather,
         environment_model_note=(
-            "Air temperature, humidity, wind speed, and shortwave radiation"
-            "From ERA5; mean radiant temperature and effective radiant temperature"
-            "Sky temperature is currently estimated using empirical formulas."
+            "Air temperature, humidity, wind speed, "
+            "and shortwave radiation are obtained "
+            "from ERA5. Mean radiant temperature and "
+            "effective sky temperature are estimated "
+            "using empirical formulas."
         ),
     )
-    
+
+
+async def execute_weather_simulation(
+    request: WeatherSimulationRequest,
+    progress_callback: ProgressCallback | None = None,
+) -> WeatherSimulationResponse:
+    def report(
+        progress: int,
+        stage: str,
+    ) -> None:
+        if progress_callback is not None:
+            progress_callback(
+                progress,
+                stage,
+            )
+
+    city = get_city(request.city_id)
+
+    report(
+        10,
+        "downloading_weather",
+    )
+
+    weather = await get_historical_weather(
+        city=city,
+        start_time_local=(
+            request.start_time_local
+        ),
+        duration_minutes=(
+            request.duration_minutes
+        ),
+    )
+
+    return execute_weather_simulation_with_weather(
+        request=request,
+        weather=weather,
+        city_name=city.name,
+        progress_callback=progress_callback,
+    )
