@@ -26,6 +26,9 @@ export type ExposureMatchMode =
   | "all"
   | "any";
 
+export type AnalysisResolution =
+  | "representative"
+  | "daily";
 
 export type GlobalCity = {
   id: string;
@@ -39,6 +42,7 @@ export type GlobalCity = {
 };
 
 
+
 export type GlobalBatchCreate = {
   name: string;
   city_ids: string[];
@@ -47,7 +51,12 @@ export type GlobalBatchCreate = {
   start_month: number;
   end_month: number;
 
+  analysis_resolution:
+    AnalysisResolution;
+
   sample_days_per_month: number;
+  daily_stride_days: number;
+
   representative_day?: number | null;
 
   local_start_hour: number;
@@ -71,7 +80,6 @@ export type GlobalBatchCreate = {
   control_material: MaterialInput;
   rc_material: MaterialInput;
 };
-
 
 export type DailyAdaptationResult = {
   sample_date_local: string;
@@ -287,4 +295,15 @@ export type GeoJsonFeatureCollection = {
         | null;
     };
   }>;
+};
+
+export type GlobalBatchEstimate = {
+  city_count: number;
+  month_count: number;
+  samples_per_city: number;
+  total_samples: number;
+  thermal_simulation_count: number;
+  estimated_weather_requests: number;
+  analysis_resolution:
+    AnalysisResolution;
 };

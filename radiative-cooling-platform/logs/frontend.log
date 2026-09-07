@@ -1,0 +1,30 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.12 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.96.1:3000
+- Environments: .env.local
+✓ Ready in 974ms
+
+ GET /global-analysis/56817a39-039d-4c35-942b-580dfd47573f 200 in 1432ms (next.js: 1149ms, application-code: 283ms)
+ GET /global-analysis/56817a39-039d-4c35-942b-580dfd47573f 200 in 103ms (next.js: 26ms, application-code: 77ms)
+ GET / 404 in 202ms (next.js: 83ms, application-code: 118ms)
+ GET / 404 in 82ms (next.js: 21ms, application-code: 61ms)
+ GET /simulations/weather 200 in 153ms (next.js: 66ms, application-code: 87ms)
+ GET /golbal 404 in 76ms (next.js: 20ms, application-code: 57ms)
+ GET /global-analysis 200 in 115ms (next.js: 53ms, application-code: 62ms)
+✓ Compiled in 57ms
+ GET /global-analysis 200 in 215ms (next.js: 77ms, application-code: 138ms)
+ GET / 404 in 95ms (next.js: 35ms, application-code: 60ms)
+ GET / 404 in 146ms (next.js: 23ms, application-code: 123ms)
+ GET /global-analysis 200 in 66ms (next.js: 7ms, application-code: 58ms)
+ GET /global-analysis 200 in 57ms (next.js: 6ms, application-code: 50ms)
+ GET /global-analysis 200 in 71ms (next.js: 11ms, application-code: 60ms)
+ GET /global-analysis/5345e4f2-a1e8-442c-aabe-8b1d82877312 200 in 94ms (next.js: 53ms, application-code: 41ms)
+ GET /global-analysis/5345e4f2-a1e8-442c-aabe-8b1d82877312 200 in 108ms (next.js: 27ms, application-code: 81ms)
+ GET /global-analysis/5345e4f2-a1e8-442c-aabe-8b1d82877312 200 in 79ms (next.js: 23ms, application-code: 56ms)
+ GET /global-analysis/5345e4f2-a1e8-442c-aabe-8b1d82877312 200 in 82ms (next.js: 24ms, application-code: 59ms)
+ GET /global-analysis/5345e4f2-a1e8-442c-aabe-8b1d82877312 200 in 67ms (next.js: 9ms, application-code: 59ms)
+ GET /global-analysis/5345e4f2-a1e8-442c-aabe-8b1d82877312 200 in 88ms (next.js: 27ms, application-code: 61ms)

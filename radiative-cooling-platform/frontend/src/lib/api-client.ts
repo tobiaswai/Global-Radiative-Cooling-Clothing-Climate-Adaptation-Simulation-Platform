@@ -444,6 +444,7 @@ import type {
   GeoJsonFeatureCollection,
   GlobalBatch,
   GlobalBatchCreate,
+  GlobalBatchEstimate,
   GlobalBatchDetail,
   GlobalCity,
 } from "@/types/global-batch";
@@ -498,6 +499,33 @@ export async function createGlobalBatch(
   return response.json();
 }
 
+export async function estimateGlobalBatch(
+  request: GlobalBatchCreate,
+): Promise<GlobalBatchEstimate> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/estimate`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => null);
+
+    throw new Error(
+      body?.detail
+      ?? "Unable to estimate global batch",
+    );
+  }
+
+  return response.json();
+}
 
 export async function getGlobalBatch(
   batchId: string,

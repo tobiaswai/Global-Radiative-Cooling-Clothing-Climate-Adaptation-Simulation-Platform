@@ -20,7 +20,6 @@ import type {
   GlobalBatchDetail,
 } from "@/types/global-batch";
 
-
 const GlobalAdaptationMap = dynamic(
   () =>
     import(
@@ -45,7 +44,6 @@ const terminalStatuses =
     "failed",
     "cancelled",
   ]);
-
 
 export default function GlobalBatchPage() {
   const parameters = useParams<{
@@ -192,6 +190,8 @@ export default function GlobalBatchPage() {
         );
 
       setGeoJson(mapData);
+    } else {
+      setGeoJson(null);
     }
 
     return updated;
@@ -291,9 +291,46 @@ export default function GlobalBatchPage() {
       batch.status === "failed"
     );
 
+  /*
+   * Stage 4.1 / 4.2 的既有批次可能沒有
+   * analysis_resolution 和 daily_stride_days。
+   * 在前端提供 fallback，維持舊資料相容性。
+   */
+  const analysisResolution =
+    batch.request.analysis_resolution ??
+    "representative";
+
   const sampleDaysPerMonth =
     batch.request
       .sample_days_per_month ?? 1;
+
+  const dailyStrideDays =
+    batch.request
+      .daily_stride_days ?? 1;
+
+  const analysisResolutionLabel =
+    analysisResolution === "daily"
+      ? "Daily"
+      : "Representative Days";
+
+  const samplingLabel =
+    analysisResolution === "daily"
+      ? (
+          dailyStrideDays === 1
+            ? "Every day"
+            : (
+                `Every ${dailyStrideDays} ` +
+                "days"
+              )
+        )
+      : (
+          `${sampleDaysPerMonth} ` +
+          (
+            sampleDaysPerMonth === 1
+              ? "day/month"
+              : "days/month"
+          )
+        );
 
   const meanExposureCoverage =
     readSummaryNumber(
@@ -371,7 +408,7 @@ export default function GlobalBatchPage() {
           </div>
         </header>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Metric
             label="Status"
             value={formatStatus(
@@ -400,10 +437,15 @@ export default function GlobalBatchPage() {
           />
 
           <Metric
-            label="Samples per Month"
-            value={String(
-              sampleDaysPerMonth,
-            )}
+            label="Analysis Resolution"
+            value={
+              analysisResolutionLabel
+            }
+          />
+
+          <Metric
+            label="Sampling"
+            value={samplingLabel}
           />
         </section>
 
