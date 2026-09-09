@@ -64,6 +64,13 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+    
+    weather_lock_redis_url: str = (
+        "redis://localhost:6379/2"
+    )
+
+    weather_lock_timeout_seconds: int = 180
+    weather_lock_blocking_timeout_seconds: int = 190
 
     @property
     def cors_origin_list(self) -> list[str]:

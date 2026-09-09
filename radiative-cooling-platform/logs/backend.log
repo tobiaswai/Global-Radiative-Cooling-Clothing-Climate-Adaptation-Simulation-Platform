@@ -1,6 +1,3 @@
 INFO:     Will watch for changes in these directories: ['C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [19664] using WatchFiles
-INFO:     Started server process [28132]
-INFO:     Waiting for application startup.
-INFO:     Application startup complete.
+INFO:     Started reloader process [15400] using WatchFiles

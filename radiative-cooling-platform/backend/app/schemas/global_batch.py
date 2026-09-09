@@ -41,6 +41,13 @@ AnalysisResolution = Literal[
     "daily",
 ]
 
+ExecutionProfile = Literal[
+    "auto",
+    "standard",
+    "large",
+]
+
+
 class GlobalBatchCreate(BaseModel):
     name: str = Field(
         default="Global multi-day climate adaptation analysis",
@@ -71,26 +78,42 @@ class GlobalBatchCreate(BaseModel):
         le=12,
     )
 
-    analysis_resolution: AnalysisResolution = (
-        "representative"
-    )
-    
-    # 4.2：每月多個代表日。
+    analysis_resolution: AnalysisResolution = "representative"
+
+    # Number of representative sample days per month.
     sample_days_per_month: int = Field(
         default=3,
         ge=1,
         le=7,
     )
 
-    # daily 模式下每隔多少天執行一次。
-    # 1 = 每日；2 = 每兩日；7 = 每週。
+    # Sampling interval used in daily analysis mode.
+    # 1 means every day, 2 means every two days, and so on.
     daily_stride_days: int = Field(
         default=1,
         ge=1,
         le=7,
     )
 
-    # 保留供讀取舊有 4.1 request_json。
+    execution_profile: ExecutionProfile = "auto"
+
+    resume_from_checkpoint: bool = True
+
+    enable_heatwave_analysis: bool = True
+
+    heatwave_temperature_threshold_c: float = Field(
+        default=35.0,
+        ge=-20.0,
+        le=70.0,
+    )
+
+    heatwave_minimum_consecutive_days: int = Field(
+        default=3,
+        ge=2,
+        le=30,
+    )
+
+    # Retained for backward compatibility with Stage 4.1 requests.
     representative_day: int | None = Field(
         default=None,
         ge=1,
@@ -117,20 +140,20 @@ class GlobalBatchCreate(BaseModel):
 
     minimum_skin_improvement_c: float = Field(
         default=0.2,
-        ge=-5,
-        le=10,
+        ge=-5.0,
+        le=10.0,
     )
 
     minimum_air_temperature_c: float | None = Field(
         default=30.0,
-        ge=-50,
-        le=70,
+        ge=-50.0,
+        le=70.0,
     )
 
     minimum_solar_radiation_w_m2: float | None = Field(
         default=300.0,
-        ge=0,
-        le=1500,
+        ge=0.0,
+        le=1500.0,
     )
 
     exposure_match_mode: ExposureMatchMode = "all"
@@ -140,11 +163,16 @@ class GlobalBatchCreate(BaseModel):
     rc_material: MaterialInput
 
     @model_validator(mode="after")
-    def validate_request(self):
+    def validate_request(self) -> "GlobalBatchCreate":
         normalized_ids = [
             city_id.strip().lower()
             for city_id in self.city_ids
         ]
+
+        if any(not city_id for city_id in normalized_ids):
+            raise ValueError(
+                "city_ids cannot contain empty city identifiers"
+            )
 
         if len(normalized_ids) != len(set(normalized_ids)):
             raise ValueError(
@@ -168,10 +196,11 @@ class GlobalBatchCreate(BaseModel):
 
 class DailyAdaptationResult(BaseModel):
     sample_date_local: datetime
-    weight_days: int
+    weight_days: int = Field(ge=1)
 
     mean_air_temperature_c: float
     maximum_air_temperature_c: float
+
     mean_solar_radiation_w_m2: float
     maximum_solar_radiation_w_m2: float
 
@@ -187,7 +216,7 @@ class DailyAdaptationResult(BaseModel):
 
 
 class MonthlyAdaptationResult(BaseModel):
-    month: int
+    month: int = Field(ge=1, le=12)
 
     sampled_day_count: int = 1
     eligible_sample_count: int = 0
@@ -207,11 +236,26 @@ class MonthlyAdaptationResult(BaseModel):
         default_factory=list
     )
 
-    # 4.1 backward compatibility。
+    # Stage 4.1 backward compatibility.
     representative_date_local: datetime | None = None
     weight_days: int | None = None
     final_skin_improvement_c: float | None = None
     beneficial: bool | None = None
+
+
+class HeatwaveEvent(BaseModel):
+    start_date_local: datetime
+    end_date_local: datetime
+
+    duration_days: int = Field(ge=1)
+
+    mean_maximum_air_temperature_c: float
+    peak_air_temperature_c: float
+
+    mean_skin_improvement_c: float
+    p90_skin_improvement_c: float
+
+    beneficial_day_count: int = Field(ge=0)
 
 
 class GlobalCityResultResponse(BaseModel):
@@ -243,8 +287,24 @@ class GlobalCityResultResponse(BaseModel):
     evaluated_weighted_days: int | None
     beneficial_weighted_days: int | None
 
-    retry_count: int
+    completed_month_count: int = 0
+    last_checkpoint_month: int | None = None
+    resumed_from_checkpoint: bool = False
+    last_heartbeat_at: datetime | None = None
 
+    skin_improvement_p50_c: float | None = None
+    skin_improvement_p90_c: float | None = None
+    skin_improvement_p95_c: float | None = None
+
+    core_improvement_p50_c: float | None = None
+    core_improvement_p90_c: float | None = None
+    core_improvement_p95_c: float | None = None
+
+    heatwave_event_count: int | None = None
+    longest_heatwave_days: int | None = None
+    heatwave_events: list[HeatwaveEvent] | None = None
+
+    retry_count: int
     monthly_results: list[MonthlyAdaptationResult] | None
 
     error_message: str | None
@@ -284,7 +344,8 @@ class GlobalBatchListResponse(BaseModel):
     total: int
     limit: int
     offset: int
-    
+
+
 class GlobalBatchEstimateResponse(BaseModel):
     city_count: int
     month_count: int
@@ -292,4 +353,11 @@ class GlobalBatchEstimateResponse(BaseModel):
     total_samples: int
     thermal_simulation_count: int
     estimated_weather_requests: int
+
     analysis_resolution: AnalysisResolution
+
+    resolved_execution_profile: ExecutionProfile
+    resolved_queue: str
+
+    checkpoint_count_per_city: int
+    heatwave_analysis_available: bool

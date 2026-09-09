@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import (
+    Boolean,
     DateTime,
     Float,
     ForeignKey,
@@ -208,6 +209,11 @@ class GlobalCityResult(Base):
         )
     )
 
+    exposure_coverage_percent: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
     annual_average_skin_improvement_c: Mapped[float | None] = (
         mapped_column(
             Float,
@@ -222,19 +228,12 @@ class GlobalCityResult(Base):
         )
     )
 
-    maximum_skin_improvement_c: Mapped[float | None] = (
-        mapped_column(
-            Float,
-            nullable=True,
-        )
-    )
-
-    effective_cooling_hours: Mapped[float | None] = mapped_column(
+    maximum_skin_improvement_c: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
     )
-    
-    exposure_coverage_percent: Mapped[float | None] = mapped_column(
+
+    effective_cooling_hours: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
     )
@@ -266,7 +265,76 @@ class GlobalCityResult(Base):
         nullable=True,
     )
 
+    completed_month_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
+    last_checkpoint_month: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    resumed_from_checkpoint: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    skin_improvement_p50_c: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    skin_improvement_p90_c: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    skin_improvement_p95_c: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    core_improvement_p50_c: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    core_improvement_p90_c: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    core_improvement_p95_c: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+
+    heatwave_event_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
+    longest_heatwave_days: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
+
     monthly_json: Mapped[list | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
+    analytics_json: Mapped[dict | None] = mapped_column(
         JSONB,
         nullable=True,
     )

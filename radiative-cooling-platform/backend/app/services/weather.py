@@ -21,6 +21,13 @@ from app.schemas.weather import (
     WeatherTimeSeries,
 )
 
+import asyncio
+import os
+from uuid import uuid4
+
+from redis.asyncio import Redis
+
+from app.core.config import settings
 
 OPEN_METEO_ARCHIVE_URL = (
     "https://archive-api.open-meteo.com/v1/archive"
@@ -120,52 +127,35 @@ def build_cache_path(
 
     return CACHE_DIRECTORY / f"{digest}.json"
 
+def read_cached_payload(
+    cache_path: Path,
+) -> dict | None:
+    if not cache_path.exists():
+        return None
 
-async def request_open_meteo(
-    params: dict[str, str | float],
-) -> tuple[dict, bool]:
-    cache_path = build_cache_path(params)
-    CACHE_DIRECTORY.mkdir(
-        parents=True,
-        exist_ok=True,
+    try:
+        return json.loads(
+            cache_path.read_text(
+                encoding="utf-8"
+            )
+        )
+    except (
+        OSError,
+        json.JSONDecodeError,
+    ):
+        return None
+
+
+def write_cached_payload_atomic(
+    cache_path: Path,
+    payload: dict,
+) -> None:
+    temporary_path = cache_path.with_name(
+        f"{cache_path.name}."
+        f"{uuid4().hex}.tmp"
     )
 
-    if cache_path.exists():
-        return (
-            json.loads(
-                cache_path.read_text(
-                    encoding="utf-8"
-                )
-            ),
-            True,
-        )
-
-    async with httpx.AsyncClient(
-        timeout=httpx.Timeout(30.0),
-    ) as client:
-        response = await client.get(
-            OPEN_METEO_ARCHIVE_URL,
-            params=params,
-        )
-
-    if response.status_code != 200:
-        try:
-            error_body = response.json()
-            reason = error_body.get(
-                "reason",
-                response.text,
-            )
-        except ValueError:
-            reason = response.text
-
-        raise RuntimeError(
-            "Open-Meteo request failed: "
-            f"HTTP {response.status_code}: {reason}"
-        )
-
-    payload = response.json()
-
-    cache_path.write_text(
+    temporary_path.write_text(
         json.dumps(
             payload,
             ensure_ascii=False,
@@ -173,8 +163,119 @@ async def request_open_meteo(
         encoding="utf-8",
     )
 
-    return payload, False
+    os.replace(
+        temporary_path,
+        cache_path,
+    )
 
+
+def build_weather_lock_name(
+    cache_path: Path,
+) -> str:
+    return (
+        "weather-download-lock:"
+        f"{cache_path.stem}"
+    )
+
+async def request_open_meteo(
+    params: dict[str, str | float],
+) -> tuple[dict, bool]:
+    cache_path = build_cache_path(
+        params
+    )
+
+    CACHE_DIRECTORY.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    cached_payload = read_cached_payload(
+        cache_path
+    )
+
+    if cached_payload is not None:
+        return cached_payload, True
+
+    redis_client = Redis.from_url(
+        settings.weather_lock_redis_url,
+        decode_responses=True,
+    )
+
+    lock = redis_client.lock(
+        build_weather_lock_name(
+            cache_path
+        ),
+        timeout=(
+            settings
+            .weather_lock_timeout_seconds
+        ),
+        blocking_timeout=(
+            settings
+            .weather_lock_blocking_timeout_seconds
+        ),
+    )
+
+    acquired = False
+
+    try:
+        acquired = await lock.acquire()
+
+        if not acquired:
+            raise RuntimeError(
+                "Timed out while waiting for "
+                "the weather download lock"
+            )
+
+        cached_payload = read_cached_payload(
+            cache_path
+        )
+
+        if cached_payload is not None:
+            return cached_payload, True
+
+        payload = await download_open_meteo_payload(
+            params
+        )
+
+        write_cached_payload_atomic(
+            cache_path,
+            payload,
+        )
+
+        return payload, False
+
+    except (
+        ConnectionError,
+        TimeoutError,
+    ):
+        # Redis failure must not make weather
+        # simulation completely unavailable.
+        cached_payload = read_cached_payload(
+            cache_path
+        )
+
+        if cached_payload is not None:
+            return cached_payload, True
+
+        payload = await download_open_meteo_payload(
+            params
+        )
+
+        write_cached_payload_atomic(
+            cache_path,
+            payload,
+        )
+
+        return payload, False
+
+    finally:
+        if acquired:
+            try:
+                await lock.release()
+            except Exception:
+                pass
+
+        await redis_client.aclose()
 
 def require_hourly_array(
     hourly: dict,
@@ -502,3 +603,32 @@ def slice_weather_time_series(
         points=selected_points,
         source=weather.source,
     )
+
+async def download_open_meteo_payload(
+    params: dict[str, str | float],
+) -> dict:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(60.0),
+    ) as client:
+        response = await client.get(
+            OPEN_METEO_ARCHIVE_URL,
+            params=params,
+        )
+
+    if response.status_code != 200:
+        try:
+            error_body = response.json()
+            reason = error_body.get(
+                "reason",
+                response.text,
+            )
+        except ValueError:
+            reason = response.text
+
+        raise RuntimeError(
+            "Open-Meteo request failed: "
+            f"HTTP {response.status_code}: "
+            f"{reason}"
+        )
+
+    return response.json()
