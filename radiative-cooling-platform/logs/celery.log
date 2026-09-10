@@ -1,0 +1,59 @@
+ 
+ -------------- celery@p2104180 v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-09-09 18:02:54
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         radiative_cooling_worker:0x1c7c38f6570
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/1
+- *** --- * --- .> concurrency: 1 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> default          exchange=default(direct) key=default
+                .> global_large     exchange=default(direct) key=default
+                .> global_standard  exchange=default(direct) key=default
+
+[tasks]
+  . global_batch.run_city
+  . simulation.run_weather
+
+[2026-09-09 18:02:54,875: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-09-09 18:02:54,881: INFO/MainProcess] mingle: searching for neighbors
+[2026-09-09 18:02:55,937: INFO/MainProcess] mingle: sync with 2 nodes
+[2026-09-09 18:02:55,938: INFO/MainProcess] mingle: sync complete
+[2026-09-09 18:02:56,014: INFO/MainProcess] celery@p2104180 ready.
+[2026-09-09 18:04:53,270: INFO/MainProcess] Task global_batch.run_city[8627816f-b4ca-430d-abf9-0554f8a38bf6] received
+[2026-09-09 18:04:56,010: INFO/MainProcess] missed heartbeat from large@p2104180
+[2026-09-09 18:04:56,117: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2023-12-31&end_date=2024-02-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:04:58,270: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-01-31&end_date=2024-03-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:00,185: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-02-29&end_date=2024-04-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:01,009: INFO/MainProcess] missed heartbeat from standard@p2104180
+[2026-09-09 18:05:02,130: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-03-31&end_date=2024-05-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:05,365: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-04-30&end_date=2024-06-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:07,506: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-05-31&end_date=2024-07-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:09,531: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-06-30&end_date=2024-08-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:11,522: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-07-31&end_date=2024-09-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:13,584: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-08-31&end_date=2024-10-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:15,634: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-09-30&end_date=2024-11-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:17,332: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-10-31&end_date=2024-12-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:19,361: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-12.4634&longitude=130.8456&elevation=31.0&start_date=2024-11-30&end_date=2025-01-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FDarwin&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-09 18:05:19,728: INFO/MainProcess] Task global_batch.run_city[8627816f-b4ca-430d-abf9-0554f8a38bf6] succeeded in 26.452999999994063s: {'batch_id': '37f16b54-7584-4da1-929d-b6547f92bf38', 'city_result_id': 'fd869781-a8af-4114-924e-bfb9edb69f0e', 'status': 'completed'}
+[2026-09-09 18:05:19,732: WARNING/MainProcess] Substantial drift from large@p2104180 may mean clocks are out of sync.  Current drift is 26 seconds.  [orig: 2026-09-09 18:05:19.731828 recv: 2026-09-09 18:04:53.951515]
+[2026-09-09 18:05:19,733: WARNING/MainProcess] Substantial drift from standard@p2104180 may mean clocks are out of sync.  Current drift is 25 seconds.  [orig: 2026-09-09 18:05:19.732829 recv: 2026-09-09 18:04:54.606601]
+[2026-09-09 19:09:05,966: INFO/MainProcess] Tasks flagged as revoked: da7d037c-9f42-45d4-b9cb-298a2b754554
+[2026-09-09 19:09:05,970: INFO/MainProcess] Tasks flagged as revoked: 3ff0fe8c-58a5-4f62-83ed-0d41893bea16
+[2026-09-09 19:09:05,972: INFO/MainProcess] Tasks flagged as revoked: 3cc7974a-22a1-4407-90ff-5166b383c2fd
+[2026-09-09 19:09:05,976: INFO/MainProcess] Tasks flagged as revoked: 1bf1eaf5-1009-461d-8759-70c34fe8ffb8
+[2026-09-09 19:09:05,978: INFO/MainProcess] Tasks flagged as revoked: 06e530fc-b45c-44e9-b778-8163318b7cdb
+[2026-09-09 19:09:05,981: INFO/MainProcess] Tasks flagged as revoked: 5535f83b-91ed-4105-8f54-702418bfbfb6
+[2026-09-09 19:09:05,983: INFO/MainProcess] Tasks flagged as revoked: 7397fdf3-1651-49f4-a176-4d2dd3bd46ea
+[2026-09-09 19:09:05,984: INFO/MainProcess] Tasks flagged as revoked: c5477fcc-7280-48c2-8e27-d746265747f7
+[2026-09-09 19:09:05,987: INFO/MainProcess] Tasks flagged as revoked: 9bdddd49-fc9f-4a80-a790-79fe67682c6d
+[2026-09-09 19:09:05,989: INFO/MainProcess] Tasks flagged as revoked: a3d069ba-83af-49f6-aea2-019705496d6f
+[2026-09-09 19:09:05,991: INFO/MainProcess] Tasks flagged as revoked: a464ac04-228f-496b-b223-5107be58639f
+[2026-09-09 19:09:05,993: INFO/MainProcess] Tasks flagged as revoked: 6169e767-8d30-48d1-9d83-8e500fcccc9f
+[2026-09-09 19:09:05,994: INFO/MainProcess] Tasks flagged as revoked: 2d1c22a5-ce53-4da9-8d62-980f93349a98
+[2026-09-09 19:09:05,997: INFO/MainProcess] Tasks flagged as revoked: cce1431b-ffa5-4276-aba1-65a98c97d18d
+[2026-09-09 19:09:05,999: INFO/MainProcess] Tasks flagged as revoked: c64cda9b-0183-4416-849a-7dd612d742e3
