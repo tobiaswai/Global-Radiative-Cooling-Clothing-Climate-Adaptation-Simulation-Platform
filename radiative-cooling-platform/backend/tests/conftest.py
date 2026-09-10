@@ -6,8 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 from app.core.config import get_settings
 from app.core.runtime import configure_runtime
+
 
 _test_settings = get_settings()
 
@@ -34,6 +36,7 @@ os.environ["NUMBA_CACHE_DIR"] = str(
 
 
 from app.core.config import settings
+from app.db.session import get_db
 from app.main import app
 from app.schemas.simulation import (
     EnvironmentInput,
@@ -43,11 +46,50 @@ from app.schemas.simulation import (
 )
 
 
+@pytest.fixture
+def db_session():
+    engine = create_engine(
+        settings.database_url,
+        pool_pre_ping=True,
+    )
+
+    connection = engine.connect()
+    transaction = connection.begin()
+
+    TestingSessionLocal = sessionmaker(
+        bind=connection,
+        autoflush=False,
+        expire_on_commit=False,
+    )
+
+    session = TestingSessionLocal()
+
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
+        engine.dispose()
 
 
 @pytest.fixture
-def client() -> TestClient:
-    return TestClient(app)
+def client(db_session):
+    def override_get_db():
+        yield db_session
+
+    app.dependency_overrides[get_db] = (
+        override_get_db
+    )
+
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.pop(
+            get_db,
+            None,
+        )
 
 
 @pytest.fixture
@@ -115,29 +157,3 @@ def simulation_request(
         control_material=control_material,
         rc_material=rc_material,
     )
-    
-@pytest.fixture
-def db_session():
-    engine = create_engine(
-        settings.database_url,
-        pool_pre_ping=True,
-    )
-
-    connection = engine.connect()
-    transaction = connection.begin()
-
-    TestingSessionLocal = sessionmaker(
-        bind=connection,
-        autoflush=False,
-        expire_on_commit=False,
-    )
-
-    session = TestingSessionLocal()
-
-    try:
-        yield session
-    finally:
-        session.close()
-        transaction.rollback()
-        connection.close()
-        engine.dispose()

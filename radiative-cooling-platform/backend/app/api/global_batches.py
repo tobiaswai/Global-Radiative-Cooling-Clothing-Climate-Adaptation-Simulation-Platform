@@ -1,4 +1,7 @@
-from datetime import datetime, timezone
+from datetime import (
+    datetime,
+    timezone,
+)
 
 from celery import group
 from fastapi import (
@@ -8,7 +11,7 @@ from fastapi import (
     Query,
     status,
 )
-from requests import session
+from fastapi.responses import Response
 from sqlalchemy import (
     func,
     select,
@@ -34,8 +37,13 @@ from app.schemas.global_batch import (
     GlobalBatchListResponse,
     GlobalBatchResponse,
 )
-from fastapi.responses import Response
-
+from app.services.annual_sampling import (
+    estimate_sample_count,
+)
+from app.services.execution_profile import (
+    resolve_execution_profile,
+    resolve_queue_name,
+)
 from app.services.global_batch_export import (
     build_batch_export_zip,
     build_batch_geojson,
@@ -44,9 +52,6 @@ from app.services.global_batch_service import (
     batch_to_detail,
     batch_to_response,
     refresh_batch_status,
-)
-from app.services.annual_sampling import (
-    estimate_sample_count,
 )
 from app.worker.celery_app import celery_app
 from app.worker.tasks import (
@@ -58,6 +63,10 @@ router = APIRouter(
     prefix="/api/v1/global-batches",
     tags=["global-batches"],
 )
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def load_batch(
@@ -77,6 +86,23 @@ def load_batch(
     )
 
 
+def submit_city_tasks(
+    *,
+    city_results: list[GlobalCityResult],
+    queue_name: str,
+):
+    celery_group = group(
+        run_global_city_analysis_task.s(
+            result.id
+        ).set(
+            queue=queue_name
+        )
+        for result in city_results
+    )
+
+    return celery_group.apply_async()
+
+
 @router.get("/cities")
 def get_supported_cities() -> dict:
     return {
@@ -89,13 +115,12 @@ def get_supported_cities() -> dict:
                 "longitude": city.longitude,
                 "elevation_m": city.elevation_m,
                 "timezone": city.timezone,
-                "climate_type": (
-                    city.climate_type
-                ),
+                "climate_type": city.climate_type,
             }
             for city in list_cities()
         ]
     }
+
 
 @router.post(
     "/estimate",
@@ -104,13 +129,11 @@ def get_supported_cities() -> dict:
 def estimate_global_batch(
     request: GlobalBatchCreate,
 ) -> GlobalBatchEstimateResponse:
-    samples_per_city = (
-        estimate_sample_count(request)
+    samples_per_city = estimate_sample_count(
+        request
     )
 
-    city_count = len(
-        request.city_ids
-    )
+    city_count = len(request.city_ids)
 
     month_count = (
         request.end_month
@@ -123,12 +146,24 @@ def estimate_global_batch(
         * city_count
     )
 
+    resolved_profile = resolve_execution_profile(
+        request
+    )
+
+    resolved_queue = resolve_queue_name(
+        request
+    )
+
+    heatwave_analysis_available = (
+        request.enable_heatwave_analysis
+        and request.analysis_resolution == "daily"
+        and request.daily_stride_days == 1
+    )
+
     return GlobalBatchEstimateResponse(
         city_count=city_count,
         month_count=month_count,
-        samples_per_city=(
-            samples_per_city
-        ),
+        samples_per_city=samples_per_city,
         total_samples=total_samples,
         thermal_simulation_count=(
             total_samples * 2
@@ -139,7 +174,16 @@ def estimate_global_batch(
         analysis_resolution=(
             request.analysis_resolution
         ),
+        resolved_execution_profile=(
+            resolved_profile
+        ),
+        resolved_queue=resolved_queue,
+        checkpoint_count_per_city=month_count,
+        heatwave_analysis_available=(
+            heatwave_analysis_available
+        ),
     )
+
 
 @router.post(
     "",
@@ -159,9 +203,13 @@ def create_global_batch(
             )
         except ValueError as error:
             raise HTTPException(
-                status_code=422,
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=str(error),
             ) from error
+
+    queue_name = resolve_queue_name(
+        request
+    )
 
     batch = GlobalBatchJob(
         status="queued",
@@ -176,7 +224,7 @@ def create_global_batch(
     session.add(batch)
     session.flush()
 
-    city_results = []
+    city_results: list[GlobalCityResult] = []
 
     for city in cities:
         city_result = GlobalCityResult(
@@ -189,6 +237,8 @@ def create_global_batch(
             status="queued",
             stage="queued",
             progress=0,
+            completed_month_count=0,
+            resumed_from_checkpoint=False,
         )
 
         session.add(city_result)
@@ -197,14 +247,10 @@ def create_global_batch(
     session.commit()
 
     try:
-        celery_group = group(
-            run_global_city_analysis_task.s(
-                result.id
-            )
-            for result in city_results
+        group_result = submit_city_tasks(
+            city_results=city_results,
+            queue_name=queue_name,
         )
-
-        group_result = celery_group.apply_async()
 
         batch.celery_group_id = group_result.id
         batch.stage = "queued"
@@ -222,26 +268,25 @@ def create_global_batch(
         session.refresh(batch)
 
     except Exception as error:
+        now = utc_now()
+
         batch.status = "failed"
         batch.stage = "queue_submission_failed"
         batch.error_message = str(error)[:4000]
-        batch.completed_at = datetime.now(
-            timezone.utc
-        )
+        batch.completed_at = now
 
         for result in city_results:
             result.status = "failed"
-            result.stage = (
-                "queue_submission_failed"
-            )
+            result.stage = "queue_submission_failed"
             result.error_message = str(
                 error
             )[:4000]
+            result.completed_at = now
 
         session.commit()
 
         raise HTTPException(
-            status_code=503,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 "Unable to submit global batch "
                 f"to Celery: {error}"
@@ -307,7 +352,7 @@ def get_global_batch(
 
     if batch is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Global batch not found",
         )
 
@@ -329,7 +374,7 @@ def cancel_global_batch(
 
     if batch is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Global batch not found",
         )
 
@@ -340,12 +385,14 @@ def cancel_global_batch(
         "cancelled",
     }:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail=(
                 "Batch in terminal state "
                 "cannot be cancelled"
             ),
         )
+
+    now = utc_now()
 
     batch.status = "cancelling"
     batch.stage = (
@@ -357,9 +404,8 @@ def cancel_global_batch(
             result.status = "cancelled"
             result.stage = "cancelled"
             result.progress = 100
-            result.completed_at = datetime.now(
-                timezone.utc
-            )
+            result.last_heartbeat_at = now
+            result.completed_at = now
 
         if (
             result.celery_task_id
@@ -396,11 +442,12 @@ def get_global_batch_geojson(
 
     if batch is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Global batch not found",
         )
 
     return build_batch_geojson(batch)
+
 
 @router.get(
     "/{batch_id}/export",
@@ -416,7 +463,7 @@ def export_global_batch(
 
     if batch is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Global batch not found",
         )
 
@@ -438,7 +485,8 @@ def export_global_batch(
             ),
         },
     )
-    
+
+
 @router.post(
     "/{batch_id}/retry-failed",
     response_model=GlobalBatchResponse,
@@ -455,7 +503,7 @@ def retry_failed_cities(
 
     if batch is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Global batch not found",
         )
 
@@ -464,7 +512,7 @@ def retry_failed_cities(
         "partial_completed",
     }:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail=(
                 "Only failed or partially completed "
                 "batches can be retried"
@@ -479,28 +527,39 @@ def retry_failed_cities(
 
     if not failed_results:
         raise HTTPException(
-            status_code=409,
+            status_code=status.HTTP_409_CONFLICT,
             detail=(
                 "The batch contains no failed cities"
             ),
         )
 
-    now = datetime.now(
-        timezone.utc
+    request = GlobalBatchCreate.model_validate(
+        batch.request_json
     )
 
+    queue_name = resolve_queue_name(
+        request
+    )
+
+    now = utc_now()
+
     for result in failed_results:
+        checkpoint_available = bool(
+            result.monthly_json
+        )
+
         result.status = "queued"
         result.stage = "queued_for_retry"
         result.progress = 0
         result.retry_count += 1
 
         result.error_message = None
-        result.started_at = None
         result.completed_at = None
+        result.last_heartbeat_at = None
 
         result.climate_adaptation_rate_percent = None
         result.exposure_coverage_percent = None
+
         result.annual_average_skin_improvement_c = None
         result.annual_average_core_improvement_c = None
         result.maximum_skin_improvement_c = None
@@ -510,37 +569,58 @@ def retry_failed_cities(
         result.eligible_sample_count = None
         result.evaluated_weighted_days = None
         result.beneficial_weighted_days = None
-        result.monthly_json = None
+
+        result.skin_improvement_p50_c = None
+        result.skin_improvement_p90_c = None
+        result.skin_improvement_p95_c = None
+
+        result.core_improvement_p50_c = None
+        result.core_improvement_p90_c = None
+        result.core_improvement_p95_c = None
+
+        result.heatwave_event_count = None
+        result.longest_heatwave_days = None
+        result.analytics_json = None
+
+        if request.resume_from_checkpoint:
+            result.resumed_from_checkpoint = (
+                checkpoint_available
+            )
+        else:
+            result.monthly_json = None
+            result.completed_month_count = 0
+            result.last_checkpoint_month = None
+            result.resumed_from_checkpoint = False
+            result.started_at = None
 
     batch.status = "running"
     batch.stage = "retrying_failed_cities"
+
+    already_processed_count = (
+        batch.total_city_count
+        - len(failed_results)
+    )
+
     batch.progress = round(
-        (
-            batch.total_city_count
-            - len(failed_results)
-        )
-        / batch.total_city_count
+        already_processed_count
+        / max(1, batch.total_city_count)
         * 100
     )
 
     batch.failed_city_count = 0
     batch.completed_at = None
     batch.error_message = None
-
-    if batch.started_at is None:
-        batch.started_at = now
+    batch.started_at = (
+        batch.started_at or now
+    )
 
     session.commit()
 
     try:
-        retry_group = group(
-            run_global_city_analysis_task.s(
-                result.id
-            )
-            for result in failed_results
+        group_result = submit_city_tasks(
+            city_results=failed_results,
+            queue_name=queue_name,
         )
-
-        group_result = retry_group.apply_async()
 
         batch.celery_group_id = group_result.id
 
@@ -576,7 +656,7 @@ def retry_failed_cities(
         session.commit()
 
         raise HTTPException(
-            status_code=503,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
                 "Unable to submit retry tasks: "
                 f"{error}"

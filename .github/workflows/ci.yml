@@ -7,6 +7,9 @@ on:
       - develop
 
   pull_request:
+    branches:
+      - main
+      - develop
 
   workflow_dispatch:
 
@@ -26,15 +29,12 @@ jobs:
     services:
       postgres:
         image: postgres:17-alpine
-
         env:
           POSTGRES_DB: radiative_cooling_test
           POSTGRES_USER: rc_user
           POSTGRES_PASSWORD: rc_password
-
         ports:
           - 5432:5432
-
         options: >-
           --health-cmd "pg_isready -U rc_user -d radiative_cooling_test"
           --health-interval 5s
@@ -43,10 +43,8 @@ jobs:
 
       redis:
         image: redis:7-alpine
-
         ports:
           - 6379:6379
-
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 5s
@@ -74,10 +72,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
@@ -93,6 +91,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Verify database configuration
+        run: |
+          python -c "
+          from app.core.config import settings
+          print(settings.database_url)
+          "
 
       - name: Run database migrations
         run: alembic upgrade head
@@ -111,7 +116,10 @@ jobs:
 
       - name: Check backend imports
         run: |
-          python -c "from app.main import app; print(app.title)"
+          python -c "
+          from app.main import app
+          print(app.title)
+          "
 
       - name: Upload coverage report
         if: always()
@@ -136,10 +144,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm

@@ -1,14 +1,34 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import (
+    datetime,
+    timezone,
+)
 
 from celery import Task
 
 from app.db.session import SessionLocal
+from app.models.global_batch import (
+    GlobalBatchJob,
+    GlobalCityResult,
+)
 from app.models.simulation_job import (
     SimulationJob,
 )
+from app.schemas.global_batch import (
+    GlobalBatchCreate,
+    MonthlyAdaptationResult,
+)
 from app.schemas.simulation import (
     WeatherSimulationRequest,
+)
+from app.services.annual_sampling import (
+    estimate_sample_count,
+)
+from app.services.climate_adaptation import (
+    analyze_city_climate_adaptation,
+)
+from app.services.global_batch_service import (
+    refresh_batch_status,
 )
 from app.services.result_storage import (
     save_simulation_result,
@@ -23,6 +43,14 @@ from app.worker.celery_app import (
 
 class JobCancelledError(Exception):
     pass
+
+
+class GlobalBatchCancelledError(Exception):
+    pass
+
+
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def update_job(
@@ -88,11 +116,8 @@ def run_weather_simulation_task(
                     f"Simulation task not found:{job_id}"
                 )
 
-            request = (
-                WeatherSimulationRequest
-                .model_validate(
-                    job.request_json
-                )
+            request = WeatherSimulationRequest.model_validate(
+                job.request_json
             )
 
         update_job(
@@ -100,9 +125,7 @@ def run_weather_simulation_task(
             status="running",
             stage="initializing",
             progress=2,
-            started_at=datetime.now(
-                timezone.utc
-            ),
+            started_at=utc_now(),
             error_message=None,
         )
 
@@ -153,15 +176,11 @@ def run_weather_simulation_task(
             status="completed",
             stage="completed",
             progress=100,
-            summary_json=(
-                result.summary.model_dump(
-                    mode="json"
-                )
+            summary_json=result.summary.model_dump(
+                mode="json"
             ),
             result_path=str(result_path),
-            completed_at=datetime.now(
-                timezone.utc
-            ),
+            completed_at=utc_now(),
         )
 
         return {
@@ -174,9 +193,7 @@ def run_weather_simulation_task(
             job_id,
             status="cancelled",
             stage="cancelled",
-            completed_at=datetime.now(
-                timezone.utc
-            ),
+            completed_at=utc_now(),
         )
 
         return {
@@ -190,30 +207,9 @@ def run_weather_simulation_task(
             status="failed",
             stage="failed",
             error_message=str(error)[:4000],
-            completed_at=datetime.now(
-                timezone.utc
-            ),
+            completed_at=utc_now(),
         )
-
         raise
-
-from app.models.global_batch import (
-    GlobalBatchJob,
-    GlobalCityResult,
-)
-from app.schemas.global_batch import (
-    GlobalBatchCreate,
-)
-from app.services.climate_adaptation import (
-    analyze_city_climate_adaptation,
-)
-from app.services.global_batch_service import (
-    refresh_batch_status,
-)
-
-
-class GlobalBatchCancelledError(Exception):
-    pass
 
 
 def ensure_global_batch_not_cancelled(
@@ -280,22 +276,59 @@ def run_global_city_analysis_task(
 
             city_id = city_result.city_id
 
+            initial_monthly_results: list[
+                MonthlyAdaptationResult
+            ] = []
+
+            if (
+                request.resume_from_checkpoint
+                and city_result.monthly_json
+            ):
+                initial_monthly_results = [
+                    MonthlyAdaptationResult.model_validate(
+                        item
+                    )
+                    for item in city_result.monthly_json
+                ]
+
+            now = utc_now()
+
             city_result.status = "running"
             city_result.stage = "initializing"
             city_result.progress = 1
-            city_result.started_at = datetime.now(
-                timezone.utc
+            city_result.started_at = (
+                city_result.started_at or now
             )
+            city_result.completed_at = None
+            city_result.last_heartbeat_at = now
             city_result.error_message = None
+            city_result.resumed_from_checkpoint = bool(
+                initial_monthly_results
+            )
 
-            if batch.status == "queued":
+            if batch.status in {
+                "queued",
+                "failed",
+                "partial_completed",
+            }:
                 batch.status = "running"
                 batch.stage = "analyzing_cities"
-                batch.started_at = datetime.now(
-                    timezone.utc
+                batch.started_at = (
+                    batch.started_at or now
                 )
+                batch.completed_at = None
 
             session.commit()
+
+        if batch_id is None:
+            raise RuntimeError(
+                "Global batch ID was not initialized"
+            )
+
+        total_sample_count = max(
+            1,
+            estimate_sample_count(request),
+        )
 
         def report(
             progress: int,
@@ -304,6 +337,8 @@ def run_global_city_analysis_task(
             ensure_global_batch_not_cancelled(
                 batch_id
             )
+
+            heartbeat = utc_now()
 
             with SessionLocal() as session:
                 result = session.get(
@@ -318,19 +353,103 @@ def run_global_city_analysis_task(
 
                 result.status = "running"
                 result.stage = stage
-                result.progress = progress
+                result.progress = max(
+                    0,
+                    min(progress, 100),
+                )
+                result.last_heartbeat_at = heartbeat
+
                 session.commit()
 
             self.update_state(
                 state="PROGRESS",
                 meta={
                     "batch_id": batch_id,
-                    "city_result_id": (
-                        city_result_id
-                    ),
+                    "city_result_id": city_result_id,
                     "city_id": city_id,
                     "progress": progress,
                     "stage": stage,
+                    "last_heartbeat_at": (
+                        heartbeat.isoformat()
+                    ),
+                },
+            )
+
+        def save_checkpoint(
+            monthly_results: list[
+                MonthlyAdaptationResult
+            ],
+            completed_month: int,
+            completed_sample_count: int,
+        ) -> None:
+            ensure_global_batch_not_cancelled(
+                batch_id
+            )
+
+            heartbeat = utc_now()
+
+            checkpoint_progress = max(
+                1,
+                min(
+                    92,
+                    round(
+                        completed_sample_count
+                        / total_sample_count
+                        * 92
+                    ),
+                ),
+            )
+
+            with SessionLocal() as session:
+                result = session.get(
+                    GlobalCityResult,
+                    city_result_id,
+                )
+
+                if result is None:
+                    raise RuntimeError(
+                        "Global city result disappeared"
+                    )
+
+                result.monthly_json = [
+                    monthly_result.model_dump(
+                        mode="json"
+                    )
+                    for monthly_result in monthly_results
+                ]
+
+                result.completed_month_count = len(
+                    monthly_results
+                )
+                result.last_checkpoint_month = (
+                    completed_month
+                )
+                result.last_heartbeat_at = heartbeat
+                result.stage = (
+                    f"checkpoint_saved_"
+                    f"{request.year}-"
+                    f"{completed_month:02d}"
+                )
+                result.progress = max(
+                    result.progress,
+                    checkpoint_progress,
+                )
+
+                session.commit()
+
+            self.update_state(
+                state="PROGRESS",
+                meta={
+                    "batch_id": batch_id,
+                    "city_result_id": city_result_id,
+                    "city_id": city_id,
+                    "progress": checkpoint_progress,
+                    "stage": (
+                        f"checkpoint_saved_"
+                        f"{request.year}-"
+                        f"{completed_month:02d}"
+                    ),
+                    "completed_month": completed_month,
                 },
             )
 
@@ -339,12 +458,18 @@ def run_global_city_analysis_task(
                 city_id=city_id,
                 request=request,
                 progress_callback=report,
+                checkpoint_callback=save_checkpoint,
+                initial_monthly_results=(
+                    initial_monthly_results
+                ),
             )
         )
 
         ensure_global_batch_not_cancelled(
             batch_id
         )
+
+        completed_at = utc_now()
 
         with SessionLocal() as session:
             result = session.get(
@@ -366,13 +491,13 @@ def run_global_city_analysis_task(
                     "climate_adaptation_rate_percent"
                 ]
             )
-            
+
             result.exposure_coverage_percent = (
                 analysis[
                     "exposure_coverage_percent"
                 ]
             )
-            
+
             result.annual_average_skin_improvement_c = (
                 analysis[
                     "annual_average_skin_improvement_c"
@@ -385,18 +510,14 @@ def run_global_city_analysis_task(
                 ]
             )
 
-            result.maximum_skin_improvement_c = (
-                analysis[
-                    "maximum_skin_improvement_c"
-                ]
-            )
+            result.maximum_skin_improvement_c = analysis[
+                "maximum_skin_improvement_c"
+            ]
 
-            result.effective_cooling_hours = (
-                analysis[
-                    "effective_cooling_hours"
-                ]
-            )
-            
+            result.effective_cooling_hours = analysis[
+                "effective_cooling_hours"
+            ]
+
             result.sampled_day_count = analysis[
                 "sampled_day_count"
             ]
@@ -404,32 +525,74 @@ def run_global_city_analysis_task(
             result.eligible_sample_count = analysis[
                 "eligible_sample_count"
             ]
-            
-            result.evaluated_weighted_days = (
-                analysis[
-                    "evaluated_weighted_days"
-                ]
-            )
 
-            result.beneficial_weighted_days = (
-                analysis[
-                    "beneficial_weighted_days"
-                ]
-            )
+            result.evaluated_weighted_days = analysis[
+                "evaluated_weighted_days"
+            ]
+
+            result.beneficial_weighted_days = analysis[
+                "beneficial_weighted_days"
+            ]
+
+            result.skin_improvement_p50_c = analysis[
+                "skin_improvement_p50_c"
+            ]
+
+            result.skin_improvement_p90_c = analysis[
+                "skin_improvement_p90_c"
+            ]
+
+            result.skin_improvement_p95_c = analysis[
+                "skin_improvement_p95_c"
+            ]
+
+            result.core_improvement_p50_c = analysis[
+                "core_improvement_p50_c"
+            ]
+
+            result.core_improvement_p90_c = analysis[
+                "core_improvement_p90_c"
+            ]
+
+            result.core_improvement_p95_c = analysis[
+                "core_improvement_p95_c"
+            ]
+
+            result.heatwave_event_count = analysis[
+                "heatwave_event_count"
+            ]
+
+            result.longest_heatwave_days = analysis[
+                "longest_heatwave_days"
+            ]
+
+            result.analytics_json = {
+                "heatwave_analysis_available": analysis[
+                    "heatwave_analysis_available"
+                ],
+                "heatwave_events": analysis[
+                    "heatwave_events"
+                ],
+            }
 
             result.monthly_json = analysis[
                 "monthly_results"
             ]
 
-            result.completed_at = datetime.now(
-                timezone.utc
-            )
+            result.completed_month_count = analysis[
+                "completed_month_count"
+            ]
+
+            if result.monthly_json:
+                result.last_checkpoint_month = max(
+                    item["month"]
+                    for item in result.monthly_json
+                )
 
             result.error_message = None
-            result.completed_at = datetime.now(
-                timezone.utc
-            )
-            
+            result.last_heartbeat_at = completed_at
+            result.completed_at = completed_at
+
             session.commit()
 
             refresh_batch_status(
@@ -452,11 +615,14 @@ def run_global_city_analysis_task(
                 )
 
                 if result is not None:
+                    now = utc_now()
+
                     result.status = "cancelled"
                     result.stage = "cancelled"
-                    result.completed_at = (
-                        datetime.now(timezone.utc)
-                    )
+                    result.progress = 100
+                    result.last_heartbeat_at = now
+                    result.completed_at = now
+
                     session.commit()
 
                 refresh_batch_status(
@@ -479,14 +645,16 @@ def run_global_city_analysis_task(
                 )
 
                 if result is not None:
+                    now = utc_now()
+
                     result.status = "failed"
                     result.stage = "failed"
                     result.error_message = str(
                         error
                     )[:4000]
-                    result.completed_at = (
-                        datetime.now(timezone.utc)
-                    )
+                    result.last_heartbeat_at = now
+                    result.completed_at = now
+
                     session.commit()
 
                 refresh_batch_status(

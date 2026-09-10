@@ -67,6 +67,49 @@ def city_result_to_response(
         beneficial_weighted_days=(
             result.beneficial_weighted_days
         ),
+        completed_month_count=(
+            result.completed_month_count
+        ),
+        last_checkpoint_month=(
+            result.last_checkpoint_month
+        ),
+        resumed_from_checkpoint=(
+            result.resumed_from_checkpoint
+        ),
+        last_heartbeat_at=(
+            result.last_heartbeat_at
+        ),
+        skin_improvement_p50_c=(
+            result.skin_improvement_p50_c
+        ),
+        skin_improvement_p90_c=(
+            result.skin_improvement_p90_c
+        ),
+        skin_improvement_p95_c=(
+            result.skin_improvement_p95_c
+        ),
+        core_improvement_p50_c=(
+            result.core_improvement_p50_c
+        ),
+        core_improvement_p90_c=(
+            result.core_improvement_p90_c
+        ),
+        core_improvement_p95_c=(
+            result.core_improvement_p95_c
+        ),
+        heatwave_event_count=(
+            result.heatwave_event_count
+        ),
+        longest_heatwave_days=(
+            result.longest_heatwave_days
+        ),
+        heatwave_events=(
+            (
+                result.analytics_json or {}
+            ).get(
+                "heatwave_events"
+            )
+        ),
         retry_count=result.retry_count,
         monthly_results=result.monthly_json,
         error_message=result.error_message,

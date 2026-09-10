@@ -1,9 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
+
 import { useParams } from "next/navigation";
+
 import {
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
@@ -18,7 +21,10 @@ import {
 import type {
   GeoJsonFeatureCollection,
   GlobalBatchDetail,
+  GlobalCityResult,
+  HeatwaveEvent,
 } from "@/types/global-batch";
+
 
 const GlobalAdaptationMap = dynamic(
   () =>
@@ -29,7 +35,7 @@ const GlobalAdaptationMap = dynamic(
     ssr: false,
 
     loading: () => (
-      <div className="flex h-140 items-center justify-center rounded-2xl bg-slate-950 text-slate-400">
+      <div className="flex h-[35rem] items-center justify-center rounded-2xl bg-slate-950 text-slate-400">
         Loading global map...
       </div>
     ),
@@ -45,23 +51,36 @@ const terminalStatuses =
     "cancelled",
   ]);
 
+
 export default function GlobalBatchPage() {
   const parameters = useParams<{
     batchId: string;
   }>();
 
-  const [batch, setBatch] =
-    useState<GlobalBatchDetail | null>(
+  const [
+    batch,
+    setBatch,
+  ] = useState<GlobalBatchDetail | null>(
+    null,
+  );
+
+  const [
+    geoJson,
+    setGeoJson,
+  ] =
+    useState<GeoJsonFeatureCollection | null>(
       null,
     );
 
-  const [geoJson, setGeoJson] =
-    useState<
-      GeoJsonFeatureCollection | null
-    >(null);
+  const [
+    selectedCityId,
+    setSelectedCityId,
+  ] = useState<string | null>(null);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   const [
     pollingRevision,
@@ -79,8 +98,8 @@ export default function GlobalBatchPage() {
   ] = useState(false);
 
   useEffect(() => {
-    let timer: number | null = null;
     let disposed = false;
+    let timer: number | null = null;
 
     async function load() {
       try {
@@ -111,21 +130,18 @@ export default function GlobalBatchPage() {
           } catch (mapError) {
             if (!disposed) {
               setError(
-                mapError instanceof Error
-                  ? mapError.message
-                  : (
-                      "Unable to load " +
-                      "global map data"
-                    ),
+                getErrorMessage(
+                  mapError,
+                  "Unable to load global map data.",
+                ),
               );
             }
           }
-        } else if (!disposed) {
+        } else {
           setGeoJson(null);
         }
 
         if (
-          !disposed &&
           !terminalStatuses.has(
             response.status,
           )
@@ -141,17 +157,12 @@ export default function GlobalBatchPage() {
         }
 
         setError(
-          caughtError instanceof Error
-            ? caughtError.message
-            : (
-                "Unable to load the " +
-                "analysis batch"
-              ),
+          getErrorMessage(
+            caughtError,
+            "Unable to load the global analysis.",
+          ),
         );
 
-        /*
-         * 暫時性網路錯誤不應永久停止輪詢。
-         */
         timer = window.setTimeout(
           load,
           5000,
@@ -172,6 +183,81 @@ export default function GlobalBatchPage() {
     parameters.batchId,
     pollingRevision,
   ]);
+
+  const selectedCity = useMemo(() => {
+    if (!batch || !selectedCityId) {
+      return null;
+    }
+
+    return (
+      batch.city_results.find(
+        (result) =>
+          result.id === selectedCityId,
+      ) ?? null
+    );
+  }, [
+    batch,
+    selectedCityId,
+  ]);
+
+  const completedResults = useMemo(
+    () =>
+      batch?.city_results.filter(
+        (result) =>
+          result.status === "completed",
+      ) ?? [],
+    [batch],
+  );
+
+  const aggregateMetrics = useMemo(
+    () => ({
+      meanExposureCoverage:
+        calculateMean(
+          completedResults.map(
+            (result) =>
+              result
+                .exposure_coverage_percent,
+          ),
+        ),
+
+      meanAdaptationRate:
+        calculateMean(
+          completedResults.map(
+            (result) =>
+              result
+                .climate_adaptation_rate_percent,
+          ),
+        ),
+
+      meanSkinCooling:
+        calculateMean(
+          completedResults.map(
+            (result) =>
+              result
+                .annual_average_skin_improvement_c,
+          ),
+        ),
+
+      meanSkinP90:
+        calculateMean(
+          completedResults.map(
+            (result) =>
+              result
+                .skin_improvement_p90_c,
+          ),
+        ),
+
+      totalHeatwaveEvents:
+        completedResults.reduce(
+          (total, result) =>
+            total +
+            (result.heatwave_event_count ??
+              0),
+          0,
+        ),
+    }),
+    [completedResults],
+  );
 
   async function refreshBatch() {
     const updated =
@@ -213,12 +299,10 @@ export default function GlobalBatchPage() {
       await refreshBatch();
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : (
-              "Unable to cancel the " +
-              "analysis batch"
-            ),
+        getErrorMessage(
+          caughtError,
+          "Unable to cancel the analysis batch.",
+        ),
       );
     } finally {
       setIsCancelling(false);
@@ -240,21 +324,15 @@ export default function GlobalBatchPage() {
 
       await refreshBatch();
 
-      /*
-       * 原本的輪詢在 terminal status 時已停止。
-       * 增加 revision 重新啟動 useEffect 輪詢。
-       */
       setPollingRevision(
         (current) => current + 1,
       );
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : (
-              "Unable to retry failed " +
-              "cities"
-            ),
+        getErrorMessage(
+          caughtError,
+          "Unable to retry failed cities.",
+        ),
       );
     } finally {
       setIsRetrying(false);
@@ -291,22 +369,9 @@ export default function GlobalBatchPage() {
       batch.status === "failed"
     );
 
-  /*
-   * Stage 4.1 / 4.2 的既有批次可能沒有
-   * analysis_resolution 和 daily_stride_days。
-   * 在前端提供 fallback，維持舊資料相容性。
-   */
   const analysisResolution =
     batch.request.analysis_resolution ??
     "representative";
-
-  const sampleDaysPerMonth =
-    batch.request
-      .sample_days_per_month ?? 1;
-
-  const dailyStrideDays =
-    batch.request
-      .daily_stride_days ?? 1;
 
   const analysisResolutionLabel =
     analysisResolution === "daily"
@@ -315,56 +380,49 @@ export default function GlobalBatchPage() {
 
   const samplingLabel =
     analysisResolution === "daily"
-      ? (
-          dailyStrideDays === 1
-            ? "Every day"
-            : (
-                `Every ${dailyStrideDays} ` +
-                "days"
-              )
-        )
-      : (
-          `${sampleDaysPerMonth} ` +
-          (
-            sampleDaysPerMonth === 1
-              ? "day/month"
-              : "days/month"
-          )
-        );
+      ? `Every ${
+          batch.request.daily_stride_days ??
+          1
+        } day(s)`
+      : `${
+          batch.request
+            .sample_days_per_month ?? 1
+        } day(s) per month`;
 
-  const meanExposureCoverage =
-    readSummaryNumber(
-      batch.summary,
-      "mean_exposure_coverage_percent",
-    );
-
-  const meanAdaptationRate =
-    readSummaryNumber(
-      batch.summary,
-      "mean_climate_adaptation_rate_percent",
-    );
+  const heatwaveAvailable =
+    batch.request
+      .enable_heatwave_analysis &&
+    analysisResolution === "daily" &&
+    (
+      batch.request.daily_stride_days ??
+      1
+    ) === 1;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mx-auto max-w-[95rem] px-6 py-10">
         <header className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <p className="text-sm text-cyan-400">
-              Global Analysis Batch
+            <p className="text-sm font-medium text-cyan-400">
+              Stage 4.4 Global Analysis
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">
-              Global Climate Adaptation
-              Results
+              {batch.request.name}
             </h1>
 
-            <p className="mt-2 text-sm text-slate-400">
-              Batch ID: {batch.id}
+            <p className="mt-3 text-sm text-slate-400">
+              Batch ID:{" "}
+              <span className="font-mono text-slate-300">
+                {batch.id}
+              </span>
             </p>
 
             <p className="mt-1 text-sm text-slate-500">
-              Stage:{" "}
-              {formatStatus(batch.stage)}
+              Created{" "}
+              {formatDateTime(
+                batch.created_at,
+              )}
             </p>
           </div>
 
@@ -408,10 +466,10 @@ export default function GlobalBatchPage() {
           </div>
         </header>
 
-        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
           <Metric
             label="Status"
-            value={formatStatus(
+            value={formatLabel(
               batch.status,
             )}
           />
@@ -437,7 +495,14 @@ export default function GlobalBatchPage() {
           />
 
           <Metric
-            label="Analysis Resolution"
+            label="Cancelled Cities"
+            value={String(
+              batch.cancelled_city_count,
+            )}
+          />
+
+          <Metric
+            label="Resolution"
             value={
               analysisResolutionLabel
             }
@@ -446,6 +511,15 @@ export default function GlobalBatchPage() {
           <Metric
             label="Sampling"
             value={samplingLabel}
+          />
+
+          <Metric
+            label="Execution Profile"
+            value={formatLabel(
+              batch.request
+                .execution_profile ??
+                "auto",
+            )}
           />
         </section>
 
@@ -462,79 +536,115 @@ export default function GlobalBatchPage() {
           />
         </div>
 
-        {(meanExposureCoverage !== null ||
-          meanAdaptationRate !== null) && (
-          <section className="mt-6 grid gap-4 md:grid-cols-2">
-            <Metric
-              label="Mean Exposure Coverage"
-              value={formatNumber(
-                meanExposureCoverage,
-                "%",
-              )}
-            />
+        <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <Metric
+            label="Mean Exposure Coverage"
+            value={formatNumber(
+              aggregateMetrics
+                .meanExposureCoverage,
+              "%",
+            )}
+          />
 
-            <Metric
-              label="Mean Climate Adaptation Rate"
-              value={formatNumber(
-                meanAdaptationRate,
-                "%",
-              )}
-            />
-          </section>
-        )}
+          <Metric
+            label="Mean Adaptation Rate"
+            value={formatNumber(
+              aggregateMetrics
+                .meanAdaptationRate,
+              "%",
+            )}
+          />
+
+          <Metric
+            label="Mean Skin Cooling"
+            value={formatNumber(
+              aggregateMetrics
+                .meanSkinCooling,
+              " °C",
+            )}
+          />
+
+          <Metric
+            label="Mean P90 Skin Cooling"
+            value={formatNumber(
+              aggregateMetrics
+                .meanSkinP90,
+              " °C",
+            )}
+          />
+
+          <Metric
+            label="Detected Heatwaves"
+            value={
+              heatwaveAvailable
+                ? String(
+                    aggregateMetrics
+                      .totalHeatwaveEvents,
+                  )
+                : "Unavailable"
+            }
+          />
+        </section>
 
         {batch.error_message && (
           <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
             <p className="font-semibold">
-              Batch error
+              Batch Error
             </p>
 
-            <p className="mt-1 text-sm">
+            <p className="mt-2 text-sm">
               {batch.error_message}
             </p>
           </div>
         )}
 
-        {geoJson &&
-          geoJson.features.length > 0 && (
-            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-4">
-              <div className="mb-4">
-                <h2 className="text-xl font-semibold">
-                  Global Adaptation Map
-                </h2>
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
+            {error}
+          </div>
+        )}
 
-                <p className="mt-1 text-sm text-slate-400">
-                  Circle color represents
-                  climate adaptation rate.
-                  Grey circles have no
-                  qualifying heat-exposure
-                  samples.
-                </p>
-              </div>
+        <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <div className="mb-5">
+            <h2 className="text-xl font-semibold">
+              Global Adaptation Map
+            </h2>
 
-              <GlobalAdaptationMap
-                data={geoJson}
-              />
-            </section>
+            <p className="mt-2 text-sm text-slate-400">
+              Completed cities are colored by
+              climate adaptation rate.
+            </p>
+          </div>
+
+          {geoJson &&
+          geoJson.features.length > 0 ? (
+            <GlobalAdaptationMap
+              data={geoJson}
+            />
+          ) : (
+            <div className="flex h-80 items-center justify-center rounded-xl bg-slate-950 text-slate-500">
+              Map data will appear after at
+              least one city completes.
+            </div>
           )}
+        </section>
 
-        <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800">
-          <div className="border-b border-slate-800 bg-slate-900 px-5 py-4">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
+          <div className="border-b border-slate-800 p-5">
             <h2 className="text-xl font-semibold">
               City Results
             </h2>
 
-            <p className="mt-1 text-sm text-slate-400">
-              Exposure coverage shows how
-              much of the weighted sampling
-              period satisfied the configured
-              heat-exposure thresholds.
+            <p className="mt-2 text-sm text-slate-400">
+              Select a city to inspect monthly,
+              percentile, checkpoint, and
+              heatwave results.
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1150px] text-left">
-              <thead className="bg-slate-900 text-sm text-slate-400">
+            <table className="min-w-[90rem] w-full text-left text-sm">
+              <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-4">
                     City
@@ -545,23 +655,39 @@ export default function GlobalBatchPage() {
                   </th>
 
                   <th className="px-4 py-4">
-                    Exposure Coverage
+                    Checkpoint
                   </th>
 
                   <th className="px-4 py-4">
-                    Adaptation Rate
+                    Exposure
                   </th>
 
                   <th className="px-4 py-4">
-                    Average Skin Cooling
+                    Adaptation
                   </th>
 
                   <th className="px-4 py-4">
-                    Maximum Skin Cooling
+                    Mean Skin
+                  </th>
+
+                  <th className="px-4 py-4">
+                    P90 Skin
+                  </th>
+
+                  <th className="px-4 py-4">
+                    P95 Skin
+                  </th>
+
+                  <th className="px-4 py-4">
+                    Heatwaves
                   </th>
 
                   <th className="px-4 py-4">
                     Samples
+                  </th>
+
+                  <th className="px-4 py-4">
+                    Heartbeat
                   </th>
                 </tr>
               </thead>
@@ -569,172 +695,604 @@ export default function GlobalBatchPage() {
               <tbody>
                 {batch.city_results.map(
                   (result) => (
-                    <tr
+                    <CityResultRow
                       key={result.id}
-                      className="border-t border-slate-800 align-top"
-                    >
-                      <td className="px-4 py-4">
-                        <p className="font-medium">
-                          {result.city_name}
-                        </p>
-
-                        <p className="text-xs text-slate-500">
-                          {result.country}
-                        </p>
-
-                        {result.error_message && (
-                          <p className="mt-2 max-w-xs text-xs leading-5 text-red-400">
-                            {
-                              result.error_message
-                            }
-                          </p>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <StatusBadge
-                          status={
-                            result.status
-                          }
-                        />
-
-                        <div className="mt-2 text-xs text-slate-500">
-                          {result.progress}%
-                        </div>
-
-                        <div className="mt-1 max-w-44 break-words text-xs text-slate-600">
-                          {formatStatus(
-                            result.stage,
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-4">
-                        {formatNumber(
-                          result
-                            .exposure_coverage_percent,
-                          "%",
-                        )}
-
-                        {result
-                          .evaluated_weighted_days !==
-                          null && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {
-                              result
-                                .evaluated_weighted_days
-                            }{" "}
-                            weighted days
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4 text-cyan-300">
-                        {result
-                          .climate_adaptation_rate_percent ===
-                        null
-                          ? (
-                            <span className="text-slate-500">
-                              No qualifying
-                              exposure
-                            </span>
-                          )
-                          : formatNumber(
-                              result
-                                .climate_adaptation_rate_percent,
-                              "%",
-                            )}
-
-                        {result
-                          .beneficial_weighted_days !==
-                          null && (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {
-                              result
-                                .beneficial_weighted_days
-                            }{" "}
-                            beneficial days
-                          </div>
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4">
-                        {formatNumber(
-                          result
-                            .annual_average_skin_improvement_c,
-                          " °C",
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4">
-                        {formatNumber(
-                          result
-                            .maximum_skin_improvement_c,
-                          " °C",
-                        )}
-                      </td>
-
-                      <td className="px-4 py-4">
-                        <div>
-                          {
-                            result
-                              .eligible_sample_count ??
-                            0
-                          }
-                          {" / "}
-                          {
-                            result
-                              .sampled_day_count ??
-                            0
-                          }
-                        </div>
-
-                        <div className="mt-1 text-xs text-slate-500">
-                          Eligible / total
-                        </div>
-
-                        {result.retry_count >
-                          0 && (
-                          <div className="mt-2 text-xs text-amber-400">
-                            Retried{" "}
-                            {
-                              result.retry_count
-                            }
-                            {result.retry_count ===
-                            1
-                              ? " time"
-                              : " times"}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
+                      result={result}
+                      selected={
+                        selectedCityId ===
+                        result.id
+                      }
+                      onSelect={() =>
+                        setSelectedCityId(
+                          result.id,
+                        )
+                      }
+                    />
                   ),
-                )}
-
-                {batch.city_results.length ===
-                  0 && (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="px-4 py-10 text-center text-slate-500"
-                    >
-                      No city results are
-                      available.
-                    </td>
-                  </tr>
                 )}
               </tbody>
             </table>
           </div>
         </section>
 
-        {error && (
-          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-            {error}
-          </div>
+        {selectedCity && (
+          <CityDetailPanel
+            result={selectedCity}
+            heatwaveAvailable={
+              heatwaveAvailable
+            }
+            onClose={() =>
+              setSelectedCityId(null)
+            }
+          />
         )}
       </div>
     </main>
+  );
+}
+
+
+function CityResultRow({
+  result,
+  selected,
+  onSelect,
+}: {
+  result: GlobalCityResult;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <tr
+      className={[
+        "cursor-pointer border-t border-slate-800 align-top transition",
+        selected
+          ? "bg-cyan-950/50"
+          : "hover:bg-slate-800/50",
+      ].join(" ")}
+      onClick={onSelect}
+    >
+      <td className="px-4 py-4">
+        <p className="font-medium">
+          {result.city_name}
+        </p>
+
+        <p className="text-xs text-slate-500">
+          {result.country}
+        </p>
+
+        {result.error_message && (
+          <p className="mt-2 max-w-xs text-xs leading-5 text-red-400">
+            {result.error_message}
+          </p>
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        <StatusBadge
+          status={result.status}
+        />
+
+        <p className="mt-2 text-xs text-slate-500">
+          {result.progress}%
+        </p>
+
+        <p className="mt-1 max-w-44 break-words text-xs text-slate-600">
+          {formatLabel(result.stage)}
+        </p>
+      </td>
+
+      <td className="px-4 py-4">
+        <p>
+          {result.completed_month_count}{" "}
+          month(s)
+        </p>
+
+        <p className="mt-1 text-xs text-slate-500">
+          Last month:{" "}
+          {result.last_checkpoint_month ??
+            "—"}
+        </p>
+
+        {result.resumed_from_checkpoint && (
+          <span className="mt-2 inline-flex rounded-full border border-violet-800 bg-violet-950 px-2 py-1 text-xs text-violet-300">
+            Resumed
+          </span>
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        {formatNumber(
+          result.exposure_coverage_percent,
+          "%",
+        )}
+
+        {result.evaluated_weighted_days !==
+          null && (
+          <p className="mt-1 text-xs text-slate-500">
+            {
+              result.evaluated_weighted_days
+            }{" "}
+            weighted days
+          </p>
+        )}
+      </td>
+
+      <td className="px-4 py-4 text-cyan-300">
+        {result
+          .climate_adaptation_rate_percent ===
+        null ? (
+          <span className="text-slate-500">
+            No qualifying exposure
+          </span>
+        ) : (
+          formatNumber(
+            result
+              .climate_adaptation_rate_percent,
+            "%",
+          )
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        {formatNumber(
+          result
+            .annual_average_skin_improvement_c,
+          " °C",
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        {formatNumber(
+          result.skin_improvement_p90_c,
+          " °C",
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        {formatNumber(
+          result.skin_improvement_p95_c,
+          " °C",
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        {result.heatwave_event_count ??
+          "—"}
+
+        {result.longest_heatwave_days !==
+          null && (
+          <p className="mt-1 text-xs text-slate-500">
+            Longest:{" "}
+            {result.longest_heatwave_days}{" "}
+            days
+          </p>
+        )}
+      </td>
+
+      <td className="px-4 py-4">
+        {result.sampled_day_count ?? "—"}
+
+        {result.eligible_sample_count !==
+          null && (
+          <p className="mt-1 text-xs text-slate-500">
+            {
+              result.eligible_sample_count
+            }{" "}
+            eligible
+          </p>
+        )}
+      </td>
+
+      <td className="px-4 py-4 text-xs text-slate-400">
+        {formatDateTime(
+          result.last_heartbeat_at,
+        )}
+      </td>
+    </tr>
+  );
+}
+
+
+function CityDetailPanel({
+  result,
+  heatwaveAvailable,
+  onClose,
+}: {
+  result: GlobalCityResult;
+  heatwaveAvailable: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <section className="mt-8 rounded-2xl border border-cyan-900 bg-slate-900 p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-cyan-400">
+            City Analytics
+          </p>
+
+          <h2 className="mt-1 text-2xl font-semibold">
+            {result.city_name},{" "}
+            {result.country}
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            {result.latitude.toFixed(4)},{" "}
+            {result.longitude.toFixed(4)}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Metric
+          label="Skin Cooling P50"
+          value={formatNumber(
+            result.skin_improvement_p50_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Skin Cooling P90"
+          value={formatNumber(
+            result.skin_improvement_p90_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Skin Cooling P95"
+          value={formatNumber(
+            result.skin_improvement_p95_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Maximum Skin Cooling"
+          value={formatNumber(
+            result
+              .maximum_skin_improvement_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Core Cooling P50"
+          value={formatNumber(
+            result.core_improvement_p50_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Core Cooling P90"
+          value={formatNumber(
+            result.core_improvement_p90_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Core Cooling P95"
+          value={formatNumber(
+            result.core_improvement_p95_c,
+            " °C",
+          )}
+        />
+
+        <Metric
+          label="Effective Cooling"
+          value={formatNumber(
+            result.effective_cooling_hours,
+            " hours",
+          )}
+        />
+      </div>
+
+      <MonthlyResultsTable
+        result={result}
+      />
+
+      <HeatwaveResults
+        events={
+          result.heatwave_events ?? []
+        }
+        available={heatwaveAvailable}
+      />
+    </section>
+  );
+}
+
+
+function MonthlyResultsTable({
+  result,
+}: {
+  result: GlobalCityResult;
+}) {
+  const monthlyResults =
+    result.monthly_results ?? [];
+
+  return (
+    <div className="mt-8">
+      <h3 className="text-lg font-semibold">
+        Monthly Results
+      </h3>
+
+      {monthlyResults.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">
+          No monthly results are available.
+        </p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+          <table className="min-w-[70rem] w-full text-left text-sm">
+            <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">
+                  Month
+                </th>
+
+                <th className="px-4 py-3">
+                  Samples
+                </th>
+
+                <th className="px-4 py-3">
+                  Eligible
+                </th>
+
+                <th className="px-4 py-3">
+                  Exposure
+                </th>
+
+                <th className="px-4 py-3">
+                  Adaptation
+                </th>
+
+                <th className="px-4 py-3">
+                  Average Skin
+                </th>
+
+                <th className="px-4 py-3">
+                  Average Core
+                </th>
+
+                <th className="px-4 py-3">
+                  Maximum Skin
+                </th>
+
+                <th className="px-4 py-3">
+                  Weighted Days
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {monthlyResults.map(
+                (month) => (
+                  <tr
+                    key={month.month}
+                    className="border-t border-slate-800"
+                  >
+                    <td className="px-4 py-3 font-medium">
+                      {formatMonth(
+                        month.month,
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {
+                        month.sampled_day_count
+                      }
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {
+                        month.eligible_sample_count
+                      }
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        month
+                          .exposure_coverage_percent,
+                        "%",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3 text-cyan-300">
+                      {formatNumber(
+                        month
+                          .climate_adaptation_rate_percent,
+                        "%",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        month
+                          .average_skin_improvement_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        month
+                          .average_core_improvement_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        month
+                          .maximum_skin_improvement_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {
+                        month.evaluated_weighted_days
+                      }{" "}
+                      /{" "}
+                      {
+                        month.total_weighted_days
+                      }
+                    </td>
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function HeatwaveResults({
+  events,
+  available,
+}: {
+  events: HeatwaveEvent[];
+  available: boolean;
+}) {
+  return (
+    <div className="mt-8">
+      <h3 className="text-lg font-semibold">
+        Heatwave Events
+      </h3>
+
+      {!available ? (
+        <p className="mt-3 text-sm text-amber-300">
+          Heatwave analysis is unavailable for
+          this sampling configuration.
+        </p>
+      ) : events.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">
+          No qualifying heatwave event was
+          detected.
+        </p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+          <table className="min-w-[65rem] w-full text-left text-sm">
+            <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">
+                  Start
+                </th>
+
+                <th className="px-4 py-3">
+                  End
+                </th>
+
+                <th className="px-4 py-3">
+                  Duration
+                </th>
+
+                <th className="px-4 py-3">
+                  Mean Maximum Air
+                </th>
+
+                <th className="px-4 py-3">
+                  Peak Air
+                </th>
+
+                <th className="px-4 py-3">
+                  Mean Skin Cooling
+                </th>
+
+                <th className="px-4 py-3">
+                  P90 Skin Cooling
+                </th>
+
+                <th className="px-4 py-3">
+                  Beneficial Days
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {events.map(
+                (event, index) => (
+                  <tr
+                    key={
+                      `${event.start_date_local}-` +
+                      `${event.end_date_local}-` +
+                      index
+                    }
+                    className="border-t border-slate-800"
+                  >
+                    <td className="px-4 py-3">
+                      {formatDate(
+                        event.start_date_local,
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatDate(
+                        event.end_date_local,
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {event.duration_days} days
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        event
+                          .mean_maximum_air_temperature_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        event
+                          .peak_air_temperature_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        event
+                          .mean_skin_improvement_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {formatNumber(
+                        event
+                          .p90_skin_improvement_c,
+                        " °C",
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {
+                        event.beneficial_day_count
+                      }
+                    </td>
+                  </tr>
+                ),
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -752,7 +1310,7 @@ function Metric({
         {label}
       </p>
 
-      <p className="mt-2 text-xl font-semibold text-cyan-300">
+      <p className="mt-2 break-words text-xl font-semibold text-cyan-300">
         {value}
       </p>
     </div>
@@ -765,18 +1323,15 @@ function StatusBadge({
 }: {
   status: string;
 }) {
-  const colorClass =
-    getStatusColorClass(status);
-
   return (
     <span
       className={
         "inline-flex rounded-full border " +
         "px-2.5 py-1 text-xs font-medium " +
-        colorClass
+        getStatusColorClass(status)
       }
     >
-      {formatStatus(status)}
+      {formatLabel(status)}
     </span>
   );
 }
@@ -847,14 +1402,14 @@ function formatNumber(
 }
 
 
-function formatStatus(
-  status: string,
+function formatLabel(
+  value: string,
 ): string {
-  if (!status) {
+  if (!value) {
     return "—";
   }
 
-  return status
+  return value
     .split("_")
     .map(
       (word) =>
@@ -862,6 +1417,112 @@ function formatStatus(
         word.slice(1),
     )
     .join(" ");
+}
+
+
+function formatMonth(
+  month: number,
+): string {
+  if (
+    !Number.isInteger(month) ||
+    month < 1 ||
+    month > 12
+  ) {
+    return String(month);
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month: "long",
+      timeZone: "UTC",
+    },
+  ).format(
+    new Date(
+      Date.UTC(2023, month - 1, 1),
+    ),
+  );
+}
+
+
+function formatDate(
+  value: string | null,
+): string {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(date.getTime())
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    },
+  ).format(date);
+}
+
+
+function formatDateTime(
+  value: string | null,
+): string {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+
+  if (
+    Number.isNaN(date.getTime())
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    },
+  ).format(date);
+}
+
+
+function calculateMean(
+  values: Array<
+    number | null | undefined
+  >,
+): number | null {
+  const validValues = values.filter(
+    (value): value is number =>
+      value !== null &&
+      value !== undefined &&
+      Number.isFinite(value),
+  );
+
+  if (validValues.length === 0) {
+    return null;
+  }
+
+  return (
+    validValues.reduce(
+      (total, value) =>
+        total + value,
+      0,
+    ) / validValues.length
+  );
 }
 
 
@@ -879,33 +1540,11 @@ function clampProgress(
 }
 
 
-function readSummaryNumber(
-  summary: Record<
-    string,
-    unknown
-  > | null,
-  key: string,
-): number | null {
-  if (!summary) {
-    return null;
-  }
-
-  const value = summary[key];
-
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
-    return null;
-  }
-
-  const numericValue =
-    Number(value);
-
-  if (!Number.isFinite(numericValue)) {
-    return null;
-  }
-
-  return numericValue;
+function getErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  return error instanceof Error
+    ? error.message
+    : fallback;
 }
