@@ -1,5 +1,21 @@
 "use client";
+import Link from "next/link";
 
+// ... inside the component, before the main content:
+<div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
+  <Link
+    href="/global-analysis"
+    className="hover:text-slate-100"
+  >
+    Global Analysis
+  </Link>
+
+  <span>/</span>
+
+  <span className="text-slate-200">
+    Batch Result
+  </span>
+</div>
 import dynamic from "next/dynamic";
 
 import { useParams } from "next/navigation";
@@ -404,7 +420,7 @@ export default function GlobalBatchPage() {
         <header className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <p className="text-sm font-medium text-cyan-400">
-              Stage 4.4 Global Analysis
+              Global Analysis
             </p>
 
             <h1 className="mt-2 text-3xl font-bold">

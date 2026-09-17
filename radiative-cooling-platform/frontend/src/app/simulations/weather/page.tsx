@@ -19,7 +19,7 @@ import type {
 
 const initialRequest: WeatherSimulationRequest = {
   city_id: "dubai",
-  start_time_local: "2025-07-15T10:00",
+  start_time_local: "2026-07-15T10:00",
   duration_minutes: 120,
   output_interval_minutes: 1,
 

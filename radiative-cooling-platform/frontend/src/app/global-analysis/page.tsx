@@ -368,7 +368,7 @@ export default function GlobalAnalysisPage() {
       <div className="mx-auto max-w-7xl px-6 py-10">
         <header>
           <p className="text-sm font-medium text-cyan-400">
-            Stage 4.4 Global Analysis
+            Global Analysis
           </p>
 
           <h1 className="mt-2 text-3xl font-bold">

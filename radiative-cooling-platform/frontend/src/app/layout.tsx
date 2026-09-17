@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+
+import { NavBar } from "@/components/layout/NavBar";
+
 import "./globals.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -14,7 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Global Radiative Cooling Clothing Climate Adaptation Simulation Platform",
+  title:
+    "Global Radiative Cooling Clothing Climate Adaptation Simulation Platform",
   description:
     "A platform for evaluating radiative cooling clothing under global climate conditions.",
 };
@@ -29,12 +33,16 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-    <body
-      suppressHydrationWarning
-      className="min-h-full flex flex-col"
-    >
-      {children}
-    </body>
+      <body
+        suppressHydrationWarning
+        className="flex min-h-full flex-col"
+      >
+        <NavBar />
+
+        <main className="flex-1">
+          {children}
+        </main>
+      </body>
     </html>
   );
 }
