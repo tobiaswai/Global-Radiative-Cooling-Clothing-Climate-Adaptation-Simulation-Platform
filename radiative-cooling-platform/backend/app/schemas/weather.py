@@ -27,6 +27,27 @@ class WeatherPoint(BaseModel):
     dni_w_m2: float
 
 
+class WeatherGap(BaseModel):
+    """A break in the hourly timeline between two consecutive points."""
+
+    start: datetime
+    end: datetime
+    missing_steps: int = Field(ge=1)
+
+
+class WeatherQualityReport(BaseModel):
+    """Result of normalising a raw weather timeline (Stage 1, PR-1)."""
+
+    expected_step_seconds: int = Field(gt=0)
+    point_count: int = Field(ge=0)
+    first_timestamp: datetime | None = None
+    last_timestamp: datetime | None = None
+    was_sorted: bool = True
+    duplicates_removed: int = 0
+    gaps: list[WeatherGap] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
 class WeatherSourceMetadata(BaseModel):
     provider: str
     dataset: str
@@ -38,6 +59,10 @@ class WeatherSourceMetadata(BaseModel):
     downloaded_at: datetime
     from_cache: bool
     attribution: str
+
+    # Stage 1 additions. Optional so previously stored results still load.
+    payload_sha256: str | None = None
+    quality: WeatherQualityReport | None = None
 
 
 class WeatherTimeSeries(BaseModel):
@@ -54,15 +79,14 @@ class WeatherTimeSeries(BaseModel):
                 "Dynamic simulation requires at least two weather data points"
             )
 
-        timestamps = [
-            point.timestamp
-            for point in self.points
-        ]
+        timestamps = [point.timestamp for point in self.points]
 
-        if timestamps != sorted(timestamps):
-            raise ValueError(
-                "Weather time series must be sorted in ascending order"
-            )
+        for previous, current in zip(timestamps, timestamps[1:]):
+            if current <= previous:
+                raise ValueError(
+                    "Weather time series must be strictly increasing in time "
+                    "(sorted, no duplicate timestamps)"
+                )
 
         return self
 

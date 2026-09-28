@@ -67,46 +67,26 @@ class PersonInput(BaseModel):
 
 class MaterialInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
-    clothing_insulation_clo: float = Field(
-        default=0.5,
-        ge=0,
-        le=5,
-    )
-    solar_reflectance: float = Field(
-        default=0.5,
-        ge=0,
-        le=1,
-    )
-    solar_transmittance: float = Field(
-        default=0,
-        ge=0,
-        le=1,
-    )
-    infrared_emissivity: float = Field(
-        default=0.9,
-        ge=0,
-        le=1,
-    )
-    projected_solar_area_factor: float = Field(
-        default=0.25,
-        ge=0,
-        le=1,
-    )
-    absorbed_solar_to_body_fraction: float = Field(
-        default=0.35,
-        ge=0,
-        le=1,
-    )
+    clothing_insulation_clo: float = Field(default=0.5, ge=0, le=5)
+    solar_reflectance: float = Field(default=0.5, ge=0, le=1)
+    solar_transmittance: float = Field(default=0, ge=0, le=1)
+    infrared_emissivity: float = Field(default=0.9, ge=0, le=1)
+    projected_solar_area_factor: float = Field(default=0.25, ge=0, le=1)
+    absorbed_solar_to_body_fraction: float = Field(default=0.35, ge=0, le=1)
+
+    # Stage 1 provenance (optional, no effect on the physics yet).
+    # Stage 2 will add evaporative_resistance_m2pa_w and infrared_transmittance.
+    material_version_id: str | None = None
+    source_type: str | None = Field(default=None, max_length=50)
+    source_reference: str | None = None
 
     @model_validator(mode="after")
     def validate_optical_properties(self):
         total = self.solar_reflectance + self.solar_transmittance
-
         if total > 1.0 + 1e-6:
             raise ValueError(
-                "solar_reflectance + solar_transmittance Cannot be greater than 1"
+                "solar_reflectance + solar_transmittance cannot be greater than 1"
             )
-
         return self
 
 

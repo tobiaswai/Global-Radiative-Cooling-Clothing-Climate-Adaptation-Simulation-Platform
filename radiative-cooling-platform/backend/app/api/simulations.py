@@ -23,6 +23,8 @@ from app.services.two_node import simulate_material
 from app.api.routes import simulation_events
 from app.api.routes import simulation_jobs
 
+from app.services.weather_quality import WeatherDataError
+
 router = APIRouter(
     prefix="/api/v1/simulations",
     tags=["simulations"],
@@ -158,6 +160,11 @@ async def run_weather_simulation(
                 material=request.rc_material,
             )
         )
+    except WeatherDataError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=error.to_detail(),
+        ) from error
     except ValueError as error:
         raise HTTPException(
             status_code=422,

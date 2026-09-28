@@ -549,7 +549,10 @@ def simulate_material_with_weather(
     )
 
     duration_seconds = duration_minutes * 60.0
-
+    
+    # Fail before solving if the requested duration exceeds the weather data.
+    interpolator.ensure_covers(0.0, duration_seconds)
+    
     output_times = np.arange(
         0.0,
         duration_seconds + 0.1,

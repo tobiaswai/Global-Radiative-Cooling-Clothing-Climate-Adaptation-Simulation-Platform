@@ -29,6 +29,14 @@ from redis.asyncio import Redis
 
 from app.core.config import settings
 
+from app.services.weather_quality import (
+    DEFAULT_STEP_SECONDS,
+    WeatherInsufficientCoverageError,
+    ensure_window_covered,
+    normalize_timeline,
+    payload_sha256,
+)
+
 OPEN_METEO_ARCHIVE_URL = (
     "https://archive-api.open-meteo.com/v1/archive"
 )
@@ -458,7 +466,15 @@ async def get_historical_weather_range(
     start_time_local: datetime,
     end_time_local: datetime,
     padding_hours: int = 1,
+    require_window_coverage: bool = True,
 ) -> WeatherTimeSeries:
+    """Fetch, normalise and validate an ERA5 series for a local time range.
+
+    ``require_window_coverage=True`` (default) rejects any response that does
+    not fully bracket ``[start, end]`` or that has a gap inside it. Callers
+    that prefetch a long range and slice it later (monthly analysis) pass
+    ``False``; each slice then enforces coverage for its own window.
+    """
     start_time = normalize_local_datetime(
         start_time_local,
         city.timezone,
@@ -471,19 +487,13 @@ async def get_historical_weather_range(
 
     if end_time <= start_time:
         raise ValueError(
-            "end_time_local must be after "
-            "start_time_local"
+            "end_time_local must be after start_time_local"
         )
 
     validate_archive_date(end_time)
 
-    query_start = start_time - timedelta(
-        hours=padding_hours
-    )
-
-    query_end = end_time + timedelta(
-        hours=padding_hours
-    )
+    query_start = start_time - timedelta(hours=padding_hours)
+    query_end = end_time + timedelta(hours=padding_hours)
 
     params = build_request_params(
         city=city,
@@ -491,27 +501,31 @@ async def get_historical_weather_range(
         end_date=query_end.date(),
     )
 
-    payload, from_cache = await request_open_meteo(
-        params
-    )
+    payload, from_cache = await request_open_meteo(params)
 
-    all_points = parse_weather_points(
-        payload,
-        city,
-    )
+    raw_points = parse_weather_points(payload, city)
+
+    cleaned_points, quality = normalize_timeline(raw_points)
 
     selected_points = [
         point
-        for point in all_points
-        if query_start
-        <= point.timestamp
-        <= query_end
+        for point in cleaned_points
+        if query_start <= point.timestamp <= query_end
     ]
 
-    if len(selected_points) < 2:
-        raise RuntimeError(
-            "Open-Meteo response is missing "
-            "weather time points"
+    if require_window_coverage:
+        ensure_window_covered(
+            selected_points,
+            window_start=start_time,
+            window_end=end_time,
+            step_seconds=quality.expected_step_seconds,
+            label=f"Open-Meteo weather for {city.name}",
+        )
+    elif len(selected_points) < 2:
+        raise WeatherInsufficientCoverageError(
+            f"Open-Meteo returned fewer than two weather points for "
+            f"{city.name} between {query_start.isoformat()} and "
+            f"{query_end.isoformat()}"
         )
 
     return WeatherTimeSeries(
@@ -523,39 +537,20 @@ async def get_historical_weather_range(
             provider="Open-Meteo",
             dataset="Historical Weather API",
             model="ERA5",
-            latitude=float(
-                payload.get(
-                    "latitude",
-                    city.latitude,
-                )
-            ),
-            longitude=float(
-                payload.get(
-                    "longitude",
-                    city.longitude,
-                )
-            ),
-            elevation_m=float(
-                payload.get(
-                    "elevation",
-                    city.elevation_m,
-                )
-            ),
-            timezone=payload.get(
-                "timezone",
-                city.timezone,
-            ),
-            downloaded_at=datetime.now(
-                timezone.utc
-            ),
+            latitude=float(payload.get("latitude", city.latitude)),
+            longitude=float(payload.get("longitude", city.longitude)),
+            elevation_m=float(payload.get("elevation", city.elevation_m)),
+            timezone=payload.get("timezone", city.timezone),
+            downloaded_at=datetime.now(timezone.utc),
             from_cache=from_cache,
             attribution=(
                 "Weather data by Open-Meteo.com; "
                 "underlying reanalysis: ERA5."
             ),
+            payload_sha256=payload_sha256(payload),
+            quality=quality,
         ),
     )
-
 
 def slice_weather_time_series(
     *,
@@ -564,37 +559,36 @@ def slice_weather_time_series(
     duration_minutes: int,
     padding_hours: int = 1,
 ) -> WeatherTimeSeries:
+    """Cut a padded sub-series and enforce coverage of the exposure window."""
     start_time = normalize_local_datetime(
         start_time_local,
         weather.city.timezone,
     )
 
-    end_time = start_time + timedelta(
-        minutes=duration_minutes
-    )
+    end_time = start_time + timedelta(minutes=duration_minutes)
 
-    query_start = start_time - timedelta(
-        hours=padding_hours
-    )
-
-    query_end = end_time + timedelta(
-        hours=padding_hours
-    )
+    query_start = start_time - timedelta(hours=padding_hours)
+    query_end = end_time + timedelta(hours=padding_hours)
 
     selected_points = [
         point
         for point in weather.points
-        if query_start
-        <= point.timestamp
-        <= query_end
+        if query_start <= point.timestamp <= query_end
     ]
 
-    if len(selected_points) < 2:
-        raise RuntimeError(
-            "Prefetched weather does not cover "
-            f"{start_time.isoformat()} to "
-            f"{end_time.isoformat()}"
-        )
+    step_seconds = (
+        weather.source.quality.expected_step_seconds
+        if weather.source.quality is not None
+        else DEFAULT_STEP_SECONDS
+    )
+
+    ensure_window_covered(
+        selected_points,
+        window_start=start_time,
+        window_end=end_time,
+        step_seconds=step_seconds,
+        label="Prefetched weather",
+    )
 
     return WeatherTimeSeries(
         city=weather.city,

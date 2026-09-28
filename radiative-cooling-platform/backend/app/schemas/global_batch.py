@@ -214,7 +214,14 @@ class DailyAdaptationResult(BaseModel):
 
     weather_from_cache: bool
 
+class SkippedSample(BaseModel):
+    """A planned sample day that could not be simulated for data reasons."""
 
+    sample_date_local: datetime
+    weight_days: int = Field(ge=1)
+    reason_code: str
+    message: str
+    
 class MonthlyAdaptationResult(BaseModel):
     month: int = Field(ge=1, le=12)
 
@@ -232,9 +239,12 @@ class MonthlyAdaptationResult(BaseModel):
     average_core_improvement_c: float | None = None
     maximum_skin_improvement_c: float | None = None
 
-    samples: list[DailyAdaptationResult] = Field(
-        default_factory=list
-    )
+    samples: list[DailyAdaptationResult] = Field(default_factory=list)
+
+    # Stage 1: samples skipped because of weather data problems.
+    # Defaults keep previously stored checkpoints loadable.
+    skipped_samples: list[SkippedSample] = Field(default_factory=list)
+    skipped_weighted_days: int = 0
 
     # Stage 4.1 backward compatibility.
     representative_date_local: datetime | None = None
@@ -304,6 +314,9 @@ class GlobalCityResultResponse(BaseModel):
     longest_heatwave_days: int | None = None
     heatwave_events: list[HeatwaveEvent] | None = None
 
+    data_quality: dict | None = None
+    metric_definitions: dict | None = None
+    
     retry_count: int
     monthly_results: list[MonthlyAdaptationResult] | None
 

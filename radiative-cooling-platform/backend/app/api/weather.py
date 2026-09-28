@@ -12,6 +12,7 @@ from app.services.weather import (
     get_historical_weather,
 )
 
+from app.services.weather_quality import WeatherDataError
 
 router = APIRouter(
     prefix="/api/v1/weather",
@@ -51,6 +52,11 @@ async def weather_history(
             start_time_local=start_time_local,
             duration_minutes=duration_minutes,
         )
+    except WeatherDataError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=error.to_detail(),
+        ) from error
     except ValueError as error:
         raise HTTPException(
             status_code=422,

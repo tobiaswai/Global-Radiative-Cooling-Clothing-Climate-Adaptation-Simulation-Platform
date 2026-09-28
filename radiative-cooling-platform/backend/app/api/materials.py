@@ -353,6 +353,9 @@ def material_version_to_simulation_input(
         absorbed_solar_to_body_fraction=(
             version.absorbed_solar_to_body_fraction
         ),
+        material_version_id=version.id,
+        source_type=version.source_type,
+        source_reference=version.source_reference,
     )
 
 
