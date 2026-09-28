@@ -1,0 +1,13 @@
+{
+  "cell_selection": "land",
+  "elevation": 16.0,
+  "end_date": "2023-07-15",
+  "hourly": "temperature_2m,relative_humidity_2m,wind_speed_10m,shortwave_radiation,direct_radiation,diffuse_radiation,direct_normal_irradiance",
+  "latitude": 25.2048,
+  "longitude": 55.2708,
+  "models": "era5",
+  "start_date": "2023-07-15",
+  "temperature_unit": "celsius",
+  "timezone": "Asia/Dubai",
+  "wind_speed_unit": "ms"
+}

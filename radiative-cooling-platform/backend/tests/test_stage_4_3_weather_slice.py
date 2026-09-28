@@ -127,19 +127,3 @@ def test_slice_fails_when_range_not_covered():
             start_time_local=datetime(2023, 8, 1, 12),
             duration_minutes=120,
         )
-    weather = make_weather()
-
-    with pytest.raises(
-        RuntimeError,
-        match="does not cover",
-    ):
-        slice_weather_time_series(
-            weather=weather,
-            start_time_local=datetime(
-                2023,
-                8,
-                1,
-                12,
-            ),
-            duration_minutes=120,
-        )

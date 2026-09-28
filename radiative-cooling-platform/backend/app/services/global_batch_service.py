@@ -116,10 +116,8 @@ def city_result_to_response(
         error_message=result.error_message,
         started_at=result.started_at,
         completed_at=result.completed_at,
-        heatwave_events=analytics.get("heatwave_events"),
         data_quality=analytics.get("data_quality"),
         metric_definitions=analytics.get("metric_definitions"),
-        retry_count=result.retry_count,
     )
 
 

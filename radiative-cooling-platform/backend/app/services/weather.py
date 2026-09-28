@@ -507,21 +507,22 @@ async def get_historical_weather_range(
 
     cleaned_points, quality = normalize_timeline(raw_points)
 
+    if require_window_coverage:
+        ensure_window_covered(
+            cleaned_points,
+            window_start=start_time,
+            window_end=end_time,
+            step_seconds=quality.expected_step_seconds,
+            label=f"Open-Meteo weather for {city.name}",
+        )
+
     selected_points = [
         point
         for point in cleaned_points
         if query_start <= point.timestamp <= query_end
     ]
 
-    if require_window_coverage:
-        ensure_window_covered(
-            selected_points,
-            window_start=start_time,
-            window_end=end_time,
-            step_seconds=quality.expected_step_seconds,
-            label=f"Open-Meteo weather for {city.name}",
-        )
-    elif len(selected_points) < 2:
+    if not require_window_coverage and len(selected_points) < 2:
         raise WeatherInsufficientCoverageError(
             f"Open-Meteo returned fewer than two weather points for "
             f"{city.name} between {query_start.isoformat()} and "
@@ -567,6 +568,21 @@ def slice_weather_time_series(
 
     end_time = start_time + timedelta(minutes=duration_minutes)
 
+    step_seconds = (
+        weather.source.quality.expected_step_seconds
+        if weather.source.quality is not None
+        else DEFAULT_STEP_SECONDS
+    )
+    # Validate against the FULL prefetched series first, so that a window
+    # outside the data reports "does not cover" rather than "fewer than two".
+    ensure_window_covered(
+        weather.points,
+        window_start=start_time,
+        window_end=end_time,
+        step_seconds=step_seconds,
+        label="Prefetched weather",
+    )
+
     query_start = start_time - timedelta(hours=padding_hours)
     query_end = end_time + timedelta(hours=padding_hours)
 
@@ -575,20 +591,6 @@ def slice_weather_time_series(
         for point in weather.points
         if query_start <= point.timestamp <= query_end
     ]
-
-    step_seconds = (
-        weather.source.quality.expected_step_seconds
-        if weather.source.quality is not None
-        else DEFAULT_STEP_SECONDS
-    )
-
-    ensure_window_covered(
-        selected_points,
-        window_start=start_time,
-        window_end=end_time,
-        step_seconds=step_seconds,
-        label="Prefetched weather",
-    )
 
     return WeatherTimeSeries(
         city=weather.city,

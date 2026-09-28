@@ -1,0 +1,158 @@
+{
+  "city": "Dubai",
+  "control": [
+    {
+      "core_temperature_c": 36.8,
+      "minute": 0.0,
+      "skin_temperature_c": 33.7
+    },
+    {
+      "core_temperature_c": 36.9378,
+      "minute": 10.0,
+      "skin_temperature_c": 34.9941
+    },
+    {
+      "core_temperature_c": 37.0189,
+      "minute": 20.0,
+      "skin_temperature_c": 35.468
+    },
+    {
+      "core_temperature_c": 37.0956,
+      "minute": 30.0,
+      "skin_temperature_c": 35.8114
+    },
+    {
+      "core_temperature_c": 37.1735,
+      "minute": 40.0,
+      "skin_temperature_c": 36.046
+    },
+    {
+      "core_temperature_c": 37.2501,
+      "minute": 50.0,
+      "skin_temperature_c": 36.225
+    },
+    {
+      "core_temperature_c": 37.3319,
+      "minute": 60.0,
+      "skin_temperature_c": 36.3316
+    },
+    {
+      "core_temperature_c": 37.4152,
+      "minute": 70.0,
+      "skin_temperature_c": 36.4095
+    },
+    {
+      "core_temperature_c": 37.4963,
+      "minute": 80.0,
+      "skin_temperature_c": 36.4815
+    },
+    {
+      "core_temperature_c": 37.5751,
+      "minute": 90.0,
+      "skin_temperature_c": 36.5511
+    },
+    {
+      "core_temperature_c": 37.6514,
+      "minute": 100.0,
+      "skin_temperature_c": 36.6189
+    },
+    {
+      "core_temperature_c": 37.7256,
+      "minute": 110.0,
+      "skin_temperature_c": 36.685
+    },
+    {
+      "core_temperature_c": 37.7977,
+      "minute": 120.0,
+      "skin_temperature_c": 36.7494
+    }
+  ],
+  "duration_minutes": 120,
+  "model_version": "0.4.0",
+  "radiative_cooling": [
+    {
+      "core_temperature_c": 36.8,
+      "minute": 0.0,
+      "skin_temperature_c": 33.7
+    },
+    {
+      "core_temperature_c": 36.9401,
+      "minute": 10.0,
+      "skin_temperature_c": 34.8061
+    },
+    {
+      "core_temperature_c": 37.0085,
+      "minute": 20.0,
+      "skin_temperature_c": 34.9772
+    },
+    {
+      "core_temperature_c": 37.0486,
+      "minute": 30.0,
+      "skin_temperature_c": 35.0289
+    },
+    {
+      "core_temperature_c": 37.0722,
+      "minute": 40.0,
+      "skin_temperature_c": 35.0583
+    },
+    {
+      "core_temperature_c": 37.0861,
+      "minute": 50.0,
+      "skin_temperature_c": 35.082
+    },
+    {
+      "core_temperature_c": 37.0955,
+      "minute": 60.0,
+      "skin_temperature_c": 35.1339
+    },
+    {
+      "core_temperature_c": 37.1036,
+      "minute": 70.0,
+      "skin_temperature_c": 35.1925
+    },
+    {
+      "core_temperature_c": 37.1111,
+      "minute": 80.0,
+      "skin_temperature_c": 35.2464
+    },
+    {
+      "core_temperature_c": 37.1185,
+      "minute": 90.0,
+      "skin_temperature_c": 35.2961
+    },
+    {
+      "core_temperature_c": 37.1258,
+      "minute": 100.0,
+      "skin_temperature_c": 35.3428
+    },
+    {
+      "core_temperature_c": 37.1331,
+      "minute": 110.0,
+      "skin_temperature_c": 35.3872
+    },
+    {
+      "core_temperature_c": 37.1406,
+      "minute": 120.0,
+      "skin_temperature_c": 35.4301
+    }
+  ],
+  "summary": {
+    "average_skin_temperature_improvement_c": 0.9531,
+    "final_core_temperature_improvement_c": 0.6571,
+    "final_skin_temperature_improvement_c": 1.3193
+  },
+  "weather": {
+    "payload_sha256": "b568200999e8bc079896b86d451e3c82213682d90698ef1f846100fcc863f9d3",
+    "point_count": 5,
+    "quality": {
+      "duplicates_removed": 0,
+      "expected_step_seconds": 3600,
+      "first_timestamp": "2023-07-15T00:00:00+04:00",
+      "gaps": [],
+      "last_timestamp": "2023-07-15T23:00:00+04:00",
+      "notes": [],
+      "point_count": 24,
+      "was_sorted": true
+    }
+  }
+}
