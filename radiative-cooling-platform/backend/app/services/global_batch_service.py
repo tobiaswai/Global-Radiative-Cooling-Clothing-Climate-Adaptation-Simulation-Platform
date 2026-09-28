@@ -27,6 +27,7 @@ TERMINAL_CITY_STATUSES = {
 def city_result_to_response(
     result: GlobalCityResult,
 ) -> GlobalCityResultResponse:
+    analytics = result.analytics_json or {}
     return GlobalCityResultResponse(
         id=result.id,
         batch_id=result.batch_id,
@@ -115,6 +116,10 @@ def city_result_to_response(
         error_message=result.error_message,
         started_at=result.started_at,
         completed_at=result.completed_at,
+        heatwave_events=analytics.get("heatwave_events"),
+        data_quality=analytics.get("data_quality"),
+        metric_definitions=analytics.get("metric_definitions"),
+        retry_count=result.retry_count,
     )
 
 

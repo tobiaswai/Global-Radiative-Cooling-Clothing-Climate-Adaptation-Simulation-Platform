@@ -565,14 +565,14 @@ def run_global_city_analysis_task(
             result.longest_heatwave_days = analysis[
                 "longest_heatwave_days"
             ]
-
+            
             result.analytics_json = {
                 "heatwave_analysis_available": analysis[
                     "heatwave_analysis_available"
                 ],
-                "heatwave_events": analysis[
-                    "heatwave_events"
-                ],
+                "heatwave_events": analysis["heatwave_events"],
+                "data_quality": analysis["data_quality"],
+                "metric_definitions": analysis["metric_definitions"],
             }
 
             result.monthly_json = analysis[

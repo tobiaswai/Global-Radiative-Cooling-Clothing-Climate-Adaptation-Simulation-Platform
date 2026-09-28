@@ -16,6 +16,8 @@ from app.services.weather import (
     slice_weather_time_series,
 )
 
+from app.services.weather_quality import WeatherInsufficientCoverageError
+
 
 def make_weather() -> WeatherTimeSeries:
     start = datetime(
@@ -114,6 +116,17 @@ def test_slice_weather_includes_padding():
 
 @pytest.mark.unit
 def test_slice_fails_when_range_not_covered():
+    weather = make_weather()
+
+    with pytest.raises(
+        WeatherInsufficientCoverageError,
+        match="does not cover",
+    ):
+        slice_weather_time_series(
+            weather=weather,
+            start_time_local=datetime(2023, 8, 1, 12),
+            duration_minutes=120,
+        )
     weather = make_weather()
 
     with pytest.raises(

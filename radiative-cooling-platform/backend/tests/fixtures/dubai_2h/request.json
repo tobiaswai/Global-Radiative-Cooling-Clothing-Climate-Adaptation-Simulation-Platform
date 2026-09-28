@@ -1,0 +1,30 @@
+{
+  "city_id": "dubai",
+  "start_time_local": "2023-07-15T12:00:00",
+  "duration_minutes": 120,
+  "output_interval_minutes": 10,
+  "person": {
+    "met": 2.6,
+    "body_surface_area_m2": 1.8,
+    "initial_core_temperature_c": 36.8,
+    "initial_skin_temperature_c": 33.7
+  },
+  "control_material": {
+    "name": "Control",
+    "clothing_insulation_clo": 0.5,
+    "solar_reflectance": 0.4,
+    "solar_transmittance": 0.0,
+    "infrared_emissivity": 0.8,
+    "projected_solar_area_factor": 0.25,
+    "absorbed_solar_to_body_fraction": 0.35
+  },
+  "rc_material": {
+    "name": "Radiative Cooling",
+    "clothing_insulation_clo": 0.4,
+    "solar_reflectance": 0.92,
+    "solar_transmittance": 0.0,
+    "infrared_emissivity": 0.95,
+    "projected_solar_area_factor": 0.25,
+    "absorbed_solar_to_body_fraction": 0.35
+  }
+}

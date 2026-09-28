@@ -225,26 +225,42 @@ def test_mean_radiant_temperature_increase_is_capped():
         == pytest.approx(45.0)
     )
 
+from app.services.weather_interpolation import (
+    InterpolationOutOfRangeError,
+    WeatherInterpolator,
+)
+from app.services.weather_quality import WeatherInsufficientCoverageError
+
 
 @pytest.mark.unit
-def test_interpolation_after_last_point_uses_last_value(
+def test_interpolation_outside_range_raises(weather_series):
+    interpolator = WeatherInterpolator.from_series(weather_series)
+
+    with pytest.raises(InterpolationOutOfRangeError):
+        interpolator.environment_at(24 * 60 * 60)
+
+    with pytest.raises(InterpolationOutOfRangeError):
+        interpolator.environment_at(-2 * 60 * 60)
+
+
+@pytest.mark.unit
+def test_interpolation_at_exact_boundaries_is_allowed(weather_series):
+    interpolator = WeatherInterpolator.from_series(weather_series)
+
+    first = interpolator.environment_at(-3600)   # 09:00 point
+    last = interpolator.environment_at(7200)     # 12:00 point
+
+    assert first.air_temperature_c == pytest.approx(36.0)
+    assert last.air_temperature_c == pytest.approx(42.0)
+
+
+@pytest.mark.unit
+def test_from_series_rejects_series_not_covering_requested_window(
     weather_series,
 ):
-    interpolator = (
-        WeatherInterpolator.from_series(
-            weather_series
-        )
+    truncated = weather_series.model_copy(
+        update={"points": weather_series.points[:-1]}  # ends 11:00, needs 12:00
     )
 
-    environment = interpolator.environment_at(
-        24 * 60 * 60
-    )
-
-    assert (
-        environment.air_temperature_c
-        == pytest.approx(42.0)
-    )
-    assert (
-        environment.wind_speed_m_s
-        == pytest.approx(4.0)
-    )
+    with pytest.raises(WeatherInsufficientCoverageError):
+        WeatherInterpolator.from_series(truncated)
