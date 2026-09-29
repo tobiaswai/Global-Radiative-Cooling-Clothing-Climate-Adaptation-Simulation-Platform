@@ -1,27 +1,21 @@
 from fastapi import APIRouter, HTTPException
 
+from app.api.routes import simulation_events, simulation_jobs
 from app.core.cities import get_city
-from app.schemas.simulation import (
-    WeatherSimulationRequest,
-    WeatherSimulationResponse,
-)
-from app.services.two_node import (
-    simulate_material,
-    simulate_material_with_weather,
-)
-from app.services.weather import (
-    get_historical_weather,
-)
-
 from app.schemas.simulation import (
     SimulationRequest,
     SimulationResponse,
     SimulationSummary,
+    WeatherSimulationRequest,
+    WeatherSimulationResponse,
 )
+from app.services.model_parameters import build_model_metadata
 from app.services.two_node import simulate_material
-
-from app.api.routes import simulation_events
-from app.api.routes import simulation_jobs
+from app.services.weather import get_historical_weather
+from app.services.weather_quality import WeatherDataError
+from app.services.weather_simulation import (
+    execute_weather_simulation_with_weather,
+)
 
 from app.services.weather_quality import WeatherDataError
 
@@ -106,13 +100,14 @@ def run_simulation(
             ),
         ),
         warning=(
-                    "These results are from a simplified transient prototype "
-                    "and have not yet been validated using thermal dolls, human trials, "
-                    "or JOS-3 benchmarks. They are not suitable for medical, occupational safety, "
-                    "or product certification purposes."
+            "These results are from a simplified transient prototype "
+            "and have not yet been validated using thermal manikins, human "
+            "trials, or JOS-3 benchmarks. They are not suitable for medical, "
+            "occupational safety, or product certification purposes."
         ),
+        model_metadata=build_model_metadata(),
     )
-    
+
 @router.post(
     "/run-weather",
     response_model=WeatherSimulationResponse,
@@ -125,41 +120,19 @@ async def run_weather_simulation(
 
         weather = await get_historical_weather(
             city=city,
-            start_time_local=(
-                request.start_time_local
-            ),
-            duration_minutes=(
-                request.duration_minutes
-            ),
+            start_time_local=request.start_time_local,
+            duration_minutes=request.duration_minutes,
         )
 
-        control_result = (
-            simulate_material_with_weather(
-                duration_minutes=(
-                    request.duration_minutes
-                ),
-                output_interval_minutes=(
-                    request.output_interval_minutes
-                ),
-                weather=weather,
-                person=request.person,
-                material=request.control_material,
-            )
+        # Stage 2: the service owns environment assumptions, model version,
+        # model metadata and the environment note, so the synchronous
+        # endpoint and the Celery job path produce identical responses.
+        return execute_weather_simulation_with_weather(
+            request=request,
+            weather=weather,
+            city_name=city.name,
         )
 
-        rc_result = (
-            simulate_material_with_weather(
-                duration_minutes=(
-                    request.duration_minutes
-                ),
-                output_interval_minutes=(
-                    request.output_interval_minutes
-                ),
-                weather=weather,
-                person=request.person,
-                material=request.rc_material,
-            )
-        )
     except WeatherDataError as error:
         raise HTTPException(
             status_code=422,
@@ -175,60 +148,6 @@ async def run_weather_simulation(
             status_code=502,
             detail=str(error),
         ) from error
-
-    control_average = sum(
-        point.skin_temperature_c
-        for point in control_result.time_series
-    ) / len(control_result.time_series)
-
-    rc_average = sum(
-        point.skin_temperature_c
-        for point in rc_result.time_series
-    ) / len(rc_result.time_series)
-
-    return WeatherSimulationResponse(
-        model_name=(
-            "Weather-driven transient "
-            "two-node prototype"
-        ),
-        model_version="0.3.0",
-        city=city.name,
-        duration_minutes=request.duration_minutes,
-        control=control_result,
-        radiative_cooling=rc_result,
-        summary=SimulationSummary(
-            final_skin_temperature_improvement_c=round(
-                control_result
-                .final_skin_temperature_c
-                - rc_result
-                .final_skin_temperature_c,
-                4,
-            ),
-            final_core_temperature_improvement_c=round(
-                control_result
-                .final_core_temperature_c
-                - rc_result
-                .final_core_temperature_c,
-                4,
-            ),
-            average_skin_temperature_improvement_c=round(
-                control_average - rc_average,
-                4,
-            ),
-        ),
-        warning=(
-            "These results are from a simplified transient prototype "
-            "and have not yet been validated using thermal dolls, human trials, "
-            "or JOS-3 benchmarks. They are not suitable for medical, "
-            "occupational safety, or product certification purposes."
-        ),
-        weather=weather,
-        environment_model_note=(
-            "Air temperature, humidity, wind speed, and shortwave radiation are from ERA5;"
-            "the average radiative temperature and effective sky temperature are currently "
-            "estimated using empirical formulas."
-        ),
-    )
 
 import asyncio
 import json

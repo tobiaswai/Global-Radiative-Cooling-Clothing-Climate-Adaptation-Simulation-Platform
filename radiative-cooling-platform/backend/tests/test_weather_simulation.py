@@ -75,7 +75,8 @@ async def test_execute_weather_simulation(
     get_city_calls = []
     weather_calls = []
     simulation_calls = []
-
+    assumption_calls = []
+    
     def fake_get_city(city_id):
         get_city_calls.append(city_id)
         return city
@@ -106,9 +107,11 @@ async def test_execute_weather_simulation(
         weather,
         person,
         material,
+        assumptions=None,
     ):
         simulation_calls.append(material.name)
-
+        assumption_calls.append(assumptions)
+        
         if material.name == control_material.name:
             return control_result
 
@@ -162,6 +165,11 @@ async def test_execute_weather_simulation(
         rc_material.name,
     ]
 
+    assert assumption_calls == [
+        request.environment_assumptions,
+        request.environment_assumptions,
+    ]
+    
     assert progress_events == [
         (10, "downloading_weather"),
         (

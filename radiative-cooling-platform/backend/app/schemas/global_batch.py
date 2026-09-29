@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+from app.schemas.environment import EnvironmentAssumptions
 
 from pydantic import (
     BaseModel,
@@ -161,6 +162,9 @@ class GlobalBatchCreate(BaseModel):
     person: PersonInput
     control_material: MaterialInput
     rc_material: MaterialInput
+    environment_assumptions: EnvironmentAssumptions = Field(
+        default_factory=EnvironmentAssumptions
+    )
 
     @model_validator(mode="after")
     def validate_request(self) -> "GlobalBatchCreate":

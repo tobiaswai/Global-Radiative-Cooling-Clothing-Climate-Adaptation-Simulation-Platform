@@ -4,6 +4,12 @@ from datetime import datetime
 
 from app.schemas.weather import WeatherTimeSeries
 
+from app.schemas.environment import EnvironmentAssumptions
+
+from app.schemas.provenance import ModelMetadata, ParameterSource
+
+from typing import Literal
+
 class EnvironmentInput(BaseModel):
     air_temperature_c: float = Field(
         default=38.0,
@@ -64,29 +70,68 @@ class PersonInput(BaseModel):
         le=40,
     )
 
+MATERIAL_PHYSICAL_FIELDS = frozenset(
+    {
+        "clothing_insulation_clo",
+        "evaporative_resistance_m2pa_w",
+        "solar_reflectance",
+        "solar_transmittance",
+        "infrared_emissivity",
+        "infrared_transmittance",
+        "projected_solar_area_factor",
+        "absorbed_solar_to_body_fraction",
+    }
+)
 
 class MaterialInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
+
     clothing_insulation_clo: float = Field(default=0.5, ge=0, le=5)
+
+    # Stage 2. Intrinsic clothing evaporative resistance Re,cl.
+    # None -> derived from clo (clothing.derive_evaporative_resistance_m2pa_w)
+    # and reported in ScenarioResult.assumptions_applied.
+    evaporative_resistance_m2pa_w: float | None = Field(
+        default=None, ge=0, le=1000
+    )
+
     solar_reflectance: float = Field(default=0.5, ge=0, le=1)
     solar_transmittance: float = Field(default=0, ge=0, le=1)
     infrared_emissivity: float = Field(default=0.9, ge=0, le=1)
+
+    # Stage 2. Longwave transmittance of the textile (IR-transparent designs).
+    infrared_transmittance: float = Field(default=0.0, ge=0, le=1)
+
     projected_solar_area_factor: float = Field(default=0.25, ge=0, le=1)
     absorbed_solar_to_body_fraction: float = Field(default=0.35, ge=0, le=1)
 
-    # Stage 1 provenance (optional, no effect on the physics yet).
-    # Stage 2 will add evaporative_resistance_m2pa_w and infrared_transmittance.
+    # Provenance (no effect on the physics).
     material_version_id: str | None = None
     source_type: str | None = Field(default=None, max_length=50)
     source_reference: str | None = None
+    # Stage 2. Per-parameter provenance keyed by field name.
+    parameter_sources: dict[str, ParameterSource] | None = None
 
     @model_validator(mode="after")
     def validate_optical_properties(self):
-        total = self.solar_reflectance + self.solar_transmittance
-        if total > 1.0 + 1e-6:
+        if self.solar_reflectance + self.solar_transmittance > 1.0 + 1e-6:
             raise ValueError(
                 "solar_reflectance + solar_transmittance cannot be greater than 1"
             )
+
+        if self.infrared_emissivity + self.infrared_transmittance > 1.0 + 1e-6:
+            raise ValueError(
+                "infrared_emissivity + infrared_transmittance cannot be greater than 1"
+            )
+
+        if self.parameter_sources:
+            unknown = set(self.parameter_sources) - MATERIAL_PHYSICAL_FIELDS
+            if unknown:
+                raise ValueError(
+                    "parameter_sources refers to unknown material fields: "
+                    + ", ".join(sorted(unknown))
+                )
+
         return self
 
 
@@ -125,7 +170,17 @@ class TimeSeriesPoint(BaseModel):
     evaporation_w_m2: float
     absorbed_solar_w_m2: float
     core_to_skin_w_m2: float
+    # Stage 2 diagnostics. Optional so stored results still load.
+    maximum_evaporation_w_m2: float | None = None
+    skin_wettedness: float | None = None
 
+class ClothingSummary(BaseModel):
+    """Resolved clothing resistances actually used by the solver."""
+
+    dry_resistance_m2k_w: float
+    evaporative_resistance_m2pa_w: float
+    evaporative_resistance_source: Literal["material_input", "derived_from_clo"]
+    infrared_transmittance: float
 
 class ScenarioResult(BaseModel):
     material_name: str
@@ -135,6 +190,9 @@ class ScenarioResult(BaseModel):
     peak_core_temperature_c: float
     peak_skin_temperature_c: float
     diagnostics: EnergyDiagnostics
+    # Stage 2
+    clothing: ClothingSummary | None = None
+    assumptions_applied: list[str] = Field(default_factory=list)
 
 
 class SimulationSummary(BaseModel):
@@ -152,7 +210,8 @@ class SimulationResponse(BaseModel):
     radiative_cooling: ScenarioResult
     summary: SimulationSummary
     warning: str
-    
+    # Stage 2. Optional so previously stored results still load.
+    model_metadata: ModelMetadata | None = None
 
     
 class GaggeBenchmarkRequest(BaseModel):
@@ -213,10 +272,13 @@ class WeatherSimulationRequest(BaseModel):
     person: PersonInput
     control_material: MaterialInput
     rc_material: MaterialInput
-
+    environment_assumptions: EnvironmentAssumptions = Field(
+        default_factory=EnvironmentAssumptions
+    )
 
 class WeatherSimulationResponse(
     SimulationResponse
 ):
     weather: WeatherTimeSeries
     environment_model_note: str
+    environment_assumptions: EnvironmentAssumptions | None = None

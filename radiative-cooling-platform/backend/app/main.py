@@ -45,6 +45,7 @@ configure_runtime(
 )
 
 from app.api.router import api_router  
+from app.api.model import router as model_router
 
 app = FastAPI(
     title=(
@@ -76,7 +77,7 @@ app.include_router(weather_router)
 app.include_router(materials_router)
 app.include_router(global_batches_router)
 app.include_router(api_router)
-
+app.include_router(model_router)
 
 @app.get("/api/v1/health")
 def health_check():

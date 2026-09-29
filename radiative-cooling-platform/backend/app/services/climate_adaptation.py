@@ -353,6 +353,7 @@ async def analyze_city_climate_adaptation(
                     person=request.person,
                     control_material=request.control_material,
                     rc_material=request.rc_material,
+                    environment_assumptions=request.environment_assumptions,
                 )
 
                 simulation = execute_weather_simulation_with_weather(

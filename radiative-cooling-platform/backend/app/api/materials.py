@@ -62,6 +62,11 @@ def load_material(
         .where(Material.id == material_id)
     )
 
+def version_column_values(request: MaterialVersionCreate) -> dict:
+    """Map the API payload to MaterialVersion column names."""
+    values = request.model_dump(mode="json")
+    values["parameter_sources_json"] = values.pop("parameter_sources")
+    return values
 
 @router.post(
     "",
@@ -81,7 +86,7 @@ def create_material(
 
     version = MaterialVersion(
         version_number=1,
-        **request.initial_version.model_dump(),
+        **version_column_values(request.initial_version),
     )
 
     material.versions.append(version)
@@ -292,7 +297,7 @@ def create_material_version(
     version = MaterialVersion(
         material_id=material_id,
         version_number=latest_version + 1,
-        **request.model_dump(),
+        **version_column_values(request),
     )
 
     session.add(version)
@@ -304,58 +309,31 @@ def create_material_version(
     )
 
 
-@router.get(
-    "/versions/{version_id}/simulation-input",
-    response_model=MaterialInput,
-)
-def material_version_to_simulation_input(
-    version_id: str,
-    session: Session = Depends(get_db),
-) -> MaterialInput:
+@router.get("/versions/{version_id}/simulation-input", response_model=MaterialInput)
+def material_version_to_simulation_input(version_id: str, session: Session = Depends(get_db)) -> MaterialInput:
     version = session.scalar(
         select(MaterialVersion)
-        .options(
-            selectinload(
-                MaterialVersion.material
-            )
-        )
-        .where(
-            MaterialVersion.id == version_id
-        )
+        .options(selectinload(MaterialVersion.material))
+        .where(MaterialVersion.id == version_id)
     )
-
+    
     if version is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Material version not found",
-        )
+        raise HTTPException(status_code=404, detail="Material version not found")
 
     return MaterialInput(
-        name=(
-            f"{version.material.name} "
-            f"v{version.version_number}"
-        ),
-        clothing_insulation_clo=(
-            version.clothing_insulation_clo
-        ),
-        solar_reflectance=(
-            version.solar_reflectance
-        ),
-        solar_transmittance=(
-            version.solar_transmittance
-        ),
-        infrared_emissivity=(
-            version.infrared_emissivity
-        ),
-        projected_solar_area_factor=(
-            version.projected_solar_area_factor
-        ),
-        absorbed_solar_to_body_fraction=(
-            version.absorbed_solar_to_body_fraction
-        ),
+        name=f"{version.material.name} v{version.version_number}",
+        clothing_insulation_clo=version.clothing_insulation_clo,
+        evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
+        solar_reflectance=version.solar_reflectance,
+        solar_transmittance=version.solar_transmittance,
+        infrared_emissivity=version.infrared_emissivity,
+        infrared_transmittance=version.infrared_transmittance,
+        projected_solar_area_factor=version.projected_solar_area_factor,
+        absorbed_solar_to_body_fraction=version.absorbed_solar_to_body_fraction,
         material_version_id=version.id,
         source_type=version.source_type,
         source_reference=version.source_reference,
+        parameter_sources=version.parameter_sources_json,
     )
 
 
@@ -515,3 +493,4 @@ def get_material_spectrum(
         ),
         points=spectrum.points_json,
     )
+

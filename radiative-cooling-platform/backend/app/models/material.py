@@ -233,6 +233,12 @@ class MaterialVersion(Base):
         cascade="all, delete-orphan",
     )
 
+    # Stage 2: per-parameter provenance, keyed by MaterialInput field name.
+    parameter_sources_json: Mapped[dict | None] = mapped_column(
+        JSONB,
+        nullable=True,
+    )
+
 
 class MaterialSpectrum(Base):
     __tablename__ = "material_spectra"

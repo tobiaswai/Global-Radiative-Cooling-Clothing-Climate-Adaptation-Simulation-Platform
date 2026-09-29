@@ -7,68 +7,121 @@
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 36.9378,
+      "core_temperature_c": 36.9379,
       "minute": 10.0,
-      "skin_temperature_c": 34.9941
+      "skin_temperature_c": 34.9716
     },
     {
-      "core_temperature_c": 37.0189,
+      "core_temperature_c": 37.0113,
       "minute": 20.0,
-      "skin_temperature_c": 35.468
+      "skin_temperature_c": 35.1433
     },
     {
-      "core_temperature_c": 37.0956,
+      "core_temperature_c": 37.0564,
       "minute": 30.0,
-      "skin_temperature_c": 35.8114
+      "skin_temperature_c": 35.1971
     },
     {
-      "core_temperature_c": 37.1735,
+      "core_temperature_c": 37.086,
       "minute": 40.0,
-      "skin_temperature_c": 36.046
+      "skin_temperature_c": 35.2977
     },
     {
-      "core_temperature_c": 37.2501,
+      "core_temperature_c": 37.1099,
       "minute": 50.0,
-      "skin_temperature_c": 36.225
+      "skin_temperature_c": 35.4135
     },
     {
-      "core_temperature_c": 37.3319,
+      "core_temperature_c": 37.1321,
       "minute": 60.0,
-      "skin_temperature_c": 36.3316
+      "skin_temperature_c": 35.519
     },
     {
-      "core_temperature_c": 37.4152,
+      "core_temperature_c": 37.1533,
       "minute": 70.0,
-      "skin_temperature_c": 36.4095
+      "skin_temperature_c": 35.6062
     },
     {
-      "core_temperature_c": 37.4963,
+      "core_temperature_c": 37.1733,
       "minute": 80.0,
-      "skin_temperature_c": 36.4815
+      "skin_temperature_c": 35.6777
     },
     {
-      "core_temperature_c": 37.5751,
+      "core_temperature_c": 37.1919,
       "minute": 90.0,
-      "skin_temperature_c": 36.5511
+      "skin_temperature_c": 35.7401
     },
     {
-      "core_temperature_c": 37.6514,
+      "core_temperature_c": 37.2096,
       "minute": 100.0,
-      "skin_temperature_c": 36.6189
+      "skin_temperature_c": 35.7961
     },
     {
-      "core_temperature_c": 37.7256,
+      "core_temperature_c": 37.2264,
       "minute": 110.0,
-      "skin_temperature_c": 36.685
+      "skin_temperature_c": 35.8474
     },
     {
-      "core_temperature_c": 37.7977,
+      "core_temperature_c": 37.2426,
       "minute": 120.0,
-      "skin_temperature_c": 36.7494
+      "skin_temperature_c": 35.8951
     }
   ],
   "duration_minutes": 120,
-  "model_version": "0.4.0",
+  "model_version": "0.5.0",
+  "parameter_fingerprint": "9e691f502d7c347e6231ffd12907cee422ff8a374b7c62c3a404d7f222ff3257",
+  "parameter_snapshot": {
+    "environment_assumptions": {
+      "fixed_sky_offset_k": 15.0,
+      "mean_radiant_temperature_method": "air_plus_solar_linear",
+      "sky_offset_base_k": 5.0,
+      "sky_offset_humidity_range_k": 10.0,
+      "sky_temperature_method": "humidity_offset",
+      "sky_view_factor": 0.5,
+      "solar_mrt_gain_cap_k": 15.0,
+      "solar_mrt_gain_k_per_w_m2": 0.012,
+      "wind_speed_scaling_factor": 1.0
+    },
+    "model_parameter_set_sha256": "ebc0c64245c3d751ef4bc00bdb0f3bd4b2b8ed696842009f770e5ec4e6603e71",
+    "model_parameter_set_version": "2.0.0",
+    "model_parameters": {
+      "blood_heat_capacity_per_flow": 1.163,
+      "clo_to_si": 0.155,
+      "clothing_vapor_permeation_efficiency": 0.45,
+      "core_heat_capacity": 245000.0,
+      "core_setpoint_temperature": 36.8,
+      "core_skin_conductance_basal": 5.28,
+      "exhaled_air_temperature": 34.0,
+      "fallback_sky_temperature_offset": 15.0,
+      "forced_convection_coefficient": 8.3,
+      "latent_heat_of_sweat": 0.68,
+      "lewis_relation": 16.5,
+      "linearized_radiative_coefficient": 5.5,
+      "magnus_a": 0.61078,
+      "magnus_b": 17.2694,
+      "magnus_c": 237.3,
+      "maximum_sweat_rate": 500.0,
+      "metabolic_rate_per_met": 58.15,
+      "natural_convection_minimum_coefficient": 3.1,
+      "respiratory_latent_coefficient": 1.7e-05,
+      "respiratory_reference_vapor_pressure": 5867.0,
+      "respiratory_sensible_coefficient": 0.0014,
+      "skin_blood_flow_basal": 6.3,
+      "skin_blood_flow_core_gain": 75.0,
+      "skin_blood_flow_maximum": 90.0,
+      "skin_blood_flow_minimum": 0.5,
+      "skin_blood_flow_skin_gain": 20.0,
+      "skin_diffusion_fraction": 0.06,
+      "skin_emissivity": 0.95,
+      "skin_heat_capacity": 35000.0,
+      "skin_setpoint_temperature": 33.7,
+      "stefan_boltzmann_constant": 5.670374419e-08,
+      "sweating_gain_core": 170.0,
+      "sweating_gain_skin": 200.0,
+      "swinbank_coefficient": 0.0552
+    },
+    "schema_version": 1
+  },
   "radiative_cooling": [
     {
       "core_temperature_c": 36.8,
@@ -76,70 +129,70 @@
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 36.9401,
+      "core_temperature_c": 36.9404,
       "minute": 10.0,
-      "skin_temperature_c": 34.8061
+      "skin_temperature_c": 34.7869
     },
     {
-      "core_temperature_c": 37.0085,
+      "core_temperature_c": 37.0084,
       "minute": 20.0,
-      "skin_temperature_c": 34.9772
+      "skin_temperature_c": 34.9578
     },
     {
-      "core_temperature_c": 37.0486,
+      "core_temperature_c": 37.048,
       "minute": 30.0,
-      "skin_temperature_c": 35.0289
+      "skin_temperature_c": 35.0098
     },
     {
-      "core_temperature_c": 37.0722,
+      "core_temperature_c": 37.0711,
       "minute": 40.0,
-      "skin_temperature_c": 35.0583
+      "skin_temperature_c": 35.0394
     },
     {
-      "core_temperature_c": 37.0861,
+      "core_temperature_c": 37.0848,
       "minute": 50.0,
-      "skin_temperature_c": 35.082
+      "skin_temperature_c": 35.0592
     },
     {
-      "core_temperature_c": 37.0955,
+      "core_temperature_c": 37.093,
       "minute": 60.0,
-      "skin_temperature_c": 35.1339
+      "skin_temperature_c": 35.0735
     },
     {
-      "core_temperature_c": 37.1036,
+      "core_temperature_c": 37.098,
       "minute": 70.0,
-      "skin_temperature_c": 35.1925
+      "skin_temperature_c": 35.0832
     },
     {
-      "core_temperature_c": 37.1111,
+      "core_temperature_c": 37.1012,
       "minute": 80.0,
-      "skin_temperature_c": 35.2464
+      "skin_temperature_c": 35.0903
     },
     {
-      "core_temperature_c": 37.1185,
+      "core_temperature_c": 37.1032,
       "minute": 90.0,
-      "skin_temperature_c": 35.2961
+      "skin_temperature_c": 35.0962
     },
     {
-      "core_temperature_c": 37.1258,
+      "core_temperature_c": 37.1046,
       "minute": 100.0,
-      "skin_temperature_c": 35.3428
+      "skin_temperature_c": 35.1014
     },
     {
-      "core_temperature_c": 37.1331,
+      "core_temperature_c": 37.1056,
       "minute": 110.0,
-      "skin_temperature_c": 35.3872
+      "skin_temperature_c": 35.1061
     },
     {
-      "core_temperature_c": 37.1406,
+      "core_temperature_c": 37.1064,
       "minute": 120.0,
-      "skin_temperature_c": 35.4301
+      "skin_temperature_c": 35.1105
     }
   ],
   "summary": {
-    "average_skin_temperature_improvement_c": 0.9531,
-    "final_core_temperature_improvement_c": 0.6571,
-    "final_skin_temperature_improvement_c": 1.3193
+    "average_skin_temperature_improvement_c": 0.43,
+    "final_core_temperature_improvement_c": 0.1362,
+    "final_skin_temperature_improvement_c": 0.7846
   },
   "weather": {
     "payload_sha256": "b568200999e8bc079896b86d451e3c82213682d90698ef1f846100fcc863f9d3",

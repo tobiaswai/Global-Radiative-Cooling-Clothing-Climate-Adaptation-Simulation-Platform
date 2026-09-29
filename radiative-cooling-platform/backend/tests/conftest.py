@@ -10,6 +10,13 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import get_settings
 from app.core.runtime import configure_runtime
 
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+from app.schemas.weather import (
+    CityResponse, WeatherPoint, WeatherSourceMetadata, WeatherTimeSeries,
+)
+
 
 _test_settings = get_settings()
 
@@ -156,4 +163,46 @@ def simulation_request(
         person=person,
         control_material=control_material,
         rc_material=rc_material,
+    )
+
+@pytest.fixture
+def hourly_weather() -> WeatherTimeSeries:
+    """Five hourly points 11:00-15:00 Asia/Dubai; exposure 12:00-14:00."""
+    tz = ZoneInfo("Asia/Dubai")
+    start = datetime(2023, 7, 15, 12, tzinfo=tz)
+
+    temperatures = [41.8, 43.4, 44.2, 44.9, 44.7]
+    humidities = [29.0, 26.0, 25.0, 24.0, 24.0]
+    winds = [6.17, 5.11, 4.32, 3.69, 3.62]
+    ghis = [807.0, 901.0, 929.0, 892.0, 789.0]
+
+    points = [
+        WeatherPoint(
+            timestamp=start + timedelta(hours=i - 1),
+            air_temperature_c=temperatures[i],
+            relative_humidity_percent=humidities[i],
+            wind_speed_m_s=winds[i],
+            ghi_w_m2=ghis[i],
+            direct_radiation_w_m2=ghis[i] * 0.75,
+            diffuse_radiation_w_m2=ghis[i] * 0.25,
+            dni_w_m2=ghis[i] * 0.8,
+        )
+        for i in range(5)
+    ]
+
+    return WeatherTimeSeries(
+        city=CityResponse(
+            id="dubai", name="Dubai", country="United Arab Emirates",
+            latitude=25.2048, longitude=55.2708, elevation_m=16.0,
+            timezone="Asia/Dubai", climate_type="hot_dry",
+        ),
+        requested_start_time=start,
+        requested_end_time=start + timedelta(hours=2),
+        points=points,
+        source=WeatherSourceMetadata(
+            provider="test", dataset="test", model="test",
+            latitude=25.2, longitude=55.3, elevation_m=16.0,
+            timezone="Asia/Dubai", downloaded_at=start,
+            from_cache=True, attribution="test",
+        ),
     )

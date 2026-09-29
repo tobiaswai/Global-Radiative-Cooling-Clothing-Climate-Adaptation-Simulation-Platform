@@ -1,17 +1,30 @@
+"""Two-node transient human thermal model.
+
+Stage 2 changes
+---------------
+* Evaporation is limited by an explicit clothing evaporative resistance
+  (``MaterialInput.evaporative_resistance_m2pa_w``). If the material does not
+  supply one it is derived from clo (see ``clothing.py``) and reported in
+  ``ScenarioResult.assumptions_applied``.
+* ``infrared_transmittance`` participates in the longwave term: transmitted
+  skin emission bypasses the clothing coupling factor (first-order model).
+* Every numeric constant is bound from ``model_parameters`` (unit + source).
+* Fixed-environment and weather-driven runs share ``_integrate``; the
+  weather-driven path takes explicit ``EnvironmentAssumptions``.
+"""
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from math import exp, sqrt
 
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from app.schemas.weather import WeatherTimeSeries
-from app.services.weather_interpolation import (
-    WeatherInterpolator,
-)
-
+from app.schemas.environment import EnvironmentAssumptions
 from app.schemas.simulation import (
+    ClothingSummary,
     EnergyDiagnostics,
     EnvironmentInput,
     MaterialInput,
@@ -19,13 +32,58 @@ from app.schemas.simulation import (
     ScenarioResult,
     TimeSeriesPoint,
 )
+from app.schemas.weather import WeatherTimeSeries
+from app.services.clothing import (
+    ClothingResistances,
+    assumptions_applied,
+    maximum_evaporation_w_m2,
+    resolve_clothing,
+)
+from app.services.model_parameters import get_parameter_value as _param
+from app.services.weather_interpolation import WeatherInterpolator
 
 
-SIGMA = 5.670374419e-8
+# Bound once at import. The registry is the single source of truth.
+SIGMA = _param("stefan_boltzmann_constant")
+CORE_HEAT_CAPACITY = _param("core_heat_capacity")
+SKIN_HEAT_CAPACITY = _param("skin_heat_capacity")
+NATURAL_CONVECTION_MINIMUM = _param("natural_convection_minimum_coefficient")
+FORCED_CONVECTION_COEFFICIENT = _param("forced_convection_coefficient")
+LINEARIZED_RADIATIVE_COEFFICIENT = _param("linearized_radiative_coefficient")
+SKIN_EMISSIVITY = _param("skin_emissivity")
+CORE_SETPOINT = _param("core_setpoint_temperature")
+SKIN_SETPOINT = _param("skin_setpoint_temperature")
+SWEATING_GAIN_CORE = _param("sweating_gain_core")
+SWEATING_GAIN_SKIN = _param("sweating_gain_skin")
+MAXIMUM_SWEAT_RATE = _param("maximum_sweat_rate")
+LATENT_HEAT_PER_GRAM_HOUR = _param("latent_heat_of_sweat")
+SKIN_DIFFUSION_FRACTION = _param("skin_diffusion_fraction")
+SKIN_BLOOD_FLOW_BASAL = _param("skin_blood_flow_basal")
+SKIN_BLOOD_FLOW_CORE_GAIN = _param("skin_blood_flow_core_gain")
+SKIN_BLOOD_FLOW_SKIN_GAIN = _param("skin_blood_flow_skin_gain")
+SKIN_BLOOD_FLOW_MINIMUM = _param("skin_blood_flow_minimum")
+SKIN_BLOOD_FLOW_MAXIMUM = _param("skin_blood_flow_maximum")
+CORE_SKIN_CONDUCTANCE_BASAL = _param("core_skin_conductance_basal")
+BLOOD_HEAT_CAPACITY_PER_FLOW = _param("blood_heat_capacity_per_flow")
+METABOLIC_RATE_PER_MET = _param("metabolic_rate_per_met")
+RESPIRATORY_LATENT_COEFFICIENT = _param("respiratory_latent_coefficient")
+RESPIRATORY_REFERENCE_PRESSURE = _param("respiratory_reference_vapor_pressure")
+RESPIRATORY_SENSIBLE_COEFFICIENT = _param("respiratory_sensible_coefficient")
+EXHALED_AIR_TEMPERATURE = _param("exhaled_air_temperature")
+FALLBACK_SKY_OFFSET = _param("fallback_sky_temperature_offset")
+MAGNUS_A = _param("magnus_a")
+MAGNUS_B = _param("magnus_b")
+MAGNUS_C = _param("magnus_c")
 
-# 人體核心與皮膚的面積歸一化有效熱容量，J/(m²·K)
-CORE_HEAT_CAPACITY = 245_000.0
-SKIN_HEAT_CAPACITY = 35_000.0
+KELVIN_OFFSET = 273.15
+
+# Numerical (not physical) settings.
+SOLVER_METHOD = "RK45"
+SOLVER_RTOL = 1e-6
+SOLVER_ATOL = 1e-8
+SOLVER_MAX_STEP_SECONDS = 60.0
+
+EnvironmentAt = Callable[[float], EnvironmentInput]
 
 
 @dataclass
@@ -33,10 +91,24 @@ class HeatFluxes:
     convection: float
     longwave_radiation: float
     evaporation: float
+    maximum_evaporation: float
+    skin_wettedness: float
     absorbed_solar: float
     core_to_skin: float
     respiration: float
     metabolism: float
+
+    @property
+    def net_body_gain(self) -> float:
+        """Whole-body net heat gain; core_to_skin is internal and cancels."""
+        return (
+            self.metabolism
+            - self.respiration
+            + self.absorbed_solar
+            - self.convection
+            - self.longwave_radiation
+            - self.evaporation
+        )
 
 
 def clamp(value: float, lower: float, upper: float) -> float:
@@ -44,13 +116,7 @@ def clamp(value: float, lower: float, upper: float) -> float:
 
 
 def saturation_vapor_pressure_kpa(temperature_c: float) -> float:
-    """
-    Magnus 型近似飽和水汽壓，單位 kPa。
-    """
-    return 0.61078 * exp(
-        17.2694 * temperature_c
-        / (temperature_c + 237.3)
-    )
+    return MAGNUS_A * exp(MAGNUS_B * temperature_c / (temperature_c + MAGNUS_C))
 
 
 def calculate_fluxes(
@@ -59,34 +125,27 @@ def calculate_fluxes(
     environment: EnvironmentInput,
     person: PersonInput,
     material: MaterialInput,
+    clothing: ClothingResistances | None = None,
 ) -> HeatFluxes:
+    if clothing is None:
+        clothing = resolve_clothing(material)
+
     air_temperature_c = environment.air_temperature_c
-    radiant_temperature_c = (
-        environment.mean_radiant_temperature_c
-    )
 
     sky_temperature_c = environment.sky_temperature_c
     if sky_temperature_c is None:
-        sky_temperature_c = air_temperature_c - 15.0
+        sky_temperature_c = air_temperature_c - FALLBACK_SKY_OFFSET
 
-    relative_humidity = (
-        environment.relative_humidity_percent / 100.0
-    )
-    wind_speed = environment.wind_speed_m_s
-
-    clothing_resistance = (
-        0.155 * material.clothing_insulation_clo
+    # --- convection ---------------------------------------------------------
+    convection_coefficient = max(
+        NATURAL_CONVECTION_MINIMUM,
+        FORCED_CONVECTION_COEFFICIENT * sqrt(max(environment.wind_speed_m_s, 0.0)),
     )
 
-    # 強制對流與自然對流中取較大者
-    forced_convection = 8.3 * sqrt(max(wind_speed, 0.0))
-    convection_coefficient = max(3.1, forced_convection)
-
-    # 服裝熱阻造成皮膚熱量傳到外表面的衰減
     clothing_coupling = 1.0 / (
         1.0
-        + clothing_resistance
-        * (convection_coefficient + 5.5)
+        + clothing.dry_resistance_m2k_w
+        * (convection_coefficient + LINEARIZED_RADIATIVE_COEFFICIENT)
     )
 
     convection = (
@@ -95,43 +154,31 @@ def calculate_fluxes(
         * clothing_coupling
     )
 
-    skin_temperature_k = skin_temperature_c + 273.15
-    sky_temperature_k = sky_temperature_c + 273.15
-    radiant_temperature_k = radiant_temperature_c + 273.15
+    # --- longwave radiation -------------------------------------------------
+    skin_k = skin_temperature_c + KELVIN_OFFSET
+    sky_k = sky_temperature_c + KELVIN_OFFSET
+    radiant_k = environment.mean_radiant_temperature_c + KELVIN_OFFSET
 
     sky_view_factor = environment.sky_view_factor
-    surroundings_view_factor = 1.0 - sky_view_factor
 
-    sky_radiation = (
-        sky_view_factor
-        * SIGMA
-        * (
-            skin_temperature_k**4
-            - sky_temperature_k**4
-        )
+    net_radiation = SIGMA * (
+        sky_view_factor * (skin_k**4 - sky_k**4)
+        + (1.0 - sky_view_factor) * (skin_k**4 - radiant_k**4)
     )
 
-    surroundings_radiation = (
-        surroundings_view_factor
-        * SIGMA
-        * (
-            skin_temperature_k**4
-            - radiant_temperature_k**4
-        )
+    # Emission from the textile surface (attenuated by the clothing coupling)
+    # plus skin emission transmitted directly through an IR-transparent textile.
+    effective_emitter = (
+        material.infrared_emissivity * clothing_coupling
+        + clothing.infrared_transmittance * SKIN_EMISSIVITY
     )
 
-    longwave_radiation = (
-        material.infrared_emissivity
-        * (sky_radiation + surroundings_radiation)
-        * clothing_coupling
-    )
+    longwave_radiation = effective_emitter * net_radiation
 
-    solar_absorptance = (
-        1.0
-        - material.solar_reflectance
-        - material.solar_transmittance
+    # --- solar --------------------------------------------------------------
+    solar_absorptance = clamp(
+        1.0 - material.solar_reflectance - material.solar_transmittance, 0.0, 1.0
     )
-    solar_absorptance = clamp(solar_absorptance, 0.0, 1.0)
 
     absorbed_solar = (
         solar_absorptance
@@ -140,280 +187,145 @@ def calculate_fluxes(
         * material.absorbed_solar_to_body_fraction
     )
 
+    # --- evaporation --------------------------------------------------------
     ambient_vapor_pressure_kpa = (
-        relative_humidity
-        * saturation_vapor_pressure_kpa(
-            air_temperature_c
-        )
+        environment.relative_humidity_percent / 100.0
+        * saturation_vapor_pressure_kpa(air_temperature_c)
     )
-    skin_vapor_pressure_kpa = (
-        saturation_vapor_pressure_kpa(
-            skin_temperature_c
-        )
-    )
+    skin_vapor_pressure_kpa = saturation_vapor_pressure_kpa(skin_temperature_c)
 
-    evaporative_coefficient = (
-        16.5 * convection_coefficient
-    )
-
-    clothing_evaporative_efficiency = 1.0 / (
-        1.0
-        + 0.45
-        * material.clothing_insulation_clo
-        * convection_coefficient
-    )
-
-    maximum_evaporation = max(
-        0.0,
-        evaporative_coefficient
-        * (
-            skin_vapor_pressure_kpa
-            - ambient_vapor_pressure_kpa
-        )
-        * clothing_evaporative_efficiency,
+    maximum_evaporation = maximum_evaporation_w_m2(
+        clothing,
+        convection_coefficient,
+        skin_vapor_pressure_kpa,
+        ambient_vapor_pressure_kpa,
     )
 
     regulatory_sweating_g_h_m2 = clamp(
-        170.0 * max(core_temperature_c - 36.8, 0.0)
-        + 200.0 * max(skin_temperature_c - 33.7, 0.0),
+        SWEATING_GAIN_CORE * max(core_temperature_c - CORE_SETPOINT, 0.0)
+        + SWEATING_GAIN_SKIN * max(skin_temperature_c - SKIN_SETPOINT, 0.0),
         0.0,
-        500.0,
+        MAXIMUM_SWEAT_RATE,
     )
 
-    regulatory_evaporation = (
-        regulatory_sweating_g_h_m2 * 0.68
-    )
-    diffusion_evaporation = 0.06 * maximum_evaporation
+    regulatory_evaporation = regulatory_sweating_g_h_m2 * LATENT_HEAT_PER_GRAM_HOUR
+    diffusion_evaporation = SKIN_DIFFUSION_FRACTION * maximum_evaporation
 
-    evaporation = min(
-        maximum_evaporation,
-        regulatory_evaporation + diffusion_evaporation,
+    evaporation = min(maximum_evaporation, regulatory_evaporation + diffusion_evaporation)
+
+    skin_wettedness = (
+        evaporation / maximum_evaporation if maximum_evaporation > 0.0 else 1.0
     )
 
+    # --- core <-> skin ------------------------------------------------------
     skin_blood_flow = clamp(
-        6.3
-        + 75.0 * max(core_temperature_c - 36.8, 0.0)
-        + 20.0 * max(skin_temperature_c - 33.7, 0.0),
-        0.5,
-        90.0,
+        SKIN_BLOOD_FLOW_BASAL
+        + SKIN_BLOOD_FLOW_CORE_GAIN * max(core_temperature_c - CORE_SETPOINT, 0.0)
+        + SKIN_BLOOD_FLOW_SKIN_GAIN * max(skin_temperature_c - SKIN_SETPOINT, 0.0),
+        SKIN_BLOOD_FLOW_MINIMUM,
+        SKIN_BLOOD_FLOW_MAXIMUM,
     )
 
     core_skin_conductance = (
-        5.28 + 1.163 * skin_blood_flow
+        CORE_SKIN_CONDUCTANCE_BASAL + BLOOD_HEAT_CAPACITY_PER_FLOW * skin_blood_flow
     )
 
-    core_to_skin = (
-        core_skin_conductance
-        * (core_temperature_c - skin_temperature_c)
-    )
+    core_to_skin = core_skin_conductance * (core_temperature_c - skin_temperature_c)
 
-    metabolism = person.met * 58.15
-
-    ambient_vapor_pressure_pa = (
-        ambient_vapor_pressure_kpa * 1000.0
-    )
+    # --- metabolism and respiration -----------------------------------------
+    metabolism = person.met * METABOLIC_RATE_PER_MET
 
     respiration_latent = max(
         0.0,
-        1.7e-5
+        RESPIRATORY_LATENT_COEFFICIENT
         * metabolism
-        * (5867.0 - ambient_vapor_pressure_pa),
+        * (RESPIRATORY_REFERENCE_PRESSURE - ambient_vapor_pressure_kpa * 1000.0),
     )
 
     respiration_sensible = (
-        0.0014
+        RESPIRATORY_SENSIBLE_COEFFICIENT
         * metabolism
-        * (34.0 - air_temperature_c)
+        * (EXHALED_AIR_TEMPERATURE - air_temperature_c)
     )
 
-    respiration = max(
-        0.0,
-        respiration_latent + respiration_sensible,
-    )
+    respiration = max(0.0, respiration_latent + respiration_sensible)
 
     return HeatFluxes(
         convection=convection,
         longwave_radiation=longwave_radiation,
         evaporation=evaporation,
+        maximum_evaporation=maximum_evaporation,
+        skin_wettedness=skin_wettedness,
         absorbed_solar=absorbed_solar,
         core_to_skin=core_to_skin,
         respiration=respiration,
         metabolism=metabolism,
     )
 
-def calculate_energy_diagnostics(
+
+def _output_times(duration_seconds: float, interval_seconds: float) -> np.ndarray:
+    times = np.arange(0.0, duration_seconds + 0.1, interval_seconds)
+    if times[-1] < duration_seconds:
+        times = np.append(times, duration_seconds)
+    return times
+
+
+def _energy_diagnostics(
     times_seconds: np.ndarray,
     core_temperatures: np.ndarray,
     skin_temperatures: np.ndarray,
-    environment: EnvironmentInput,
-    person: PersonInput,
-    material: MaterialInput,
+    net_heat_fluxes: np.ndarray,
     solver_function_evaluations: int,
 ) -> EnergyDiagnostics:
-    """
-    計算整個模擬期間的人體總能量守恆殘差。
-
-    人體核心與皮膚之間的熱交換 core_to_skin 是內部熱流，
-    在人體總能量平衡中會互相抵消，因此不放入總淨熱流。
-    """
-
-    net_heat_fluxes: list[float] = []
-
-    for core_temperature, skin_temperature in zip(
-        core_temperatures,
-        skin_temperatures,
-        strict=True,
-    ):
-        fluxes = calculate_fluxes(
-            core_temperature_c=float(core_temperature),
-            skin_temperature_c=float(skin_temperature),
-            environment=environment,
-            person=person,
-            material=material,
-        )
-
-        net_heat_flux = (
-            fluxes.metabolism
-            - fluxes.respiration
-            + fluxes.absorbed_solar
-            - fluxes.convection
-            - fluxes.longwave_radiation
-            - fluxes.evaporation
-        )
-
-        net_heat_fluxes.append(net_heat_flux)
-
-    net_heat_array = np.asarray(
-        net_heat_fluxes,
-        dtype=float,
-    )
-
-    integrated_net_heat = float(
-        np.trapezoid(
-            y=net_heat_array,
-            x=times_seconds,
-        )
-    )
+    integrated_net_heat = float(np.trapezoid(net_heat_fluxes, times_seconds))
 
     stored_energy_change = float(
-        CORE_HEAT_CAPACITY
-        * (
-            core_temperatures[-1]
-            - core_temperatures[0]
-        )
-        + SKIN_HEAT_CAPACITY
-        * (
-            skin_temperatures[-1]
-            - skin_temperatures[0]
-        )
+        CORE_HEAT_CAPACITY * (core_temperatures[-1] - core_temperatures[0])
+        + SKIN_HEAT_CAPACITY * (skin_temperatures[-1] - skin_temperatures[0])
     )
 
-    energy_residual = (
-        stored_energy_change
-        - integrated_net_heat
-    )
+    residual = stored_energy_change - integrated_net_heat
+    denominator = max(abs(stored_energy_change), abs(integrated_net_heat), 1.0)
 
-    normalization_denominator = max(
-        abs(stored_energy_change),
-        abs(integrated_net_heat),
-        1.0,
-    )
-
-    normalized_residual_percent = (
-        abs(energy_residual)
-        / normalization_denominator
-        * 100.0
-    )
-
-    maximum_core_step = (
-        float(np.max(np.abs(np.diff(core_temperatures))))
-        if len(core_temperatures) > 1
-        else 0.0
-    )
-
-    maximum_skin_step = (
-        float(np.max(np.abs(np.diff(skin_temperatures))))
-        if len(skin_temperatures) > 1
-        else 0.0
-    )
+    def max_step(values: np.ndarray) -> float:
+        return float(np.max(np.abs(np.diff(values)))) if len(values) > 1 else 0.0
 
     return EnergyDiagnostics(
-        stored_energy_change_j_m2=round(
-            stored_energy_change,
-            4,
-        ),
-        integrated_net_heat_j_m2=round(
-            integrated_net_heat,
-            4,
-        ),
-        energy_residual_j_m2=round(
-            energy_residual,
-            4,
-        ),
-        normalized_residual_percent=round(
-            normalized_residual_percent,
-            6,
-        ),
-        maximum_core_step_c=round(
-            maximum_core_step,
-            6,
-        ),
-        maximum_skin_step_c=round(
-            maximum_skin_step,
-            6,
-        ),
-        solver_function_evaluations=int(
-            solver_function_evaluations
-        ),
+        stored_energy_change_j_m2=round(stored_energy_change, 4),
+        integrated_net_heat_j_m2=round(integrated_net_heat, 4),
+        energy_residual_j_m2=round(residual, 4),
+        normalized_residual_percent=round(abs(residual) / denominator * 100.0, 6),
+        maximum_core_step_c=round(max_step(core_temperatures), 6),
+        maximum_skin_step_c=round(max_step(skin_temperatures), 6),
+        solver_function_evaluations=int(solver_function_evaluations),
     )
 
-def simulate_material(
+
+def _integrate(
+    *,
     duration_minutes: int,
     output_interval_minutes: int,
-    environment: EnvironmentInput,
+    environment_at: EnvironmentAt,
     person: PersonInput,
     material: MaterialInput,
+    failure_label: str,
 ) -> ScenarioResult:
+    clothing = resolve_clothing(material)
+
     duration_seconds = duration_minutes * 60.0
+    output_times = _output_times(duration_seconds, output_interval_minutes * 60.0)
 
-    output_times = np.arange(
-        0.0,
-        duration_seconds + 0.1,
-        output_interval_minutes * 60.0,
-    )
-
-    if output_times[-1] < duration_seconds:
-        output_times = np.append(
-            output_times,
-            duration_seconds,
-        )
-
-    initial_state = [
-        person.initial_core_temperature_c,
-        person.initial_skin_temperature_c,
-    ]
-
-    def derivatives(
-        _time_seconds: float,
-        state: np.ndarray,
-    ) -> list[float]:
-        core_temperature_c = float(state[0])
-        skin_temperature_c = float(state[1])
-
+    def derivatives(time_seconds: float, state: np.ndarray) -> list[float]:
         fluxes = calculate_fluxes(
-            core_temperature_c=core_temperature_c,
-            skin_temperature_c=skin_temperature_c,
-            environment=environment,
+            core_temperature_c=float(state[0]),
+            skin_temperature_c=float(state[1]),
+            environment=environment_at(float(time_seconds)),
             person=person,
             material=material,
+            clothing=clothing,
         )
 
-        core_storage = (
-            fluxes.metabolism
-            - fluxes.respiration
-            - fluxes.core_to_skin
-        )
-
+        core_storage = fluxes.metabolism - fluxes.respiration - fluxes.core_to_skin
         skin_storage = (
             fluxes.core_to_skin
             + fluxes.absorbed_solar
@@ -422,110 +334,62 @@ def simulate_material(
             - fluxes.evaporation
         )
 
-        core_rate = (
-            core_storage / CORE_HEAT_CAPACITY
-        )
-        skin_rate = (
-            skin_storage / SKIN_HEAT_CAPACITY
-        )
-
-        return [core_rate, skin_rate]
+        return [core_storage / CORE_HEAT_CAPACITY, skin_storage / SKIN_HEAT_CAPACITY]
 
     solution = solve_ivp(
         fun=derivatives,
         t_span=(0.0, duration_seconds),
-        y0=initial_state,
+        y0=[person.initial_core_temperature_c, person.initial_skin_temperature_c],
         t_eval=output_times,
-        method="RK45",
-        rtol=1e-6,
-        atol=1e-8,
-        max_step=60.0,
+        method=SOLVER_METHOD,
+        rtol=SOLVER_RTOL,
+        atol=SOLVER_ATOL,
+        max_step=SOLVER_MAX_STEP_SECONDS,
     )
 
     if not solution.success:
-        raise RuntimeError(
-            f"數值求解失敗：{solution.message}"
-        )
+        raise RuntimeError(f"{failure_label}: {solution.message}")
 
-    core_temperature_array = np.asarray(
-    solution.y[0],
-    dtype=float,
-    )
+    times = np.asarray(solution.t, dtype=float)
+    core_array = np.asarray(solution.y[0], dtype=float)
+    skin_array = np.asarray(solution.y[1], dtype=float)
 
-    skin_temperature_array = np.asarray(
-    solution.y[1],
-    dtype=float,
-    )
-
-    diagnostics = calculate_energy_diagnostics(
-    times_seconds=np.asarray(
-        solution.t,
-        dtype=float,
-    ),
-    core_temperatures=core_temperature_array,
-    skin_temperatures=skin_temperature_array,
-    environment=environment,
-    person=person,
-    material=material,
-    solver_function_evaluations=solution.nfev,
-    )
-    
     time_series: list[TimeSeriesPoint] = []
+    net_heat: list[float] = []
 
-    for index, time_seconds in enumerate(solution.t):
-        core_temperature_c = float(solution.y[0, index])
-        skin_temperature_c = float(solution.y[1, index])
-
+    for time_seconds, core_c, skin_c in zip(times, core_array, skin_array, strict=True):
         fluxes = calculate_fluxes(
-            core_temperature_c=core_temperature_c,
-            skin_temperature_c=skin_temperature_c,
-            environment=environment,
+            core_temperature_c=float(core_c),
+            skin_temperature_c=float(skin_c),
+            environment=environment_at(float(time_seconds)),
             person=person,
             material=material,
+            clothing=clothing,
         )
+
+        net_heat.append(fluxes.net_body_gain)
 
         time_series.append(
             TimeSeriesPoint(
-                minute=round(time_seconds / 60.0, 4),
-                core_temperature_c=round(
-                    core_temperature_c,
-                    4,
-                ),
-                skin_temperature_c=round(
-                    skin_temperature_c,
-                    4,
-                ),
-                convection_w_m2=round(
-                    fluxes.convection,
-                    4,
-                ),
-                longwave_radiation_w_m2=round(
-                    fluxes.longwave_radiation,
-                    4,
-                ),
-                evaporation_w_m2=round(
-                    fluxes.evaporation,
-                    4,
-                ),
-                absorbed_solar_w_m2=round(
-                    fluxes.absorbed_solar,
-                    4,
-                ),
-                core_to_skin_w_m2=round(
-                    fluxes.core_to_skin,
-                    4,
-                ),
+                minute=round(float(time_seconds) / 60.0, 4),
+                core_temperature_c=round(float(core_c), 4),
+                skin_temperature_c=round(float(skin_c), 4),
+                convection_w_m2=round(fluxes.convection, 4),
+                longwave_radiation_w_m2=round(fluxes.longwave_radiation, 4),
+                evaporation_w_m2=round(fluxes.evaporation, 4),
+                absorbed_solar_w_m2=round(fluxes.absorbed_solar, 4),
+                core_to_skin_w_m2=round(fluxes.core_to_skin, 4),
+                maximum_evaporation_w_m2=round(fluxes.maximum_evaporation, 4),
+                skin_wettedness=round(fluxes.skin_wettedness, 4),
             )
         )
 
-    core_temperatures = [
-        point.core_temperature_c
-        for point in time_series
-    ]
-    skin_temperatures = [
-        point.skin_temperature_c
-        for point in time_series
-    ]
+    diagnostics = _energy_diagnostics(
+        times, core_array, skin_array, np.asarray(net_heat), solution.nfev
+    )
+
+    core_temperatures = [p.core_temperature_c for p in time_series]
+    skin_temperatures = [p.skin_temperature_c for p in time_series]
 
     return ScenarioResult(
         material_name=material.name,
@@ -535,268 +399,53 @@ def simulate_material(
         peak_core_temperature_c=max(core_temperatures),
         peak_skin_temperature_c=max(skin_temperatures),
         diagnostics=diagnostics,
+        clothing=ClothingSummary(
+            dry_resistance_m2k_w=round(clothing.dry_resistance_m2k_w, 6),
+            evaporative_resistance_m2pa_w=round(clothing.evaporative_resistance_m2pa_w, 4),
+            evaporative_resistance_source=clothing.evaporative_resistance_source,
+            infrared_transmittance=clothing.infrared_transmittance,
+        ),
+        assumptions_applied=assumptions_applied(clothing),
     )
-    
+
+
+def simulate_material(
+    duration_minutes: int,
+    output_interval_minutes: int,
+    environment: EnvironmentInput,
+    person: PersonInput,
+    material: MaterialInput,
+) -> ScenarioResult:
+    return _integrate(
+        duration_minutes=duration_minutes,
+        output_interval_minutes=output_interval_minutes,
+        environment_at=lambda _time_seconds: environment,
+        person=person,
+        material=material,
+        failure_label="Fixed-environment numerical solution failed",
+    )
+
+
 def simulate_material_with_weather(
     duration_minutes: int,
     output_interval_minutes: int,
     weather: WeatherTimeSeries,
     person: PersonInput,
     material: MaterialInput,
+    assumptions: EnvironmentAssumptions | None = None,
 ) -> ScenarioResult:
-    interpolator = (
-        WeatherInterpolator.from_series(weather)
+    interpolator = WeatherInterpolator.from_series(
+        weather, assumptions=assumptions or EnvironmentAssumptions()
     )
 
-    duration_seconds = duration_minutes * 60.0
-    
     # Fail before solving if the requested duration exceeds the weather data.
-    interpolator.ensure_covers(0.0, duration_seconds)
-    
-    output_times = np.arange(
-        0.0,
-        duration_seconds + 0.1,
-        output_interval_minutes * 60.0,
-    )
+    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
 
-    if output_times[-1] < duration_seconds:
-        output_times = np.append(
-            output_times,
-            duration_seconds,
-        )
-
-    initial_state = [
-        person.initial_core_temperature_c,
-        person.initial_skin_temperature_c,
-    ]
-
-    def derivatives(
-        time_seconds: float,
-        state: np.ndarray,
-    ) -> list[float]:
-        environment = interpolator.environment_at(
-            time_seconds
-        )
-
-        core_temperature_c = float(state[0])
-        skin_temperature_c = float(state[1])
-
-        fluxes = calculate_fluxes(
-            core_temperature_c=core_temperature_c,
-            skin_temperature_c=skin_temperature_c,
-            environment=environment,
-            person=person,
-            material=material,
-        )
-
-        core_storage = (
-            fluxes.metabolism
-            - fluxes.respiration
-            - fluxes.core_to_skin
-        )
-
-        skin_storage = (
-            fluxes.core_to_skin
-            + fluxes.absorbed_solar
-            - fluxes.convection
-            - fluxes.longwave_radiation
-            - fluxes.evaporation
-        )
-
-        return [
-            core_storage / CORE_HEAT_CAPACITY,
-            skin_storage / SKIN_HEAT_CAPACITY,
-        ]
-
-    solution = solve_ivp(
-        fun=derivatives,
-        t_span=(0.0, duration_seconds),
-        y0=initial_state,
-        t_eval=output_times,
-        method="RK45",
-        rtol=1e-6,
-        atol=1e-8,
-        max_step=60.0,
-    )
-
-    if not solution.success:
-        raise RuntimeError(
-            f"Dynamic meteorological numerical solution failed:"
-            f"{solution.message}"
-        )
-
-    time_series: list[TimeSeriesPoint] = []
-    net_heat_fluxes: list[float] = []
-
-    for index, time_seconds in enumerate(
-        solution.t
-    ):
-        core_temperature = float(
-            solution.y[0, index]
-        )
-        skin_temperature = float(
-            solution.y[1, index]
-        )
-
-        environment = interpolator.environment_at(
-            float(time_seconds)
-        )
-
-        fluxes = calculate_fluxes(
-            core_temperature_c=core_temperature,
-            skin_temperature_c=skin_temperature,
-            environment=environment,
-            person=person,
-            material=material,
-        )
-
-        net_heat_fluxes.append(
-            fluxes.metabolism
-            - fluxes.respiration
-            + fluxes.absorbed_solar
-            - fluxes.convection
-            - fluxes.longwave_radiation
-            - fluxes.evaporation
-        )
-
-        time_series.append(
-            TimeSeriesPoint(
-                minute=round(
-                    float(time_seconds) / 60.0,
-                    4,
-                ),
-                core_temperature_c=round(
-                    core_temperature,
-                    4,
-                ),
-                skin_temperature_c=round(
-                    skin_temperature,
-                    4,
-                ),
-                convection_w_m2=round(
-                    fluxes.convection,
-                    4,
-                ),
-                longwave_radiation_w_m2=round(
-                    fluxes.longwave_radiation,
-                    4,
-                ),
-                evaporation_w_m2=round(
-                    fluxes.evaporation,
-                    4,
-                ),
-                absorbed_solar_w_m2=round(
-                    fluxes.absorbed_solar,
-                    4,
-                ),
-                core_to_skin_w_m2=round(
-                    fluxes.core_to_skin,
-                    4,
-                ),
-            )
-        )
-
-    core_array = np.asarray(
-        solution.y[0],
-        dtype=float,
-    )
-    skin_array = np.asarray(
-        solution.y[1],
-        dtype=float,
-    )
-    time_array = np.asarray(
-        solution.t,
-        dtype=float,
-    )
-
-    integrated_net_heat = float(
-        np.trapezoid(
-            np.asarray(net_heat_fluxes),
-            time_array,
-        )
-    )
-
-    stored_energy_change = float(
-        CORE_HEAT_CAPACITY
-        * (core_array[-1] - core_array[0])
-        + SKIN_HEAT_CAPACITY
-        * (skin_array[-1] - skin_array[0])
-    )
-
-    residual = (
-        stored_energy_change
-        - integrated_net_heat
-    )
-
-    denominator = max(
-        abs(stored_energy_change),
-        abs(integrated_net_heat),
-        1.0,
-    )
-
-    diagnostics = EnergyDiagnostics(
-        stored_energy_change_j_m2=round(
-            stored_energy_change,
-            4,
-        ),
-        integrated_net_heat_j_m2=round(
-            integrated_net_heat,
-            4,
-        ),
-        energy_residual_j_m2=round(
-            residual,
-            4,
-        ),
-        normalized_residual_percent=round(
-            abs(residual)
-            / denominator
-            * 100.0,
-            6,
-        ),
-        maximum_core_step_c=round(
-            float(
-                np.max(
-                    np.abs(np.diff(core_array))
-                )
-            ),
-            6,
-        ),
-        maximum_skin_step_c=round(
-            float(
-                np.max(
-                    np.abs(np.diff(skin_array))
-                )
-            ),
-            6,
-        ),
-        solver_function_evaluations=int(
-            solution.nfev
-        ),
-    )
-
-    core_temperatures = [
-        point.core_temperature_c
-        for point in time_series
-    ]
-    skin_temperatures = [
-        point.skin_temperature_c
-        for point in time_series
-    ]
-
-    return ScenarioResult(
-        material_name=material.name,
-        time_series=time_series,
-        final_core_temperature_c=(
-            core_temperatures[-1]
-        ),
-        final_skin_temperature_c=(
-            skin_temperatures[-1]
-        ),
-        peak_core_temperature_c=max(
-            core_temperatures
-        ),
-        peak_skin_temperature_c=max(
-            skin_temperatures
-        ),
-        diagnostics=diagnostics,
+    return _integrate(
+        duration_minutes=duration_minutes,
+        output_interval_minutes=output_interval_minutes,
+        environment_at=interpolator.environment_at,
+        person=person,
+        material=material,
+        failure_label="Weather-driven numerical solution failed",
     )

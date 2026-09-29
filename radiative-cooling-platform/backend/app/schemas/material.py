@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+from app.schemas.provenance import ParameterSource
 
 from pydantic import (
     BaseModel,
@@ -91,19 +92,18 @@ class MaterialVersionCreate(BaseModel):
 
     source_reference: str | None = None
     notes: str | None = None
+    parameter_sources: dict[str, ParameterSource] | None = None
 
     @model_validator(mode="after")
     def validate_optical_properties(self):
-        if (
-            self.solar_reflectance
-            + self.solar_transmittance
-            > 1.0 + 1e-6
-        ):
+        if self.solar_reflectance + self.solar_transmittance > 1.0 + 1e-6:
             raise ValueError(
-                "solar_reflectance + "
-                "solar_transmittance Cannot be greater than 1"
+                "solar_reflectance + solar_transmittance cannot be greater than 1"
             )
-
+        if self.infrared_emissivity + self.infrared_transmittance > 1.0 + 1e-6:
+            raise ValueError(
+                "infrared_emissivity + infrared_transmittance cannot be greater than 1"
+            )
         return self
 
 
@@ -152,7 +152,7 @@ class SpectrumSummary(BaseModel):
 
 
 class MaterialVersionResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: str
     material_id: str
@@ -179,6 +179,10 @@ class MaterialVersionResponse(BaseModel):
 
     created_at: datetime
     spectra: list[SpectrumSummary] = []
+    parameter_sources: dict[str, ParameterSource] | None = Field(
+        default=None,
+        validation_alias="parameter_sources_json",
+    )
 
 
 class MaterialResponse(BaseModel):

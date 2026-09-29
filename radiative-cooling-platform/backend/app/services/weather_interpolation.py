@@ -1,23 +1,13 @@
-"""Linear interpolation of hourly weather to solver time (Stage 1, PR-2).
-
-Boundary policy: queries outside ``[t_min, t_max]`` raise instead of being
-clamped. ``from_series`` additionally verifies that the series brackets the
-requested exposure window, so an under-covered series fails before the ODE
-solver starts.
-
-The empirical environment estimates (mean radiant temperature, sky
-temperature, sky view factor) are intentionally left unchanged here; they
-belong to Stage 2 (model completion).
-"""
-
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field  # Stage 2: `field` added
 
 import numpy as np
 
+from app.schemas.environment import EnvironmentAssumptions  # Stage 2
 from app.schemas.simulation import EnvironmentInput
 from app.schemas.weather import WeatherTimeSeries
+from app.services.environment_model import derive_environment  # Stage 2
 from app.services.weather_quality import (
     WeatherInsufficientCoverageError,
 )
@@ -37,6 +27,13 @@ class WeatherInterpolator:
     humidities: np.ndarray
     wind_speeds: np.ndarray
     ghi_values: np.ndarray
+
+    # Stage 2. Must stay the last field: dataclass fields with defaults
+    # cannot precede fields without defaults. Existing keyword-based
+    # constructions (see tests/test_weather_interpolation.py) remain valid.
+    assumptions: EnvironmentAssumptions = field(
+        default_factory=EnvironmentAssumptions
+    )
 
     def __post_init__(self) -> None:
         arrays = (
@@ -101,6 +98,7 @@ class WeatherInterpolator:
         weather: WeatherTimeSeries,
         *,
         check_requested_window: bool = True,
+        assumptions: EnvironmentAssumptions | None = None,  # Stage 2
     ) -> "WeatherInterpolator":
         start_time = weather.requested_start_time
 
@@ -127,6 +125,7 @@ class WeatherInterpolator:
             ghi_values=np.asarray(
                 [p.ghi_w_m2 for p in weather.points], dtype=float
             ),
+            assumptions=assumptions or EnvironmentAssumptions(),  # Stage 2
         )
 
         if check_requested_window:
@@ -170,35 +169,27 @@ class WeatherInterpolator:
         self,
         elapsed_seconds: float,
     ) -> EnvironmentInput:
+        """Interpolate the ERA5 variables and derive the model boundary
+        conditions according to ``self.assumptions``.
+
+        Stage 2: the mean radiant temperature, sky temperature, sky view
+        factor and wind scaling rules live in ``environment_model``; this
+        method only interpolates.
+        """
         self._check_bounds(elapsed_seconds)
 
-        air_temperature = self._interpolate(
-            self.temperatures, elapsed_seconds
-        )
-        relative_humidity = self._interpolate(
-            self.humidities, elapsed_seconds
-        )
-        wind_speed = self._interpolate(
-            self.wind_speeds, elapsed_seconds
-        )
-        ghi = max(
-            0.0,
-            self._interpolate(self.ghi_values, elapsed_seconds),
-        )
-
-        # Stage 2 will replace these empirical estimates. Do not change here.
-        mean_radiant_temperature = air_temperature + min(15.0, 0.012 * ghi)
-
-        sky_temperature = air_temperature - (
-            5.0 + 10.0 * (1.0 - relative_humidity / 100.0)
-        )
-
-        return EnvironmentInput(
-            air_temperature_c=air_temperature,
-            mean_radiant_temperature_c=mean_radiant_temperature,
-            sky_temperature_c=sky_temperature,
-            relative_humidity_percent=relative_humidity,
-            wind_speed_m_s=max(0.0, wind_speed),
-            solar_radiation_w_m2=ghi,
-            sky_view_factor=0.5,
+        return derive_environment(
+            air_temperature_c=self._interpolate(
+                self.temperatures, elapsed_seconds
+            ),
+            relative_humidity_percent=self._interpolate(
+                self.humidities, elapsed_seconds
+            ),
+            wind_speed_m_s=self._interpolate(
+                self.wind_speeds, elapsed_seconds
+            ),
+            ghi_w_m2=self._interpolate(
+                self.ghi_values, elapsed_seconds
+            ),
+            assumptions=self.assumptions,
         )
