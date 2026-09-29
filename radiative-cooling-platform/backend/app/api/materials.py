@@ -316,7 +316,6 @@ def material_version_to_simulation_input(version_id: str, session: Session = Dep
         .options(selectinload(MaterialVersion.material))
         .where(MaterialVersion.id == version_id)
     )
-    
     if version is None:
         raise HTTPException(status_code=404, detail="Material version not found")
 
@@ -334,6 +333,7 @@ def material_version_to_simulation_input(version_id: str, session: Session = Dep
         source_type=version.source_type,
         source_reference=version.source_reference,
         parameter_sources=version.parameter_sources_json,
+        clothing_area_factor=version.clothing_area_factor,
     )
 
 

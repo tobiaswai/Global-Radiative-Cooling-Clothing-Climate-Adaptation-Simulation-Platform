@@ -216,7 +216,7 @@ function MaterialDetailContent({
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-5">
                   <Metric
                     label="solar reflectance"
                     value={
@@ -244,6 +244,12 @@ function MaterialDetailContent({
                       version.clothing_insulation_clo
                     }
                     unit="clo"
+                  />
+
+                  <Metric
+                    label="clothing area factor"
+                    value={version.clothing_area_factor}
+                    fallback="Derived from clo"
                   />
                 </div>
 
@@ -386,24 +392,26 @@ function Metric({
   label,
   value,
   unit,
+  fallback = "—",
+  digits = 3,
 }: {
   label: string;
-  value: number;
+  value: number | null | undefined;
   unit?: string;
+  fallback?: string;
+  digits?: number;
 }) {
+  const hasValue = typeof value === "number" && Number.isFinite(value);
+
   return (
     <div className="rounded-lg bg-slate-950 p-4">
-      <p className="text-sm text-slate-400">
-        {label}
-      </p>
+      <p className="text-sm text-slate-400">{label}</p>
 
       <p className="mt-1 text-xl font-semibold text-cyan-300">
-        {value.toFixed(3)}
+        {hasValue ? value.toFixed(digits) : fallback}
 
-        {unit && (
-          <span className="ml-1 text-sm font-normal text-slate-400">
-            {unit}
-          </span>
+        {hasValue && unit && (
+          <span className="ml-1 text-sm font-normal text-slate-400">{unit}</span>
         )}
       </p>
     </div>

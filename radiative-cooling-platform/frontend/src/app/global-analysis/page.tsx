@@ -64,6 +64,7 @@ const initialRequest: GlobalBatchCreate = {
 
   person: {
     met: 2,
+    body_mass_kg: 70,            // ← 加這行
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
@@ -72,6 +73,7 @@ const initialRequest: GlobalBatchCreate = {
   control_material: {
     name: "Conventional clothing",
     clothing_insulation_clo: 0.5,
+    clothing_area_factor: null,  // ← 加這行
     solar_reflectance: 0.3,
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
@@ -82,6 +84,7 @@ const initialRequest: GlobalBatchCreate = {
   rc_material: {
     name: "Radiative cooling clothing",
     clothing_insulation_clo: 0.4,
+    clothing_area_factor: null,  // ← 加這行
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,

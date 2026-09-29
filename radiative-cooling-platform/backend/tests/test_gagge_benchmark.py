@@ -137,3 +137,32 @@ def test_gagge_api_converts_service_error_to_500(
         "invalid benchmark input"
         in error.value.detail
     )
+    
+@pytest.mark.benchmark
+def test_benchmark_returns_aligned_transient_series(environment, person, control_material):
+    request = GaggeBenchmarkRequest(
+        duration_minutes=90, environment=environment, person=person, material=control_material
+    )
+
+    result = run_gagge_benchmark(request)
+
+    assert len(result.time_series) == 91
+    assert result.time_series[0].minute == 0
+    assert result.time_series[-1].minute == 90
+    assert result.core_temperature.maximum_absolute_difference_c >= abs(
+        result.core_temperature.final_difference_c
+    )
+    assert result.reference_port_parity.maximum_absolute_difference_c < 0.05
+    assert any("solar_radiation" in note for note in result.alignment_applied)
+
+
+@pytest.mark.benchmark
+def test_default_case_is_within_stage_3_tolerances(environment, person, control_material):
+    """Acceptance criterion of Stage 3 for the reference scenario."""
+    result = run_gagge_benchmark(
+        GaggeBenchmarkRequest(environment=environment, person=person, material=control_material)
+    )
+
+    assert result.core_temperature.passed, result.core_temperature
+    assert result.skin_temperature.passed, result.skin_temperature
+    assert result.passed

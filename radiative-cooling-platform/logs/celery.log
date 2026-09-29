@@ -1,10 +1,10 @@
  
  -------------- celery@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
--- ******* ---- Windows-11-10.0.26200-SP0 2026-09-17 20:40:35
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-09-29 21:54:46
 - *** --- * --- 
 - ** ---------- [config]
-- ** ---------- .> app:         radiative_cooling_worker:0x2544b806e70
+- ** ---------- .> app:         radiative_cooling_worker:0x2bc0b68e420
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -19,7 +19,30 @@
   . global_batch.run_city
   . simulation.run_weather
 
-[2026-09-17 20:40:35,701: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2026-09-17 20:40:35,704: INFO/MainProcess] mingle: searching for neighbors
-[2026-09-17 20:40:36,736: INFO/MainProcess] mingle: all alone
-[2026-09-17 20:40:36,802: INFO/MainProcess] celery@p2104180 ready.
+[2026-09-29 21:54:46,400: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-09-29 21:54:46,405: INFO/MainProcess] mingle: searching for neighbors
+[2026-09-29 21:54:47,426: INFO/MainProcess] mingle: all alone
+[2026-09-29 21:54:47,498: INFO/MainProcess] celery@p2104180 ready.
+[2026-09-29 21:55:35,865: INFO/MainProcess] Task simulation.run_weather[87ae5a59-5796-486d-a8f8-c3d0591f6efd] received
+[2026-09-29 21:55:38,019: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=25.2048&longitude=55.2708&elevation=16.0&start_date=2026-08-15&end_date=2026-08-15&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Asia%2FDubai&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:55:38,183: INFO/MainProcess] Task simulation.run_weather[87ae5a59-5796-486d-a8f8-c3d0591f6efd] succeeded in 2.3280000000000314s: {'job_id': '8b26cafb-101c-478a-bc08-d6eaf600bd38', 'status': 'completed'}
+[2026-09-29 21:56:45,296: INFO/MainProcess] Task global_batch.run_city[f57bf0f9-61c3-4d54-83cc-4309265fc52a] received
+[2026-09-29 21:56:46,813: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2023-12-31&end_date=2024-02-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:48,389: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-01-31&end_date=2024-03-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:50,000: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-02-29&end_date=2024-04-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:51,928: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-03-31&end_date=2024-05-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:53,786: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-04-30&end_date=2024-06-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:55,477: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-05-31&end_date=2024-07-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:57,401: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-06-30&end_date=2024-08-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:56:59,393: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-07-31&end_date=2024-09-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:57:01,119: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-08-31&end_date=2024-10-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:57:06,645: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-09-30&end_date=2024-11-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:57:09,275: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-10-31&end_date=2024-12-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:57:10,893: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=-33.8688&longitude=151.2093&elevation=58.0&start_date=2024-11-30&end_date=2025-01-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Australia%2FSydney&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
+[2026-09-29 21:57:11,194: INFO/MainProcess] Task global_batch.run_city[f57bf0f9-61c3-4d54-83cc-4309265fc52a] succeeded in 25.890000000000043s: {'batch_id': '23176508-3d2f-4688-9305-86d565f5939c', 'city_result_id': '5cb2843d-1395-4545-ba4f-d020dcd8ff14', 'status': 'completed'}
+[2026-09-29 21:57:11,197: INFO/MainProcess] Task global_batch.run_city[f0eff722-32f3-4419-ba39-3cf455f400d7] received
+[2026-09-29 21:57:14,394: INFO/MainProcess] Task global_batch.run_city[f0eff722-32f3-4419-ba39-3cf455f400d7] succeeded in 3.187000000000012s: {'batch_id': '23176508-3d2f-4688-9305-86d565f5939c', 'city_result_id': 'f37edd66-dfda-4421-b189-924f3932017e', 'status': 'completed'}
+
+worker: Hitting Ctrl+C again will initiate cold shutdown, terminating all running tasks!
+
+worker: Warm shutdown (MainProcess)

@@ -1,17 +1,18 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
+import { PhysiologyChart } from "@/components/charts/physiology-chart";
 import { TemperatureChart } from "@/components/charts/temperature-chart";
 import { WeatherChart } from "@/components/charts/weather-chart";
+import { ModelProvenancePanel } from "@/components/simulation/model-provenance-panel";
+import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import {
   cancelSimulationJob,
   getSimulationEventsUrl,
+  getSimulationExportUrl,
   getSimulationJob,
   getSimulationResult,
 } from "@/lib/api-client";
@@ -19,10 +20,6 @@ import type {
   SimulationJob,
   WeatherSimulationResponse,
 } from "@/types/simulation";
-import {
-  getSimulationExportUrl,
-} from "@/lib/api-client";
-
 
 const terminalStatuses =
   new Set<SimulationJob["status"]>([

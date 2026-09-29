@@ -156,6 +156,12 @@ class MaterialVersion(Base):
         )
     )
 
+    # Stage 3. Measured clothing area factor f_cl; None -> derived from clo.
+    clothing_area_factor: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+    
     solar_reflectance: Mapped[float] = mapped_column(
         Float,
         nullable=False,

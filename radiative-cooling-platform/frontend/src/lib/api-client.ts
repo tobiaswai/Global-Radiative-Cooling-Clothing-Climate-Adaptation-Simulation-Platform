@@ -1,5 +1,23 @@
 import type {
+  GaggeBenchmarkRequest,
+  GaggeBenchmarkResponse,
+} from "@/types/benchmark";
+import type {
+  GeoJsonFeatureCollection,
+  GlobalBatch,
+  GlobalBatchCreate,
+  GlobalBatchDetail,
+  GlobalBatchEstimate,
+  GlobalCity,
+} from "@/types/global-batch";
+import type {
+  Material,
+  MaterialCreate,
+  MaterialListResponse,
+} from "@/types/material";
+import type {
   City,
+  MaterialInput,
   SimulationJob,
   SimulationJobDetail,
   SimulationJobList,
@@ -294,14 +312,6 @@ export function getSimulationEventsUrl(
   );
 }
 
-import type {
-  Material,
-  MaterialCreate,
-  MaterialListResponse,
-} from "@/types/material";
-import type {
-  MaterialInput,
-} from "@/types/simulation";
 
 
 export async function getMaterials(
@@ -440,14 +450,6 @@ export function getSimulationExportUrl(
   );
 }
 
-import type {
-  GeoJsonFeatureCollection,
-  GlobalBatch,
-  GlobalBatchCreate,
-  GlobalBatchEstimate,
-  GlobalBatchDetail,
-  GlobalCity,
-} from "@/types/global-batch";
 
 export async function getGlobalCities(): Promise<
   GlobalCity[]
@@ -623,4 +625,22 @@ export function getGlobalBatchExportUrl(
     `${API_BASE_URL}/api/v1/` +
     `global-batches/${batchId}/export`
   );
+}
+
+export async function compareWithGagge(
+  request: GaggeBenchmarkRequest,
+): Promise<GaggeBenchmarkResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/benchmarks/gagge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Gagge benchmark request failed"),
+    );
+  }
+
+  return response.json() as Promise<GaggeBenchmarkResponse>;
 }

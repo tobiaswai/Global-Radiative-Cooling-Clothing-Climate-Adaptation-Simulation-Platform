@@ -1,3 +1,5 @@
+import type { ParameterSource } from "@/types/simulation";
+
 export type MaterialMode =
   | "ordinary"
   | "opaque_emitter"
@@ -7,6 +9,8 @@ export type MaterialMode =
 export type MaterialVersionInput = {
   mode: MaterialMode;
   clothing_insulation_clo: number;
+  /** Stage 3: f_cl in [1, 2]; `null` = derived from clo by the backend. */
+  clothing_area_factor: number | null;
   evaporative_resistance_m2pa_w: number | null;
   solar_reflectance: number;
   solar_transmittance: number;
@@ -19,6 +23,7 @@ export type MaterialVersionInput = {
   source_type: string;
   source_reference: string | null;
   notes: string | null;
+  parameter_sources?: Record<string, ParameterSource> | null;
 };
 
 export type MaterialCreate = {

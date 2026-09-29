@@ -6,39 +6,22 @@ from types import SimpleNamespace
 import pytest
 
 from app.services.result_export import (
+    CSV_HEADERS,
     export_result_csv,
     export_result_json,
 )
 
 
-EXPECTED_HEADERS = [
-    "minute",
-    "control_core_temperature_c",
-    "control_skin_temperature_c",
-    "rc_core_temperature_c",
-    "rc_skin_temperature_c",
-    "control_convection_w_m2",
-    "rc_convection_w_m2",
-    "control_longwave_w_m2",
-    "rc_longwave_w_m2",
-    "control_evaporation_w_m2",
-    "rc_evaporation_w_m2",
-    "control_absorbed_solar_w_m2",
-    "rc_absorbed_solar_w_m2",
-]
+EXPECTED_HEADERS = CSV_HEADERS  # single source of truth
 
 
 def make_point(
     *,
-    minute: float,
-    core_temperature_c: float,
-    skin_temperature_c: float,
-    convection_w_m2: float,
-    longwave_radiation_w_m2: float,
-    evaporation_w_m2: float,
-    absorbed_solar_w_m2: float,
+    minute, core_temperature_c, skin_temperature_c, convection_w_m2,
+    longwave_radiation_w_m2, evaporation_w_m2, absorbed_solar_w_m2,
+    maximum_evaporation_w_m2=None, skin_wettedness=None,
+    clothing_surface_temperature_c=None,
 ):
-    """Minimal time-series test objects required to create a CSV exporter."""
     return SimpleNamespace(
         minute=minute,
         core_temperature_c=core_temperature_c,
@@ -47,8 +30,30 @@ def make_point(
         longwave_radiation_w_m2=longwave_radiation_w_m2,
         evaporation_w_m2=evaporation_w_m2,
         absorbed_solar_w_m2=absorbed_solar_w_m2,
+        maximum_evaporation_w_m2=maximum_evaporation_w_m2,
+        skin_wettedness=skin_wettedness,
+        clothing_surface_temperature_c=clothing_surface_temperature_c,
     )
 
+@pytest.mark.unit
+def test_missing_stage_3_diagnostics_export_as_blank_cells():
+    rows = list(csv.reader(io.StringIO(export_result_csv(make_export_result()))))
+    assert rows[1][13:] == [""] * 6
+
+@pytest.mark.unit
+def test_stage_3_diagnostics_are_exported_when_present():
+    point = make_point(
+        minute=0, core_temperature_c=36.8, skin_temperature_c=33.7,
+        convection_w_m2=1.0, longwave_radiation_w_m2=1.0, evaporation_w_m2=1.0,
+        absorbed_solar_w_m2=1.0, maximum_evaporation_w_m2=120.0,
+        skin_wettedness=0.25, clothing_surface_temperature_c=35.1,
+    )
+    rows = list(csv.reader(io.StringIO(export_result_csv(
+        make_export_result(control_points=[point], rc_points=[point])
+    ))))
+    assert float(rows[1][13]) == pytest.approx(120.0)
+    assert float(rows[1][15]) == pytest.approx(0.25)
+    assert float(rows[1][17]) == pytest.approx(35.1)
 
 def make_export_result(
     *,
@@ -96,6 +101,8 @@ def test_result_csv_contains_expected_headers():
     rows = list(csv.reader(io.StringIO(csv_text)))
 
     assert rows[0] == EXPECTED_HEADERS
+    assert "control_clothing_surface_temperature_c" in rows[0]
+    assert len(rows[0]) == 1 + 2 * 9  # minute + 9 paired quantities
 
 
 @pytest.mark.unit

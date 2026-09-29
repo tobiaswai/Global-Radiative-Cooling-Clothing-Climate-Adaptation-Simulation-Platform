@@ -23,6 +23,7 @@ def final_skin(result) -> float:
 MATERIAL_PERTURBATIONS = {
     "clothing_insulation_clo": 0.9,
     "evaporative_resistance_m2pa_w": 40.0,
+    "clothing_area_factor": 1.4,           # Stage 3
     "solar_reflectance": 0.7,
     "solar_transmittance": 0.2,
     "infrared_emissivity": 0.5,
@@ -49,6 +50,8 @@ def test_every_material_field_participates(
 
 PERSON_PERTURBATIONS = {
     "met": 1.2,
+    "body_surface_area_m2": 2.4,           # Stage 3: was xfail (ADR 0001)
+    "body_mass_kg": 95.0,                  # Stage 3
     "initial_core_temperature_c": 37.4,
     "initial_skin_temperature_c": 31.0,
 }
@@ -65,27 +68,6 @@ def test_every_person_field_participates(
     )
 
     assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C
-
-
-@pytest.mark.unit
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known Stage 2 finding: heat capacities are per-m^2 constants, so "
-        "body_surface_area_m2 is informational only. Decision recorded in "
-        "docs/decisions/0001-body-surface-area.md; fix planned for Stage 3."
-    ),
-)
-def test_body_surface_area_participates(environment, person, control_material):
-    baseline = simulate_material(60, 1, environment, person, control_material)
-    perturbed = simulate_material(
-        60, 1, environment,
-        person.model_copy(update={"body_surface_area_m2": 2.4}),
-        control_material,
-    )
-
-    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C
-
 
 # (baseline update, perturbed update). Method-dependent parameters are tested
 # with the method that uses them switched on in both runs.
