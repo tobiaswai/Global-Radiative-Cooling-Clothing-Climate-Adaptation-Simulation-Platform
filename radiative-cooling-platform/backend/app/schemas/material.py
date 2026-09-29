@@ -39,6 +39,8 @@ class MaterialVersionCreate(BaseModel):
         ge=0,
     )
 
+    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
+
     solar_reflectance: float = Field(
         default=0.5,
         ge=0,
@@ -176,6 +178,8 @@ class MaterialVersionResponse(BaseModel):
     source_type: str
     source_reference: str | None
     notes: str | None
+
+    clothing_area_factor: float | None = None
 
     created_at: datetime
     spectra: list[SpectrumSummary] = []

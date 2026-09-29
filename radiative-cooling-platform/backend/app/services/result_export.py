@@ -1,47 +1,48 @@
 import csv
 import io
 import json
+from typing import Any
 
-from app.schemas.simulation import (
-    WeatherSimulationResponse,
-)
+from app.schemas.simulation import WeatherSimulationResponse
 
 
-def export_result_csv(
-    result: WeatherSimulationResponse,
-) -> str:
+CSV_HEADERS = [
+    "minute",
+    "control_core_temperature_c",
+    "control_skin_temperature_c",
+    "rc_core_temperature_c",
+    "rc_skin_temperature_c",
+    "control_convection_w_m2",
+    "rc_convection_w_m2",
+    "control_longwave_w_m2",
+    "rc_longwave_w_m2",
+    "control_evaporation_w_m2",
+    "rc_evaporation_w_m2",
+    "control_absorbed_solar_w_m2",
+    "rc_absorbed_solar_w_m2",
+    # Stage 2 / 3 diagnostics; blank for results stored before they existed.
+    "control_maximum_evaporation_w_m2",
+    "rc_maximum_evaporation_w_m2",
+    "control_skin_wettedness",
+    "rc_skin_wettedness",
+    "control_clothing_surface_temperature_c",
+    "rc_clothing_surface_temperature_c",
+]
+
+
+def _optional(point: Any, name: str) -> Any:
+    value = getattr(point, name, None)
+    return "" if value is None else value
+
+
+def export_result_csv(result: WeatherSimulationResponse) -> str:
     output = io.StringIO()
-
     writer = csv.writer(output)
-
-    writer.writerow(
-        [
-            "minute",
-            "control_core_temperature_c",
-            "control_skin_temperature_c",
-            "rc_core_temperature_c",
-            "rc_skin_temperature_c",
-            "control_convection_w_m2",
-            "rc_convection_w_m2",
-            "control_longwave_w_m2",
-            "rc_longwave_w_m2",
-            "control_evaporation_w_m2",
-            "rc_evaporation_w_m2",
-            "control_absorbed_solar_w_m2",
-            "rc_absorbed_solar_w_m2",
-        ]
-    )
-
-    control_points = (
-        result.control.time_series
-    )
-    rc_points = (
-        result.radiative_cooling.time_series
-    )
+    writer.writerow(CSV_HEADERS)
 
     for control, rc in zip(
-        control_points,
-        rc_points,
+        result.control.time_series,
+        result.radiative_cooling.time_series,
         strict=True,
     ):
         writer.writerow(
@@ -59,17 +60,17 @@ def export_result_csv(
                 rc.evaporation_w_m2,
                 control.absorbed_solar_w_m2,
                 rc.absorbed_solar_w_m2,
+                _optional(control, "maximum_evaporation_w_m2"),
+                _optional(rc, "maximum_evaporation_w_m2"),
+                _optional(control, "skin_wettedness"),
+                _optional(rc, "skin_wettedness"),
+                _optional(control, "clothing_surface_temperature_c"),
+                _optional(rc, "clothing_surface_temperature_c"),
             ]
         )
 
     return output.getvalue()
 
 
-def export_result_json(
-    result: WeatherSimulationResponse,
-) -> str:
-    return json.dumps(
-        result.model_dump(mode="json"),
-        ensure_ascii=False,
-        indent=2,
-    )
+def export_result_json(result: WeatherSimulationResponse) -> str:
+    return json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2)

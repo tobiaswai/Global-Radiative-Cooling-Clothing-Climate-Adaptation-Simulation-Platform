@@ -58,7 +58,13 @@ def test_explicit_derived_value_reproduces_none_result(environment, person, cont
     assert a.final_skin_temperature_c == pytest.approx(b.final_skin_temperature_c, abs=1e-8)
     assert a.clothing.evaporative_resistance_source == "derived_from_clo"
     assert b.clothing.evaporative_resistance_source == "material_input"
-    assert b.assumptions_applied == []
+
+    # Stage 3: f_cl and the ADR 0003 solar note are always reported; only the
+    # Re,cl derivation note must disappear when the value is supplied.
+    assert any("evaporative_resistance" in note for note in a.assumptions_applied)
+    assert not any("evaporative_resistance" in note for note in b.assumptions_applied)
+
+
 
 
 @pytest.mark.unit
@@ -80,8 +86,8 @@ def test_infrared_transmittance_amplifies_longwave_exchange(
     opaque = control_material.model_copy(update={"infrared_emissivity": 0.5})
     transparent = opaque.model_copy(update={"infrared_transmittance": 0.4})
 
-    # Cold radiant surroundings: the body loses heat, transmittance must
-    # increase the loss (more positive under the "positive = loss" convention).
+    # Cold radiant surroundings: the body loses heat; transmittance increases
+    # the loss (more positive under the "positive = loss" convention).
     cold = environment.model_copy(
         update={"mean_radiant_temperature_c": 15.0, "sky_temperature_c": 0.0}
     )
@@ -90,13 +96,50 @@ def test_infrared_transmittance_amplifies_longwave_exchange(
     assert opaque_cold.longwave_radiation > 0
     assert transparent_cold.longwave_radiation > opaque_cold.longwave_radiation
 
-    # Hot radiant surroundings (the default fixture, T_eff ≈ 34.6 °C > skin):
-    # the body gains heat, transmittance must increase the gain (more negative).
-    opaque_hot = calculate_fluxes(36.8, 33.7, environment, person, opaque)
-    transparent_hot = calculate_fluxes(36.8, 33.7, environment, person, transparent)
+    # Hot radiant surroundings well above any clothing surface temperature:
+    # the body gains heat; transmittance increases the gain (more negative).
+    hot = environment.model_copy(
+        update={"mean_radiant_temperature_c": 60.0, "sky_temperature_c": 60.0}
+    )
+    opaque_hot = calculate_fluxes(36.8, 33.7, hot, person, opaque)
+    transparent_hot = calculate_fluxes(36.8, 33.7, hot, person, transparent)
     assert opaque_hot.longwave_radiation < 0
     assert transparent_hot.longwave_radiation < opaque_hot.longwave_radiation
 
+@pytest.mark.unit
+def test_area_factor_is_derived_and_flagged(control_material):
+    clothing = resolve_clothing(control_material)
+
+    assert clothing.area_factor_source == "derived_from_clo"
+    assert clothing.area_factor == pytest.approx(1.0 + 0.15 * 0.5)
+
+@pytest.mark.unit
+def test_explicit_area_factor_overrides_derivation(control_material):
+    material = control_material.model_copy(update={"clothing_area_factor": 1.4})
+    clothing = resolve_clothing(material)
+
+    assert clothing.area_factor_source == "material_input"
+    assert clothing.area_factor == pytest.approx(1.4)
+
+@pytest.mark.unit
+def test_clothing_surface_balance_is_consistent(environment, person, control_material):
+    """Conduction through the textile equals what leaves its outer surface."""
+    clothing = resolve_clothing(control_material)
+    fluxes = calculate_fluxes(36.8, 33.7, environment, person, control_material, clothing)
+
+    conduction = (33.7 - fluxes.clothing_surface_temperature_c) / clothing.dry_resistance_m2k_w
+    surface_losses = fluxes.convection + fluxes.longwave_radiation - fluxes.longwave_transmitted
+
+    assert conduction == pytest.approx(surface_losses, abs=1e-3)
+
+@pytest.mark.unit
+def test_nude_surface_temperature_equals_skin(environment, person, control_material):
+    nude = control_material.model_copy(update={"clothing_insulation_clo": 0.0})
+    fluxes = calculate_fluxes(36.8, 33.7, environment, person, nude)
+
+    assert fluxes.clothing_surface_temperature_c == pytest.approx(33.7)
+    
+    
 @pytest.mark.unit
 def test_emissivity_plus_transmittance_above_one_is_rejected():
     with pytest.raises(ValidationError, match="infrared_emissivity"):

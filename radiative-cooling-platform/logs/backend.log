@@ -1,18 +1,62 @@
 INFO:     Will watch for changes in these directories: ['C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [24508] using WatchFiles
-INFO:     Started server process [3120]
+INFO:     Started reloader process [14372] using WatchFiles
+INFO:     Started server process [19468]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62617 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42/events HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42/result HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54229 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60623 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60623 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55083 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55083 - "GET /api/v1/simulations/jobs/21ff7543-01ab-4748-a392-2c840076dd42 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50144 - "GET /api/v1/simulations/jobs?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50144 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54597 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55340 - "OPTIONS /api/v1/simulations/jobs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55340 - "POST /api/v1/simulations/jobs HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:55340 - "GET /api/v1/simulations/jobs/8b26cafb-101c-478a-bc08-d6eaf600bd38 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/simulations/jobs/8b26cafb-101c-478a-bc08-d6eaf600bd38/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64689 - "GET /api/v1/simulations/jobs/8b26cafb-101c-478a-bc08-d6eaf600bd38 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/simulations/jobs/8b26cafb-101c-478a-bc08-d6eaf600bd38/result HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/simulations/jobs/8b26cafb-101c-478a-bc08-d6eaf600bd38 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/simulations/jobs/8b26cafb-101c-478a-bc08-d6eaf600bd38 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59095 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59095 - "GET /api/v1/simulations/jobs?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/simulations/jobs?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/simulations/jobs?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56658 - "GET /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55541 - "GET /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65302 - "OPTIONS /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65302 - "POST /api/v1/materials HTTP/1.1" 201 Created
+INFO:     127.0.0.1:65302 - "GET /api/v1/materials/7da70040-55c5-4619-9f67-c7c4461a66c3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/v1/materials/7da70040-55c5-4619-9f67-c7c4461a66c3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "GET /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55764 - "GET /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55764 - "GET /api/v1/global-batches/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "GET /api/v1/global-batches/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "OPTIONS /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53855 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "OPTIONS /api/v1/global-batches HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "POST /api/v1/global-batches HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:50090 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c/geojson HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63381 - "GET /api/v1/global-batches/23176508-3d2f-4688-9305-86d565f5939c/geojson HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53416 - "OPTIONS /api/v1/benchmarks/gagge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53416 - "POST /api/v1/benchmarks/gagge HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [19468]
+INFO:     Stopping reloader process [14372]

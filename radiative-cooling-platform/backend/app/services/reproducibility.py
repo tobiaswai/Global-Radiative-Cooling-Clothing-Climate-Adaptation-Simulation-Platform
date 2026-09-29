@@ -18,7 +18,7 @@ What is NOT in the fingerprint
 
 Hard limit
     Only constants registered in ``model_parameters.MODEL_PARAMETERS``,
-    ``model_parameters.SOLVER_SETTINGS`` or ``EnvironmentAssumptions`` are
+    or ``EnvironmentAssumptions`` are
     visible here. A literal left inside ``two_node.py`` is invisible.
 """
 
@@ -161,11 +161,12 @@ def diff_snapshots(
 
 
 _REGEN_HINT = (
-    "If intentional: bump MODEL_VERSION in app/services/model_parameters.py, "
-    "note it in the changelog, then regenerate the fixture "
-    "(python -m scripts.regenerate_golden). Otherwise revert the constant."
+    "If intentional: bump MODEL_PARAMETER_SET_VERSION in "
+    "app/services/model_parameters.py, record the change in "
+    "docs/acceptance/<stage>/golden-refresh.md, then regenerate the fixture "
+    "(UPDATE_GOLDEN=1 pytest tests/test_golden_dubai_2h.py). "
+    "Otherwise revert the constant."
 )
-
 
 def _compare_parameter_fingerprint(
     expected: Mapping[str, Any],

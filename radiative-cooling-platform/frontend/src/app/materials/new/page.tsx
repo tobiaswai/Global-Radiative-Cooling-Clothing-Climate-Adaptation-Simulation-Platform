@@ -1,15 +1,11 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
-import type {
-  MaterialCreate,
-} from "@/types/material";
+import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
 
 
 const initialMaterial: MaterialCreate = {
@@ -20,6 +16,7 @@ const initialMaterial: MaterialCreate = {
   initial_version: {
     mode: "opaque_emitter",
     clothing_insulation_clo: 0.4,
+    clothing_area_factor: null,
     evaporative_resistance_m2pa_w: 18,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
@@ -73,16 +70,13 @@ export default function NewMaterialPage() {
     }
   }
 
-  function updateVersion(
-    field: string,
-    value: string | number,
+  function updateVersion<K extends keyof MaterialVersionInput>(
+    field: K,
+    value: MaterialVersionInput[K],
   ) {
     setMaterial({
       ...material,
-      initial_version: {
-        ...material.initial_version,
-        [field]: value,
-      },
+      initial_version: { ...material.initial_version, [field]: value },
     });
   }
 
@@ -178,6 +172,17 @@ export default function NewMaterialPage() {
                     value,
                   )
                 }
+              />
+
+              <OptionalNumberField
+                label="Clothing Area Factor (f_cl)"
+                value={material.initial_version.clothing_area_factor}
+                placeholder="Derived from clo"
+                min={1}
+                max={2}
+                step={0.01}
+                hint="Leave empty to let the backend derive f_cl from clo."
+                onChange={(value) => updateVersion("clothing_area_factor", value)}
               />
 
               <NumberInput

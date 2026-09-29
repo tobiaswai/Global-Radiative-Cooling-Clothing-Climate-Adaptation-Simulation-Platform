@@ -4,16 +4,8 @@ export type NavLink = {
 };
 
 export const NAV_LINKS: NavLink[] = [
-  {
-    href: "/simulations",
-    label: "Simulations",
-  },
-  {
-    href: "/materials",
-    label: "Materials",
-  },
-  {
-    href: "/global-analysis",
-    label: "Global Analysis",
-  },
+  { href: "/simulations", label: "Simulations" },
+  { href: "/materials", label: "Materials" },
+  { href: "/global-analysis", label: "Global Analysis" },
+  { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
 ];

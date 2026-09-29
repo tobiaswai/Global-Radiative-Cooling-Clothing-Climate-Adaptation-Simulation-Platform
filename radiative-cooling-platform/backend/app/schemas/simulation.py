@@ -49,31 +49,22 @@ class EnvironmentInput(BaseModel):
 
 
 class PersonInput(BaseModel):
-    met: float = Field(
-        default=2.6,
-        ge=0.7,
-        le=10,
-    )
-    body_surface_area_m2: float = Field(
-        default=1.8,
-        ge=1.0,
-        le=3.0,
-    )
-    initial_core_temperature_c: float = Field(
-        default=36.8,
-        ge=34,
-        le=40,
-    )
-    initial_skin_temperature_c: float = Field(
-        default=33.7,
-        ge=20,
-        le=40,
-    )
+    met: float = Field(default=2.6, ge=0.7, le=10)
+
+    body_surface_area_m2: float = Field(default=1.8, ge=1.0, le=3.0)
+
+    # Stage 3. Heat capacities are derived from body mass (ADR 0001).
+    # 70 kg / 1.8 m^2 reproduces the Gagge two-node lumped value.
+    body_mass_kg: float = Field(default=70.0, ge=30.0, le=200.0)
+
+    initial_core_temperature_c: float = Field(default=36.8, ge=34, le=40)
+    initial_skin_temperature_c: float = Field(default=33.7, ge=20, le=40)
 
 MATERIAL_PHYSICAL_FIELDS = frozenset(
     {
         "clothing_insulation_clo",
         "evaporative_resistance_m2pa_w",
+        "clothing_area_factor",
         "solar_reflectance",
         "solar_transmittance",
         "infrared_emissivity",
@@ -94,6 +85,8 @@ class MaterialInput(BaseModel):
     evaporative_resistance_m2pa_w: float | None = Field(
         default=None, ge=0, le=1000
     )
+    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
+
 
     solar_reflectance: float = Field(default=0.5, ge=0, le=1)
     solar_transmittance: float = Field(default=0, ge=0, le=1)
@@ -173,14 +166,30 @@ class TimeSeriesPoint(BaseModel):
     # Stage 2 diagnostics. Optional so stored results still load.
     maximum_evaporation_w_m2: float | None = None
     skin_wettedness: float | None = None
+    # Stage 3 diagnostics.
+    clothing_surface_temperature_c: float | None = None
+    skin_blood_flow_kg_h_m2: float | None = None
 
 class ClothingSummary(BaseModel):
-    """Resolved clothing resistances actually used by the solver."""
+    """Resolved clothing quantities actually used by the solver."""
 
     dry_resistance_m2k_w: float
     evaporative_resistance_m2pa_w: float
     evaporative_resistance_source: Literal["material_input", "derived_from_clo"]
     infrared_transmittance: float
+    # Stage 3
+    clothing_area_factor: float | None = None
+    clothing_area_factor_source: (
+        Literal["material_input", "derived_from_clo"] | None
+    ) = None
+
+class BodyThermalSummary(BaseModel):
+    """Heat capacities derived from PersonInput (Stage 3, ADR 0001)."""
+
+    body_mass_kg: float
+    body_surface_area_m2: float
+    core_heat_capacity_j_m2k: float
+    skin_heat_capacity_j_m2k: float
 
 class ScenarioResult(BaseModel):
     material_name: str
@@ -193,6 +202,8 @@ class ScenarioResult(BaseModel):
     # Stage 2
     clothing: ClothingSummary | None = None
     assumptions_applied: list[str] = Field(default_factory=list)
+    # Stage 3
+    body: BodyThermalSummary | None = None
 
 
 class SimulationSummary(BaseModel):
@@ -213,17 +224,18 @@ class SimulationResponse(BaseModel):
     # Stage 2. Optional so previously stored results still load.
     model_metadata: ModelMetadata | None = None
 
+class BenchmarkTolerances(BaseModel):
+    """Acceptance thresholds on the maximum absolute trajectory difference."""
+
+    core_temperature_c: float = Field(default=0.3, gt=0, le=5)
+    skin_temperature_c: float = Field(default=1.0, gt=0, le=10)
     
 class GaggeBenchmarkRequest(BaseModel):
-    duration_minutes: int = Field(
-        default=60,
-        ge=1,
-        le=240,
-    )
+    duration_minutes: int = Field(default=60, ge=1, le=240)
     environment: EnvironmentInput
     person: PersonInput
     material: MaterialInput
-
+    tolerances: BenchmarkTolerances = Field(default_factory=BenchmarkTolerances)
 
 class GaggeModelOutput(BaseModel):
     core_temperature_c: float
@@ -240,19 +252,53 @@ class PrototypeBenchmarkOutput(BaseModel):
     core_temperature_c: float
     skin_temperature_c: float
     evaporation_w_m2: float
+    skin_wettedness: float
+    skin_blood_flow_kg_h_m2: float
     energy_residual_percent: float
 
+class BenchmarkSeriesPoint(BaseModel):
+    minute: int
+    prototype_core_temperature_c: float
+    prototype_skin_temperature_c: float
+    prototype_evaporation_w_m2: float
+    reference_core_temperature_c: float
+    reference_skin_temperature_c: float
+    reference_evaporation_w_m2: float
+    
+class BenchmarkMetric(BaseModel):
+    final_difference_c: float
+    maximum_absolute_difference_c: float
+    root_mean_square_difference_c: float
+    tolerance_c: float
+    passed: bool
+    
+class ReferencePortParity(BaseModel):
+    """Port vs. library after 60 minutes (the only duration the library runs)."""
 
+    library_core_temperature_c: float
+    port_core_temperature_c: float
+    library_skin_temperature_c: float
+    port_skin_temperature_c: float
+    maximum_absolute_difference_c: float
+    
 class GaggeBenchmarkResponse(BaseModel):
     reference_model: str
     reference_library: str
+    reference_library_version: str
     environment_note: str
+    alignment_applied: list[str]
     prototype: PrototypeBenchmarkOutput
     gagge: GaggeModelOutput
+    # Kept for backward compatibility with Stage 2 clients.
     difference_core_temperature_c: float
     difference_skin_temperature_c: float
+    # Stage 3
+    core_temperature: BenchmarkMetric
+    skin_temperature: BenchmarkMetric
+    passed: bool
+    time_series: list[BenchmarkSeriesPoint]
+    reference_port_parity: ReferencePortParity
     warning: str
-    
 class WeatherSimulationRequest(BaseModel):
     city_id: str = Field(
         default="dubai",

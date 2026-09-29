@@ -1,14 +1,14 @@
-"""Clothing dry and evaporative resistances (Stage 2).
+"""Clothing dry and evaporative resistances and area factor (Stage 3).
+
+Dry pathway (see two_node.clothing_surface_temperature_c)
+    (T_sk - T_cl) / R_cl = f_cl * [h_c (T_cl - T_a) + eps_cl sigma (T_cl^4 - T_env^4)]
 
 Evaporative pathway
--------------------
-E_max = (P_sk - P_a) / (Re,cl + Re,a)         [W/m^2]
-Re,a  = 1 / (LR * h_c)                         [m^2 kPa/W]
-Re,cl = material value, or R_cl / (LR * i_cl)  when not supplied
+    E_max = (P_sk - P_a) / (Re,cl + Re,a)          [W/m^2]
+    Re,a  = 1 / (LR * f_cl * h_c)                  [m^2 kPa/W]
+    Re,cl = material value, or R_cl / (LR * i_cl)  when not supplied
 
-The clothing area factor f_cl is deliberately not applied so that the
-evaporative and dry pathways stay consistent (the dry pathway also omits
-it). Introducing f_cl in both pathways is Stage 3 benchmark work.
+f_cl = material value, or 1 + clothing_area_factor_slope * clo.
 """
 
 from __future__ import annotations
@@ -25,26 +25,42 @@ LEWIS_RELATION = get_parameter_value("lewis_relation")
 CLOTHING_VAPOR_PERMEATION_EFFICIENCY = get_parameter_value(
     "clothing_vapor_permeation_efficiency"
 )
+CLOTHING_AREA_FACTOR_SLOPE = get_parameter_value("clothing_area_factor_slope")
 
-EvaporativeResistanceSource = Literal["material_input", "derived_from_clo"]
+ParameterSourceLabel = Literal["material_input", "derived_from_clo"]
 
 
 @dataclass(frozen=True)
 class ClothingResistances:
     dry_resistance_m2k_w: float
     evaporative_resistance_m2kpa_w: float
-    evaporative_resistance_source: EvaporativeResistanceSource
+    evaporative_resistance_source: ParameterSourceLabel
     infrared_transmittance: float
+    area_factor: float
+    area_factor_source: ParameterSourceLabel
 
     @property
     def evaporative_resistance_m2pa_w(self) -> float:
         return self.evaporative_resistance_m2kpa_w * 1000.0
 
+    @property
+    def is_nude(self) -> bool:
+        return self.dry_resistance_m2k_w <= 0.0
+
 
 def derive_evaporative_resistance_m2pa_w(clothing_insulation_clo: float) -> float:
     """Re,cl = R_cl / (LR * i_cl), expressed in m^2 Pa/W."""
     dry_resistance = CLO_TO_SI * clothing_insulation_clo
-    return dry_resistance / (LEWIS_RELATION * CLOTHING_VAPOR_PERMEATION_EFFICIENCY) * 1000.0
+    return (
+        dry_resistance
+        / (LEWIS_RELATION * CLOTHING_VAPOR_PERMEATION_EFFICIENCY)
+        * 1000.0
+    )
+
+
+def derive_clothing_area_factor(clothing_insulation_clo: float) -> float:
+    """f_cl = 1 + slope * clo."""
+    return 1.0 + CLOTHING_AREA_FACTOR_SLOPE * clothing_insulation_clo
 
 
 def resolve_clothing(material: MaterialInput) -> ClothingResistances:
@@ -52,23 +68,35 @@ def resolve_clothing(material: MaterialInput) -> ClothingResistances:
 
     if material.evaporative_resistance_m2pa_w is not None:
         evaporative_m2pa_w = material.evaporative_resistance_m2pa_w
-        source: EvaporativeResistanceSource = "material_input"
+        evaporative_source: ParameterSourceLabel = "material_input"
     else:
         evaporative_m2pa_w = derive_evaporative_resistance_m2pa_w(
             material.clothing_insulation_clo
         )
-        source = "derived_from_clo"
+        evaporative_source = "derived_from_clo"
+
+    if material.clothing_area_factor is not None:
+        area_factor = material.clothing_area_factor
+        area_factor_source: ParameterSourceLabel = "material_input"
+    else:
+        area_factor = derive_clothing_area_factor(material.clothing_insulation_clo)
+        area_factor_source = "derived_from_clo"
 
     return ClothingResistances(
         dry_resistance_m2k_w=dry_resistance,
         evaporative_resistance_m2kpa_w=evaporative_m2pa_w / 1000.0,
-        evaporative_resistance_source=source,
+        evaporative_resistance_source=evaporative_source,
         infrared_transmittance=material.infrared_transmittance,
+        area_factor=area_factor,
+        area_factor_source=area_factor_source,
     )
 
 
-def air_layer_evaporative_resistance_m2kpa_w(convection_coefficient: float) -> float:
-    return 1.0 / (LEWIS_RELATION * convection_coefficient)
+def air_layer_evaporative_resistance_m2kpa_w(
+    convection_coefficient: float,
+    area_factor: float,
+) -> float:
+    return 1.0 / (LEWIS_RELATION * area_factor * convection_coefficient)
 
 
 def maximum_evaporation_w_m2(
@@ -79,7 +107,9 @@ def maximum_evaporation_w_m2(
 ) -> float:
     total_resistance = (
         clothing.evaporative_resistance_m2kpa_w
-        + air_layer_evaporative_resistance_m2kpa_w(convection_coefficient)
+        + air_layer_evaporative_resistance_m2kpa_w(
+            convection_coefficient, clothing.area_factor
+        )
     )
     return max(
         0.0,
@@ -97,10 +127,22 @@ def assumptions_applied(clothing: ClothingResistances) -> list[str]:
             f"-> {clothing.evaporative_resistance_m2pa_w:.2f} m^2 Pa/W"
         )
 
+    if clothing.area_factor_source == "derived_from_clo":
+        notes.append(
+            "clothing_area_factor not supplied; derived as "
+            f"1 + {CLOTHING_AREA_FACTOR_SLOPE} * clo -> {clothing.area_factor:.4f}"
+        )
+
     if clothing.infrared_transmittance > 0.0:
         notes.append(
-            "infrared_transmittance > 0: transmitted skin emission bypasses the "
-            "clothing coupling factor (first-order model)"
+            "infrared_transmittance > 0: transmitted skin emission is a parallel "
+            "path that bypasses the clothing surface balance (first-order model)"
         )
+
+    notes.append(
+        "absorbed solar radiation is deposited on the skin node via "
+        "absorbed_solar_to_body_fraction and does not enter the clothing "
+        "surface balance (ADR 0003)"
+    )
 
     return notes
