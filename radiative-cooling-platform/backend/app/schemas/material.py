@@ -79,6 +79,10 @@ class MaterialVersionCreate(BaseModel):
         default=0.35,
         ge=0,
         le=1,
+        description=(
+            "DEPRECATED since Stage 5 (ADR 0005): ignored by the physics. "
+            "Kept so stored requests and library versions keep loading."
+        ),
     )
 
     areal_density_g_m2: float | None = Field(

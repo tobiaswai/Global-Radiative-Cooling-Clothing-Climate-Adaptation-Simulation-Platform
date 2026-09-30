@@ -17,6 +17,12 @@ Stage 3 changes
 * Added: body_specific_heat, skin_mass_fraction, clothing_area_factor_slope,
   sweating_gain_body, sweating_skin_signal_scale, vasodilation_gain,
   vasoconstriction_gain, maximum_wettedness_*, shivering_coefficient.
+
+Stage 5 changes
+---------------
+* Renamed: effective_radiation_area_ratio -> effective_radiation_area_ratio_standing;
+  added effective_radiation_area_ratio_sitting (selected by PersonInput.position).
+* Added: diffuse_hemisphere_fraction (ASHRAE 55 Appendix C shortwave geometry).
 """
 
 from __future__ import annotations
@@ -32,7 +38,7 @@ from app.schemas.provenance import (
 )
 
 
-MODEL_PARAMETER_SET_VERSION = "3.0.0"
+MODEL_PARAMETER_SET_VERSION = "4.0.0"
 
 GAGGE_1986 = (
     "Gagge, Fobelets & Berglund (1986). A standard predictive index of "
@@ -96,16 +102,26 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
        "literature", ASHRAE_FUNDAMENTALS + ", Table 6 (Mitchell 1974: 8.3 v^0.6)",
        "Exponent simplified from 0.6 to 0.5 in this prototype."),
 
-   # --- longwave radiation geometry ----------------------------------------
-    _p("effective_radiation_area_ratio", 0.73, "-",
-       "A_r / A_D: fraction of the DuBois area exchanging longwave radiation "
-       "with the surroundings (standing person)",
+    # --- radiation geometry (Stage 5: posture-dependent, ADR 0006) ----------
+    _p("effective_radiation_area_ratio_standing", 0.73, "-",
+       "A_r / A_D for a standing person: fraction of the DuBois area exchanging "
+       "radiation with the surroundings (longwave, sky-diffuse and "
+       "ground-reflected shortwave)",
        "literature",
        "Fanger (1970) Thermal Comfort, McGraw-Hill; " + ASHRAE_FUNDAMENTALS
-       + " (0.70 seated, 0.73 standing); " + ASHRAE_55_SET,
-       "Applied to the clothing surface emission and to skin emission "
-       "transmitted through IR-transparent textiles. Posture is fixed at "
-       "standing; a PersonInput.position field is Stage 4 work."),
+       + " (0.73 standing); " + ASHRAE_55_SET),
+    _p("effective_radiation_area_ratio_sitting", 0.70, "-",
+       "A_r / A_D for a seated person",
+       "literature",
+       "Fanger (1970) Thermal Comfort, McGraw-Hill; " + ASHRAE_FUNDAMENTALS
+       + " (0.70 seated); " + ASHRAE_55_SET),
+    _p("diffuse_hemisphere_fraction", 0.5, "-",
+       "Share of the effective radiation area facing one hemisphere; scales the "
+       "sky-diffuse (upper) and ground-reflected (lower) shortwave terms",
+       "standard",
+       "ASHRAE Standard 55-2020, Normative Appendix C (Arens et al. 2015): "
+       "ERF = [0.5 f_eff f_svv (I_diff + I_TH R_floor) + f_p f_bes I_dir] "
+       "alpha_SW / alpha_LW"),
     
     # --- clothing -----------------------------------------------------------
     _p("clo_to_si", 0.155, "m^2 K/(W clo)", "1 clo = 0.155 m^2 K/W",

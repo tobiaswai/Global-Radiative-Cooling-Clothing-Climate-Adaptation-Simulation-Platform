@@ -39,7 +39,7 @@ from app.schemas.simulation import WeatherSimulationResponse
 from app.services import model_parameters as mp
 
 # Bump only when the *shape* of the snapshot changes (new section, renamed
-# key). A changed constant value must bump ``mp.MODEL_VERSION`` instead.
+# key). A changed constant value must bump ``mp.MODEL_PARAMETER_SET_VERSION``.
 SNAPSHOT_SCHEMA_VERSION = 1
 
 
@@ -164,7 +164,7 @@ _REGEN_HINT = (
     "If intentional: bump MODEL_PARAMETER_SET_VERSION in "
     "app/services/model_parameters.py, record the change in "
     "docs/acceptance/<stage>/golden-refresh.md, then regenerate the fixture "
-    "(UPDATE_GOLDEN=1 pytest tests/test_golden_dubai_2h.py). "
+    "(UPDATE_GOLDEN=1 python -m pytest tests/test_golden_dubai_2h.py). "
     "Otherwise revert the constant."
 )
 
@@ -182,7 +182,7 @@ def _compare_parameter_fingerprint(
     if expected_fp is None or expected_snapshot is None:
         return [
             "parameter_fingerprint: fixture has no fingerprint/snapshot; "
-            "regenerate it (python -m scripts.regenerate_golden)"
+            "regenerate it (UPDATE_GOLDEN=1 python -m pytest tests/test_golden_dubai_2h.py)"
         ]
 
     # Fixture integrity: catches hand-edited snapshots with a stale hash.

@@ -31,8 +31,10 @@ frontend/src/components/charts/weather-chart.tsx
 frontend/src/components/forms/number-field.tsx
 frontend/src/components/global-adaptation-map.tsx
 frontend/src/components/layout/NavBar.tsx
+frontend/src/components/materials/provenance-editor.tsx
 frontend/src/components/simulation/environment-input-fields.tsx
 frontend/src/components/simulation/material-input-fields.tsx
+frontend/src/components/simulation/material-version-picker.tsx
 frontend/src/components/simulation/model-provenance-panel.tsx
 frontend/src/components/simulation/model-quality-panel.tsx
 frontend/src/components/simulation/person-input-fields.tsx
@@ -281,8 +283,8 @@ const initialRequest: GaggeBenchmarkRequest = {
   },
 
   tolerances: {
-    core_temperature_c: 0.3,
-    skin_temperature_c: 1.0,
+    core_temperature_c: 0.31,
+    skin_temperature_c: 1.01,
   },
 };
 
@@ -407,6 +409,7 @@ export default function GaggeBenchmarkPage() {
               <MaterialInputFields
                 material={request.material}
                 showName
+                enableLibrary
                 onChange={(material) => setRequest({ ...request, material })}
               />
             </div>
@@ -2363,6 +2366,8 @@ import {
   getGlobalCities,
 } from "@/lib/api-client";
 
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+
 import type {
   AnalysisResolution,
   ExecutionProfile,
@@ -3155,6 +3160,38 @@ export default function GlobalAnalysisPage() {
             )}
         </section>
 
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Control Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.control_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(control_material) =>
+                    setRequest((current) => ({ ...current, control_material }))
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.rc_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(rc_material) =>
+                    setRequest((current) => ({ ...current, rc_material }))
+                  }
+                />
+              </div>
+            </section>
+          </div>
+
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -3736,10 +3773,9 @@ import {
 } from "react";
 import { useParams } from "next/navigation";
 
-import {
-  getMaterial,
-  uploadMaterialSpectrum,
-} from "@/lib/api-client";
+import Link from "next/link";
+import { getMaterial, getSimulationJobs, uploadMaterialSpectrum } from "@/lib/api-client";
+import type { SimulationJob } from "@/types/simulation";
 import type {
   Material,
 } from "@/types/material";
@@ -3981,6 +4017,14 @@ function MaterialDetailContent({
                     value={version.clothing_area_factor}
                     fallback="Derived from clo"
                   />
+
+                  <Metric
+                    label="evaporative resistance"
+                    value={version.evaporative_resistance_m2pa_w}
+                    unit="m²·Pa/W"
+                    fallback="Derived from clo"
+                    digits={1}
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -4027,6 +4071,8 @@ function MaterialDetailContent({
                     </ul>
                   )}
                 </div>
+                <ProvenanceTable sources={version.parameter_sources ?? null} />
+                <LinkedSimulations versionId={version.id} />
               </article>
             ),
           )}
@@ -4147,6 +4193,81 @@ function Metric({
     </div>
   );
 }
+
+function ProvenanceTable({
+  sources,
+}: {
+  sources: Record<string, { source_type: string; reference?: string | null; note?: string | null }> | null;
+}) {
+  const entries = Object.entries(sources ?? {});
+
+  if (entries.length === 0) {
+    return (
+      <p className="mt-5 text-sm text-slate-500">
+        No per-parameter provenance recorded for this version.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-5">
+      <p className="text-sm text-slate-400">Parameter provenance</p>
+      <table className="mt-2 w-full text-left text-sm">
+        <tbody>
+          {entries.map(([field, source]) => (
+            <tr key={field} className="border-t border-slate-800">
+              <td className="py-2 pr-4 font-mono text-slate-300">{field}</td>
+              <td className="py-2 pr-4 text-cyan-300">{source.source_type}</td>
+              <td className="py-2 text-slate-400">{source.reference ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LinkedSimulations({ versionId }: { versionId: string }) {
+  const [jobs, setJobs] = useState<SimulationJob[] | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getSimulationJobs(10, 0, versionId)
+      .then((response) => {
+        if (!ignore) setJobs(response.items);
+      })
+      .catch(() => {
+        if (!ignore) setJobs([]);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [versionId]);
+
+  if (jobs === null || jobs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5">
+      <p className="text-sm text-slate-400">Recent simulations using this version</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {jobs.map((job) => (
+          <li key={job.id}>
+            <Link
+              href={`/simulations/${job.id}`}
+              className="rounded-full border border-slate-700 px-3 py-1 font-mono text-xs text-cyan-300 hover:bg-slate-800"
+            >
+              {job.id.slice(0, 8)} · {job.city_id} · {job.status}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 ```
 
 ### File: `frontend/src/app/materials/new/page.tsx`
@@ -4155,7 +4276,7 @@ function Metric({
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import {ProvenanceEditor} from "@/components/materials/provenance-editor";
 import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
 import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
@@ -4338,6 +4459,25 @@ export default function NewMaterialPage() {
                 onChange={(value) => updateVersion("clothing_area_factor", value)}
               />
 
+              <OptionalNumberField
+                label="Evaporative Resistance (Re,cl)"
+                suffix="m²·Pa/W"
+                value={material.initial_version.evaporative_resistance_m2pa_w}
+                placeholder="Derived from clo"
+                min={0} max={1000} step={0.5}
+                onChange={(value) => updateVersion("evaporative_resistance_m2pa_w", value)}
+              />
+              <NumberInput
+                label="Projected Solar Area Factor"
+                value={material.initial_version.projected_solar_area_factor}
+                onChange={(value) => updateVersion("projected_solar_area_factor", value)}
+              />
+              <NumberInput
+                label="Absorbed Solar to Body Fraction"
+                value={material.initial_version.absorbed_solar_to_body_fraction}
+                onChange={(value) => updateVersion("absorbed_solar_to_body_fraction", value)}
+              />
+
               <NumberInput
                 label="Solar Reflectance"
                 value={
@@ -4406,6 +4546,22 @@ export default function NewMaterialPage() {
                     value,
                   )
                 }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Parameter Provenance</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Record where each value came from. Provenance travels with the
+              version into every simulation that references it.
+            </p>
+            <div className="mt-5">
+              <ProvenanceEditor
+                sources={material.initial_version.parameter_sources ?? null}
+                values={material.initial_version}
+                disabled={loading}
+                onChange={(sources) => updateVersion("parameter_sources", sources)}
               />
             </div>
           </section>
@@ -5088,7 +5244,22 @@ export default function SimulationJobPage() {
               </dd>
             </div>
           </dl>
-
+          {(job.control_material_version_id || job.rc_material_version_id) && (
+            <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-slate-500">Control material version</dt>
+                <dd className="mt-1 font-mono text-xs text-slate-300">
+                  {job.control_material_version_id ?? "manual values"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">RC material version</dt>
+                <dd className="mt-1 font-mono text-xs text-slate-300">
+                  {job.rc_material_version_id ?? "manual values"}
+                </dd>
+              </div>
+            </dl>
+          )}
           {job.error_message && (
             <div className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
               {job.error_message}
@@ -5159,6 +5330,9 @@ export default function SimulationJobPage() {
             <HeatFluxChart
               result={result}
             />
+            <PhysiologyChart result={result} />
+            <ModelQualityPanel result={result} />
+            <ModelProvenancePanel result={result} />
             <div className="flex flex-wrap gap-3">
               <a
                 href={getSimulationExportUrl(
@@ -5397,6 +5571,7 @@ export default function NewSimulationPage() {
               <div className="mt-5">
                 <MaterialInputFields
                   material={request.control_material}
+                  enableLibrary
                   onChange={(material) =>
                     setRequest({ ...request, control_material: material })
                   }
@@ -5412,6 +5587,7 @@ export default function NewSimulationPage() {
               <div className="mt-5">
                 <MaterialInputFields
                   material={request.rc_material}
+                  enableLibrary
                   onChange={(material) =>
                     setRequest({ ...request, rc_material: material })
                   }
@@ -5690,11 +5866,14 @@ import type {
   City,
   WeatherSimulationRequest,
 } from "@/types/simulation";
+import { NumberField } from "@/components/forms/number-field";
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { getDefaultSimulationDateTime } from "@/lib/date-defaults";
 
 
 const initialRequest: WeatherSimulationRequest = {
   city_id: "dubai",
-  start_time_local: "2026-07-15T10:00",
+  start_time_local: getDefaultSimulationDateTime(), 
   duration_minutes: 120,
   output_interval_minutes: 1,
 
@@ -5934,6 +6113,16 @@ export default function WeatherSimulationPage() {
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
+            <NumberField
+              label="Output Interval"
+              suffix="min"
+              value={request.output_interval_minutes}
+              min={1} max={60} step={1}
+              disabled={submitting}
+              onChange={(value) =>
+                setRequest((current) => ({ ...current, output_interval_minutes: value }))
+              }
+            />
           </div>
 
           <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
@@ -5954,63 +6143,38 @@ export default function WeatherSimulationPage() {
               />
             </div>
           </section>
-          <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-            <h2 className="text-lg font-semibold">
-              Simulation Configuration Summary
-            </h2>
 
-            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-slate-500">
-                  Output Interval
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request
-                      .output_interval_minutes
-                  }{" "}
-                  minutes
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-slate-500">
-                  Control Clothing
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.control_material
-                      .clothing_insulation_clo
-                  }{" "}
-                  clo
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-slate-500">
-                  Control Clothing Solar Reflectance
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.control_material
-                      .solar_reflectance
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Control Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.control_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(control_material) =>
+                    setRequest((current) => ({ ...current, control_material }))
                   }
-                </dd>
+                />
               </div>
+            </section>
 
-              <div>
-                <dt className="text-slate-500">
-                  RC Clothing Solar Reflectance
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.rc_material
-                      .solar_reflectance
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.rc_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(rc_material) =>
+                    setRequest((current) => ({ ...current, rc_material }))
                   }
-                </dd>
+                />
               </div>
-            </dl>
-          </section>
+            </section>
+          </div>
 
           <button
             type="submit"
@@ -7575,6 +7739,171 @@ export function NavBar() {
 }
 ```
 
+### File: `frontend/src/components/materials/provenance-editor.tsx`
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { getMaterialFieldManifest } from "@/lib/api-client";
+import type {
+  MaterialFieldManifest,
+  ParameterSource,
+  ParameterSourceType,
+} from "@/types/simulation";
+
+type ProvenanceEditorProps = {
+  sources: Record<string, ParameterSource> | null;
+  /** The version being edited; only physical fields are read. */
+  values: Record<string, unknown>;
+  disabled?: boolean;
+  onChange: (sources: Record<string, ParameterSource> | null) => void;
+};
+
+export function ProvenanceEditor({
+  sources,
+  values,
+  disabled = false,
+  onChange,
+}: ProvenanceEditorProps) {
+  const [manifest, setManifest] = useState<MaterialFieldManifest | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+
+    getMaterialFieldManifest()
+      .then((response) => {
+        if (!ignore) setManifest(response);
+      })
+      .catch((caughtError: unknown) => {
+        if (!ignore) {
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Failed to load field manifest",
+          );
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  function update(field: string, patch: Partial<ParameterSource>) {
+    const current = sources?.[field] ?? { source_type: "assumed" as ParameterSourceType };
+    onChange({ ...(sources ?? {}), [field]: { ...current, ...patch } });
+  }
+
+  function clear(field: string) {
+    const next = { ...(sources ?? {}) };
+    delete next[field];
+    onChange(Object.keys(next).length > 0 ? next : null);
+  }
+
+  if (error) {
+    return <p className="text-sm text-red-300">{error}</p>;
+  }
+
+  if (!manifest) {
+    return <p className="text-sm text-slate-500">Loading field manifest…</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-160 text-left text-sm">
+        <thead className="border-b border-slate-700 text-slate-400">
+          <tr>
+            <th className="px-3 py-3">Parameter</th>
+            <th className="px-3 py-3">Value</th>
+            <th className="px-3 py-3">Source type</th>
+            <th className="px-3 py-3">Reference</th>
+            <th className="px-3 py-3" />
+          </tr>
+        </thead>
+
+        <tbody>
+          {manifest.fields.map((field) => {
+            const source = sources?.[field.name];
+            const value = values[field.name];
+
+            return (
+              <tr key={field.name} className="border-b border-slate-800 align-top">
+                <td className="px-3 py-3">
+                  <p className="font-mono text-slate-200">{field.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {field.description}
+                    {field.unit !== "-" ? ` (${field.unit})` : ""}
+                  </p>
+                </td>
+
+                <td className="px-3 py-3 text-slate-300">
+                  {typeof value === "number"
+                    ? value
+                    : field.derived_when_null
+                      ? <span className="text-slate-500">derived: {field.derived_when_null}</span>
+                      : "—"}
+                </td>
+
+                <td className="px-3 py-3">
+                  <select
+                    value={source?.source_type ?? ""}
+                    disabled={disabled}
+                    onChange={(event) =>
+                      event.target.value
+                        ? update(field.name, {
+                            source_type: event.target.value as ParameterSourceType,
+                          })
+                        : clear(field.name)
+                    }
+                    className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-white disabled:opacity-50"
+                  >
+                    <option value="">— not recorded —</option>
+                    {manifest.source_types.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+
+                <td className="px-3 py-3">
+                  <input
+                    type="text"
+                    value={source?.reference ?? ""}
+                    disabled={disabled || !source}
+                    maxLength={500}
+                    placeholder={source ? "Report, DOI, datasheet…" : ""}
+                    onChange={(event) =>
+                      update(field.name, { reference: event.target.value || null })
+                    }
+                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-white disabled:opacity-50"
+                  />
+                </td>
+
+                <td className="px-3 py-3">
+                  {source && (
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => clear(field.name)}
+                      className="text-xs text-slate-400 hover:text-white"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/simulation/environment-input-fields.tsx`
 ```tsx
 "use client";
@@ -7694,11 +8023,24 @@ import {
   NumberField,
   OptionalNumberField,
 } from "@/components/forms/number-field";
-import type { MaterialInput } from "@/types/simulation";
+import { MaterialVersionPicker } from "@/components/simulation/material-version-picker";
+import type { MaterialInput, ParameterSource } from "@/types/simulation";
+
+/** Every MaterialInput key that enters the physics (i.e. not provenance/name). */
+type PhysicalKey = Exclude<
+  keyof MaterialInput,
+  | "name"
+  | "material_version_id"
+  | "parameter_sources"
+  | "source_type"
+  | "source_reference"
+>;
 
 type MaterialInputFieldsProps = {
   material: MaterialInput;
   showName?: boolean;
+  /** Show the material library picker (Stage 4). */
+  enableLibrary?: boolean;
   disabled?: boolean;
   onChange: (material: MaterialInput) => void;
 };
@@ -7706,87 +8048,349 @@ type MaterialInputFieldsProps = {
 export function MaterialInputFields({
   material,
   showName = false,
+  enableLibrary = false,
   disabled = false,
   onChange,
 }: MaterialInputFieldsProps) {
-  function update<K extends keyof MaterialInput>(
-    key: K,
-    value: MaterialInput[K],
-  ) {
-    onChange({ ...material, [key]: value });
+  const linked = Boolean(material.material_version_id);
+
+  function updatePhysical<K extends PhysicalKey>(key: K, value: MaterialInput[K]) {
+    const next: MaterialInput = { ...material, [key]: value };
+
+    if (linked) {
+      // The backend rejects a version id whose values were edited; drop the
+      // link (and the provenance that came with it) instead.
+      next.material_version_id = null;
+      next.parameter_sources = null;
+      next.source_type = null;
+      next.source_reference = null;
+    }
+
+    onChange(next);
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2">
-      {showName && (
-        <label className="block sm:col-span-2">
-          <span className="mb-2 block text-sm text-slate-300">
-            Material Name
-          </span>
-
-          <input
-            type="text"
-            value={material.name}
-            maxLength={100}
-            disabled={disabled}
-            onChange={(event) => update("name", event.target.value)}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </label>
+    <div className="space-y-5">
+      {enableLibrary && (
+        <MaterialVersionPicker
+          material={material}
+          disabled={disabled}
+          onChange={onChange}
+        />
       )}
 
-      <NumberField
-        label="Clothing Insulation"
-        suffix="clo"
-        value={material.clothing_insulation_clo}
-        min={0}
-        max={5}
-        step={0.05}
-        disabled={disabled}
-        onChange={(value) => update("clothing_insulation_clo", value)}
-      />
+      {linked && (
+        <p className="text-xs text-slate-500">
+          Values come from the linked library version. Editing any physical
+          value removes the link so the result is not attributed to that version.
+        </p>
+      )}
 
-      <OptionalNumberField
-        label="Clothing Area Factor (f_cl)"
-        value={material.clothing_area_factor}
-        placeholder="Derived from clo"
-        min={1}
-        max={2}
-        step={0.01}
-        disabled={disabled}
-        hint="Leave empty to let the backend derive f_cl from clo (Stage 3)."
-        onChange={(value) => update("clothing_area_factor", value)}
-      />
+      <div className="grid gap-5 sm:grid-cols-2">
+        {showName && (
+          <label className="block sm:col-span-2">
+            <span className="mb-2 block text-sm text-slate-300">Material Name</span>
+            <input
+              type="text"
+              value={material.name}
+              maxLength={100}
+              disabled={disabled}
+              onChange={(event) => onChange({ ...material, name: event.target.value })}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </label>
+        )}
 
-      <NumberField
-        label="Solar Reflectance"
-        value={material.solar_reflectance}
-        min={0}
-        max={1}
-        step={0.01}
-        disabled={disabled}
-        onChange={(value) => update("solar_reflectance", value)}
-      />
+        <NumberField
+          label="Clothing Insulation"
+          suffix="clo"
+          value={material.clothing_insulation_clo}
+          min={0} max={5} step={0.05}
+          disabled={disabled}
+          onChange={(value) => updatePhysical("clothing_insulation_clo", value)}
+        />
 
-      <NumberField
-        label="Solar Transmittance"
-        value={material.solar_transmittance}
-        min={0}
-        max={1}
-        step={0.01}
-        disabled={disabled}
-        onChange={(value) => update("solar_transmittance", value)}
-      />
+        <OptionalNumberField
+          label="Evaporative Resistance (Re,cl)"
+          suffix="m²·Pa/W"
+          value={material.evaporative_resistance_m2pa_w ?? null}
+          placeholder="Derived from clo"
+          min={0} max={1000} step={0.5}
+          disabled={disabled}
+          hint="Leave empty to derive R_cl / (LR · i_cl) (Stage 2)."
+          onChange={(value) => updatePhysical("evaporative_resistance_m2pa_w", value)}
+        />
 
-      <NumberField
-        label="Infrared Emissivity"
-        value={material.infrared_emissivity}
-        min={0}
-        max={1}
-        step={0.01}
-        disabled={disabled}
-        onChange={(value) => update("infrared_emissivity", value)}
-      />
+        <OptionalNumberField
+          label="Clothing Area Factor (f_cl)"
+          value={material.clothing_area_factor}
+          placeholder="Derived from clo"
+          min={1} max={2} step={0.01}
+          disabled={disabled}
+          hint="Leave empty to derive 1 + 0.15 · clo (Stage 3)."
+          onChange={(value) => updatePhysical("clothing_area_factor", value)}
+        />
+
+        <NumberField
+          label="Solar Reflectance"
+          value={material.solar_reflectance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(value) => updatePhysical("solar_reflectance", value)}
+        />
+
+        <NumberField
+          label="Solar Transmittance"
+          value={material.solar_transmittance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(value) => updatePhysical("solar_transmittance", value)}
+        />
+
+        <NumberField
+          label="Infrared Emissivity"
+          value={material.infrared_emissivity}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(value) => updatePhysical("infrared_emissivity", value)}
+        />
+
+        <NumberField
+          label="Infrared Transmittance"
+          value={material.infrared_transmittance ?? 0}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          hint="Emissivity + transmittance must not exceed 1."
+          onChange={(value) => updatePhysical("infrared_transmittance", value)}
+        />
+
+        <NumberField
+          label="Projected Solar Area Factor"
+          value={material.projected_solar_area_factor}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(value) => updatePhysical("projected_solar_area_factor", value)}
+        />
+
+        <NumberField
+          label="Absorbed Solar to Body Fraction"
+          value={material.absorbed_solar_to_body_fraction}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          hint="Share of textile-absorbed solar heat reaching the skin (ADR 0003)."
+          onChange={(value) => updatePhysical("absorbed_solar_to_body_fraction", value)}
+        />
+      </div>
+
+      <ProvenanceBadges sources={material.parameter_sources} />
+    </div>
+  );
+}
+
+function ProvenanceBadges({
+  sources,
+}: {
+  sources: Record<string, ParameterSource> | null | undefined;
+}) {
+  const entries = Object.entries(sources ?? {});
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return (
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Parameter provenance
+      </p>
+
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {entries.map(([field, source]) => (
+          <li
+            key={field}
+            title={source.reference ?? undefined}
+            className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300"
+          >
+            <span className="font-mono">{field}</span>
+            <span className="ml-1 text-cyan-300">{source.source_type}</span>
+            {source.reference && (
+              <span className="ml-1 text-slate-500">— {source.reference}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/simulation/material-version-picker.tsx`
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import {
+  getMaterialSimulationInput,
+  getMaterialVersions,
+} from "@/lib/api-client";
+import type { MaterialVersionListItem } from "@/types/material";
+import type { MaterialInput } from "@/types/simulation";
+
+type MaterialVersionPickerProps = {
+  material: MaterialInput;
+  disabled?: boolean;
+  onChange: (material: MaterialInput) => void;
+};
+
+/**
+ * Links a MaterialInput to an immutable material library version. Selecting a
+ * version loads the backend's `simulation-input` projection, so the values
+ * shown are exactly what the backend will verify against on submit.
+ */
+export function MaterialVersionPicker({
+  material,
+  disabled = false,
+  onChange,
+}: MaterialVersionPickerProps) {
+  const [versions, setVersions] = useState<MaterialVersionListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let ignore = false;
+
+    getMaterialVersions()
+      .then((response) => {
+        if (!ignore) setVersions(response.items);
+      })
+      .catch((caughtError: unknown) => {
+        if (!ignore) {
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Failed to load material library",
+          );
+        }
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  const linked = material.material_version_id
+    ? versions.find((v) => v.id === material.material_version_id) ?? null
+    : null;
+
+  async function applyVersion(versionId: string) {
+    if (!versionId) {
+      unlink();
+      return;
+    }
+
+    setApplying(true);
+    setError("");
+
+    try {
+      const input = await getMaterialSimulationInput(versionId);
+      onChange(input);
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Failed to apply material version",
+      );
+    } finally {
+      setApplying(false);
+    }
+  }
+
+  function unlink() {
+    onChange({
+      ...material,
+      material_version_id: null,
+      parameter_sources: null,
+      source_type: null,
+      source_reference: null,
+    });
+  }
+
+  const grouped = new Map<string, MaterialVersionListItem[]>();
+  for (const version of versions) {
+    const list = grouped.get(version.material_name) ?? [];
+    list.push(version);
+    grouped.set(version.material_name, list);
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+      <label className="block">
+        <span className="mb-2 block text-sm text-slate-300">
+          Material library
+        </span>
+
+        <select
+          value={material.material_version_id ?? ""}
+          disabled={disabled || loading || applying}
+          onChange={(event) => void applyVersion(event.target.value)}
+          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <option value="">
+            {loading ? "Loading library…" : "— Manual values (not linked) —"}
+          </option>
+
+          {Array.from(grouped.entries()).map(([name, items]) => (
+            <optgroup key={name} label={name}>
+              {items.map((version) => (
+                <option key={version.id} value={version.id}>
+                  v{version.version_number} · {version.clothing_insulation_clo} clo · ρ
+                  {version.solar_reflectance.toFixed(2)} · ε
+                  {version.infrared_emissivity.toFixed(2)}
+                  {version.infrared_transmittance > 0
+                    ? ` · τ_IR ${version.infrared_transmittance.toFixed(2)}`
+                    : ""}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+
+      {material.material_version_id && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <span className="rounded-full border border-emerald-800 bg-emerald-950 px-2.5 py-1 text-emerald-300">
+            Linked to{" "}
+            {linked
+              ? `${linked.material_name} v${linked.version_number}`
+              : material.material_version_id}
+            {material.source_type ? ` · ${material.source_type}` : ""}
+          </span>
+
+          <button
+            type="button"
+            onClick={unlink}
+            disabled={disabled}
+            className="text-slate-400 underline-offset-2 hover:text-white hover:underline"
+          >
+            Unlink
+          </button>
+        </div>
+      )}
+
+      {applying && (
+        <p className="mt-2 text-xs text-slate-500">Loading version parameters…</p>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-red-300">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -8228,9 +8832,8 @@ import type {
   GlobalCity,
 } from "@/types/global-batch";
 import type {
-  Material,
-  MaterialCreate,
-  MaterialListResponse,
+  Material, MaterialCreate, MaterialListResponse,
+  MaterialVersionListResponse,
 } from "@/types/material";
 import type {
   City,
@@ -8243,6 +8846,9 @@ import type {
   WeatherSimulationRequest,
   WeatherSimulationResponse,
   WeatherTimeSeries,
+  MaterialFieldManifest, 
+  ModelMetadata, 
+  ModelParameterManifest,
 } from "@/types/simulation";
 
 
@@ -8278,6 +8884,11 @@ async function getErrorMessage(
       }
     ).detail;
 
+    if (typeof detail === "object" && detail !== null && "message" in detail) {
+      const { code, message } = detail as { code?: string; message?: string };
+      return code ? `${message} [${code}]` : String(message);
+    }
+
     if (typeof detail === "string") {
       return detail;
     }
@@ -8286,7 +8897,7 @@ async function getErrorMessage(
       return JSON.stringify(detail);
     }
   }
-
+  
   return `${fallbackMessage}：HTTP ${response.status}`;
 }
 
@@ -8448,12 +9059,17 @@ export async function getSimulationJob(
 export async function getSimulationJobs(
   limit = 20,
   offset = 0,
+  materialVersionId?: string,
 ): Promise<SimulationJobList> {
   const parameters = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
 
+  if (materialVersionId) {
+    parameters.set("material_version_id", materialVersionId);
+  }
+  
   const response = await fetch(
     `${API_BASE_URL}/api/v1/simulations/jobs?${parameters.toString()}`,
     {
@@ -8644,18 +9260,50 @@ export async function getMaterialSimulationInput(
   versionId: string,
 ): Promise<MaterialInput> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials/versions/${versionId}/simulation-input`,
+    `${API_BASE_URL}/api/v1/materials/versions/${encodeURIComponent(versionId)}/simulation-input`,
+    { cache: "no-store" },
   );
 
   if (!response.ok) {
     throw new Error(
-      "Failed to fetch material simulation input",
+      await getErrorMessage(response, "Failed to fetch material simulation input"),
     );
   }
 
-  return response.json();
+  return response.json() as Promise<MaterialInput>;
 }
 
+export async function getMaterialFieldManifest(): Promise<MaterialFieldManifest> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/material-fields`);
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Failed to fetch material field manifest"),
+    );
+  }
+
+  return response.json() as Promise<MaterialFieldManifest>;
+}
+
+export async function getModelMetadata(): Promise<ModelMetadata> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/metadata`);
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch model metadata"));
+  }
+
+  return response.json() as Promise<ModelMetadata>;
+}
+
+export async function getModelParameters(): Promise<ModelParameterManifest> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/parameters`);
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch model parameters"));
+  }
+
+  return response.json() as Promise<ModelParameterManifest>;
+}
 
 export function getSimulationExportUrl(
   jobId: string,
@@ -8861,6 +9509,30 @@ export async function compareWithGagge(
 
   return response.json() as Promise<GaggeBenchmarkResponse>;
 }
+
+export async function getMaterialVersions(
+  includeArchived = false,
+  limit = 200,
+): Promise<MaterialVersionListResponse> {
+  const parameters = new URLSearchParams({
+    include_archived: String(includeArchived),
+    limit: String(limit),
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions?${parameters}`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Failed to fetch material versions"),
+    );
+  }
+
+  return response.json() as Promise<MaterialVersionListResponse>;
+}
+
 ```
 
 ### File: `frontend/src/lib/date-defaults.ts`
@@ -9645,6 +10317,32 @@ export type MaterialListResponse = {
   limit: number;
   offset: number;
 };
+
+export type MaterialVersionListItem = {
+  id: string;
+  material_id: string;
+  material_name: string;
+  material_slug: string;
+  version_number: number;
+  mode: string;
+  clothing_insulation_clo: number;
+  evaporative_resistance_m2pa_w: number | null;
+  clothing_area_factor: number | null;
+  solar_reflectance: number;
+  solar_transmittance: number;
+  infrared_emissivity: number;
+  infrared_transmittance: number;
+  source_type: string;
+  is_archived: boolean;
+  created_at: string;
+};
+
+export type MaterialVersionListResponse = {
+  items: MaterialVersionListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+};
 ```
 
 ### File: `frontend/src/types/simulation.ts`
@@ -9879,6 +10577,8 @@ export type SimulationJob = {
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
+  control_material_version_id?: string | null;
+  rc_material_version_id?: string | null;
 };
 
 export type SimulationJobDetail = SimulationJob & {
@@ -9890,6 +10590,36 @@ export type SimulationJobList = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type MaterialFieldDescriptor = {
+  name: string;
+  unit: string;
+  description: string;
+  minimum: number | null;
+  maximum: number | null;
+  default: number | null;
+  nullable: boolean;
+  derived_when_null: string | null;
+};
+
+export type MaterialFieldManifest = ModelMetadata & {
+  source_types: ParameterSourceType[];
+  fields: MaterialFieldDescriptor[];
+};
+
+export type ModelParameter = {
+  name: string;
+  value: number;
+  unit: string;
+  description: string;
+  source_type: ParameterSourceType;
+  reference: string;
+  note: string | null;
+};
+
+export type ModelParameterManifest = ModelMetadata & {
+  parameters: ModelParameter[];
 };
 ```
 

@@ -6,12 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "maplibre-gl": "^6.7.0",
-    "next": "16.2.12",
-    "plotly.js": "^3.7.0",
+    "next": "^16.3.7",
+    "plotly.js": "^4.1.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-plotly.js": "^4.1.0"
@@ -19,7 +20,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/geojson": "^7946.0.16",
-    "@types/node": "^20",
+    "@types/node": "^24.19.0",
     "@types/plotly.js": "^3.0.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -27,13 +28,15 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.2"
   },
   "allowScripts": {
     "maplibre-gl@6.7.0": true,
     "maplibre-gl@4.7.1": true,
     "sharp@0.34.5": true,
     "unrs-resolver@1.12.2": true,
-    "es5-ext@0.10.64": true
+    "es5-ext@0.10.64": true,
+    "esbuild@0.28.2": true
   }
 }

@@ -41,7 +41,7 @@ from app.services.material_resolution import (
 from app.services.model_parameters import build_model_metadata
 from app.services.result_export import export_result_csv, export_result_json
 from app.services.result_storage import load_simulation_result
-from app.services.two_node import simulate_material
+from app.services.two_node import MODEL_VERSION, simulate_material
 from app.services.weather import get_historical_weather
 from app.services.weather_quality import WeatherDataError
 from app.services.weather_simulation import (
@@ -113,7 +113,7 @@ def run_simulation(
 
     return SimulationResponse(
         model_name="RC transient two-node prototype",
-        model_version="0.1.0",
+        model_version=MODEL_VERSION,
         city=request.city,
         duration_minutes=request.duration_minutes,
         control=control_result,

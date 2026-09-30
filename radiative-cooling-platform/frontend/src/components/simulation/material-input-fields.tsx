@@ -15,6 +15,7 @@ type PhysicalKey = Exclude<
   | "parameter_sources"
   | "source_type"
   | "source_reference"
+  | "absorbed_solar_to_body_fraction"
 >;
 
 type MaterialInputFieldsProps = {
@@ -151,15 +152,6 @@ export function MaterialInputFields({
           min={0} max={1} step={0.01}
           disabled={disabled}
           onChange={(value) => updatePhysical("projected_solar_area_factor", value)}
-        />
-
-        <NumberField
-          label="Absorbed Solar to Body Fraction"
-          value={material.absorbed_solar_to_body_fraction}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
-          hint="Share of textile-absorbed solar heat reaching the skin (ADR 0003)."
-          onChange={(value) => updatePhysical("absorbed_solar_to_body_fraction", value)}
         />
       </div>
 

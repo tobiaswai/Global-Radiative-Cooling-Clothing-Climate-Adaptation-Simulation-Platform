@@ -5,7 +5,10 @@ export type OptionalSeriesKey =
   | "maximum_evaporation_w_m2"
   | "skin_wettedness"
   | "clothing_surface_temperature_c"
-  | "skin_blood_flow_kg_h_m2";
+  | "skin_blood_flow_kg_h_m2"
+  | "solar_incident_w_m2"
+  | "solar_absorbed_by_textile_w_m2"
+  | "solar_transmitted_w_m2";
 
 export function hasOptionalSeries(
   points: TimeSeriesPoint[],

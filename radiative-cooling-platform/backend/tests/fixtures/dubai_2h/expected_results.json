@@ -7,72 +7,73 @@
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 37.3154,
+      "core_temperature_c": 37.3371,
       "minute": 10.0,
-      "skin_temperature_c": 36.8813
+      "skin_temperature_c": 36.9878
     },
     {
-      "core_temperature_c": 37.7534,
+      "core_temperature_c": 37.8104,
       "minute": 20.0,
-      "skin_temperature_c": 37.194
+      "skin_temperature_c": 37.3227
     },
     {
-      "core_temperature_c": 38.1452,
+      "core_temperature_c": 38.2399,
       "minute": 30.0,
-      "skin_temperature_c": 37.5355
+      "skin_temperature_c": 37.6983
     },
     {
-      "core_temperature_c": 38.511,
+      "core_temperature_c": 38.6416,
       "minute": 40.0,
-      "skin_temperature_c": 37.8548
+      "skin_temperature_c": 38.05
     },
     {
-      "core_temperature_c": 38.8528,
+      "core_temperature_c": 39.0174,
       "minute": 50.0,
-      "skin_temperature_c": 38.1533
+      "skin_temperature_c": 38.3797
     },
     {
-      "core_temperature_c": 39.1722,
+      "core_temperature_c": 39.3695,
       "minute": 60.0,
-      "skin_temperature_c": 38.4329
+      "skin_temperature_c": 38.6892
     },
     {
-      "core_temperature_c": 39.4699,
+      "core_temperature_c": 39.6985,
       "minute": 70.0,
-      "skin_temperature_c": 38.6885
+      "skin_temperature_c": 38.9743
     },
     {
-      "core_temperature_c": 39.7453,
+      "core_temperature_c": 40.0044,
       "minute": 80.0,
-      "skin_temperature_c": 38.9242
+      "skin_temperature_c": 39.239
     },
     {
-      "core_temperature_c": 40.0003,
+      "core_temperature_c": 40.2891,
       "minute": 90.0,
-      "skin_temperature_c": 39.1425
+      "skin_temperature_c": 39.4856
     },
     {
-      "core_temperature_c": 40.2363,
+      "core_temperature_c": 40.5541,
       "minute": 100.0,
-      "skin_temperature_c": 39.3447
+      "skin_temperature_c": 39.7156
     },
     {
-      "core_temperature_c": 40.4549,
+      "core_temperature_c": 40.8011,
       "minute": 110.0,
-      "skin_temperature_c": 39.5322
+      "skin_temperature_c": 39.9305
     },
     {
-      "core_temperature_c": 40.6575,
+      "core_temperature_c": 41.0316,
       "minute": 120.0,
-      "skin_temperature_c": 39.7062
+      "skin_temperature_c": 40.1314
     }
   ],
   "duration_minutes": 120,
-  "model_version": "0.5.0",
-  "parameter_fingerprint": "407990587a76b25896954f71012bcf4cb47f0fa3fb3a91dee211dda08529b1a5",
+  "model_version": "0.6.0",
+  "parameter_fingerprint": "19ebfc734d292cc5e45d3606ddb5ac3f30d5f44aa21565a0ee61d3e5b64df428",
   "parameter_snapshot": {
     "environment_assumptions": {
       "fixed_sky_offset_k": 15.0,
+      "ground_albedo": 0.2,
       "mean_radiant_temperature_method": "air_plus_solar_linear",
       "sky_offset_base_k": 5.0,
       "sky_offset_humidity_range_k": 10.0,
@@ -82,8 +83,8 @@
       "solar_mrt_gain_k_per_w_m2": 0.012,
       "wind_speed_scaling_factor": 1.0
     },
-    "model_parameter_set_sha256": "5e0cbe090c73d0c64f563d0eee0001d268a9d85a2d9aa0b3d17dd353caa8bcb3",
-    "model_parameter_set_version": "3.0.0",
+    "model_parameter_set_sha256": "cab48ac8b5c9a6f55dce17d397ac11ca463ae306cf58e811a7c953b3384967a6",
+    "model_parameter_set_version": "4.0.0",
     "model_parameters": {
       "blood_heat_capacity_per_flow": 1.163,
       "body_specific_heat": 3490.0,
@@ -92,7 +93,9 @@
       "clothing_vapor_permeation_efficiency": 0.45,
       "core_setpoint_temperature": 36.8,
       "core_skin_conductance_basal": 5.28,
-      "effective_radiation_area_ratio": 0.73,
+      "diffuse_hemisphere_fraction": 0.5,
+      "effective_radiation_area_ratio_sitting": 0.7,
+      "effective_radiation_area_ratio_standing": 0.73,
       "exhaled_air_temperature": 34.0,
       "fallback_sky_temperature_offset": 15.0,
       "forced_convection_coefficient": 8.3,
@@ -135,70 +138,70 @@
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 37.2525,
+      "core_temperature_c": 37.2571,
       "minute": 10.0,
-      "skin_temperature_c": 36.5204
+      "skin_temperature_c": 36.5487
     },
     {
-      "core_temperature_c": 37.5858,
+      "core_temperature_c": 37.5956,
       "minute": 20.0,
-      "skin_temperature_c": 36.7421
+      "skin_temperature_c": 36.7592
     },
     {
-      "core_temperature_c": 37.7897,
+      "core_temperature_c": 37.8057,
       "minute": 30.0,
-      "skin_temperature_c": 36.8187
+      "skin_temperature_c": 36.8502
     },
     {
-      "core_temperature_c": 37.9672,
+      "core_temperature_c": 37.9913,
       "minute": 40.0,
-      "skin_temperature_c": 36.9749
+      "skin_temperature_c": 37.0136
     },
     {
-      "core_temperature_c": 38.134,
+      "core_temperature_c": 38.1657,
       "minute": 50.0,
-      "skin_temperature_c": 37.1226
+      "skin_temperature_c": 37.1679
     },
     {
-      "core_temperature_c": 38.2911,
+      "core_temperature_c": 38.3299,
       "minute": 60.0,
-      "skin_temperature_c": 37.2622
+      "skin_temperature_c": 37.3138
     },
     {
-      "core_temperature_c": 38.4386,
+      "core_temperature_c": 38.4842,
       "minute": 70.0,
-      "skin_temperature_c": 37.3911
+      "skin_temperature_c": 37.4487
     },
     {
-      "core_temperature_c": 38.5764,
+      "core_temperature_c": 38.6283,
       "minute": 80.0,
-      "skin_temperature_c": 37.5114
+      "skin_temperature_c": 37.5746
     },
     {
-      "core_temperature_c": 38.7053,
+      "core_temperature_c": 38.7631,
       "minute": 90.0,
-      "skin_temperature_c": 37.6242
+      "skin_temperature_c": 37.6928
     },
     {
-      "core_temperature_c": 38.826,
+      "core_temperature_c": 38.8895,
       "minute": 100.0,
-      "skin_temperature_c": 37.7304
+      "skin_temperature_c": 37.8041
     },
     {
-      "core_temperature_c": 38.9393,
+      "core_temperature_c": 39.0082,
       "minute": 110.0,
-      "skin_temperature_c": 37.8303
+      "skin_temperature_c": 37.909
     },
     {
-      "core_temperature_c": 39.0458,
+      "core_temperature_c": 39.1199,
       "minute": 120.0,
-      "skin_temperature_c": 37.9247
+      "skin_temperature_c": 38.0082
     }
   ],
   "summary": {
-    "average_skin_temperature_improvement_c": 1.0721,
-    "final_core_temperature_improvement_c": 1.6117,
-    "final_skin_temperature_improvement_c": 1.7815
+    "average_skin_temperature_improvement_c": 1.2703,
+    "final_core_temperature_improvement_c": 1.9117,
+    "final_skin_temperature_improvement_c": 2.1232
   },
   "weather": {
     "payload_sha256": "b568200999e8bc079896b86d451e3c82213682d90698ef1f846100fcc863f9d3",

@@ -27,6 +27,9 @@ const initialRequest: SimulationRequest = {
     wind_speed_m_s: 1.5,
     solar_radiation_w_m2: 800,
     sky_view_factor: 0.5,
+    direct_normal_irradiance_w_m2: null, 
+    diffuse_horizontal_irradiance_w_m2: null, 
+    ground_albedo: 0.2
   },
 
   person: {
@@ -35,6 +38,7 @@ const initialRequest: SimulationRequest = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    position: "standing",
   },
 
   control_material: {
@@ -45,7 +49,6 @@ const initialRequest: SimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.8,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 
   rc_material: {
@@ -56,7 +59,6 @@ const initialRequest: SimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 };
 

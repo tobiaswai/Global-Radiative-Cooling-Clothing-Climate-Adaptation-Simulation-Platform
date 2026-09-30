@@ -10,6 +10,7 @@ backend/alembic/versions/18a914bf4989_stage2_material_version_parameter_.py
 backend/alembic/versions/5c968a541440_stage2_material_version_parameter_.py
 backend/alembic/versions/933e5fc5bb27_create_simulation_jobs.py
 backend/alembic/versions/9e0b460c56c3_add_global_batch_analysis_tables.py
+backend/alembic/versions/a1f4c2d9e7b3_stage4_material_library_links.py
 backend/alembic/versions/b83aed15c819_add_material_version_and_spectrum_tables.py
 backend/alembic/versions/c7d2e9f4a1b8_stage3_material_version_clothing_area_factor.py
 backend/alembic/versions/df85b07c9163_add_stage_4_4_checkpoint_and_analytics_.py
@@ -17,6 +18,7 @@ backend/alembic/versions/e4ee64441802_add_stage_4_2_exposure_and_retry_fields.py
 backend/app/__init__.py
 backend/app/api/__init__.py
 backend/app/api/benchmarks.py
+backend/app/api/errors.py
 backend/app/api/global_batches.py
 backend/app/api/materials.py
 backend/app/api/model.py
@@ -24,7 +26,6 @@ backend/app/api/router.py
 backend/app/api/routes/simulation_events.py
 backend/app/api/routes/simulation_jobs.py
 backend/app/api/simulations.py
-backend/app/api/test_route_registration.py
 backend/app/api/weather.py
 backend/app/core/__init__.py
 backend/app/core/cities.py
@@ -61,6 +62,8 @@ backend/app/services/gagge_reference.py
 backend/app/services/global_batch_export.py
 backend/app/services/global_batch_service.py
 backend/app/services/job_service.py
+backend/app/services/material_fields.py
+backend/app/services/material_resolution.py
 backend/app/services/model_parameters.py
 backend/app/services/reproducibility.py
 backend/app/services/result_export.py
@@ -82,9 +85,11 @@ backend/docs/acceptance/legacy-stage-3-two-node-prototype/pytest-all.txt
 backend/docs/acceptance/stage-2/golden-refresh.md
 backend/docs/acceptance/stage-3-reference-comparison/golden-refresh.md
 backend/docs/acceptance/stage-3-reference-comparison/pytest-all.txt
+backend/docs/acceptance/stage-4-material-library/pytest-all.txt
 backend/docs/decisions/0001-body-surface-area.md
 backend/docs/decisions/0002-gagge-controllers.md
 backend/docs/decisions/0003-clothing-surface-balance.md
+backend/docs/decisions/0004-material-library-provenance.md
 backend/docs/environment-assumptions.md
 backend/docs/model-parameters.md
 backend/package-lock.json
@@ -118,11 +123,15 @@ backend/tests/test_gagge_reference.py
 backend/tests/test_global_batch_geojson.py
 backend/tests/test_golden_dubai_2h.py
 backend/tests/test_job_service.py
+backend/tests/test_material_fields.py
+backend/tests/test_material_resolution.py
+backend/tests/test_materials_api.py
 backend/tests/test_model_parameters.py
 backend/tests/test_parameter_participation.py
 backend/tests/test_physics.py
 backend/tests/test_result_export.py
 backend/tests/test_result_storage.py
+backend/tests/test_route_registration.py
 backend/tests/test_spectrum_parser.py
 backend/tests/test_stage_4_2_export.py
 backend/tests/test_stage_4_2_exposure.py
@@ -641,6 +650,109 @@ def downgrade() -> None:
 
 ```
 
+### File: `backend/alembic/versions/a1f4c2d9e7b3_stage4_material_library_links.py`
+```python
+"""stage4 material library links and constraints
+
+Revision ID: a1f4c2d9e7b3
+Revises: c7d2e9f4a1b8
+Create Date: 2026-10-20 10:00:00.000000
+
+Adds
+* CHECK constraints that make every stored material version a valid
+  MaterialInput (IR energy sum, Re,cl range).
+* Nullable FK columns on simulation_jobs and global_batch_jobs recording
+  which material versions a request was resolved against.
+
+The upgrade refuses to run while rows violate the new constraints, instead
+of silently failing half-way through.
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+revision: str = 'a1f4c2d9e7b3'
+down_revision: Union[str, Sequence[str], None] = 'c7d2e9f4a1b8'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+JOB_TABLES = ("simulation_jobs", "global_batch_jobs")
+LINK_COLUMNS = ("control_material_version_id", "rc_material_version_id")
+
+
+def _assert_no_violations() -> None:
+    bind = op.get_bind()
+
+    checks = {
+        "evaporative_resistance_m2pa_w outside [0, 1000]": (
+            "SELECT count(*) FROM material_versions "
+            "WHERE evaporative_resistance_m2pa_w IS NOT NULL "
+            "AND (evaporative_resistance_m2pa_w < 0 "
+            "OR evaporative_resistance_m2pa_w > 1000)"
+        ),
+        "infrared_emissivity + infrared_transmittance > 1": (
+            "SELECT count(*) FROM material_versions "
+            "WHERE infrared_emissivity + infrared_transmittance > 1.000001"
+        ),
+    }
+
+    problems = [
+        f"{label}: {count} row(s)"
+        for label, sql in checks.items()
+        if (count := bind.execute(sa.text(sql)).scalar_one())
+    ]
+
+    if problems:
+        raise RuntimeError(
+            "Cannot apply Stage 4 constraints; fix these material versions "
+            "first: " + "; ".join(problems)
+        )
+
+
+def upgrade() -> None:
+    _assert_no_violations()
+
+    op.create_check_constraint(
+        'ck_material_evaporative_resistance',
+        'material_versions',
+        'evaporative_resistance_m2pa_w IS NULL OR '
+        '(evaporative_resistance_m2pa_w >= 0 '
+        'AND evaporative_resistance_m2pa_w <= 1000)',
+    )
+    op.create_check_constraint(
+        'ck_material_ir_energy_sum',
+        'material_versions',
+        'infrared_emissivity + infrared_transmittance <= 1.000001',
+    )
+
+    for table in JOB_TABLES:
+        for column in LINK_COLUMNS:
+            op.add_column(table, sa.Column(column, sa.String(length=36), nullable=True))
+            op.create_foreign_key(
+                f'fk_{table}_{column}',
+                table,
+                'material_versions',
+                [column],
+                ['id'],
+                ondelete='SET NULL',
+            )
+            op.create_index(f'ix_{table}_{column}', table, [column])
+
+
+def downgrade() -> None:
+    for table in JOB_TABLES:
+        for column in LINK_COLUMNS:
+            op.drop_index(f'ix_{table}_{column}', table_name=table)
+            op.drop_constraint(f'fk_{table}_{column}', table, type_='foreignkey')
+            op.drop_column(table, column)
+
+    op.drop_constraint('ck_material_ir_energy_sum', 'material_versions', type_='check')
+    op.drop_constraint('ck_material_evaporative_resistance', 'material_versions', type_='check')
+```
+
 ### File: `backend/alembic/versions/b83aed15c819_add_material_version_and_spectrum_tables.py`
 ```python
 """add material version and spectrum tables
@@ -906,15 +1018,16 @@ def downgrade() -> None:
 
 ### File: `backend/app/api/benchmarks.py`
 ```python
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db
 from app.schemas.simulation import (
     GaggeBenchmarkRequest,
     GaggeBenchmarkResponse,
 )
-from app.services.gagge_benchmark import (
-    run_gagge_benchmark,
-)
+from app.services.gagge_benchmark import run_gagge_benchmark
+from app.services.material_resolution import resolve_request_materials
 
 
 router = APIRouter(
@@ -929,7 +1042,12 @@ router = APIRouter(
 )
 def compare_with_gagge(
     request: GaggeBenchmarkRequest,
+    session: Session = Depends(get_db),
 ) -> GaggeBenchmarkResponse:
+    request = resolve_request_materials(
+        session, request, fields=("material",)
+    )
+
     try:
         return run_gagge_benchmark(request)
     except (ValueError, RuntimeError) as error:
@@ -937,6 +1055,29 @@ def compare_with_gagge(
             status_code=500,
             detail=f"Gagge benchmark calculation failed：{error}",
         ) from error
+```
+
+### File: `backend/app/api/errors.py`
+```python
+# app/api/errors.py
+"""Application-wide exception handlers."""
+
+from fastapi import FastAPI, Request, status
+from fastapi.responses import JSONResponse
+
+from app.services.material_resolution import MaterialResolutionError
+
+
+def register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(MaterialResolutionError)
+    async def handle_material_resolution_error(
+        _: Request,
+        error: MaterialResolutionError,
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content={"detail": error.to_detail()},
+        )
 ```
 
 ### File: `backend/app/api/global_batches.py`
@@ -957,6 +1098,7 @@ from fastapi import (
 from fastapi.responses import Response
 from sqlalchemy import (
     func,
+    or_,
     select,
 )
 from sqlalchemy.orm import (
@@ -1001,6 +1143,10 @@ from app.worker.tasks import (
     run_global_city_analysis_task,
 )
 
+from app.services.material_resolution import (
+    linked_material_version_ids,
+    resolve_request_materials,
+)
 
 router = APIRouter(
     prefix="/api/v1/global-batches",
@@ -1146,9 +1292,24 @@ def create_global_batch(
             )
         except ValueError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(error),
             ) from error
+
+    request = resolve_request_materials(session, request)
+    control_version_id, rc_version_id = linked_material_version_ids(request)
+
+    queue_name = resolve_queue_name(request)
+
+    batch = GlobalBatchJob(
+        status="queued",
+        stage="creating_city_tasks",
+        progress=0,
+        total_city_count=len(cities),
+        request_json=request.model_dump(mode="json"),
+        control_material_version_id=control_version_id,
+        rc_material_version_id=rc_version_id,
+    )
 
     queue_name = resolve_queue_name(
         request
@@ -1649,6 +1810,13 @@ from app.schemas.material import (
     MaterialVersionResponse,
     SpectrumResponse,
     SpectrumSummary,
+    MaterialVersionListItem,
+    MaterialVersionListResponse,
+)
+from app.services.material_resolution import (
+    MaterialVersionNotFoundError,
+    load_material_version,
+    material_input_from_version,
 )
 from app.schemas.simulation import MaterialInput
 from app.services.spectrum_parser import (
@@ -1680,6 +1848,74 @@ def version_column_values(request: MaterialVersionCreate) -> dict:
     values = request.model_dump(mode="json")
     values["parameter_sources_json"] = values.pop("parameter_sources")
     return values
+
+
+@router.get(
+    "/versions",
+    response_model=MaterialVersionListResponse,
+)
+def list_material_versions(
+    include_archived: bool = False,
+    material_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_db),
+) -> MaterialVersionListResponse:
+    """Flat list of versions for simulation-form pickers (Stage 4)."""
+    filters = []
+
+    if not include_archived:
+        filters.append(Material.is_archived.is_(False))
+
+    if material_id:
+        filters.append(MaterialVersion.material_id == material_id)
+
+    total = session.scalar(
+        select(func.count())
+        .select_from(MaterialVersion)
+        .join(MaterialVersion.material)
+        .where(*filters)
+    ) or 0
+
+    versions = session.scalars(
+        select(MaterialVersion)
+        .join(MaterialVersion.material)
+        .options(selectinload(MaterialVersion.material))
+        .where(*filters)
+        .order_by(
+            Material.name.asc(),
+            MaterialVersion.version_number.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return MaterialVersionListResponse(
+        items=[
+            MaterialVersionListItem(
+                id=version.id,
+                material_id=version.material_id,
+                material_name=version.material.name,
+                material_slug=version.material.slug,
+                version_number=version.version_number,
+                mode=version.mode,
+                clothing_insulation_clo=version.clothing_insulation_clo,
+                evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
+                clothing_area_factor=version.clothing_area_factor,
+                solar_reflectance=version.solar_reflectance,
+                solar_transmittance=version.solar_transmittance,
+                infrared_emissivity=version.infrared_emissivity,
+                infrared_transmittance=version.infrared_transmittance,
+                source_type=version.source_type,
+                is_archived=version.material.is_archived,
+                created_at=version.created_at,
+            )
+            for version in versions
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 @router.post(
     "",
@@ -1922,32 +2158,24 @@ def create_material_version(
     )
 
 
-@router.get("/versions/{version_id}/simulation-input", response_model=MaterialInput)
-def material_version_to_simulation_input(version_id: str, session: Session = Depends(get_db)) -> MaterialInput:
-    version = session.scalar(
-        select(MaterialVersion)
-        .options(selectinload(MaterialVersion.material))
-        .where(MaterialVersion.id == version_id)
-    )
-    if version is None:
-        raise HTTPException(status_code=404, detail="Material version not found")
+@router.get(
+    "/versions/{version_id}/simulation-input",
+    response_model=MaterialInput,
+)
+def material_version_to_simulation_input(
+    version_id: str,
+    session: Session = Depends(get_db),
+) -> MaterialInput:
+    try:
+        version = load_material_version(session, version_id)
+    except MaterialVersionNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail="Material version not found",
+        ) from error
 
-    return MaterialInput(
-        name=f"{version.material.name} v{version.version_number}",
-        clothing_insulation_clo=version.clothing_insulation_clo,
-        evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
-        solar_reflectance=version.solar_reflectance,
-        solar_transmittance=version.solar_transmittance,
-        infrared_emissivity=version.infrared_emissivity,
-        infrared_transmittance=version.infrared_transmittance,
-        projected_solar_area_factor=version.projected_solar_area_factor,
-        absorbed_solar_to_body_fraction=version.absorbed_solar_to_body_fraction,
-        material_version_id=version.id,
-        source_type=version.source_type,
-        source_reference=version.source_reference,
-        parameter_sources=version.parameter_sources_json,
-        clothing_area_factor=version.clothing_area_factor,
-    )
+    # MaterialVersionInvalidError propagates to the global 422 handler.
+    return material_input_from_version(version)
 
 
 @router.post(
@@ -2112,21 +2340,56 @@ def get_material_spectrum(
 
 ### File: `backend/app/api/model.py`
 ```python
-"""Read-only endpoints exposing model constants and default assumptions."""
+"""Read-only endpoints exposing model constants, defaults and input metadata."""
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
 from app.schemas.environment import EnvironmentAssumptions
-from app.schemas.provenance import ModelParameterManifest
-from app.services.model_parameters import build_model_parameter_manifest
+from app.schemas.provenance import (
+    MaterialFieldManifest,
+    ModelMetadata,
+    ModelParameter,
+    ModelParameterManifest,
+)
+from app.services.material_fields import build_material_field_manifest
+from app.services.model_parameters import (
+    MODEL_PARAMETERS,
+    build_model_metadata,
+    build_model_parameter_manifest,
+)
 
 
 router = APIRouter(prefix="/api/v1/model", tags=["model"])
 
 
+@router.get("/metadata", response_model=ModelMetadata)
+def get_model_metadata() -> ModelMetadata:
+    """Version and fingerprint of the active parameter set."""
+    return build_model_metadata()
+
+
 @router.get("/parameters", response_model=ModelParameterManifest)
 def get_model_parameters() -> ModelParameterManifest:
     return build_model_parameter_manifest()
+
+
+@router.get("/parameters/{name}", response_model=ModelParameter)
+def get_model_parameter(name: str) -> ModelParameter:
+    parameter = MODEL_PARAMETERS.get(name)
+
+    if parameter is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown model parameter: {name}",
+        )
+
+    return parameter
+
+
+@router.get("/material-fields", response_model=MaterialFieldManifest)
+def get_material_fields() -> MaterialFieldManifest:
+    """Bounds, units, defaults and derivation rules of MaterialInput."""
+    return build_material_field_manifest()
 
 
 @router.get(
@@ -2139,17 +2402,32 @@ def get_default_environment_assumptions() -> EnvironmentAssumptions:
 
 ### File: `backend/app/api/router.py`
 ```python
-"""Top-level API router."""
+# app/api/router.py
+"""Top-level API router. The only place routers are aggregated."""
 
 from fastapi import APIRouter
 
-from app.api import materials, simulations
+from app.api import (
+    benchmarks,
+    global_batches,
+    materials,
+    model,
+    simulations,
+    weather,
+)
 
 
 api_router = APIRouter()
 
-api_router.include_router(materials.router)
-api_router.include_router(simulations.router)
+for router in (
+    simulations.router,
+    benchmarks.router,
+    weather.router,
+    materials.router,
+    global_batches.router,
+    model.router,
+):
+    api_router.include_router(router)
 ```
 
 ### File: `backend/app/api/routes/simulation_events.py`
@@ -2178,10 +2456,30 @@ router = APIRouter()
 
 ### File: `backend/app/api/simulations.py`
 ```python
-from fastapi import APIRouter, HTTPException
+import asyncio
+import json
 
-from app.api.routes import simulation_events, simulation_jobs
+import anyio
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from fastapi.responses import Response, StreamingResponse
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session
+
 from app.core.cities import get_city
+from app.db.session import SessionLocal, get_db
+from app.models.simulation_job import SimulationJob
+from app.schemas.job import (
+    SimulationJobDetail,
+    SimulationJobListResponse,
+    SimulationJobResponse,
+)
 from app.schemas.simulation import (
     SimulationRequest,
     SimulationResponse,
@@ -2189,15 +2487,26 @@ from app.schemas.simulation import (
     WeatherSimulationRequest,
     WeatherSimulationResponse,
 )
+from app.services.job_service import (
+    get_job_or_none,
+    job_to_detail,
+    job_to_response,
+)
+from app.services.material_resolution import (
+    linked_material_version_ids,
+    resolve_request_materials,
+)
 from app.services.model_parameters import build_model_metadata
+from app.services.result_export import export_result_csv, export_result_json
+from app.services.result_storage import load_simulation_result
 from app.services.two_node import simulate_material
 from app.services.weather import get_historical_weather
 from app.services.weather_quality import WeatherDataError
 from app.services.weather_simulation import (
     execute_weather_simulation_with_weather,
 )
-
-from app.services.weather_quality import WeatherDataError
+from app.worker.celery_app import celery_app
+from app.worker.tasks import run_weather_simulation_task
 
 router = APIRouter(
     prefix="/api/v1/simulations",
@@ -2205,13 +2514,15 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/run",
-    response_model=SimulationResponse,
-)
+@router.post("/run", response_model=SimulationResponse)
 def run_simulation(
     request: SimulationRequest,
+    session: Session = Depends(get_db),
 ) -> SimulationResponse:
+    # Stage 4: resolve material library references before the physics runs.
+    # MaterialResolutionError -> 422 via app.api.errors.
+    request = resolve_request_materials(session, request)
+
     try:
         control_result = simulate_material(
             duration_minutes=request.duration_minutes,
@@ -2288,16 +2599,16 @@ def run_simulation(
         model_metadata=build_model_metadata(),
     )
 
-@router.post(
-    "/run-weather",
-    response_model=WeatherSimulationResponse,
-)
+@router.post("/run-weather", response_model=WeatherSimulationResponse)
 async def run_weather_simulation(
     request: WeatherSimulationRequest,
+    session: Session = Depends(get_db),
 ) -> WeatherSimulationResponse:
+    request = await anyio.to_thread.run_sync(
+        resolve_request_materials, session, request
+    )
     try:
         city = get_city(request.city_id)
-
         weather = await get_historical_weather(
             city=city,
             start_time_local=request.start_time_local,
@@ -2329,67 +2640,22 @@ async def run_weather_simulation(
             detail=str(error),
         ) from error
 
-import asyncio
-import json
-
-import anyio
-from fastapi import (
-    Depends,
-    HTTPException,
-    Query,
-    Request,
-    status,
-)
-from fastapi.responses import (
-    StreamingResponse,
-)
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from app.db.session import (
-    SessionLocal,
-    get_db,
-)
-from app.models.simulation_job import (
-    SimulationJob,
-)
-from app.schemas.job import (
-    SimulationJobDetail,
-    SimulationJobListResponse,
-    SimulationJobResponse,
-)
-from app.services.job_service import (
-    get_job_or_none,
-    job_to_detail,
-    job_to_response,
-)
-from app.services.result_storage import (
-    load_simulation_result,
-)
-from app.worker.celery_app import (
-    celery_app,
-)
-from app.worker.tasks import (
-    run_weather_simulation_task,
-)
-
-@router.post(
-    "/jobs",
-    response_model=SimulationJobResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
+@router.post("/jobs", response_model=SimulationJobResponse, status_code=status.HTTP_202_ACCEPTED)
 def create_simulation_job(
     request: WeatherSimulationRequest,
     session: Session = Depends(get_db),
 ) -> SimulationJobResponse:
+    request = resolve_request_materials(session, request)
+    control_version_id, rc_version_id = linked_material_version_ids(request)
+
     job = SimulationJob(
         city_id=request.city_id,
         status="queued",
         stage="queued",
         progress=0,
-        request_json=request.model_dump(
-            mode="json"
-        ),
+        request_json=request.model_dump(mode="json"),  # resolved request
+        control_material_version_id=control_version_id,
+        rc_material_version_id=rc_version_id,
     )
 
     session.add(job)
@@ -2423,32 +2689,34 @@ def create_simulation_job(
 
     return job_to_response(job)
 
-@router.get(
-    "/jobs",
-    response_model=SimulationJobListResponse,
-)
+@router.get("/jobs", response_model=SimulationJobListResponse)
 def list_simulation_jobs(
-    limit: int = Query(
-        default=20,
-        ge=1,
-        le=100,
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    material_version_id: str | None = Query(
+        default=None,
+        description="Only jobs whose control or RC garment used this version",
     ),
     session: Session = Depends(get_db),
 ) -> SimulationJobListResponse:
+    filters = []
+
+    if material_version_id:
+        filters.append(
+            or_(
+                SimulationJob.control_material_version_id == material_version_id,
+                SimulationJob.rc_material_version_id == material_version_id,
+            )
+        )
+
     total = session.scalar(
-        select(func.count())
-        .select_from(SimulationJob)
+        select(func.count()).select_from(SimulationJob).where(*filters)
     ) or 0
 
     jobs = session.scalars(
         select(SimulationJob)
-        .order_by(
-            SimulationJob.created_at.desc()
-        )
+        .where(*filters)
+        .order_by(SimulationJob.created_at.desc())
         .offset(offset)
         .limit(limit)
     ).all()
@@ -2676,12 +2944,6 @@ async def simulation_job_events(
         },
     )
     
-from fastapi.responses import Response
-
-from app.services.result_export import (
-    export_result_csv,
-    export_result_json,
-)
 
 @router.get(
     "/jobs/{job_id}/export",
@@ -2746,45 +3008,6 @@ def export_simulation_result(
         },
     )
 
-router.include_router(simulation_jobs.router)
-router.include_router(simulation_events.router)
-```
-
-### File: `backend/app/api/test_route_registration.py`
-```python
-"""Tests for duplicate API route registration."""
-
-from collections import Counter
-
-from fastapi.routing import APIRoute
-
-from app.main import app
-
-
-def test_method_and_path_pairs_are_unique() -> None:
-    route_pairs: list[tuple[str, str]] = []
-
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-
-        for method in route.methods or set():
-            if method in {"HEAD", "OPTIONS"}:
-                continue
-
-            route_pairs.append((method, route.path))
-
-    counts = Counter(route_pairs)
-
-    duplicates = sorted(
-        route_pair
-        for route_pair, count in counts.items()
-        if count > 1
-    )
-
-    assert not duplicates, (
-        f"Duplicate route registrations were found: {duplicates}"
-    )
 ```
 
 ### File: `backend/app/api/weather.py`
@@ -3484,69 +3707,35 @@ def get_db() -> Generator[Session, None, None]:
 
 ### File: `backend/app/main.py`
 ```python
-import os
+"""FastAPI application entry point."""
+
 from datetime import datetime, timezone
-from pathlib import Path
-from app.api import materials, simulations
 
-# 必須在匯入可能使用 Numba 的模組之前設定。
-NUMBA_CACHE_DIR = Path("C:/nc")
-NUMBA_CACHE_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
-)
+from fastapi import FastAPI
 
-os.environ.setdefault(
-    "NUMBA_CACHE_DIR",
-    str(NUMBA_CACHE_DIR),
-)
-
-
-from fastapi import FastAPI  # noqa: E402
-
-from app.core.config import get_settings  # noqa: E402
-from app.core.cors import add_cors_middleware  # noqa: E402
+from app.core.config import get_settings
+from app.core.cors import add_cors_middleware
 from app.core.runtime import configure_runtime
 
 
-from app.api.benchmarks import (  # noqa: E402
-    router as benchmarks_router,
-)
-from app.api.materials import (  # noqa: E402
-    router as materials_router,
-)
-from app.api.simulations import (  # noqa: E402
-    router as simulations_router,
-)
-from app.api.weather import (  # noqa: E402
-    router as weather_router,
-)
-from app.api.global_batches import (
-    router as global_batches_router,
-)
-
 settings = get_settings()
-configure_runtime(
-    numba_cache_dir=settings.numba_cache_dir,
-)
 
-from app.api.router import api_router  
-from app.api.model import router as model_router
+# Must run before any module that imports Numba (pythermalcomfort).
+configure_runtime(numba_cache_dir=settings.numba_cache_dir)
+
+from app.api.errors import register_exception_handlers  # noqa: E402
+from app.api.router import api_router  # noqa: E402
+
 
 app = FastAPI(
-    title=(
-        "Global Radiative Cooling Clothing "
-        "Climate Adaptation API"
-    ),
+    title="Global Radiative Cooling Clothing Climate Adaptation API",
     description=(
         "Backend API for simulating and evaluating radiative cooling "
         "clothing under global climate conditions."
     ),
-    version="0.2.0",
+    version="0.3.0",
 )
 
-
-# 只加入一次 CORS middleware。
 add_cors_middleware(
     app,
     origins=settings.cors_origin_list,
@@ -3556,14 +3745,10 @@ add_cors_middleware(
     allow_credentials=settings.cors_allow_credentials,
 )
 
+register_exception_handlers(app)
 
-app.include_router(simulations_router)
-app.include_router(benchmarks_router)
-app.include_router(weather_router)
-app.include_router(materials_router)
-app.include_router(global_batches_router)
 app.include_router(api_router)
-app.include_router(model_router)
+
 
 @app.get("/api/v1/health")
 def health_check():
@@ -3571,9 +3756,7 @@ def health_check():
         "status": "healthy",
         "service": "radiative-cooling-api",
         "version": app.version,
-        "time": datetime.now(
-            timezone.utc
-        ).isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
     }
 ```
 
@@ -3728,6 +3911,20 @@ class GlobalBatchJob(Base):
         order_by="GlobalCityResult.city_id",
     )
 
+    # Stage 4. Material library versions the request was resolved against.
+    control_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    rc_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
 class GlobalCityResult(Base):
     __tablename__ = "global_city_results"
@@ -4067,34 +4264,27 @@ class MaterialVersion(Base):
     __tablename__ = "material_versions"
 
     __table_args__ = (
-        UniqueConstraint(
-            "material_id",
-            "version_number",
-            name="uq_material_version_number",
+        UniqueConstraint("material_id", "version_number", name="uq_material_version_number"),
+        CheckConstraint("solar_reflectance >= 0 AND solar_reflectance <= 1", name="ck_material_solar_reflectance"),
+        CheckConstraint("solar_transmittance >= 0 AND solar_transmittance <= 1", name="ck_material_solar_transmittance"),
+        CheckConstraint("infrared_emissivity >= 0 AND infrared_emissivity <= 1", name="ck_material_ir_emissivity"),
+        CheckConstraint("infrared_transmittance >= 0 AND infrared_transmittance <= 1", name="ck_material_ir_transmittance"),
+        CheckConstraint("solar_reflectance + solar_transmittance <= 1.000001", name="ck_material_solar_energy_sum"),
+        # Stage 3 (migration c7d2e9f4a1b8) — mirrored here so autogenerate stays clean.
+        CheckConstraint(
+            "clothing_area_factor IS NULL OR "
+            "(clothing_area_factor >= 1.0 AND clothing_area_factor <= 2.0)",
+            name="ck_material_clothing_area_factor",
+        ),
+        # Stage 4 (migration a1f4c2d9e7b3).
+        CheckConstraint(
+            "infrared_emissivity + infrared_transmittance <= 1.000001",
+            name="ck_material_ir_energy_sum",
         ),
         CheckConstraint(
-            "solar_reflectance >= 0 "
-            "AND solar_reflectance <= 1",
-            name="ck_material_solar_reflectance",
-        ),
-        CheckConstraint(
-            "solar_transmittance >= 0 "
-            "AND solar_transmittance <= 1",
-            name="ck_material_solar_transmittance",
-        ),
-        CheckConstraint(
-            "infrared_emissivity >= 0 "
-            "AND infrared_emissivity <= 1",
-            name="ck_material_ir_emissivity",
-        ),
-        CheckConstraint(
-            "infrared_transmittance >= 0 "
-            "AND infrared_transmittance <= 1",
-            name="ck_material_ir_transmittance",
-        ),
-        CheckConstraint(
-            "solar_reflectance + solar_transmittance <= 1.000001",
-            name="ck_material_solar_energy_sum",
+            "evaporative_resistance_m2pa_w IS NULL OR "
+            "(evaporative_resistance_m2pa_w >= 0 AND evaporative_resistance_m2pa_w <= 1000)",
+            name="ck_material_evaporative_resistance",
         ),
     )
 
@@ -4315,6 +4505,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    ForeignKey,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import (
@@ -4418,6 +4609,21 @@ class SimulationJob(Base):
             DateTime(timezone=True),
             nullable=True,
         )
+    )
+
+    # Stage 4. Material library versions the request was resolved against.
+    control_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    rc_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
 ```
 
@@ -4895,7 +5101,9 @@ class GlobalBatchResponse(BaseModel):
     updated_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
-
+    # Stage 4. Set when the request referenced material library versions.
+    control_material_version_id: str | None = None
+    rc_material_version_id: str | None = None
 
 class GlobalBatchDetail(GlobalBatchResponse):
     request: GlobalBatchCreate
@@ -4963,7 +5171,9 @@ class SimulationJobResponse(BaseModel):
     updated_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
-
+    # Stage 4. Set when the request referenced material library versions.
+    control_material_version_id: str | None = None
+    rc_material_version_id: str | None = None
 
 class SimulationJobDetail(
     SimulationJobResponse
@@ -4982,7 +5192,10 @@ class SimulationJobListResponse(BaseModel):
 ```python
 from datetime import datetime
 from typing import Literal
-from app.schemas.provenance import ParameterSource
+from app.schemas.provenance import (
+    ParameterSource,
+    validate_parameter_source_keys,
+)
 
 from pydantic import (
     BaseModel,
@@ -5019,6 +5232,7 @@ class MaterialVersionCreate(BaseModel):
     evaporative_resistance_m2pa_w: float | None = Field(
         default=None,
         ge=0,
+        le=1000,
     )
 
     clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
@@ -5078,8 +5292,9 @@ class MaterialVersionCreate(BaseModel):
     notes: str | None = None
     parameter_sources: dict[str, ParameterSource] | None = None
 
+# 3. MaterialVersionCreate validator: also check provenance keys
     @model_validator(mode="after")
-    def validate_optical_properties(self):
+    def validate_version(self):
         if self.solar_reflectance + self.solar_transmittance > 1.0 + 1e-6:
             raise ValueError(
                 "solar_reflectance + solar_transmittance cannot be greater than 1"
@@ -5088,6 +5303,7 @@ class MaterialVersionCreate(BaseModel):
             raise ValueError(
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
             )
+        validate_parameter_source_keys(self.parameter_sources)
         return self
 
 
@@ -5211,15 +5427,46 @@ class SpectrumPoint(BaseModel):
 class SpectrumResponse(BaseModel):
     summary: SpectrumSummary
     points: list[SpectrumPoint]
+
+class MaterialVersionListItem(BaseModel):
+    """Flat row for version pickers: one line per material version."""
+
+    id: str
+    material_id: str
+    material_name: str
+    material_slug: str
+    version_number: int
+    mode: str
+
+    clothing_insulation_clo: float
+    evaporative_resistance_m2pa_w: float | None
+    clothing_area_factor: float | None
+    solar_reflectance: float
+    solar_transmittance: float
+    infrared_emissivity: float
+    infrared_transmittance: float
+
+    source_type: str
+    is_archived: bool
+    created_at: datetime
+
+
+class MaterialVersionListResponse(BaseModel):
+    items: list[MaterialVersionListItem]
+    total: int
+    limit: int
+    offset: int
 ```
 
 ### File: `backend/app/schemas/provenance.py`
 ```python
 """Provenance types shared by material inputs, the model parameter registry
-and simulation responses (Stage 2)."""
+and simulation responses (Stage 2), plus the material field manifest (Stage 4).
+"""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -5234,6 +5481,38 @@ SourceType = Literal[
     "assumed",       # engineering assumption without measurement
     "manual",        # legacy default of the materials API
 ]
+
+# Every MaterialInput field that enters the physics. Order is the display
+# order used by the field manifest and by conflict reports.
+MATERIAL_PHYSICAL_FIELD_ORDER: tuple[str, ...] = (
+    "clothing_insulation_clo",
+    "evaporative_resistance_m2pa_w",
+    "clothing_area_factor",
+    "solar_reflectance",
+    "solar_transmittance",
+    "infrared_emissivity",
+    "infrared_transmittance",
+    "projected_solar_area_factor",
+    "absorbed_solar_to_body_fraction",
+)
+
+MATERIAL_PHYSICAL_FIELDS = frozenset(MATERIAL_PHYSICAL_FIELD_ORDER)
+
+
+def validate_parameter_source_keys(
+    sources: Mapping[str, object] | None,
+) -> None:
+    """Reject provenance entries that do not name a physical material field."""
+    if not sources:
+        return
+
+    unknown = set(sources) - MATERIAL_PHYSICAL_FIELDS
+
+    if unknown:
+        raise ValueError(
+            "parameter_sources refers to unknown material fields: "
+            + ", ".join(sorted(unknown))
+        )
 
 
 class ParameterSource(BaseModel):
@@ -5269,6 +5548,30 @@ class ModelMetadata(BaseModel):
 
 class ModelParameterManifest(ModelMetadata):
     parameters: list[ModelParameter]
+
+
+class MaterialFieldDescriptor(BaseModel):
+    """Machine-readable description of one physical material field (Stage 4).
+
+    Generated from ``MaterialInput`` so that the frontend can render forms and
+    provenance editors without duplicating bounds, units or defaults.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    unit: str
+    description: str
+    minimum: float | None
+    maximum: float | None
+    default: float | None
+    nullable: bool
+    derived_when_null: str | None = None
+
+
+class MaterialFieldManifest(ModelMetadata):
+    source_types: list[SourceType]
+    fields: list[MaterialFieldDescriptor]
 ```
 
 ### File: `backend/app/schemas/simulation.py`
@@ -5281,7 +5584,15 @@ from app.schemas.weather import WeatherTimeSeries
 
 from app.schemas.environment import EnvironmentAssumptions
 
-from app.schemas.provenance import ModelMetadata, ParameterSource
+from app.schemas.provenance import (  # replace the existing provenance import
+    MATERIAL_PHYSICAL_FIELD_ORDER,
+    MATERIAL_PHYSICAL_FIELDS,
+    ModelMetadata,
+    ParameterSource,
+    validate_parameter_source_keys,
+)
+
+__all__ = ["MATERIAL_PHYSICAL_FIELDS", "MATERIAL_PHYSICAL_FIELD_ORDER"]  # re-export
 
 from typing import Literal
 
@@ -5350,31 +5661,86 @@ MATERIAL_PHYSICAL_FIELDS = frozenset(
 )
 
 class MaterialInput(BaseModel):
+    """Garment parameters for one scenario.
+
+    ``material_version_id`` links the input to an immutable material library
+    version. When it is set, the API resolves it (Stage 4, PR-4):
+    * physical fields that are omitted are filled from the stored version;
+    * physical fields that are supplied must equal the stored version,
+      otherwise the request is rejected with MATERIAL_PARAMETER_CONFLICT;
+    * provenance fields are filled from the stored version when omitted.
+    """
+
     name: str = Field(min_length=1, max_length=100)
 
-    clothing_insulation_clo: float = Field(default=0.5, ge=0, le=5)
+    clothing_insulation_clo: float = Field(
+        default=0.5, ge=0, le=5,
+        description="Intrinsic dry thermal insulation of the garment",
+        json_schema_extra={"unit": "clo"},
+    )
 
     # Stage 2. Intrinsic clothing evaporative resistance Re,cl.
-    # None -> derived from clo (clothing.derive_evaporative_resistance_m2pa_w)
-    # and reported in ScenarioResult.assumptions_applied.
     evaporative_resistance_m2pa_w: float | None = Field(
-        default=None, ge=0, le=1000
+        default=None, ge=0, le=1000,
+        description="Intrinsic evaporative resistance Re,cl of the garment",
+        json_schema_extra={
+            "unit": "m^2 Pa/W",
+            "derived_when_null": "R_cl / (LR * i_cl)",
+        },
     )
-    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
 
+    # Stage 3. Measured clothing area factor f_cl.
+    clothing_area_factor: float | None = Field(
+        default=None, ge=1.0, le=2.0,
+        description="Clothing area factor f_cl = A_cl / A_D",
+        json_schema_extra={
+            "unit": "-",
+            "derived_when_null": "1 + clothing_area_factor_slope * clo",
+        },
+    )
 
-    solar_reflectance: float = Field(default=0.5, ge=0, le=1)
-    solar_transmittance: float = Field(default=0, ge=0, le=1)
-    infrared_emissivity: float = Field(default=0.9, ge=0, le=1)
+    solar_reflectance: float = Field(
+        default=0.5, ge=0, le=1,
+        description="Hemispherical solar reflectance (0.3-2.5 um)",
+        json_schema_extra={"unit": "-"},
+    )
+    solar_transmittance: float = Field(
+        default=0, ge=0, le=1,
+        description="Hemispherical solar transmittance (0.3-2.5 um)",
+        json_schema_extra={"unit": "-"},
+    )
+    infrared_emissivity: float = Field(
+        default=0.9, ge=0, le=1,
+        description="Longwave emissivity of the outer surface (8-13 um)",
+        json_schema_extra={"unit": "-"},
+    )
 
     # Stage 2. Longwave transmittance of the textile (IR-transparent designs).
-    infrared_transmittance: float = Field(default=0.0, ge=0, le=1)
+    infrared_transmittance: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Longwave transmittance of the textile (8-13 um)",
+        json_schema_extra={"unit": "-"},
+    )
 
-    projected_solar_area_factor: float = Field(default=0.25, ge=0, le=1)
-    absorbed_solar_to_body_fraction: float = Field(default=0.35, ge=0, le=1)
+    projected_solar_area_factor: float = Field(
+        default=0.25, ge=0, le=1,
+        description="Projected area factor A_p / A_D for direct solar radiation",
+        json_schema_extra={"unit": "-"},
+    )
+    absorbed_solar_to_body_fraction: float = Field(
+        default=0.35, ge=0, le=1,
+        description=(
+            "Fraction of solar radiation absorbed by the textile that reaches "
+            "the skin node (ADR 0003)"
+        ),
+        json_schema_extra={"unit": "-"},
+    )
 
     # Provenance (no effect on the physics).
-    material_version_id: str | None = None
+    material_version_id: str | None = Field(
+        default=None,
+        description="Material library version this input was taken from",
+    )
     source_type: str | None = Field(default=None, max_length=50)
     source_reference: str | None = None
     # Stage 2. Per-parameter provenance keyed by field name.
@@ -5392,13 +5758,7 @@ class MaterialInput(BaseModel):
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
             )
 
-        if self.parameter_sources:
-            unknown = set(self.parameter_sources) - MATERIAL_PHYSICAL_FIELDS
-            if unknown:
-                raise ValueError(
-                    "parameter_sources refers to unknown material fields: "
-                    + ", ".join(sorted(unknown))
-                )
+        validate_parameter_source_keys(self.parameter_sources)
 
         return self
 
@@ -9231,6 +9591,8 @@ def batch_to_response(
         updated_at=batch.updated_at,
         started_at=batch.started_at,
         completed_at=batch.completed_at,
+        control_material_version_id=getattr(batch, "control_material_version_id", None),
+        rc_material_version_id=getattr(batch, "rc_material_version_id", None),
     )
 
 
@@ -9440,6 +9802,8 @@ def job_to_response(
         updated_at=job.updated_at,
         started_at=job.started_at,
         completed_at=job.completed_at,
+        control_material_version_id=getattr(job, "control_material_version_id", None),
+        rc_material_version_id=getattr(job, "rc_material_version_id", None),
     )
 
 
@@ -9461,6 +9825,325 @@ def get_job_or_none(
     return session.get(
         SimulationJob,
         job_id,
+    )
+```
+
+### File: `backend/app/services/material_fields.py`
+```python
+"""Material field manifest for ``GET /model/material-fields`` (Stage 4).
+
+Everything is introspected from ``MaterialInput`` so bounds, defaults and
+units cannot drift from the validation actually applied to requests.
+"""
+
+from __future__ import annotations
+
+import types
+from typing import Any, Union, get_args, get_origin
+
+from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
+
+from app.schemas.provenance import (
+    MATERIAL_PHYSICAL_FIELD_ORDER,
+    MaterialFieldDescriptor,
+    MaterialFieldManifest,
+    SourceType,
+)
+from app.schemas.simulation import MaterialInput
+from app.services.model_parameters import build_model_metadata
+
+
+def _bound(field: FieldInfo, attribute: str) -> float | None:
+    for item in field.metadata:
+        value = getattr(item, attribute, None)
+        if value is not None:
+            return float(value)
+    return None
+
+
+def _is_nullable(annotation: Any) -> bool:
+    origin = get_origin(annotation)
+    if origin is Union or origin is types.UnionType:
+        return type(None) in get_args(annotation)
+    return False
+
+
+def _default(field: FieldInfo) -> float | None:
+    value = field.default
+    if value is PydanticUndefined or value is None:
+        return None
+    return float(value)
+
+
+def _extra(field: FieldInfo, key: str) -> str | None:
+    extra = field.json_schema_extra
+    if isinstance(extra, dict):
+        value = extra.get(key)
+        return str(value) if value is not None else None
+    return None
+
+
+def describe_material_field(name: str) -> MaterialFieldDescriptor:
+    field = MaterialInput.model_fields[name]
+
+    return MaterialFieldDescriptor(
+        name=name,
+        unit=_extra(field, "unit") or "-",
+        description=field.description or "",
+        minimum=_bound(field, "ge"),
+        maximum=_bound(field, "le"),
+        default=_default(field),
+        nullable=_is_nullable(field.annotation),
+        derived_when_null=_extra(field, "derived_when_null"),
+    )
+
+
+def list_material_fields() -> list[MaterialFieldDescriptor]:
+    return [describe_material_field(name) for name in MATERIAL_PHYSICAL_FIELD_ORDER]
+
+
+def build_material_field_manifest() -> MaterialFieldManifest:
+    return MaterialFieldManifest(
+        **build_model_metadata().model_dump(),
+        source_types=list(get_args(SourceType)),
+        fields=list_material_fields(),
+    )
+```
+
+### File: `backend/app/services/material_resolution.py`
+```python
+"""Resolve ``MaterialInput.material_version_id`` against the material library
+(Stage 4, PR-4).
+
+Contract
+--------
+* No ``material_version_id``      -> the input is returned untouched.
+* Unknown id                       -> MaterialVersionNotFoundError (422).
+* Physical field supplied and != stored value
+                                   -> MaterialParameterConflictError (422).
+* Physical field omitted           -> filled from the stored version.
+* Provenance fields omitted        -> filled from the stored version.
+* Stored version not a valid input -> MaterialVersionInvalidError (422).
+
+Resolution happens once, at the API boundary, and the *resolved* request is
+what gets persisted in ``request_json``. Workers never resolve again.
+"""
+
+from __future__ import annotations
+
+import math
+from typing import Any, TypeVar
+
+from pydantic import BaseModel, ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session, selectinload
+
+from app.models.material import MaterialVersion
+from app.schemas.provenance import MATERIAL_PHYSICAL_FIELD_ORDER
+from app.schemas.simulation import MaterialInput
+
+
+MATERIAL_NAME_MAX_LENGTH = 100
+FLOAT_TOLERANCE = 1e-9
+PROVENANCE_FIELDS: tuple[str, ...] = (
+    "source_type",
+    "source_reference",
+    "parameter_sources",
+)
+
+RequestT = TypeVar("RequestT", bound=BaseModel)
+
+
+class MaterialResolutionError(ValueError):
+    """Base class; mapped to HTTP 422 by ``app.api.errors``."""
+
+    code: str = "MATERIAL_RESOLUTION_ERROR"
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.context: dict[str, Any] = dict(context or {})
+
+    def to_detail(self) -> dict[str, Any]:
+        return {"code": self.code, "message": str(self), **self.context}
+
+
+class MaterialVersionNotFoundError(MaterialResolutionError):
+    code = "MATERIAL_VERSION_NOT_FOUND"
+
+
+class MaterialVersionInvalidError(MaterialResolutionError):
+    code = "MATERIAL_VERSION_INVALID"
+
+
+class MaterialParameterConflictError(MaterialResolutionError):
+    code = "MATERIAL_PARAMETER_CONFLICT"
+
+
+def version_display_name(version: MaterialVersion) -> str:
+    name = f"{version.material.name} v{version.version_number}"
+    return name[:MATERIAL_NAME_MAX_LENGTH]
+
+
+def material_input_from_version(version: MaterialVersion) -> MaterialInput:
+    """The single mapping from a stored version to a simulation input."""
+    try:
+        return MaterialInput(
+            name=version_display_name(version),
+            clothing_insulation_clo=version.clothing_insulation_clo,
+            evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
+            clothing_area_factor=version.clothing_area_factor,
+            solar_reflectance=version.solar_reflectance,
+            solar_transmittance=version.solar_transmittance,
+            infrared_emissivity=version.infrared_emissivity,
+            infrared_transmittance=version.infrared_transmittance,
+            projected_solar_area_factor=version.projected_solar_area_factor,
+            absorbed_solar_to_body_fraction=(
+                version.absorbed_solar_to_body_fraction
+            ),
+            material_version_id=version.id,
+            source_type=version.source_type,
+            source_reference=version.source_reference,
+            parameter_sources=version.parameter_sources_json,
+        )
+    except ValidationError as error:
+        first = error.errors()[0]
+        raise MaterialVersionInvalidError(
+            f"Material version {version.id} cannot be used as a simulation "
+            f"input: {first['msg']}",
+            context={
+                "material_version_id": version.id,
+                "field": ".".join(str(part) for part in first["loc"]),
+            },
+        ) from error
+
+
+def load_material_version(session: Session, version_id: str) -> MaterialVersion:
+    version = session.scalar(
+        select(MaterialVersion)
+        .options(selectinload(MaterialVersion.material))
+        .where(MaterialVersion.id == version_id)
+    )
+
+    if version is None:
+        raise MaterialVersionNotFoundError(
+            f"Material version {version_id} does not exist",
+            context={"material_version_id": version_id},
+        )
+
+    return version
+
+
+def _values_differ(requested: float | None, stored: float | None) -> bool:
+    if requested is None or stored is None:
+        return (requested is None) != (stored is None)
+
+    return not math.isclose(
+        float(requested), float(stored),
+        rel_tol=FLOAT_TOLERANCE, abs_tol=FLOAT_TOLERANCE,
+    )
+
+
+def resolve_material_input(
+    session: Session,
+    material: MaterialInput,
+) -> MaterialInput:
+    if material.material_version_id is None:
+        return material
+
+    version = load_material_version(session, material.material_version_id)
+    stored = material_input_from_version(version)
+
+    explicit = material.model_fields_set
+    conflicts: list[dict[str, Any]] = []
+    updates: dict[str, Any] = {}
+
+    for field in MATERIAL_PHYSICAL_FIELD_ORDER:
+        requested_value = getattr(material, field)
+        stored_value = getattr(stored, field)
+
+        if field in explicit:
+            if _values_differ(requested_value, stored_value):
+                conflicts.append(
+                    {
+                        "field": field,
+                        "requested": requested_value,
+                        "stored": stored_value,
+                    }
+                )
+        else:
+            updates[field] = stored_value
+
+    if conflicts:
+        names = ", ".join(item["field"] for item in conflicts)
+        raise MaterialParameterConflictError(
+            f"Request values differ from material version "
+            f"{version.id} ({version_display_name(version)}) for: {names}. "
+            "Remove material_version_id to simulate a modified garment.",
+            context={
+                "material_version_id": version.id,
+                "conflicts": conflicts,
+            },
+        )
+
+    for field in PROVENANCE_FIELDS:
+        if field not in explicit or getattr(material, field) is None:
+            updates[field] = getattr(stored, field)
+
+    try:
+        return MaterialInput.model_validate(
+            {**material.model_dump(), **updates}
+        )
+    except ValidationError as error:
+        raise MaterialVersionInvalidError(
+            f"Resolved material input for version {version.id} is invalid: "
+            f"{error.errors()[0]['msg']}",
+            context={"material_version_id": version.id},
+        ) from error
+
+
+def resolve_request_materials(
+    session: Session,
+    request: RequestT,
+    *,
+    fields: tuple[str, ...] = ("control_material", "rc_material"),
+) -> RequestT:
+    """Resolve every MaterialInput attribute named in ``fields``.
+
+    Returns the same object when nothing needed resolving, so callers can
+    detect "no library involvement" with an identity check.
+    """
+    updates: dict[str, MaterialInput] = {}
+
+    for field in fields:
+        material = getattr(request, field, None)
+
+        if material is None:
+            continue
+
+        resolved = resolve_material_input(session, material)
+
+        if resolved is not material:
+            updates[field] = resolved
+
+    return request.model_copy(update=updates) if updates else request
+
+
+def linked_material_version_ids(
+    request: BaseModel,
+) -> tuple[str | None, str | None]:
+    """(control, rc) version ids recorded on the job row."""
+    control = getattr(request, "control_material", None)
+    rc = getattr(request, "rc_material", None)
+
+    return (
+        getattr(control, "material_version_id", None),
+        getattr(rc, "material_version_id", None),
     )
 ```
 
@@ -14840,6 +15523,252 @@ tests/test_worker_tasks.py::test_ensure_not_cancelled_rejects_missing_job PASSED
 
 ```
 
+### File: `backend/docs/acceptance/stage-4-material-library/pytest-all.txt`
+```
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 229 items
+
+tests/core/test_numba_cache_integration.py::test_numba_writes_cache_files_to_configured_directory PASSED [  0%]
+tests/core/test_runtime.py::test_uses_configured_cache_directory PASSED  [  0%]
+tests/core/test_runtime.py::test_environment_variable_takes_precedence PASSED [  1%]
+tests/core/test_runtime.py::test_uses_cross_platform_temporary_default PASSED [  1%]
+tests/core/test_runtime.py::test_creates_missing_parent_directories PASSED [  2%]
+tests/test_api.py::test_health_endpoint PASSED                           [  2%]
+tests/test_api.py::test_simulation_endpoint PASSED                       [  3%]
+tests/test_api.py::test_invalid_material_is_rejected PASSED              [  3%]
+tests/test_api.py::test_identical_material_api_improvement_is_zero PASSED [  3%]
+tests/test_body.py::test_default_person_reproduces_gagge_lumped_value PASSED [  4%]
+tests/test_body.py::test_heavier_person_has_larger_capacity_per_area PASSED [  4%]
+tests/test_body.py::test_larger_surface_area_lowers_capacity_per_area PASSED [  5%]
+tests/test_cities.py::test_get_city_returns_supported_city PASSED        [  5%]
+tests/test_cities.py::test_get_city_normalizes_case_and_spaces PASSED    [  6%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[dubai] PASSED [  6%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[guangzhou] PASSED [  6%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[lhasa] PASSED [  7%]
+tests/test_cities.py::test_get_city_rejects_unknown_city PASSED          [  7%]
+tests/test_cities.py::test_unknown_city_error_lists_supported_cities PASSED [  8%]
+tests/test_climate_adaptation.py::test_global_batch_month_range PASSED   [  8%]
+tests/test_climate_adaptation.py::test_global_batch_rejects_duplicate_cities PASSED [  9%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_dry-42.0-20.0-2.0-900.0] PASSED [  9%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_humid-34.0-85.0-1.0-700.0] PASSED [ 10%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[high_altitude_solar-24.0-25.0-2.5-1000.0] PASSED [ 10%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[night-30.0-60.0-0.5-0.0] PASSED [ 10%]
+tests/test_clothing.py::test_derived_evaporative_resistance_matches_formula PASSED [ 11%]
+tests/test_clothing.py::test_none_resistance_is_derived_and_flagged PASSED [ 11%]
+tests/test_clothing.py::test_explicit_resistance_overrides_derivation PASSED [ 12%]
+tests/test_clothing.py::test_higher_resistance_lowers_maximum_evaporation PASSED [ 12%]
+tests/test_clothing.py::test_explicit_derived_value_reproduces_none_result PASSED [ 13%]
+tests/test_clothing.py::test_impermeable_garment_ends_warmer PASSED      [ 13%]
+tests/test_clothing.py::test_infrared_transmittance_amplifies_longwave_exchange PASSED [ 13%]
+tests/test_clothing.py::test_area_factor_is_derived_and_flagged PASSED   [ 14%]
+tests/test_clothing.py::test_explicit_area_factor_overrides_derivation PASSED [ 14%]
+tests/test_clothing.py::test_clothing_surface_balance_is_consistent PASSED [ 15%]
+tests/test_clothing.py::test_nude_surface_temperature_equals_skin PASSED [ 15%]
+tests/test_clothing.py::test_emissivity_plus_transmittance_above_one_is_rejected PASSED [ 16%]
+tests/test_clothing.py::test_unknown_parameter_source_key_is_rejected PASSED [ 16%]
+tests/test_cors.py::test_allows_configured_origin PASSED                 [ 17%]
+tests/test_cors.py::test_allows_configured_preflight_request PASSED      [ 17%]
+tests/test_cors.py::test_rejects_unknown_preflight_origin PASSED         [ 17%]
+tests/test_cors.py::test_rejects_duplicate_cors_registration PASSED      [ 18%]
+tests/test_cors.py::test_main_application_registers_cors_once PASSED     [ 18%]
+tests/test_environment_model.py::test_defaults_reproduce_stage_1_formulas PASSED [ 19%]
+tests/test_environment_model.py::test_swinbank_clear_sky PASSED          [ 19%]
+tests/test_environment_model.py::test_wind_scaling_and_negative_inputs_are_clamped PASSED [ 20%]
+tests/test_environment_model.py::test_describe_mentions_every_active_rule PASSED [ 20%]
+tests/test_exposure_statistics.py::test_time_weighted_mean_matches_trapezoid PASSED [ 20%]
+tests/test_exposure_statistics.py::test_statistics_use_exposure_window_not_padded_points PASSED [ 21%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[1] PASSED [ 21%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[3] PASSED [ 22%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[6] PASSED [ 22%]
+tests/test_exposure_statistics.py::test_half_hour_start_uses_interpolated_boundary PASSED [ 23%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_returns_finite_values PASSED [ 23%]
+tests/test_gagge_benchmark.py::test_gagge_output_is_in_broad_range PASSED [ 24%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_api PASSED           [ 24%]
+tests/test_gagge_benchmark.py::test_gagge_api_converts_service_error_to_500 PASSED [ 24%]
+tests/test_gagge_benchmark.py::test_benchmark_returns_aligned_transient_series PASSED [ 25%]
+tests/test_gagge_benchmark.py::test_default_case_is_within_stage_3_tolerances PASSED [ 25%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[38.0-45.0-1.5-40.0-2.6-0.5] PASSED [ 26%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[30.0-30.0-0.3-60.0-1.2-0.6] PASSED [ 26%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[42.0-42.0-2.0-20.0-2.0-0.4] PASSED [ 27%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[34.0-36.0-1.0-85.0-1.8-0.5] PASSED [ 27%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[25.0-25.0-0.1-50.0-1.0-1.0] PASSED [ 27%]
+tests/test_gagge_reference.py::test_port_returns_one_point_per_minute_plus_initial_state PASSED [ 28%]
+tests/test_gagge_reference.py::test_heavier_body_warms_more_slowly PASSED [ 28%]
+tests/test_global_batch_geojson.py::test_geojson_structure PASSED        [ 29%]
+tests/test_golden_dubai_2h.py::test_dubai_two_hour_golden_case PASSED    [ 29%]
+tests/test_job_service.py::test_job_to_response_maps_job_fields PASSED   [ 30%]
+tests/test_job_service.py::test_job_to_detail_validates_saved_request PASSED [ 30%]
+tests/test_job_service.py::test_get_job_or_none_uses_session_get PASSED  [ 31%]
+tests/test_job_service.py::test_get_job_or_none_returns_none PASSED      [ 31%]
+tests/test_material_fields.py::test_manifest_covers_every_physical_field_in_order PASSED [ 31%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[clothing_insulation_clo] PASSED [ 32%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[evaporative_resistance_m2pa_w] PASSED [ 32%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[clothing_area_factor] PASSED [ 33%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[solar_reflectance] PASSED [ 33%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[solar_transmittance] PASSED [ 34%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[infrared_emissivity] PASSED [ 34%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[infrared_transmittance] PASSED [ 34%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[projected_solar_area_factor] PASSED [ 35%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[absorbed_solar_to_body_fraction] PASSED [ 35%]
+tests/test_material_fields.py::test_nullable_fields_declare_their_derivation PASSED [ 36%]
+tests/test_material_resolution.py::test_input_without_version_id_is_returned_untouched PASSED [ 36%]
+tests/test_material_resolution.py::test_omitted_fields_are_hydrated_from_the_version PASSED [ 37%]
+tests/test_material_resolution.py::test_matching_explicit_values_are_accepted PASSED [ 37%]
+tests/test_material_resolution.py::test_conflicting_explicit_value_is_rejected PASSED [ 37%]
+tests/test_material_resolution.py::test_explicit_null_against_stored_value_is_a_conflict PASSED [ 38%]
+tests/test_material_resolution.py::test_unknown_version_raises PASSED    [ 38%]
+tests/test_material_resolution.py::test_legacy_version_outside_bounds_is_reported PASSED [ 39%]
+tests/test_material_resolution.py::test_display_name_is_truncated_to_input_limit PASSED [ 39%]
+tests/test_material_resolution.py::test_request_level_resolution_only_replaces_linked_materials PASSED [ 40%]
+tests/test_materials_api.py::test_material_library_round_trip PASSED     [ 40%]
+tests/test_materials_api.py::test_version_with_unknown_provenance_key_is_rejected_on_write PASSED [ 41%]
+tests/test_model_parameters.py::test_every_parameter_has_unit_and_reference PASSED [ 41%]
+tests/test_model_parameters.py::test_manifest_sha_is_stable_and_hex PASSED [ 41%]
+tests/test_model_parameters.py::test_unknown_parameter_raises PASSED     [ 42%]
+tests/test_model_parameters.py::test_model_parameter_endpoint PASSED     [ 42%]
+tests/test_model_parameters.py::test_default_assumptions_endpoint PASSED [ 43%]
+tests/test_model_parameters.py::test_model_metadata_endpoint PASSED      [ 43%]
+tests/test_model_parameters.py::test_single_parameter_endpoint PASSED    [ 44%]
+tests/test_model_parameters.py::test_material_fields_endpoint PASSED     [ 44%]
+tests/test_parameter_participation.py::test_every_material_field_participates[absorbed_solar_to_body_fraction-0.6] PASSED [ 44%]
+tests/test_parameter_participation.py::test_every_material_field_participates[clothing_area_factor-1.4] PASSED [ 45%]
+tests/test_parameter_participation.py::test_every_material_field_participates[clothing_insulation_clo-0.9] PASSED [ 45%]
+tests/test_parameter_participation.py::test_every_material_field_participates[evaporative_resistance_m2pa_w-40.0] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_material_field_participates[infrared_emissivity-0.5] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_material_field_participates[infrared_transmittance-0.15] PASSED [ 47%]
+tests/test_parameter_participation.py::test_every_material_field_participates[projected_solar_area_factor-0.4] PASSED [ 47%]
+tests/test_parameter_participation.py::test_every_material_field_participates[solar_reflectance-0.7] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_material_field_participates[solar_transmittance-0.2] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_person_field_participates[body_mass_kg-95.0] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_person_field_participates[body_surface_area_m2-2.4] PASSED [ 49%]
+tests/test_parameter_participation.py::test_every_person_field_participates[initial_core_temperature_c-37.4] PASSED [ 49%]
+tests/test_parameter_participation.py::test_every_person_field_participates[initial_skin_temperature_c-31.0] PASSED [ 50%]
+tests/test_parameter_participation.py::test_every_person_field_participates[met-1.2] PASSED [ 50%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update0-perturbed_update0] PASSED [ 51%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update1-perturbed_update1] PASSED [ 51%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update2-perturbed_update2] PASSED [ 51%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update3-perturbed_update3] PASSED [ 52%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update4-perturbed_update4] PASSED [ 52%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update5-perturbed_update5] PASSED [ 53%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update6-perturbed_update6] PASSED [ 53%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update7-perturbed_update7] PASSED [ 54%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update8-perturbed_update8] PASSED [ 54%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update9-perturbed_update9] PASSED [ 55%]
+tests/test_physics.py::test_saturation_pressure_increases_with_temperature PASSED [ 55%]
+tests/test_physics.py::test_saturation_pressure_near_reference_value PASSED [ 55%]
+tests/test_physics.py::test_invalid_optical_sum_is_rejected PASSED       [ 56%]
+tests/test_physics.py::test_higher_reflectance_reduces_solar_absorption PASSED [ 56%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.0] PASSED       [ 57%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.1] PASSED       [ 57%]
+tests/test_physics.py::test_flux_calculation_is_finite[1.0] PASSED       [ 58%]
+tests/test_physics.py::test_flux_calculation_is_finite[3.0] PASSED       [ 58%]
+tests/test_physics.py::test_flux_calculation_is_finite[8.0] PASSED       [ 58%]
+tests/test_result_export.py::test_missing_stage_3_diagnostics_export_as_blank_cells PASSED [ 59%]
+tests/test_result_export.py::test_stage_3_diagnostics_are_exported_when_present PASSED [ 59%]
+tests/test_result_export.py::test_result_csv_contains_expected_headers PASSED [ 60%]
+tests/test_result_export.py::test_result_csv_contains_control_and_rc_values PASSED [ 60%]
+tests/test_result_export.py::test_result_csv_with_empty_time_series_contains_only_headers PASSED [ 61%]
+tests/test_result_export.py::test_result_csv_rejects_different_time_series_lengths PASSED [ 61%]
+tests/test_result_export.py::test_result_json_serializes_model_dump_as_unicode PASSED [ 62%]
+tests/test_result_storage.py::test_save_simulation_result_creates_gzip_json_file PASSED [ 62%]
+tests/test_result_storage.py::test_save_simulation_result_creates_missing_directory PASSED [ 62%]
+tests/test_result_storage.py::test_save_simulation_result_removes_temporary_file PASSED [ 63%]
+tests/test_result_storage.py::test_save_simulation_result_preserves_unicode PASSED [ 63%]
+tests/test_result_storage.py::test_save_simulation_result_replaces_existing_file PASSED [ 64%]
+tests/test_result_storage.py::test_load_simulation_result_reads_and_validates_payload PASSED [ 64%]
+tests/test_result_storage.py::test_load_simulation_result_raises_for_missing_file PASSED [ 65%]
+tests/test_route_registration.py::test_method_and_path_pairs_are_unique PASSED [ 65%]
+tests/test_spectrum_parser.py::test_parse_valid_spectrum_csv PASSED      [ 65%]
+tests/test_spectrum_parser.py::test_reject_value_above_one PASSED        [ 66%]
+tests/test_spectrum_parser.py::test_reject_unsorted_wavelengths PASSED   [ 66%]
+tests/test_spectrum_parser.py::test_parse_spectrum_returns_checksum PASSED [ 67%]
+tests/test_spectrum_parser.py::test_parse_normalizes_header_names PASSED [ 67%]
+tests/test_spectrum_parser.py::test_reject_empty_spectrum PASSED         [ 68%]
+tests/test_spectrum_parser.py::test_reject_non_utf8_spectrum PASSED      [ 68%]
+tests/test_spectrum_parser.py::test_reject_missing_wavelength_column PASSED [ 68%]
+tests/test_spectrum_parser.py::test_reject_missing_value_column PASSED   [ 69%]
+tests/test_spectrum_parser.py::test_reject_invalid_numeric_values[not-a-number,0.8] PASSED [ 69%]
+tests/test_spectrum_parser.py::test_reject_invalid_numeric_values[0.3,not-a-number] PASSED [ 70%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[nan,0.8-wavelength] PASSED [ 70%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[0.3,nan-spectrum value] PASSED [ 71%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[-0.3,0.8-positive] PASSED [ 71%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[0.3,-0.1-between 0 and 1] PASSED [ 72%]
+tests/test_spectrum_parser.py::test_reject_single_data_point PASSED      [ 72%]
+tests/test_spectrum_parser.py::test_reject_file_above_size_limit PASSED  [ 72%]
+tests/test_spectrum_parser.py::test_reject_too_many_points PASSED        [ 73%]
+tests/test_stage_4_2_export.py::test_export_contains_required_files PASSED [ 73%]
+tests/test_stage_4_2_exposure.py::test_all_mode_requires_all_thresholds PASSED [ 74%]
+tests/test_stage_4_2_exposure.py::test_any_mode_requires_one_threshold PASSED [ 74%]
+tests/test_stage_4_2_exposure.py::test_no_threshold_means_all_samples_eligible PASSED [ 75%]
+tests/test_stage_4_2_sampling.py::test_three_samples_cover_entire_month PASSED [ 75%]
+tests/test_stage_4_2_sampling.py::test_one_legacy_sample_uses_requested_day PASSED [ 75%]
+tests/test_stage_4_2_sampling.py::test_sample_count_cannot_exceed_month_days PASSED [ 76%]
+tests/test_stage_4_3_estimate.py::test_daily_batch_estimate PASSED       [ 76%]
+tests/test_stage_4_3_sampling.py::test_daily_stride_one_has_one_sample_per_day PASSED [ 77%]
+tests/test_stage_4_3_sampling.py::test_daily_stride_seven_covers_month PASSED [ 77%]
+tests/test_stage_4_3_sampling.py::test_leap_year_daily_plan_has_366_samples PASSED [ 78%]
+tests/test_stage_4_3_sampling.py::test_month_plan_returns_actual_dates PASSED [ 78%]
+tests/test_stage_4_3_weather_slice.py::test_slice_weather_includes_padding PASSED [ 79%]
+tests/test_stage_4_3_weather_slice.py::test_slice_fails_when_range_not_covered PASSED [ 79%]
+tests/test_stage_4_4_analytics.py::test_weighted_percentile PASSED       [ 79%]
+tests/test_stage_4_4_analytics.py::test_weighted_percentile_uses_weights PASSED [ 80%]
+tests/test_stage_4_4_analytics.py::test_detects_consecutive_heatwave PASSED [ 80%]
+tests/test_stage_4_4_analytics.py::test_non_consecutive_hot_days_are_not_heatwave PASSED [ 81%]
+tests/test_stage_4_4_checkpoint.py::test_retry_preserves_checkpoint_when_enabled PASSED [ 81%]
+tests/test_stage_4_4_checkpoint.py::test_monthly_checkpoint_round_trip PASSED [ 82%]
+tests/test_two_node.py::test_simulation_returns_expected_number_of_points PASSED [ 82%]
+tests/test_two_node.py::test_initial_temperatures_are_preserved PASSED   [ 82%]
+tests/test_two_node.py::test_all_temperatures_are_finite PASSED          [ 83%]
+tests/test_two_node.py::test_temperature_stays_in_broad_physiological_range PASSED [ 83%]
+tests/test_two_node.py::test_energy_balance_residual_is_small PASSED     [ 84%]
+tests/test_two_node.py::test_rc_material_reduces_skin_temperature PASSED [ 84%]
+tests/test_two_node.py::test_identical_materials_produce_identical_results PASSED [ 85%]
+tests/test_weather_api.py::test_weather_cities_endpoint PASSED           [ 85%]
+tests/test_weather_api.py::test_weather_history_endpoint PASSED          [ 86%]
+tests/test_weather_api.py::test_weather_history_rejects_unknown_city PASSED [ 86%]
+tests/test_weather_api.py::test_weather_history_converts_service_error_to_502 PASSED [ 86%]
+tests/test_weather_api.py::test_weather_history_validates_duration[0] PASSED [ 87%]
+tests/test_weather_api.py::test_weather_history_validates_duration[1441] PASSED [ 87%]
+tests/test_weather_interpolation.py::test_weather_interpolation_at_start PASSED [ 88%]
+tests/test_weather_interpolation.py::test_weather_interpolation_at_half_hour PASSED [ 88%]
+tests/test_weather_interpolation.py::test_environment_clamps_negative_wind_and_solar PASSED [ 89%]
+tests/test_weather_interpolation.py::test_mean_radiant_temperature_increase_is_capped PASSED [ 89%]
+tests/test_weather_interpolation.py::test_interpolation_outside_range_raises PASSED [ 89%]
+tests/test_weather_interpolation.py::test_interpolation_at_exact_boundaries_is_allowed PASSED [ 90%]
+tests/test_weather_interpolation.py::test_from_series_rejects_series_not_covering_requested_window PASSED [ 90%]
+tests/test_weather_quality.py::test_unsorted_input_is_sorted_and_noted PASSED [ 91%]
+tests/test_weather_quality.py::test_identical_duplicate_is_removed PASSED [ 91%]
+tests/test_weather_quality.py::test_conflicting_duplicate_is_rejected PASSED [ 92%]
+tests/test_weather_quality.py::test_naive_timestamp_is_rejected PASSED   [ 92%]
+tests/test_weather_quality.py::test_gap_is_reported_but_not_raised_by_normalize PASSED [ 93%]
+tests/test_weather_quality.py::test_window_with_gap_inside_is_rejected PASSED [ 93%]
+tests/test_weather_quality.py::test_window_outside_gap_is_accepted PASSED [ 93%]
+tests/test_weather_quality.py::test_missing_tail_is_rejected PASSED      [ 94%]
+tests/test_weather_quality.py::test_exact_boundaries_are_accepted PASSED [ 94%]
+tests/test_weather_service.py::test_historical_weather_with_mock PASSED  [ 95%]
+tests/test_weather_simulation.py::test_execute_weather_simulation PASSED [ 95%]
+tests/test_weather_simulation.py::test_execute_weather_simulation_without_callback PASSED [ 96%]
+tests/test_worker_tasks.py::test_update_job_updates_fields_and_commits PASSED [ 96%]
+tests/test_worker_tasks.py::test_update_job_rejects_missing_job PASSED   [ 96%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[queued] PASSED [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[running] PASSED [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[completed] PASSED [ 98%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[failed] PASSED [ 98%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_raises_for_cancelled_job[cancelling] PASSED [ 99%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_raises_for_cancelled_job[cancelled] PASSED [ 99%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_rejects_missing_job PASSED [100%]
+
+============================= 229 passed in 3.03s =============================
+
+```
+
 ### File: `backend/docs/decisions/0001-body-surface-area.md`
 ```
 # ADR 0001: body_surface_area_m2 is currently informational — RESOLVED (Stage 3)
@@ -14900,6 +15829,27 @@ surface balance and both longwave terms are scaled by A_r/A_D = 0.73
 (Fanger 1970, standing). Without it the prototype exchanged ~37 % more
 longwave radiation than the reference, which appeared as a +0.30 K core bias
 after 60 min in the default benchmark scenario (T_mrt = 45 C > T_cl).
+```
+
+### File: `backend/docs/decisions/0004-material-library-provenance.md`
+```
+# ADR 0004: material library references are resolved server-side and verified
+
+Context: `MaterialInput.material_version_id` existed since Stage 2 but had no
+effect; any client could claim a version while sending different numbers.
+
+Decision (Stage 4, PR-4):
+- Resolution happens once at the API boundary (`services/material_resolution`).
+  Omitted physical fields are hydrated from the immutable version; supplied
+  fields must match (rel/abs 1e-9) or the request fails with
+  `MATERIAL_PARAMETER_CONFLICT`. Provenance fields are hydrated when omitted.
+- The resolved request is what is persisted; workers never touch the library.
+- `simulation_jobs` / `global_batch_jobs` record the version ids (FK, SET NULL)
+  so a material version can list the simulations that used it.
+- Every stored version must be a valid `MaterialInput`: write bounds and DB
+  CHECK constraints now mirror the input schema.
+
+Not changed: physics, `MODEL_PARAMETER_SET_VERSION` (3.0.0), golden fixture.
 ```
 
 ### File: `backend/docs/environment-assumptions.md`
@@ -15062,6 +16012,9 @@ markers = [
     "benchmark: marks model comparison and benchmark tests",
     "asyncio: mark a test as an asyncio coroutine",
     "api: marks API endpoint and request-response tests",
+]
+filterwarnings = [
+    "error",
 ]
 ```
 
@@ -17336,6 +18289,297 @@ def test_get_job_or_none_returns_none():
     assert result is None
 ```
 
+### File: `backend/tests/test_material_fields.py`
+```python
+import pytest
+from pydantic import ValidationError
+
+from app.schemas.provenance import MATERIAL_PHYSICAL_FIELD_ORDER
+from app.schemas.simulation import MaterialInput
+from app.services.material_fields import build_material_field_manifest
+
+
+@pytest.mark.unit
+def test_manifest_covers_every_physical_field_in_order():
+    manifest = build_material_field_manifest()
+    assert [f.name for f in manifest.fields] == list(MATERIAL_PHYSICAL_FIELD_ORDER)
+    assert manifest.parameter_set_version == "3.0.0"
+    assert "measured" in manifest.source_types
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("name", MATERIAL_PHYSICAL_FIELD_ORDER)
+def test_manifest_bounds_match_validation(name):
+    descriptor = next(f for f in build_material_field_manifest().fields if f.name == name)
+
+    assert descriptor.unit
+    assert descriptor.description
+    assert descriptor.minimum is not None and descriptor.maximum is not None
+
+    # Sum constraints interfere for the optical pair; test the bound alone.
+    base = {"name": "x", "solar_reflectance": 0.0, "infrared_emissivity": 0.0}
+    MaterialInput(**{**base, name: descriptor.minimum})
+    MaterialInput(**{**base, name: descriptor.maximum})
+
+    with pytest.raises(ValidationError):
+        MaterialInput(**{**base, name: descriptor.minimum - 1e-6})
+    with pytest.raises(ValidationError):
+        MaterialInput(**{**base, name: descriptor.maximum + 1e-6})
+
+
+@pytest.mark.unit
+def test_nullable_fields_declare_their_derivation():
+    for field in build_material_field_manifest().fields:
+        assert field.nullable == (field.derived_when_null is not None), field.name
+```
+
+### File: `backend/tests/test_material_resolution.py`
+```python
+from types import SimpleNamespace
+from unittest.mock import Mock
+
+import pytest
+
+from app.schemas.simulation import MaterialInput, WeatherSimulationRequest
+from app.services.material_resolution import (
+    MaterialParameterConflictError,
+    MaterialVersionInvalidError,
+    MaterialVersionNotFoundError,
+    material_input_from_version,
+    resolve_material_input,
+    resolve_request_materials,
+)
+
+
+def make_version(**overrides) -> SimpleNamespace:
+    values = dict(
+        id="ver-1",
+        version_number=2,
+        material=SimpleNamespace(name="Cool Fabric"),
+        clothing_insulation_clo=0.4,
+        evaporative_resistance_m2pa_w=18.0,
+        clothing_area_factor=None,
+        solar_reflectance=0.92,
+        solar_transmittance=0.0,
+        infrared_emissivity=0.95,
+        infrared_transmittance=0.0,
+        projected_solar_area_factor=0.25,
+        absorbed_solar_to_body_fraction=0.35,
+        source_type="measured",
+        source_reference="Lab report 12",
+        parameter_sources_json={"solar_reflectance": {"source_type": "measured"}},
+    )
+    values.update(overrides)
+    return SimpleNamespace(**values)
+
+
+def make_session(version) -> Mock:
+    session = Mock()
+    session.scalar.return_value = version
+    return session
+
+
+@pytest.mark.unit
+def test_input_without_version_id_is_returned_untouched():
+    material = MaterialInput(name="Control")
+    session = Mock()
+
+    assert resolve_material_input(session, material) is material
+    session.scalar.assert_not_called()
+
+
+@pytest.mark.unit
+def test_omitted_fields_are_hydrated_from_the_version():
+    resolved = resolve_material_input(
+        make_session(make_version()),
+        MaterialInput(name="RC", material_version_id="ver-1"),
+    )
+
+    assert resolved.name == "RC"
+    assert resolved.clothing_insulation_clo == 0.4
+    assert resolved.evaporative_resistance_m2pa_w == 18.0
+    assert resolved.solar_reflectance == 0.92
+    assert resolved.source_type == "measured"
+    assert resolved.source_reference == "Lab report 12"
+    assert resolved.parameter_sources["solar_reflectance"].source_type == "measured"
+
+
+@pytest.mark.unit
+def test_matching_explicit_values_are_accepted():
+    resolved = resolve_material_input(
+        make_session(make_version()),
+        MaterialInput(
+            name="RC", material_version_id="ver-1",
+            clothing_insulation_clo=0.4, solar_reflectance=0.92,
+        ),
+    )
+    assert resolved.material_version_id == "ver-1"
+
+
+@pytest.mark.unit
+def test_conflicting_explicit_value_is_rejected():
+    with pytest.raises(MaterialParameterConflictError) as error:
+        resolve_material_input(
+            make_session(make_version()),
+            MaterialInput(name="RC", material_version_id="ver-1", solar_reflectance=0.5),
+        )
+
+    detail = error.value.to_detail()
+    assert detail["code"] == "MATERIAL_PARAMETER_CONFLICT"
+    assert detail["conflicts"][0]["field"] == "solar_reflectance"
+
+
+@pytest.mark.unit
+def test_explicit_null_against_stored_value_is_a_conflict():
+    with pytest.raises(MaterialParameterConflictError):
+        resolve_material_input(
+            make_session(make_version()),
+            MaterialInput(name="RC", material_version_id="ver-1", evaporative_resistance_m2pa_w=None),
+        )
+
+
+@pytest.mark.unit
+def test_unknown_version_raises():
+    with pytest.raises(MaterialVersionNotFoundError):
+        resolve_material_input(make_session(None), MaterialInput(name="RC", material_version_id="ghost"))
+
+
+@pytest.mark.unit
+def test_legacy_version_outside_bounds_is_reported():
+    with pytest.raises(MaterialVersionInvalidError, match="cannot be used"):
+        material_input_from_version(make_version(evaporative_resistance_m2pa_w=5000.0))
+
+
+@pytest.mark.unit
+def test_display_name_is_truncated_to_input_limit():
+    version = make_version(material=SimpleNamespace(name="x" * 150))
+    assert len(material_input_from_version(version).name) == 100
+
+
+@pytest.mark.unit
+def test_request_level_resolution_only_replaces_linked_materials(person, control_material):
+    request = WeatherSimulationRequest(
+        start_time_local="2023-07-15T12:00:00",
+        person=person,
+        control_material=control_material,
+        rc_material=MaterialInput(name="RC", material_version_id="ver-1"),
+    )
+
+    resolved = resolve_request_materials(make_session(make_version()), request)
+
+    assert resolved is not request
+    assert resolved.control_material is control_material
+    assert resolved.rc_material.solar_reflectance == 0.92
+```
+
+### File: `backend/tests/test_materials_api.py`
+```python
+from types import SimpleNamespace
+
+import pytest
+
+from app.api import simulations as simulations_api
+
+
+@pytest.mark.integration
+def test_material_library_round_trip(client, monkeypatch, simulation_request):
+    created = client.post(
+        "/api/v1/materials",
+        json={
+            "name": "PR-4 Test Fabric",
+            "slug": "pr-4-test-fabric",
+            "institution": "Test Lab",
+            "initial_version": {
+                "clothing_insulation_clo": 0.4,
+                "evaporative_resistance_m2pa_w": 18.0,
+                "solar_reflectance": 0.92,
+                "infrared_emissivity": 0.95,
+                "source_type": "measured",
+                "parameter_sources": {
+                    "solar_reflectance": {
+                        "source_type": "measured",
+                        "reference": "UV-Vis-NIR, 2024-03",
+                    }
+                },
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    version_id = created.json()["versions"][0]["id"]
+
+    listing = client.get("/api/v1/materials/versions").json()
+    assert any(item["id"] == version_id for item in listing["items"])
+
+    simulation_input = client.get(
+        f"/api/v1/materials/versions/{version_id}/simulation-input"
+    ).json()
+    assert simulation_input["name"] == "PR-4 Test Fabric v1"
+    assert simulation_input["material_version_id"] == version_id
+
+    # Hydration: only the id is sent.
+    body = simulation_request.model_dump(mode="json")
+    body["rc_material"] = {"name": "RC from library", "material_version_id": version_id}
+    response = client.post("/api/v1/simulations/run", json=body)
+    assert response.status_code == 200, response.text
+    rc = response.json()["radiative_cooling"]
+    assert rc["material_name"] == "RC from library"
+    assert rc["clothing"]["evaporative_resistance_source"] == "material_input"
+    assert rc["clothing"]["evaporative_resistance_m2pa_w"] == pytest.approx(18.0)
+
+    # Conflict: id plus a different value.
+    body["rc_material"] = {"name": "Edited", "material_version_id": version_id, "solar_reflectance": 0.5}
+    response = client.post("/api/v1/simulations/run", json=body)
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "MATERIAL_PARAMETER_CONFLICT"
+
+    # Unknown id.
+    body["rc_material"] = {"name": "Ghost", "material_version_id": "does-not-exist"}
+    response = client.post("/api/v1/simulations/run", json=body)
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "MATERIAL_VERSION_NOT_FOUND"
+
+    # Job link is recorded and queryable.
+    monkeypatch.setattr(
+        simulations_api,
+        "run_weather_simulation_task",
+        SimpleNamespace(delay=lambda job_id: SimpleNamespace(id="celery-test-task")),
+    )
+    job = client.post(
+        "/api/v1/simulations/jobs",
+        json={
+            "city_id": "dubai",
+            "start_time_local": "2023-07-15T12:00:00",
+            "duration_minutes": 120,
+            "output_interval_minutes": 10,
+            "person": body["person"],
+            "control_material": body["control_material"],
+            "rc_material": {"name": "RC", "material_version_id": version_id},
+        },
+    )
+    assert job.status_code == 202, job.text
+    assert job.json()["rc_material_version_id"] == version_id
+    assert job.json()["control_material_version_id"] is None
+
+    detail = client.get(f"/api/v1/simulations/jobs/{job.json()['id']}").json()
+    assert detail["request"]["rc_material"]["solar_reflectance"] == pytest.approx(0.92)
+
+    listed = client.get("/api/v1/simulations/jobs", params={"material_version_id": version_id}).json()
+    assert any(item["id"] == job.json()["id"] for item in listed["items"])
+
+
+@pytest.mark.integration
+def test_version_with_unknown_provenance_key_is_rejected_on_write(client):
+    response = client.post(
+        "/api/v1/materials",
+        json={
+            "name": "Bad provenance",
+            "slug": "bad-provenance",
+            "initial_version": {"parameter_sources": {"not_a_field": {"source_type": "measured"}}},
+        },
+    )
+    assert response.status_code == 422
+```
+
 ### File: `backend/tests/test_model_parameters.py`
 ```python
 import re
@@ -17379,6 +18623,26 @@ def test_default_assumptions_endpoint(client):
     response = client.get("/api/v1/model/environment-assumptions/defaults")
     assert response.status_code == 200
     assert response.json()["sky_view_factor"] == 0.5
+    
+@pytest.mark.api
+def test_model_metadata_endpoint(client):
+    body = client.get("/api/v1/model/metadata").json()
+    assert body["parameter_set_version"] == mp.MODEL_PARAMETER_SET_VERSION
+    assert body["parameter_set_sha256"] == mp.model_parameter_set_sha256()
+
+
+@pytest.mark.api
+def test_single_parameter_endpoint(client):
+    assert client.get("/api/v1/model/parameters/clo_to_si").json()["value"] == 0.155
+    assert client.get("/api/v1/model/parameters/nope").status_code == 404
+
+
+@pytest.mark.api
+def test_material_fields_endpoint(client):
+    body = client.get("/api/v1/model/material-fields").json()
+    names = [f["name"] for f in body["fields"]]
+    assert "evaporative_resistance_m2pa_w" in names
+    assert body["fields"][0]["unit"] == "clo"
 ```
 
 ### File: `backend/tests/test_parameter_participation.py`
@@ -18072,6 +19336,43 @@ def test_load_simulation_result_raises_for_missing_file(
         result_storage.load_simulation_result(
             str(missing_path)
         )
+```
+
+### File: `backend/tests/test_route_registration.py`
+```python
+"""Tests for duplicate API route registration."""
+
+from collections import Counter
+
+from fastapi.routing import APIRoute
+
+from app.main import app
+
+
+def test_method_and_path_pairs_are_unique() -> None:
+    route_pairs: list[tuple[str, str]] = []
+
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+
+        for method in route.methods or set():
+            if method in {"HEAD", "OPTIONS"}:
+                continue
+
+            route_pairs.append((method, route.path))
+
+    counts = Counter(route_pairs)
+
+    duplicates = sorted(
+        route_pair
+        for route_pair, count in counts.items()
+        if count > 1
+    )
+
+    assert not duplicates, (
+        f"Duplicate route registrations were found: {duplicates}"
+    )
 ```
 
 ### File: `backend/tests/test_spectrum_parser.py`

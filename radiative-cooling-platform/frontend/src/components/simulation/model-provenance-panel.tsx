@@ -86,6 +86,13 @@ const resolvedRows: ResolvedRow[] = [
     render: (scenario) =>
       formatNumber(scenario.body?.skin_heat_capacity_j_m2k, 0, " J/(m²·K)"),
   },
+  {
+    label: "Posture / A_r/A_D",
+    render: (scenario) =>
+      scenario.body?.position
+        ? `${scenario.body.position} (${formatNumber(scenario.body.effective_radiation_area_ratio, 2)})`
+        : "—",
+  },
 ];
 
 export function ModelProvenancePanel({ result }: ModelProvenancePanelProps) {

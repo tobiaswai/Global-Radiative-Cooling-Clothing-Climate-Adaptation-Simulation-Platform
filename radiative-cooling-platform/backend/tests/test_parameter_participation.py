@@ -29,7 +29,6 @@ MATERIAL_PERTURBATIONS = {
     "infrared_emissivity": 0.5,
     "infrared_transmittance": 0.15,
     "projected_solar_area_factor": 0.4,
-    "absorbed_solar_to_body_fraction": 0.6,
 }
 
 
@@ -54,6 +53,7 @@ PERSON_PERTURBATIONS = {
     "body_mass_kg": 95.0,                  # Stage 3
     "initial_core_temperature_c": 37.4,
     "initial_skin_temperature_c": 31.0,
+    "position": "sitting",  # Stage 5
 }
 
 
@@ -87,6 +87,18 @@ ASSUMPTION_PERTURBATIONS = [
     ({}, {"wind_speed_scaling_factor": 0.67}),
 ]
 
+SOLAR_SPLIT = {
+    "direct_normal_irradiance_w_m2": 700.0,
+    "diffuse_horizontal_irradiance_w_m2": 150.0,
+}
+
+# (baseline update, perturbed update) on the fixed EnvironmentInput.
+ENVIRONMENT_PERTURBATIONS = [
+    ({}, SOLAR_SPLIT),
+    (SOLAR_SPLIT, {**SOLAR_SPLIT, "direct_normal_irradiance_w_m2": 400.0}),
+    (SOLAR_SPLIT, {**SOLAR_SPLIT, "diffuse_horizontal_irradiance_w_m2": 350.0}),
+    (SOLAR_SPLIT, {**SOLAR_SPLIT, "ground_albedo": 0.6}),
+]
 
 @pytest.mark.unit
 @pytest.mark.parametrize(("baseline_update", "perturbed_update"), ASSUMPTION_PERTURBATIONS)
@@ -104,4 +116,20 @@ def test_every_environment_assumption_participates(
 
     assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, (
         f"EnvironmentAssumptions {perturbed_update} does not influence the result"
+    )
+    
+@pytest.mark.unit
+@pytest.mark.parametrize(("baseline_update", "perturbed_update"), ENVIRONMENT_PERTURBATIONS)
+def test_every_solar_environment_field_participates(
+    environment, person, control_material, baseline_update, perturbed_update
+):
+    baseline = simulate_material(
+        60, 1, environment.model_copy(update=baseline_update), person, control_material
+    )
+    perturbed = simulate_material(
+        60, 1, environment.model_copy(update=perturbed_update), person, control_material
+    )
+
+    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, (
+        f"EnvironmentInput {perturbed_update} does not influence the result"
     )

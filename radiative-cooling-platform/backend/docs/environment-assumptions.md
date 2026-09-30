@@ -13,7 +13,8 @@ part of every weather-driven request and echoed in every response.
 | sky_temperature_method = swinbank | — | clear-sky T_sky = 0.0552·T_air[K]^1.5 (Swinbank 1963) | literature |
 | sky_view_factor | 0.5 | share of view occupied by sky | assumed; open site |
 | wind_speed_scaling_factor | 1.0 | 10 m → body height | assumed; 0.67 ≈ log profile to 1.1 m |
+| ground_albedo | 0.2 | reflected-diffuse shortwave term (ADR 0006) | assumed |
 
-What these do **not** represent: cloud-cover dependent sky emissivity,
-ground surface temperature, urban canyon geometry, direct/diffuse split
+What these do **not** represent: cloud-cover dependent sky emissivity, 
+ground surface temperature, urban canyon geometry, solar-altitude dependent f_p
 (the solar term uses GHI only).

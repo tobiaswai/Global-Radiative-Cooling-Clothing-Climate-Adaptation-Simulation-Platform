@@ -117,7 +117,11 @@ def maximum_evaporation_w_m2(
     )
 
 
-def assumptions_applied(clothing: ClothingResistances) -> list[str]:
+def assumptions_applied(
+    clothing: ClothingResistances,
+    *,
+    solar_split_available: bool = False,
+) -> list[str]:
     notes: list[str] = []
 
     if clothing.evaporative_resistance_source == "derived_from_clo":
@@ -140,9 +144,20 @@ def assumptions_applied(clothing: ClothingResistances) -> list[str]:
         )
 
     notes.append(
-        "absorbed solar radiation is deposited on the skin node via "
-        "absorbed_solar_to_body_fraction and does not enter the clothing "
-        "surface balance (ADR 0003)"
+        "solar radiation absorbed by the textile enters the clothing surface "
+        "balance; transmitted solar reaches the skin node directly. "
+        "absorbed_solar_to_body_fraction is ignored (ADR 0005)"
     )
+
+    if solar_split_available:
+        notes.append(
+            "body-incident shortwave = f_p * DNI + 0.5 f_eff F_sky DHI "
+            "+ 0.5 f_eff rho_g GHI (ASHRAE 55 Appendix C geometry, ADR 0006)"
+        )
+    else:
+        notes.append(
+            "no beam/diffuse split supplied; GHI treated as beam on the "
+            "projected area (legacy Stage 0-4 geometry, ADR 0006)"
+        )
 
     return notes

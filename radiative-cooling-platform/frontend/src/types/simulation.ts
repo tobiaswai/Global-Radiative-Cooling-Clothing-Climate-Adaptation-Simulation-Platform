@@ -15,25 +15,47 @@ export type ParameterSource = {
 
 /** How the solver obtained a resolved clothing quantity. */
 export type ResolvedParameterSource = "material_input" | "derived_from_clo";
+export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
+export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
+
+export type EnvironmentAssumptions = {
+  mean_radiant_temperature_method: MeanRadiantTemperatureMethod;
+  solar_mrt_gain_k_per_w_m2: number;
+  solar_mrt_gain_cap_k: number;
+  sky_temperature_method: SkyTemperatureMethod;
+  sky_offset_base_k: number;
+  sky_offset_humidity_range_k: number;
+  fixed_sky_offset_k: number;
+  sky_view_factor: number;
+  wind_speed_scaling_factor: number;
+  ground_albedo: number;
+};
+
+export type BodyPosition = "standing" | "sitting";
 
 export type EnvironmentInput = {
   air_temperature_c: number;
   mean_radiant_temperature_c: number;
-  /** `null` lets the backend derive the sky temperature. */
   sky_temperature_c: number | null;
   relative_humidity_percent: number;
   wind_speed_m_s: number;
+  /** Global horizontal irradiance. */
   solar_radiation_w_m2: number;
   sky_view_factor: number;
+  /** Stage 5: supply both DNI and DHI or neither. */
+  direct_normal_irradiance_w_m2: number | null;
+  diffuse_horizontal_irradiance_w_m2: number | null;
+  ground_albedo: number;
 };
 
 export type PersonInput = {
   met: number;
-  /** Stage 3 (ADR 0001): drives core/skin heat capacities. Backend default 70 kg. */
   body_mass_kg: number;
   body_surface_area_m2: number;
   initial_core_temperature_c: number;
   initial_skin_temperature_c: number;
+  /** Stage 5 (ADR 0006). */
+  position: BodyPosition;
 };
 
 export type MaterialInput = {
@@ -47,7 +69,8 @@ export type MaterialInput = {
   infrared_emissivity: number;
   infrared_transmittance?: number;
   projected_solar_area_factor: number;
-  absorbed_solar_to_body_fraction: number;
+  /** @deprecated Stage 5, ignored by the backend. */ 
+  absorbed_solar_to_body_fraction?: number | null;
   material_version_id?: string | null;
   parameter_sources?: Record<string, ParameterSource> | null;
   source_type?: string | null;
@@ -83,6 +106,9 @@ export type TimeSeriesPoint = {
   clothing_surface_temperature_c?: number | null;
   /** Stage 3 */
   skin_blood_flow_kg_h_m2?: number | null;
+  solar_incident_w_m2?: number | null; 
+  solar_absorbed_by_textile_w_m2?: number | null; 
+  solar_transmitted_w_m2?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -112,6 +138,8 @@ export type BodyThermalSummary = {
   body_surface_area_m2: number;
   core_heat_capacity_j_m2k: number;
   skin_heat_capacity_j_m2k: number;
+  position?: BodyPosition | null;
+  effective_radiation_area_ratio?: number | null;
 };
 
 export type ScenarioResult = {
@@ -200,11 +228,13 @@ export type WeatherSimulationRequest = {
   person: PersonInput;
   control_material: MaterialInput;
   rc_material: MaterialInput;
+  environment_assumptions?: EnvironmentAssumptions;
 };
 
 export type WeatherSimulationResponse = SimulationResponse & {
   weather: WeatherTimeSeries;
   environment_model_note: string;
+  environment_assumptions?: EnvironmentAssumptions | null;
 };
 
 export type SimulationJobStatus =

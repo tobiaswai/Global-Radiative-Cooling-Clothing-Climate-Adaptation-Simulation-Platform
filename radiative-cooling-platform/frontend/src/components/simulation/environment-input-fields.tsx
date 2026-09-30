@@ -83,7 +83,7 @@ export function EnvironmentInputFields({
       />
 
       <NumberField
-        label="Solar Radiation"
+        label="Global Horizontal Irradiance"
         suffix="W/m²"
         value={environment.solar_radiation_w_m2}
         min={0}
@@ -91,6 +91,35 @@ export function EnvironmentInputFields({
         step={10}
         disabled={disabled}
         onChange={(value) => update("solar_radiation_w_m2", value)}
+      />
+
+      <OptionalNumberField
+        label="Direct Normal Irradiance"
+        suffix="W/m²"
+        value={environment.direct_normal_irradiance_w_m2}
+        placeholder="Not split"
+        min={0} max={1500} step={10}
+        disabled={disabled}
+        hint="Supply DNI and DHI together; leave both empty to treat GHI as beam."
+        onChange={(value) => update("direct_normal_irradiance_w_m2", value)}
+      />
+
+      <OptionalNumberField
+        label="Diffuse Horizontal Irradiance"
+        suffix="W/m²"
+        value={environment.diffuse_horizontal_irradiance_w_m2}
+        placeholder="Not split"
+        min={0} max={1500} step={10}
+        disabled={disabled}
+        onChange={(value) => update("diffuse_horizontal_irradiance_w_m2", value)}
+      />
+
+      <NumberField
+        label="Ground Albedo"
+        value={environment.ground_albedo}
+        min={0} max={1} step={0.05}
+        disabled={disabled}
+        onChange={(value) => update("ground_albedo", value)}
       />
 
       <NumberField

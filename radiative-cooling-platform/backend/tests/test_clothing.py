@@ -123,14 +123,17 @@ def test_explicit_area_factor_overrides_derivation(control_material):
 
 @pytest.mark.unit
 def test_clothing_surface_balance_is_consistent(environment, person, control_material):
-    """Conduction through the textile equals what leaves its outer surface."""
+    """Conduction through the textile plus absorbed solar equals what leaves
+    the outer surface (ADR 0003 + ADR 0005)."""
     clothing = resolve_clothing(control_material)
     fluxes = calculate_fluxes(36.8, 33.7, environment, person, control_material, clothing)
 
     conduction = (33.7 - fluxes.clothing_surface_temperature_c) / clothing.dry_resistance_m2k_w
     surface_losses = fluxes.convection + fluxes.longwave_radiation - fluxes.longwave_transmitted
 
-    assert conduction == pytest.approx(surface_losses, abs=1e-3)
+    assert conduction + fluxes.solar_absorbed_by_textile == pytest.approx(
+        surface_losses, abs=1e-3
+    )
 
 @pytest.mark.unit
 def test_nude_surface_temperature_equals_skin(environment, person, control_material):

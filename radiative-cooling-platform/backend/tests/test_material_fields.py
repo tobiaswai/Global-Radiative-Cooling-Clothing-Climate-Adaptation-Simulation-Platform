@@ -10,9 +10,15 @@ from app.services.material_fields import build_material_field_manifest
 def test_manifest_covers_every_physical_field_in_order():
     manifest = build_material_field_manifest()
     assert [f.name for f in manifest.fields] == list(MATERIAL_PHYSICAL_FIELD_ORDER)
-    assert manifest.parameter_set_version == "3.0.0"
-    assert "measured" in manifest.source_types
+    assert manifest.parameter_set_version == "4.0.0"
+    assert "absorbed_solar_to_body_fraction" not in [f.name for f in manifest.fields]
 
+@pytest.mark.unit
+def test_deprecated_field_is_still_accepted_in_provenance():
+    MaterialInput(
+        name="legacy",
+        parameter_sources={"absorbed_solar_to_body_fraction": {"source_type": "assumed"}},
+    )
 
 @pytest.mark.unit
 @pytest.mark.parametrize("name", MATERIAL_PHYSICAL_FIELD_ORDER)

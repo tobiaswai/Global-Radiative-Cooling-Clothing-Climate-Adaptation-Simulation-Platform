@@ -1,6 +1,7 @@
 import type {
   MaterialInput,
   PersonInput,
+  EnvironmentAssumptions,
 } from "@/types/simulation";
 
 
@@ -91,6 +92,7 @@ export type GlobalBatchCreate = {
   person: PersonInput;
   control_material: MaterialInput;
   rc_material: MaterialInput;
+  environment_assumptions?: EnvironmentAssumptions;
 };
 
 
@@ -315,6 +317,8 @@ export type GlobalBatch = {
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
+  control_material_version_id?: string | null;
+  rc_material_version_id?: string | null;
 };
 
 

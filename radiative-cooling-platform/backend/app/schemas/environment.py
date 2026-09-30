@@ -82,6 +82,17 @@ class EnvironmentAssumptions(BaseModel):
         json_schema_extra={"source_type": "assumed", "reference": "Stage 1 prototype"},
     )
 
+    # Stage 5 (ADR 0006). Ground-reflected shortwave = 0.5 f_eff rho_g GHI.
+    ground_albedo: float = Field(
+        default=0.2, ge=0.0, le=1.0,
+        description="Shortwave reflectance of the ground surface",
+        json_schema_extra={
+            "source_type": "assumed",
+            "reference": "Typical dry soil / urban pavement (0.15-0.25)",
+        },
+    )
+
+
     def describe(self) -> list[str]:
         """Human-readable summary written into ``environment_model_note``."""
         if self.mean_radiant_temperature_method == "air_plus_solar_linear":
@@ -109,4 +120,8 @@ class EnvironmentAssumptions(BaseModel):
             sky,
             f"Sky view factor = {self.sky_view_factor}",
             f"Body-height wind = {self.wind_speed_scaling_factor} * ERA5 10 m wind",
+            "Direct normal and diffuse horizontal irradiance are taken from "
+            "ERA5; the body-incident shortwave follows ASHRAE 55 Appendix C "
+            "geometry (ADR 0006).",
+            f"Ground albedo = {self.ground_albedo}",
         ]
