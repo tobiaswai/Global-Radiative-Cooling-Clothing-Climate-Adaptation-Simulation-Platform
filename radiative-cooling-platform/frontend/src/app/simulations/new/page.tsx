@@ -178,6 +178,7 @@ export default function NewSimulationPage() {
               <div className="mt-5">
                 <MaterialInputFields
                   material={request.control_material}
+                  enableLibrary
                   onChange={(material) =>
                     setRequest({ ...request, control_material: material })
                   }
@@ -193,6 +194,7 @@ export default function NewSimulationPage() {
               <div className="mt-5">
                 <MaterialInputFields
                   material={request.rc_material}
+                  enableLibrary
                   onChange={(material) =>
                     setRequest({ ...request, rc_material: material })
                   }

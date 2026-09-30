@@ -28,6 +28,8 @@ def job_to_response(
         updated_at=job.updated_at,
         started_at=job.started_at,
         completed_at=job.completed_at,
+        control_material_version_id=getattr(job, "control_material_version_id", None),
+        rc_material_version_id=getattr(job, "rc_material_version_id", None),
     )
 
 

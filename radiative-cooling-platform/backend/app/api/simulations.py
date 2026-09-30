@@ -1,7 +1,27 @@
-from fastapi import APIRouter, HTTPException
+import asyncio
+import json
 
-from app.api.routes import simulation_events, simulation_jobs
+import anyio
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
+from fastapi.responses import Response, StreamingResponse
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import Session
+
 from app.core.cities import get_city
+from app.db.session import SessionLocal, get_db
+from app.models.simulation_job import SimulationJob
+from app.schemas.job import (
+    SimulationJobDetail,
+    SimulationJobListResponse,
+    SimulationJobResponse,
+)
 from app.schemas.simulation import (
     SimulationRequest,
     SimulationResponse,
@@ -9,15 +29,26 @@ from app.schemas.simulation import (
     WeatherSimulationRequest,
     WeatherSimulationResponse,
 )
+from app.services.job_service import (
+    get_job_or_none,
+    job_to_detail,
+    job_to_response,
+)
+from app.services.material_resolution import (
+    linked_material_version_ids,
+    resolve_request_materials,
+)
 from app.services.model_parameters import build_model_metadata
+from app.services.result_export import export_result_csv, export_result_json
+from app.services.result_storage import load_simulation_result
 from app.services.two_node import simulate_material
 from app.services.weather import get_historical_weather
 from app.services.weather_quality import WeatherDataError
 from app.services.weather_simulation import (
     execute_weather_simulation_with_weather,
 )
-
-from app.services.weather_quality import WeatherDataError
+from app.worker.celery_app import celery_app
+from app.worker.tasks import run_weather_simulation_task
 
 router = APIRouter(
     prefix="/api/v1/simulations",
@@ -25,13 +56,15 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/run",
-    response_model=SimulationResponse,
-)
+@router.post("/run", response_model=SimulationResponse)
 def run_simulation(
     request: SimulationRequest,
+    session: Session = Depends(get_db),
 ) -> SimulationResponse:
+    # Stage 4: resolve material library references before the physics runs.
+    # MaterialResolutionError -> 422 via app.api.errors.
+    request = resolve_request_materials(session, request)
+
     try:
         control_result = simulate_material(
             duration_minutes=request.duration_minutes,
@@ -108,16 +141,16 @@ def run_simulation(
         model_metadata=build_model_metadata(),
     )
 
-@router.post(
-    "/run-weather",
-    response_model=WeatherSimulationResponse,
-)
+@router.post("/run-weather", response_model=WeatherSimulationResponse)
 async def run_weather_simulation(
     request: WeatherSimulationRequest,
+    session: Session = Depends(get_db),
 ) -> WeatherSimulationResponse:
+    request = await anyio.to_thread.run_sync(
+        resolve_request_materials, session, request
+    )
     try:
         city = get_city(request.city_id)
-
         weather = await get_historical_weather(
             city=city,
             start_time_local=request.start_time_local,
@@ -149,67 +182,22 @@ async def run_weather_simulation(
             detail=str(error),
         ) from error
 
-import asyncio
-import json
-
-import anyio
-from fastapi import (
-    Depends,
-    HTTPException,
-    Query,
-    Request,
-    status,
-)
-from fastapi.responses import (
-    StreamingResponse,
-)
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from app.db.session import (
-    SessionLocal,
-    get_db,
-)
-from app.models.simulation_job import (
-    SimulationJob,
-)
-from app.schemas.job import (
-    SimulationJobDetail,
-    SimulationJobListResponse,
-    SimulationJobResponse,
-)
-from app.services.job_service import (
-    get_job_or_none,
-    job_to_detail,
-    job_to_response,
-)
-from app.services.result_storage import (
-    load_simulation_result,
-)
-from app.worker.celery_app import (
-    celery_app,
-)
-from app.worker.tasks import (
-    run_weather_simulation_task,
-)
-
-@router.post(
-    "/jobs",
-    response_model=SimulationJobResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
+@router.post("/jobs", response_model=SimulationJobResponse, status_code=status.HTTP_202_ACCEPTED)
 def create_simulation_job(
     request: WeatherSimulationRequest,
     session: Session = Depends(get_db),
 ) -> SimulationJobResponse:
+    request = resolve_request_materials(session, request)
+    control_version_id, rc_version_id = linked_material_version_ids(request)
+
     job = SimulationJob(
         city_id=request.city_id,
         status="queued",
         stage="queued",
         progress=0,
-        request_json=request.model_dump(
-            mode="json"
-        ),
+        request_json=request.model_dump(mode="json"),  # resolved request
+        control_material_version_id=control_version_id,
+        rc_material_version_id=rc_version_id,
     )
 
     session.add(job)
@@ -243,32 +231,34 @@ def create_simulation_job(
 
     return job_to_response(job)
 
-@router.get(
-    "/jobs",
-    response_model=SimulationJobListResponse,
-)
+@router.get("/jobs", response_model=SimulationJobListResponse)
 def list_simulation_jobs(
-    limit: int = Query(
-        default=20,
-        ge=1,
-        le=100,
-    ),
-    offset: int = Query(
-        default=0,
-        ge=0,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    material_version_id: str | None = Query(
+        default=None,
+        description="Only jobs whose control or RC garment used this version",
     ),
     session: Session = Depends(get_db),
 ) -> SimulationJobListResponse:
+    filters = []
+
+    if material_version_id:
+        filters.append(
+            or_(
+                SimulationJob.control_material_version_id == material_version_id,
+                SimulationJob.rc_material_version_id == material_version_id,
+            )
+        )
+
     total = session.scalar(
-        select(func.count())
-        .select_from(SimulationJob)
+        select(func.count()).select_from(SimulationJob).where(*filters)
     ) or 0
 
     jobs = session.scalars(
         select(SimulationJob)
-        .order_by(
-            SimulationJob.created_at.desc()
-        )
+        .where(*filters)
+        .order_by(SimulationJob.created_at.desc())
         .offset(offset)
         .limit(limit)
     ).all()
@@ -496,12 +486,6 @@ async def simulation_job_events(
         },
     )
     
-from fastapi.responses import Response
-
-from app.services.result_export import (
-    export_result_csv,
-    export_result_json,
-)
 
 @router.get(
     "/jobs/{job_id}/export",
@@ -565,6 +549,3 @@ def export_simulation_result(
             )
         },
     )
-
-router.include_router(simulation_jobs.router)
-router.include_router(simulation_events.router)

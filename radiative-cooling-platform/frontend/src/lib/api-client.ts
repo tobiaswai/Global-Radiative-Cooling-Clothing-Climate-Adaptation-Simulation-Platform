@@ -11,9 +11,8 @@ import type {
   GlobalCity,
 } from "@/types/global-batch";
 import type {
-  Material,
-  MaterialCreate,
-  MaterialListResponse,
+  Material, MaterialCreate, MaterialListResponse,
+  MaterialVersionListResponse,
 } from "@/types/material";
 import type {
   City,
@@ -26,6 +25,9 @@ import type {
   WeatherSimulationRequest,
   WeatherSimulationResponse,
   WeatherTimeSeries,
+  MaterialFieldManifest, 
+  ModelMetadata, 
+  ModelParameterManifest,
 } from "@/types/simulation";
 
 
@@ -61,6 +63,11 @@ async function getErrorMessage(
       }
     ).detail;
 
+    if (typeof detail === "object" && detail !== null && "message" in detail) {
+      const { code, message } = detail as { code?: string; message?: string };
+      return code ? `${message} [${code}]` : String(message);
+    }
+
     if (typeof detail === "string") {
       return detail;
     }
@@ -69,7 +76,7 @@ async function getErrorMessage(
       return JSON.stringify(detail);
     }
   }
-
+  
   return `${fallbackMessage}：HTTP ${response.status}`;
 }
 
@@ -231,12 +238,17 @@ export async function getSimulationJob(
 export async function getSimulationJobs(
   limit = 20,
   offset = 0,
+  materialVersionId?: string,
 ): Promise<SimulationJobList> {
   const parameters = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
 
+  if (materialVersionId) {
+    parameters.set("material_version_id", materialVersionId);
+  }
+  
   const response = await fetch(
     `${API_BASE_URL}/api/v1/simulations/jobs?${parameters.toString()}`,
     {
@@ -427,18 +439,50 @@ export async function getMaterialSimulationInput(
   versionId: string,
 ): Promise<MaterialInput> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials/versions/${versionId}/simulation-input`,
+    `${API_BASE_URL}/api/v1/materials/versions/${encodeURIComponent(versionId)}/simulation-input`,
+    { cache: "no-store" },
   );
 
   if (!response.ok) {
     throw new Error(
-      "Failed to fetch material simulation input",
+      await getErrorMessage(response, "Failed to fetch material simulation input"),
     );
   }
 
-  return response.json();
+  return response.json() as Promise<MaterialInput>;
 }
 
+export async function getMaterialFieldManifest(): Promise<MaterialFieldManifest> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/material-fields`);
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Failed to fetch material field manifest"),
+    );
+  }
+
+  return response.json() as Promise<MaterialFieldManifest>;
+}
+
+export async function getModelMetadata(): Promise<ModelMetadata> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/metadata`);
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch model metadata"));
+  }
+
+  return response.json() as Promise<ModelMetadata>;
+}
+
+export async function getModelParameters(): Promise<ModelParameterManifest> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/parameters`);
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch model parameters"));
+  }
+
+  return response.json() as Promise<ModelParameterManifest>;
+}
 
 export function getSimulationExportUrl(
   jobId: string,
@@ -643,4 +687,27 @@ export async function compareWithGagge(
   }
 
   return response.json() as Promise<GaggeBenchmarkResponse>;
+}
+
+export async function getMaterialVersions(
+  includeArchived = false,
+  limit = 200,
+): Promise<MaterialVersionListResponse> {
+  const parameters = new URLSearchParams({
+    include_archived: String(includeArchived),
+    limit: String(limit),
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions?${parameters}`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Failed to fetch material versions"),
+    );
+  }
+
+  return response.json() as Promise<MaterialVersionListResponse>;
 }

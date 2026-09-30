@@ -14,6 +14,7 @@ from fastapi import (
 from fastapi.responses import Response
 from sqlalchemy import (
     func,
+    or_,
     select,
 )
 from sqlalchemy.orm import (
@@ -58,6 +59,10 @@ from app.worker.tasks import (
     run_global_city_analysis_task,
 )
 
+from app.services.material_resolution import (
+    linked_material_version_ids,
+    resolve_request_materials,
+)
 
 router = APIRouter(
     prefix="/api/v1/global-batches",
@@ -203,9 +208,24 @@ def create_global_batch(
             )
         except ValueError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(error),
             ) from error
+
+    request = resolve_request_materials(session, request)
+    control_version_id, rc_version_id = linked_material_version_ids(request)
+
+    queue_name = resolve_queue_name(request)
+
+    batch = GlobalBatchJob(
+        status="queued",
+        stage="creating_city_tasks",
+        progress=0,
+        total_city_count=len(cities),
+        request_json=request.model_dump(mode="json"),
+        control_material_version_id=control_version_id,
+        rc_material_version_id=rc_version_id,
+    )
 
     queue_name = resolve_queue_name(
         request

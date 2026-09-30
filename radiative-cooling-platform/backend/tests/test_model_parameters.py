@@ -39,3 +39,23 @@ def test_default_assumptions_endpoint(client):
     response = client.get("/api/v1/model/environment-assumptions/defaults")
     assert response.status_code == 200
     assert response.json()["sky_view_factor"] == 0.5
+    
+@pytest.mark.api
+def test_model_metadata_endpoint(client):
+    body = client.get("/api/v1/model/metadata").json()
+    assert body["parameter_set_version"] == mp.MODEL_PARAMETER_SET_VERSION
+    assert body["parameter_set_sha256"] == mp.model_parameter_set_sha256()
+
+
+@pytest.mark.api
+def test_single_parameter_endpoint(client):
+    assert client.get("/api/v1/model/parameters/clo_to_si").json()["value"] == 0.155
+    assert client.get("/api/v1/model/parameters/nope").status_code == 404
+
+
+@pytest.mark.api
+def test_material_fields_endpoint(client):
+    body = client.get("/api/v1/model/material-fields").json()
+    names = [f["name"] for f in body["fields"]]
+    assert "evaporative_resistance_m2pa_w" in names
+    assert body["fields"][0]["unit"] == "clo"

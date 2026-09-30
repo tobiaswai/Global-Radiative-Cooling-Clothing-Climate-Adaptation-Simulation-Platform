@@ -1,66 +1,32 @@
-import os
+"""FastAPI application entry point."""
+
 from datetime import datetime, timezone
-from pathlib import Path
-from app.api import materials, simulations
 
-# 必須在匯入可能使用 Numba 的模組之前設定。
-NUMBA_CACHE_DIR = Path("C:/nc")
-NUMBA_CACHE_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
-)
+from fastapi import FastAPI
 
-os.environ.setdefault(
-    "NUMBA_CACHE_DIR",
-    str(NUMBA_CACHE_DIR),
-)
-
-
-from fastapi import FastAPI  # noqa: E402
-
-from app.core.config import get_settings  # noqa: E402
-from app.core.cors import add_cors_middleware  # noqa: E402
+from app.core.config import get_settings
+from app.core.cors import add_cors_middleware
 from app.core.runtime import configure_runtime
 
 
-from app.api.benchmarks import (  # noqa: E402
-    router as benchmarks_router,
-)
-from app.api.materials import (  # noqa: E402
-    router as materials_router,
-)
-from app.api.simulations import (  # noqa: E402
-    router as simulations_router,
-)
-from app.api.weather import (  # noqa: E402
-    router as weather_router,
-)
-from app.api.global_batches import (
-    router as global_batches_router,
-)
-
 settings = get_settings()
-configure_runtime(
-    numba_cache_dir=settings.numba_cache_dir,
-)
 
-from app.api.router import api_router  
-from app.api.model import router as model_router
+# Must run before any module that imports Numba (pythermalcomfort).
+configure_runtime(numba_cache_dir=settings.numba_cache_dir)
+
+from app.api.errors import register_exception_handlers  # noqa: E402
+from app.api.router import api_router  # noqa: E402
+
 
 app = FastAPI(
-    title=(
-        "Global Radiative Cooling Clothing "
-        "Climate Adaptation API"
-    ),
+    title="Global Radiative Cooling Clothing Climate Adaptation API",
     description=(
         "Backend API for simulating and evaluating radiative cooling "
         "clothing under global climate conditions."
     ),
-    version="0.2.0",
+    version="0.3.0",
 )
 
-
-# 只加入一次 CORS middleware。
 add_cors_middleware(
     app,
     origins=settings.cors_origin_list,
@@ -70,14 +36,10 @@ add_cors_middleware(
     allow_credentials=settings.cors_allow_credentials,
 )
 
+register_exception_handlers(app)
 
-app.include_router(simulations_router)
-app.include_router(benchmarks_router)
-app.include_router(weather_router)
-app.include_router(materials_router)
-app.include_router(global_batches_router)
 app.include_router(api_router)
-app.include_router(model_router)
+
 
 @app.get("/api/v1/health")
 def health_check():
@@ -85,7 +47,5 @@ def health_check():
         "status": "healthy",
         "service": "radiative-cooling-api",
         "version": app.version,
-        "time": datetime.now(
-            timezone.utc
-        ).isoformat(),
+        "time": datetime.now(timezone.utc).isoformat(),
     }

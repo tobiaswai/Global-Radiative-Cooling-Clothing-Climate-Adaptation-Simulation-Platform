@@ -87,34 +87,27 @@ class MaterialVersion(Base):
     __tablename__ = "material_versions"
 
     __table_args__ = (
-        UniqueConstraint(
-            "material_id",
-            "version_number",
-            name="uq_material_version_number",
+        UniqueConstraint("material_id", "version_number", name="uq_material_version_number"),
+        CheckConstraint("solar_reflectance >= 0 AND solar_reflectance <= 1", name="ck_material_solar_reflectance"),
+        CheckConstraint("solar_transmittance >= 0 AND solar_transmittance <= 1", name="ck_material_solar_transmittance"),
+        CheckConstraint("infrared_emissivity >= 0 AND infrared_emissivity <= 1", name="ck_material_ir_emissivity"),
+        CheckConstraint("infrared_transmittance >= 0 AND infrared_transmittance <= 1", name="ck_material_ir_transmittance"),
+        CheckConstraint("solar_reflectance + solar_transmittance <= 1.000001", name="ck_material_solar_energy_sum"),
+        # Stage 3 (migration c7d2e9f4a1b8) — mirrored here so autogenerate stays clean.
+        CheckConstraint(
+            "clothing_area_factor IS NULL OR "
+            "(clothing_area_factor >= 1.0 AND clothing_area_factor <= 2.0)",
+            name="ck_material_clothing_area_factor",
+        ),
+        # Stage 4 (migration a1f4c2d9e7b3).
+        CheckConstraint(
+            "infrared_emissivity + infrared_transmittance <= 1.000001",
+            name="ck_material_ir_energy_sum",
         ),
         CheckConstraint(
-            "solar_reflectance >= 0 "
-            "AND solar_reflectance <= 1",
-            name="ck_material_solar_reflectance",
-        ),
-        CheckConstraint(
-            "solar_transmittance >= 0 "
-            "AND solar_transmittance <= 1",
-            name="ck_material_solar_transmittance",
-        ),
-        CheckConstraint(
-            "infrared_emissivity >= 0 "
-            "AND infrared_emissivity <= 1",
-            name="ck_material_ir_emissivity",
-        ),
-        CheckConstraint(
-            "infrared_transmittance >= 0 "
-            "AND infrared_transmittance <= 1",
-            name="ck_material_ir_transmittance",
-        ),
-        CheckConstraint(
-            "solar_reflectance + solar_transmittance <= 1.000001",
-            name="ck_material_solar_energy_sum",
+            "evaporative_resistance_m2pa_w IS NULL OR "
+            "(evaporative_resistance_m2pa_w >= 0 AND evaporative_resistance_m2pa_w <= 1000)",
+            name="ck_material_evaporative_resistance",
         ),
     )
 

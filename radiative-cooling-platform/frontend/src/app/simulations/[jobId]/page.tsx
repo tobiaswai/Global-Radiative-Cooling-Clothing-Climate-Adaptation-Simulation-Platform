@@ -373,7 +373,22 @@ export default function SimulationJobPage() {
               </dd>
             </div>
           </dl>
-
+          {(job.control_material_version_id || job.rc_material_version_id) && (
+            <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+              <div>
+                <dt className="text-slate-500">Control material version</dt>
+                <dd className="mt-1 font-mono text-xs text-slate-300">
+                  {job.control_material_version_id ?? "manual values"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-slate-500">RC material version</dt>
+                <dd className="mt-1 font-mono text-xs text-slate-300">
+                  {job.rc_material_version_id ?? "manual values"}
+                </dd>
+              </div>
+            </dl>
+          )}
           {job.error_message && (
             <div className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
               {job.error_message}
@@ -444,6 +459,9 @@ export default function SimulationJobPage() {
             <HeatFluxChart
               result={result}
             />
+            <PhysiologyChart result={result} />
+            <ModelQualityPanel result={result} />
+            <ModelProvenancePanel result={result} />
             <div className="flex flex-wrap gap-3">
               <a
                 href={getSimulationExportUrl(

@@ -16,3 +16,6 @@ markers = [
     "asyncio: mark a test as an asyncio coroutine",
     "api: marks API endpoint and request-response tests",
 ]
+filterwarnings = [
+    "error",
+]

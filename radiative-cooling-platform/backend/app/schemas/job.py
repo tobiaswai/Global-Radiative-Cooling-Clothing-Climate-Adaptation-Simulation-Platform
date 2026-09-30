@@ -33,7 +33,9 @@ class SimulationJobResponse(BaseModel):
     updated_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
-
+    # Stage 4. Set when the request referenced material library versions.
+    control_material_version_id: str | None = None
+    rc_material_version_id: str | None = None
 
 class SimulationJobDetail(
     SimulationJobResponse

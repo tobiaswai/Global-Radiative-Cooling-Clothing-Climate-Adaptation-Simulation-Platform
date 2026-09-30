@@ -6,10 +6,9 @@ import {
 } from "react";
 import { useParams } from "next/navigation";
 
-import {
-  getMaterial,
-  uploadMaterialSpectrum,
-} from "@/lib/api-client";
+import Link from "next/link";
+import { getMaterial, getSimulationJobs, uploadMaterialSpectrum } from "@/lib/api-client";
+import type { SimulationJob } from "@/types/simulation";
 import type {
   Material,
 } from "@/types/material";
@@ -251,6 +250,14 @@ function MaterialDetailContent({
                     value={version.clothing_area_factor}
                     fallback="Derived from clo"
                   />
+
+                  <Metric
+                    label="evaporative resistance"
+                    value={version.evaporative_resistance_m2pa_w}
+                    unit="m²·Pa/W"
+                    fallback="Derived from clo"
+                    digits={1}
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -297,6 +304,8 @@ function MaterialDetailContent({
                     </ul>
                   )}
                 </div>
+                <ProvenanceTable sources={version.parameter_sources ?? null} />
+                <LinkedSimulations versionId={version.id} />
               </article>
             ),
           )}
@@ -414,6 +423,81 @@ function Metric({
           <span className="ml-1 text-sm font-normal text-slate-400">{unit}</span>
         )}
       </p>
+    </div>
+  );
+}
+
+function ProvenanceTable({
+  sources,
+}: {
+  sources: Record<string, { source_type: string; reference?: string | null; note?: string | null }> | null;
+}) {
+  const entries = Object.entries(sources ?? {});
+
+  if (entries.length === 0) {
+    return (
+      <p className="mt-5 text-sm text-slate-500">
+        No per-parameter provenance recorded for this version.
+      </p>
+    );
+  }
+
+  return (
+    <div className="mt-5">
+      <p className="text-sm text-slate-400">Parameter provenance</p>
+      <table className="mt-2 w-full text-left text-sm">
+        <tbody>
+          {entries.map(([field, source]) => (
+            <tr key={field} className="border-t border-slate-800">
+              <td className="py-2 pr-4 font-mono text-slate-300">{field}</td>
+              <td className="py-2 pr-4 text-cyan-300">{source.source_type}</td>
+              <td className="py-2 text-slate-400">{source.reference ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function LinkedSimulations({ versionId }: { versionId: string }) {
+  const [jobs, setJobs] = useState<SimulationJob[] | null>(null);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getSimulationJobs(10, 0, versionId)
+      .then((response) => {
+        if (!ignore) setJobs(response.items);
+      })
+      .catch(() => {
+        if (!ignore) setJobs([]);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [versionId]);
+
+  if (jobs === null || jobs.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-5">
+      <p className="text-sm text-slate-400">Recent simulations using this version</p>
+      <ul className="mt-2 flex flex-wrap gap-2">
+        {jobs.map((job) => (
+          <li key={job.id}>
+            <Link
+              href={`/simulations/${job.id}`}
+              className="rounded-full border border-slate-700 px-3 py-1 font-mono text-xs text-cyan-300 hover:bg-slate-800"
+            >
+              {job.id.slice(0, 8)} · {job.city_id} · {job.status}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
