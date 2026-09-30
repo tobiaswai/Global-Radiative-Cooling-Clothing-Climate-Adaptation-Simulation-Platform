@@ -11,6 +11,7 @@ backend/alembic/versions/5c968a541440_stage2_material_version_parameter_.py
 backend/alembic/versions/933e5fc5bb27_create_simulation_jobs.py
 backend/alembic/versions/9e0b460c56c3_add_global_batch_analysis_tables.py
 backend/alembic/versions/b83aed15c819_add_material_version_and_spectrum_tables.py
+backend/alembic/versions/c7d2e9f4a1b8_stage3_material_version_clothing_area_factor.py
 backend/alembic/versions/df85b07c9163_add_stage_4_4_checkpoint_and_analytics_.py
 backend/alembic/versions/e4ee64441802_add_stage_4_2_exposure_and_retry_fields.py
 backend/app/__init__.py
@@ -48,6 +49,7 @@ backend/app/schemas/simulation.py
 backend/app/schemas/weather.py
 backend/app/services/__init__.py
 backend/app/services/annual_sampling.py
+backend/app/services/body.py
 backend/app/services/climate_adaptation.py
 backend/app/services/climate_analytics.py
 backend/app/services/clothing.py
@@ -55,6 +57,7 @@ backend/app/services/environment_model.py
 backend/app/services/execution_profile.py
 backend/app/services/exposure_statistics.py
 backend/app/services/gagge_benchmark.py
+backend/app/services/gagge_reference.py
 backend/app/services/global_batch_export.py
 backend/app/services/global_batch_service.py
 backend/app/services/job_service.py
@@ -74,10 +77,14 @@ backend/app/worker/celery_app.py
 backend/app/worker/tasks.py
 backend/chinese-text-inventory.txt
 backend/coverage.xml
+backend/docs/acceptance/legacy-stage-3-two-node-prototype/energy-residual.txt
+backend/docs/acceptance/legacy-stage-3-two-node-prototype/pytest-all.txt
 backend/docs/acceptance/stage-2/golden-refresh.md
-backend/docs/acceptance/stage-3/energy-residual.txt
-backend/docs/acceptance/stage-3/pytest-all.txt
+backend/docs/acceptance/stage-3-reference-comparison/golden-refresh.md
+backend/docs/acceptance/stage-3-reference-comparison/pytest-all.txt
 backend/docs/decisions/0001-body-surface-area.md
+backend/docs/decisions/0002-gagge-controllers.md
+backend/docs/decisions/0003-clothing-surface-balance.md
 backend/docs/environment-assumptions.md
 backend/docs/model-parameters.md
 backend/package-lock.json
@@ -98,6 +105,7 @@ backend/tests/fixtures/dubai_2h/open_meteo_payload.sha256
 backend/tests/fixtures/dubai_2h/request.json
 backend/tests/fixtures/dubai_2h/request_params.json
 backend/tests/test_api.py
+backend/tests/test_body.py
 backend/tests/test_cities.py
 backend/tests/test_climate_adaptation.py
 backend/tests/test_climate_scenarios.py
@@ -106,6 +114,7 @@ backend/tests/test_cors.py
 backend/tests/test_environment_model.py
 backend/tests/test_exposure_statistics.py
 backend/tests/test_gagge_benchmark.py
+backend/tests/test_gagge_reference.py
 backend/tests/test_global_batch_geojson.py
 backend/tests/test_golden_dubai_2h.py
 backend/tests/test_job_service.py
@@ -733,6 +742,52 @@ def downgrade() -> None:
     op.drop_table('materials')
     # ### end Alembic commands ###
 
+```
+
+### File: `backend/alembic/versions/c7d2e9f4a1b8_stage3_material_version_clothing_area_factor.py`
+```python
+"""stage3 material version clothing area factor
+
+Revision ID: c7d2e9f4a1b8
+Revises: 18a914bf4989
+Create Date: 2026-10-06 10:00:00.000000
+
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+# revision identifiers, used by Alembic.
+revision: str = 'c7d2e9f4a1b8'
+down_revision: Union[str, Sequence[str], None] = '18a914bf4989'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    """Upgrade schema."""
+    op.add_column(
+        'material_versions',
+        sa.Column('clothing_area_factor', sa.Float(), nullable=True),
+    )
+    op.create_check_constraint(
+        'ck_material_clothing_area_factor',
+        'material_versions',
+        'clothing_area_factor IS NULL OR '
+        '(clothing_area_factor >= 1.0 AND clothing_area_factor <= 2.0)',
+    )
+
+
+def downgrade() -> None:
+    """Downgrade schema."""
+    op.drop_constraint(
+        'ck_material_clothing_area_factor',
+        'material_versions',
+        type_='check',
+    )
+    op.drop_column('material_versions', 'clothing_area_factor')
 ```
 
 ### File: `backend/alembic/versions/df85b07c9163_add_stage_4_4_checkpoint_and_analytics_.py`
@@ -1874,7 +1929,6 @@ def material_version_to_simulation_input(version_id: str, session: Session = Dep
         .options(selectinload(MaterialVersion.material))
         .where(MaterialVersion.id == version_id)
     )
-    
     if version is None:
         raise HTTPException(status_code=404, detail="Material version not found")
 
@@ -1892,6 +1946,7 @@ def material_version_to_simulation_input(version_id: str, session: Session = Dep
         source_type=version.source_type,
         source_reference=version.source_reference,
         parameter_sources=version.parameter_sources_json,
+        clothing_area_factor=version.clothing_area_factor,
     )
 
 
@@ -4081,6 +4136,12 @@ class MaterialVersion(Base):
         )
     )
 
+    # Stage 3. Measured clothing area factor f_cl; None -> derived from clo.
+    clothing_area_factor: Mapped[float | None] = mapped_column(
+        Float,
+        nullable=True,
+    )
+    
     solar_reflectance: Mapped[float] = mapped_column(
         Float,
         nullable=False,
@@ -4960,6 +5021,8 @@ class MaterialVersionCreate(BaseModel):
         ge=0,
     )
 
+    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
+
     solar_reflectance: float = Field(
         default=0.5,
         ge=0,
@@ -5097,6 +5160,8 @@ class MaterialVersionResponse(BaseModel):
     source_type: str
     source_reference: str | None
     notes: str | None
+
+    clothing_area_factor: float | None = None
 
     created_at: datetime
     spectra: list[SpectrumSummary] = []
@@ -5259,31 +5324,22 @@ class EnvironmentInput(BaseModel):
 
 
 class PersonInput(BaseModel):
-    met: float = Field(
-        default=2.6,
-        ge=0.7,
-        le=10,
-    )
-    body_surface_area_m2: float = Field(
-        default=1.8,
-        ge=1.0,
-        le=3.0,
-    )
-    initial_core_temperature_c: float = Field(
-        default=36.8,
-        ge=34,
-        le=40,
-    )
-    initial_skin_temperature_c: float = Field(
-        default=33.7,
-        ge=20,
-        le=40,
-    )
+    met: float = Field(default=2.6, ge=0.7, le=10)
+
+    body_surface_area_m2: float = Field(default=1.8, ge=1.0, le=3.0)
+
+    # Stage 3. Heat capacities are derived from body mass (ADR 0001).
+    # 70 kg / 1.8 m^2 reproduces the Gagge two-node lumped value.
+    body_mass_kg: float = Field(default=70.0, ge=30.0, le=200.0)
+
+    initial_core_temperature_c: float = Field(default=36.8, ge=34, le=40)
+    initial_skin_temperature_c: float = Field(default=33.7, ge=20, le=40)
 
 MATERIAL_PHYSICAL_FIELDS = frozenset(
     {
         "clothing_insulation_clo",
         "evaporative_resistance_m2pa_w",
+        "clothing_area_factor",
         "solar_reflectance",
         "solar_transmittance",
         "infrared_emissivity",
@@ -5304,6 +5360,8 @@ class MaterialInput(BaseModel):
     evaporative_resistance_m2pa_w: float | None = Field(
         default=None, ge=0, le=1000
     )
+    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
+
 
     solar_reflectance: float = Field(default=0.5, ge=0, le=1)
     solar_transmittance: float = Field(default=0, ge=0, le=1)
@@ -5383,14 +5441,30 @@ class TimeSeriesPoint(BaseModel):
     # Stage 2 diagnostics. Optional so stored results still load.
     maximum_evaporation_w_m2: float | None = None
     skin_wettedness: float | None = None
+    # Stage 3 diagnostics.
+    clothing_surface_temperature_c: float | None = None
+    skin_blood_flow_kg_h_m2: float | None = None
 
 class ClothingSummary(BaseModel):
-    """Resolved clothing resistances actually used by the solver."""
+    """Resolved clothing quantities actually used by the solver."""
 
     dry_resistance_m2k_w: float
     evaporative_resistance_m2pa_w: float
     evaporative_resistance_source: Literal["material_input", "derived_from_clo"]
     infrared_transmittance: float
+    # Stage 3
+    clothing_area_factor: float | None = None
+    clothing_area_factor_source: (
+        Literal["material_input", "derived_from_clo"] | None
+    ) = None
+
+class BodyThermalSummary(BaseModel):
+    """Heat capacities derived from PersonInput (Stage 3, ADR 0001)."""
+
+    body_mass_kg: float
+    body_surface_area_m2: float
+    core_heat_capacity_j_m2k: float
+    skin_heat_capacity_j_m2k: float
 
 class ScenarioResult(BaseModel):
     material_name: str
@@ -5403,6 +5477,8 @@ class ScenarioResult(BaseModel):
     # Stage 2
     clothing: ClothingSummary | None = None
     assumptions_applied: list[str] = Field(default_factory=list)
+    # Stage 3
+    body: BodyThermalSummary | None = None
 
 
 class SimulationSummary(BaseModel):
@@ -5423,17 +5499,18 @@ class SimulationResponse(BaseModel):
     # Stage 2. Optional so previously stored results still load.
     model_metadata: ModelMetadata | None = None
 
+class BenchmarkTolerances(BaseModel):
+    """Acceptance thresholds on the maximum absolute trajectory difference."""
+
+    core_temperature_c: float = Field(default=0.3, gt=0, le=5)
+    skin_temperature_c: float = Field(default=1.0, gt=0, le=10)
     
 class GaggeBenchmarkRequest(BaseModel):
-    duration_minutes: int = Field(
-        default=60,
-        ge=1,
-        le=240,
-    )
+    duration_minutes: int = Field(default=60, ge=1, le=240)
     environment: EnvironmentInput
     person: PersonInput
     material: MaterialInput
-
+    tolerances: BenchmarkTolerances = Field(default_factory=BenchmarkTolerances)
 
 class GaggeModelOutput(BaseModel):
     core_temperature_c: float
@@ -5450,19 +5527,53 @@ class PrototypeBenchmarkOutput(BaseModel):
     core_temperature_c: float
     skin_temperature_c: float
     evaporation_w_m2: float
+    skin_wettedness: float
+    skin_blood_flow_kg_h_m2: float
     energy_residual_percent: float
 
+class BenchmarkSeriesPoint(BaseModel):
+    minute: int
+    prototype_core_temperature_c: float
+    prototype_skin_temperature_c: float
+    prototype_evaporation_w_m2: float
+    reference_core_temperature_c: float
+    reference_skin_temperature_c: float
+    reference_evaporation_w_m2: float
+    
+class BenchmarkMetric(BaseModel):
+    final_difference_c: float
+    maximum_absolute_difference_c: float
+    root_mean_square_difference_c: float
+    tolerance_c: float
+    passed: bool
+    
+class ReferencePortParity(BaseModel):
+    """Port vs. library after 60 minutes (the only duration the library runs)."""
 
+    library_core_temperature_c: float
+    port_core_temperature_c: float
+    library_skin_temperature_c: float
+    port_skin_temperature_c: float
+    maximum_absolute_difference_c: float
+    
 class GaggeBenchmarkResponse(BaseModel):
     reference_model: str
     reference_library: str
+    reference_library_version: str
     environment_note: str
+    alignment_applied: list[str]
     prototype: PrototypeBenchmarkOutput
     gagge: GaggeModelOutput
+    # Kept for backward compatibility with Stage 2 clients.
     difference_core_temperature_c: float
     difference_skin_temperature_c: float
+    # Stage 3
+    core_temperature: BenchmarkMetric
+    skin_temperature: BenchmarkMetric
+    passed: bool
+    time_series: list[BenchmarkSeriesPoint]
+    reference_port_parity: ReferencePortParity
     warning: str
-    
 class WeatherSimulationRequest(BaseModel):
     city_id: str = Field(
         default="dubai",
@@ -5837,6 +5948,48 @@ def estimate_sample_count(
         - request.start_month
         + 1
     ) * request.sample_days_per_month
+```
+
+### File: `backend/app/services/body.py`
+```python
+"""Body thermal mass (Stage 3, ADR 0001).
+
+C_core = m * c_p * (1 - alpha) / A_D          [J/(m^2 K)]
+C_skin = m * c_p * alpha / A_D
+
+alpha is kept constant (Gagge 1986 initial value 0.1). Gagge lets alpha vary
+with skin blood flow; a constant keeps the capacities state-independent so the
+energy-balance diagnostics remain exact.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from app.schemas.simulation import PersonInput
+from app.services.model_parameters import get_parameter_value
+
+
+BODY_SPECIFIC_HEAT = get_parameter_value("body_specific_heat")
+SKIN_MASS_FRACTION = get_parameter_value("skin_mass_fraction")
+
+
+@dataclass(frozen=True)
+class BodyHeatCapacities:
+    core_j_m2k: float
+    skin_j_m2k: float
+
+    @property
+    def total_j_m2k(self) -> float:
+        return self.core_j_m2k + self.skin_j_m2k
+
+
+def body_heat_capacities(person: PersonInput) -> BodyHeatCapacities:
+    total = BODY_SPECIFIC_HEAT * person.body_mass_kg / person.body_surface_area_m2
+    return BodyHeatCapacities(
+        core_j_m2k=total * (1.0 - SKIN_MASS_FRACTION),
+        skin_j_m2k=total * SKIN_MASS_FRACTION,
+    )
 ```
 
 ### File: `backend/app/services/climate_adaptation.py`
@@ -6714,17 +6867,17 @@ def build_city_analytics(
 
 ### File: `backend/app/services/clothing.py`
 ```python
-"""Clothing dry and evaporative resistances (Stage 2).
+"""Clothing dry and evaporative resistances and area factor (Stage 3).
+
+Dry pathway (see two_node.clothing_surface_temperature_c)
+    (T_sk - T_cl) / R_cl = f_cl * [h_c (T_cl - T_a) + eps_cl sigma (T_cl^4 - T_env^4)]
 
 Evaporative pathway
--------------------
-E_max = (P_sk - P_a) / (Re,cl + Re,a)         [W/m^2]
-Re,a  = 1 / (LR * h_c)                         [m^2 kPa/W]
-Re,cl = material value, or R_cl / (LR * i_cl)  when not supplied
+    E_max = (P_sk - P_a) / (Re,cl + Re,a)          [W/m^2]
+    Re,a  = 1 / (LR * f_cl * h_c)                  [m^2 kPa/W]
+    Re,cl = material value, or R_cl / (LR * i_cl)  when not supplied
 
-The clothing area factor f_cl is deliberately not applied so that the
-evaporative and dry pathways stay consistent (the dry pathway also omits
-it). Introducing f_cl in both pathways is Stage 3 benchmark work.
+f_cl = material value, or 1 + clothing_area_factor_slope * clo.
 """
 
 from __future__ import annotations
@@ -6741,26 +6894,42 @@ LEWIS_RELATION = get_parameter_value("lewis_relation")
 CLOTHING_VAPOR_PERMEATION_EFFICIENCY = get_parameter_value(
     "clothing_vapor_permeation_efficiency"
 )
+CLOTHING_AREA_FACTOR_SLOPE = get_parameter_value("clothing_area_factor_slope")
 
-EvaporativeResistanceSource = Literal["material_input", "derived_from_clo"]
+ParameterSourceLabel = Literal["material_input", "derived_from_clo"]
 
 
 @dataclass(frozen=True)
 class ClothingResistances:
     dry_resistance_m2k_w: float
     evaporative_resistance_m2kpa_w: float
-    evaporative_resistance_source: EvaporativeResistanceSource
+    evaporative_resistance_source: ParameterSourceLabel
     infrared_transmittance: float
+    area_factor: float
+    area_factor_source: ParameterSourceLabel
 
     @property
     def evaporative_resistance_m2pa_w(self) -> float:
         return self.evaporative_resistance_m2kpa_w * 1000.0
 
+    @property
+    def is_nude(self) -> bool:
+        return self.dry_resistance_m2k_w <= 0.0
+
 
 def derive_evaporative_resistance_m2pa_w(clothing_insulation_clo: float) -> float:
     """Re,cl = R_cl / (LR * i_cl), expressed in m^2 Pa/W."""
     dry_resistance = CLO_TO_SI * clothing_insulation_clo
-    return dry_resistance / (LEWIS_RELATION * CLOTHING_VAPOR_PERMEATION_EFFICIENCY) * 1000.0
+    return (
+        dry_resistance
+        / (LEWIS_RELATION * CLOTHING_VAPOR_PERMEATION_EFFICIENCY)
+        * 1000.0
+    )
+
+
+def derive_clothing_area_factor(clothing_insulation_clo: float) -> float:
+    """f_cl = 1 + slope * clo."""
+    return 1.0 + CLOTHING_AREA_FACTOR_SLOPE * clothing_insulation_clo
 
 
 def resolve_clothing(material: MaterialInput) -> ClothingResistances:
@@ -6768,23 +6937,35 @@ def resolve_clothing(material: MaterialInput) -> ClothingResistances:
 
     if material.evaporative_resistance_m2pa_w is not None:
         evaporative_m2pa_w = material.evaporative_resistance_m2pa_w
-        source: EvaporativeResistanceSource = "material_input"
+        evaporative_source: ParameterSourceLabel = "material_input"
     else:
         evaporative_m2pa_w = derive_evaporative_resistance_m2pa_w(
             material.clothing_insulation_clo
         )
-        source = "derived_from_clo"
+        evaporative_source = "derived_from_clo"
+
+    if material.clothing_area_factor is not None:
+        area_factor = material.clothing_area_factor
+        area_factor_source: ParameterSourceLabel = "material_input"
+    else:
+        area_factor = derive_clothing_area_factor(material.clothing_insulation_clo)
+        area_factor_source = "derived_from_clo"
 
     return ClothingResistances(
         dry_resistance_m2k_w=dry_resistance,
         evaporative_resistance_m2kpa_w=evaporative_m2pa_w / 1000.0,
-        evaporative_resistance_source=source,
+        evaporative_resistance_source=evaporative_source,
         infrared_transmittance=material.infrared_transmittance,
+        area_factor=area_factor,
+        area_factor_source=area_factor_source,
     )
 
 
-def air_layer_evaporative_resistance_m2kpa_w(convection_coefficient: float) -> float:
-    return 1.0 / (LEWIS_RELATION * convection_coefficient)
+def air_layer_evaporative_resistance_m2kpa_w(
+    convection_coefficient: float,
+    area_factor: float,
+) -> float:
+    return 1.0 / (LEWIS_RELATION * area_factor * convection_coefficient)
 
 
 def maximum_evaporation_w_m2(
@@ -6795,7 +6976,9 @@ def maximum_evaporation_w_m2(
 ) -> float:
     total_resistance = (
         clothing.evaporative_resistance_m2kpa_w
-        + air_layer_evaporative_resistance_m2kpa_w(convection_coefficient)
+        + air_layer_evaporative_resistance_m2kpa_w(
+            convection_coefficient, clothing.area_factor
+        )
     )
     return max(
         0.0,
@@ -6813,11 +6996,23 @@ def assumptions_applied(clothing: ClothingResistances) -> list[str]:
             f"-> {clothing.evaporative_resistance_m2pa_w:.2f} m^2 Pa/W"
         )
 
+    if clothing.area_factor_source == "derived_from_clo":
+        notes.append(
+            "clothing_area_factor not supplied; derived as "
+            f"1 + {CLOTHING_AREA_FACTOR_SLOPE} * clo -> {clothing.area_factor:.4f}"
+        )
+
     if clothing.infrared_transmittance > 0.0:
         notes.append(
-            "infrared_transmittance > 0: transmitted skin emission bypasses the "
-            "clothing coupling factor (first-order model)"
+            "infrared_transmittance > 0: transmitted skin emission is a parallel "
+            "path that bypasses the clothing surface balance (first-order model)"
         )
+
+    notes.append(
+        "absorbed solar radiation is deposited on the skin node via "
+        "absorbed_solar_to_body_fraction and does not enter the clothing "
+        "surface balance (ADR 0003)"
+    )
 
     return notes
 ```
@@ -7045,75 +7240,147 @@ def compute_exposure_window_statistics(
 
 ### File: `backend/app/services/gagge_benchmark.py`
 ```python
+"""Transient comparison of the platform prototype with the Gagge two-node model.
+
+Alignment
+---------
+The Gagge model has a single radiant temperature, no solar term, a fixed
+clothing emissivity of 0.95 and derives Re,cl and f_cl from clo. The prototype
+run is therefore configured so that both models see the same boundary
+conditions; every alignment step is reported in ``alignment_applied``.
+This is a diagnostic comparison, not an equivalence proof: convection
+correlations, the clothing surface balance and the wettedness bookkeeping
+differ by design.
+"""
+
+from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version
+
+import numpy as np
 from pythermalcomfort.models import two_nodes_gagge
 
 from app.schemas.simulation import (
+    BenchmarkMetric,
+    BenchmarkSeriesPoint,
     GaggeBenchmarkRequest,
     GaggeBenchmarkResponse,
     GaggeModelOutput,
     PrototypeBenchmarkOutput,
+    ReferencePortParity,
 )
+from app.services.gagge_reference import run_gagge_reference
 from app.services.two_node import simulate_material
 
 
-def _to_float(value: object) -> float:
-    """
-    將 Python float、NumPy scalar 或單元素陣列轉為 float。
-    """
+LIBRARY_DURATION_MINUTES = 60
+REFERENCE_CLOTHING_EMISSIVITY = 0.95
 
+
+def _to_float(value: object) -> float:
+    """Convert a Python float, NumPy scalar or single-element array to float."""
     if hasattr(value, "item"):
         return float(value.item())
-
     return float(value)
 
 
-def run_gagge_benchmark(
-    request: GaggeBenchmarkRequest,
-) -> GaggeBenchmarkResponse:
-    """
-    將自研原型與 pythermalcomfort Gagge Two-Node 比較。
+def _library_version() -> str:
+    try:
+        return version("pythermalcomfort")
+    except PackageNotFoundError:
+        return "unknown"
 
-    注意：
-    Gagge 的標準接口不直接處理材料太陽光譜屬性，
-    因此基準情景會把太陽輻射設為零。
-    """
 
-    benchmark_environment = (
-        request.environment.model_copy(
-            update={
-                "solar_radiation_w_m2": 0.0,
-            }
-        )
+def _metric(
+    prototype: np.ndarray,
+    reference: np.ndarray,
+    tolerance: float,
+) -> BenchmarkMetric:
+    difference = prototype - reference
+    maximum = float(np.max(np.abs(difference)))
+    return BenchmarkMetric(
+        final_difference_c=round(float(difference[-1]), 4),
+        maximum_absolute_difference_c=round(maximum, 4),
+        root_mean_square_difference_c=round(float(np.sqrt(np.mean(difference**2))), 4),
+        tolerance_c=tolerance,
+        passed=maximum <= tolerance,
     )
 
-    prototype_result = simulate_material(
+
+def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkResponse:
+    alignment: list[str] = []
+
+    # --- boundary conditions the reference model can represent ----------------
+    environment = request.environment.model_copy(
+        update={
+            "solar_radiation_w_m2": 0.0,
+            "sky_view_factor": 0.0,
+            "sky_temperature_c": request.environment.mean_radiant_temperature_c,
+        }
+    )
+    alignment.append("solar_radiation_w_m2 set to 0 (reference has no solar term)")
+    alignment.append(
+        "sky_view_factor set to 0 and sky temperature set equal to the mean "
+        "radiant temperature (reference has a single radiant temperature)"
+    )
+
+    material = request.material.model_copy(
+        update={
+            "infrared_emissivity": REFERENCE_CLOTHING_EMISSIVITY,
+            "infrared_transmittance": 0.0,
+            "evaporative_resistance_m2pa_w": None,
+            "clothing_area_factor": None,
+        }
+    )
+    alignment.append(
+        f"infrared_emissivity set to {REFERENCE_CLOTHING_EMISSIVITY} and "
+        "infrared_transmittance to 0 (fixed in the reference)"
+    )
+    alignment.append(
+        "evaporative_resistance_m2pa_w and clothing_area_factor derived from clo "
+        "(the reference accepts clo only)"
+    )
+
+    # --- prototype ------------------------------------------------------------
+    prototype = simulate_material(
         duration_minutes=request.duration_minutes,
         output_interval_minutes=1,
-        environment=benchmark_environment,
+        environment=environment,
         person=request.person,
-        material=request.material,
+        material=material,
     )
 
-    gagge_result = two_nodes_gagge(
-        tdb=benchmark_environment.air_temperature_c,
-        tr=(
-            benchmark_environment
-            .mean_radiant_temperature_c
-        ),
-        v=max(
-            benchmark_environment.wind_speed_m_s,
-            0.01,
-        ),
-        rh=(
-            benchmark_environment
-            .relative_humidity_percent
-        ),
+    # --- reference trajectory (port) ------------------------------------------
+    reference_kwargs = dict(
+        tdb=environment.air_temperature_c,
+        tr=environment.mean_radiant_temperature_c,
+        v=environment.wind_speed_m_s,
+        rh=environment.relative_humidity_percent,
         met=request.person.met,
-        clo=request.material.clothing_insulation_clo,
+        clo=material.clothing_insulation_clo,
+        wme=0.0,
+        body_surface_area=request.person.body_surface_area_m2,
+        body_mass_kg=request.person.body_mass_kg,
+        p_atm=101325.0,
+        position="standing",
+        max_skin_blood_flow=90.0,
+        max_sweating=500.0,
+    )
+
+    reference = run_gagge_reference(
+        duration_minutes=request.duration_minutes, **reference_kwargs
+    )
+
+    # --- library result: SET and port parity (60 min, 70 kg) ------------------
+    library = two_nodes_gagge(
+        tdb=environment.air_temperature_c,
+        tr=environment.mean_radiant_temperature_c,
+        v=max(environment.wind_speed_m_s, 0.01),
+        rh=environment.relative_humidity_percent,
+        met=request.person.met,
+        clo=material.clothing_insulation_clo,
         wme=0,
-        body_surface_area=(
-            request.person.body_surface_area_m2
-        ),
+        body_surface_area=request.person.body_surface_area_m2,
         p_atm=101325,
         position="standing",
         max_skin_blood_flow=90,
@@ -7121,86 +7388,348 @@ def run_gagge_benchmark(
         round_output=False,
     )
 
-    prototype_final_point = (
-        prototype_result.time_series[-1]
+    parity_reference = run_gagge_reference(
+        duration_minutes=LIBRARY_DURATION_MINUTES,
+        **{**reference_kwargs, "body_mass_kg": 70.0},
+    ).final
+
+    library_core = _to_float(library.t_core)
+    library_skin = _to_float(library.t_skin)
+
+    parity = ReferencePortParity(
+        library_core_temperature_c=round(library_core, 4),
+        port_core_temperature_c=round(parity_reference.core_temperature_c, 4),
+        library_skin_temperature_c=round(library_skin, 4),
+        port_skin_temperature_c=round(parity_reference.skin_temperature_c, 4),
+        maximum_absolute_difference_c=round(
+            max(
+                abs(library_core - parity_reference.core_temperature_c),
+                abs(library_skin - parity_reference.skin_temperature_c),
+            ),
+            4,
+        ),
     )
 
-    gagge_core_temperature = _to_float(
-        gagge_result.t_core
+    if request.person.body_mass_kg != 70.0:
+        alignment.append(
+            "reference trajectory uses body_mass_kg from the request; the library "
+            "value (SET, parity) is fixed at 70 kg"
+        )
+
+    # --- align the two series minute by minute --------------------------------
+    prototype_points = prototype.time_series
+    reference_points = reference.points
+
+    if len(prototype_points) != len(reference_points):
+        raise RuntimeError(
+            "Benchmark series length mismatch: "
+            f"{len(prototype_points)} prototype vs {len(reference_points)} reference"
+        )
+
+    series = [
+        BenchmarkSeriesPoint(
+            minute=int(round(p.minute)),
+            prototype_core_temperature_c=p.core_temperature_c,
+            prototype_skin_temperature_c=p.skin_temperature_c,
+            prototype_evaporation_w_m2=p.evaporation_w_m2,
+            reference_core_temperature_c=round(r.core_temperature_c, 4),
+            reference_skin_temperature_c=round(r.skin_temperature_c, 4),
+            reference_evaporation_w_m2=round(r.skin_evaporation_w_m2, 4),
+        )
+        for p, r in zip(prototype_points, reference_points, strict=True)
+    ]
+
+    core_metric = _metric(
+        np.asarray([s.prototype_core_temperature_c for s in series]),
+        np.asarray([s.reference_core_temperature_c for s in series]),
+        request.tolerances.core_temperature_c,
     )
-    gagge_skin_temperature = _to_float(
-        gagge_result.t_skin
+    skin_metric = _metric(
+        np.asarray([s.prototype_skin_temperature_c for s in series]),
+        np.asarray([s.reference_skin_temperature_c for s in series]),
+        request.tolerances.skin_temperature_c,
     )
+
+    final_prototype = prototype_points[-1]
+    final_reference = reference.final
 
     return GaggeBenchmarkResponse(
         reference_model="Gagge Two-Node",
         reference_library="pythermalcomfort",
+        reference_library_version=_library_version(),
         environment_note=(
-            "為確保模型邊界條件可比較，"
-            "基準計算已將直接太陽輻射設為 0 W/m²。"
+            "Boundary conditions were aligned to what the Gagge two-node model "
+            "can represent; see alignment_applied."
         ),
+        alignment_applied=alignment,
         prototype=PrototypeBenchmarkOutput(
-            core_temperature_c=(
-                prototype_result
-                .final_core_temperature_c
-            ),
-            skin_temperature_c=(
-                prototype_result
-                .final_skin_temperature_c
-            ),
-            evaporation_w_m2=(
-                prototype_final_point
-                .evaporation_w_m2
-            ),
-            energy_residual_percent=(
-                prototype_result
-                .diagnostics
-                .normalized_residual_percent
-            ),
+            core_temperature_c=prototype.final_core_temperature_c,
+            skin_temperature_c=prototype.final_skin_temperature_c,
+            evaporation_w_m2=final_prototype.evaporation_w_m2,
+            skin_wettedness=final_prototype.skin_wettedness or 0.0,
+            skin_blood_flow_kg_h_m2=final_prototype.skin_blood_flow_kg_h_m2 or 0.0,
+            energy_residual_percent=prototype.diagnostics.normalized_residual_percent,
         ),
         gagge=GaggeModelOutput(
-            core_temperature_c=(
-                gagge_core_temperature
+            core_temperature_c=round(final_reference.core_temperature_c, 4),
+            skin_temperature_c=round(final_reference.skin_temperature_c, 4),
+            skin_evaporation_w_m2=round(final_reference.skin_evaporation_w_m2, 4),
+            skin_heat_loss_w_m2=round(
+                final_reference.skin_evaporation_w_m2
+                + final_reference.sensible_heat_loss_w_m2,
+                4,
             ),
-            skin_temperature_c=(
-                gagge_skin_temperature
-            ),
-            skin_evaporation_w_m2=_to_float(
-                gagge_result.e_skin
-            ),
-            skin_heat_loss_w_m2=_to_float(
-                gagge_result.q_skin
-            ),
-            respiratory_heat_loss_w_m2=_to_float(
-                gagge_result.q_res
-            ),
-            skin_blood_flow_kg_h_m2=_to_float(
-                gagge_result.m_bl
-            ),
-            skin_wettedness=_to_float(
-                gagge_result.w
-            ),
-            standard_effective_temperature_c=(
-                _to_float(gagge_result.set)
-            ),
+            respiratory_heat_loss_w_m2=round(reference.respiratory_heat_loss_w_m2, 4),
+            skin_blood_flow_kg_h_m2=round(final_reference.skin_blood_flow_kg_h_m2, 4),
+            skin_wettedness=round(final_reference.skin_wettedness, 4),
+            standard_effective_temperature_c=_to_float(library.set),
         ),
-        difference_core_temperature_c=round(
-            prototype_result
-            .final_core_temperature_c
-            - gagge_core_temperature,
-            4,
-        ),
-        difference_skin_temperature_c=round(
-            prototype_result
-            .final_skin_temperature_c
-            - gagge_skin_temperature,
-            4,
-        ),
+        difference_core_temperature_c=core_metric.final_difference_c,
+        difference_skin_temperature_c=skin_metric.final_difference_c,
+        core_temperature=core_metric,
+        skin_temperature=skin_metric,
+        passed=core_metric.passed and skin_metric.passed,
+        time_series=series,
+        reference_port_parity=parity,
         warning=(
-            "This is a model diagnostic comparison, not an equivalence verification."
-            "The heat capacity of the self-developed prototype differs from that of the Gagge model."
-            "The clothing model, blood flow control, and evaporation control equations are different."
+            "Diagnostic comparison, not an equivalence verification. Both models "
+            "share body heat capacity, the effective radiation area ratio and the "
+            "Gagge 1986 controllers; they still differ in the convection "
+            "correlation (8.3 v^0.5 vs 8.6 v^0.53 with a metabolic floor), the "
+            "exact vs linearised radiation exchange, and the skin wettedness "
+            "bookkeeping once w reaches w_max."
         ),
+    )
+```
+
+### File: `backend/app/services/gagge_reference.py`
+```python
+"""Minute-by-minute Gagge two-node reference model.
+
+This is a port of the algorithm used by ``pythermalcomfort.models.two_nodes_gagge``
+(Tartarini & Schiavon 2020, MIT licence), which itself follows Gagge, Fobelets &
+Berglund (1986) and the ASHRAE 55 SET reference procedure. The library returns
+only the state after 60 minutes for a fixed 70 kg body; this port exposes the
+full trajectory, the exposure duration and the body mass so the platform
+prototype can be compared minute by minute.
+
+Parity with the library at 60 minutes and 70 kg is enforced by
+``tests/test_gagge_reference.py``. Do not "improve" the physics here: the value
+of this module is that it reproduces the reference exactly, quirks included.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from math import exp
+from typing import Literal
+
+
+BodyPosition = Literal["standing", "sitting"]
+
+MET_FACTOR_W_M2 = 58.2
+STEFAN_BOLTZMANN = 5.6697e-8
+SWEATING_COEFFICIENT = 170.0
+VASODILATION_COEFFICIENT = 120.0
+VASOCONSTRICTION_COEFFICIENT = 0.5
+SKIN_NEUTRAL_C = 33.7
+CORE_NEUTRAL_C = 36.8
+SKIN_BLOOD_FLOW_NEUTRAL = 6.3
+BODY_SPECIFIC_HEAT_WH_KGK = 0.97
+CLOTHING_EMISSIVITY = 0.95
+SURFACE_ITERATION_LIMIT = 150
+
+
+def saturation_vapor_pressure_torr(temperature_c: float) -> float:
+    return exp(18.6686 - 4030.183 / (temperature_c + 235.0))
+
+
+@dataclass(frozen=True)
+class GaggeReferencePoint:
+    minute: int
+    core_temperature_c: float
+    skin_temperature_c: float
+    skin_evaporation_w_m2: float
+    sensible_heat_loss_w_m2: float
+    skin_blood_flow_kg_h_m2: float
+    skin_wettedness: float
+
+
+@dataclass(frozen=True)
+class GaggeReferenceResult:
+    points: list[GaggeReferencePoint]
+    respiratory_heat_loss_w_m2: float
+    maximum_skin_wettedness: float
+
+    @property
+    def final(self) -> GaggeReferencePoint:
+        return self.points[-1]
+
+
+def run_gagge_reference(
+    *,
+    tdb: float,
+    tr: float,
+    v: float,
+    rh: float,
+    met: float,
+    clo: float,
+    wme: float = 0.0,
+    body_surface_area: float = 1.8258,
+    body_mass_kg: float = 70.0,
+    p_atm: float = 101325.0,
+    position: BodyPosition = "standing",
+    max_skin_blood_flow: float = 90.0,
+    max_sweating: float = 500.0,
+    duration_minutes: int = 60,
+    w_max: float | None = None,
+) -> GaggeReferenceResult:
+    if duration_minutes < 1:
+        raise ValueError("duration_minutes must be at least 1")
+
+    air_speed = max(v, 0.1)
+    vapor_pressure = rh * saturation_vapor_pressure_torr(tdb) / 100.0  # torr
+
+    alfa = 0.1
+    body_neutral_c = alfa * SKIN_NEUTRAL_C + (1.0 - alfa) * CORE_NEUTRAL_C
+
+    t_skin = SKIN_NEUTRAL_C
+    t_core = CORE_NEUTRAL_C
+    m_bl = SKIN_BLOOD_FLOW_NEUTRAL
+
+    e_skin = 0.1 * met  # library initialisation (kept for parity)
+    q_sensible = 0.0
+    w = 0.0
+
+    pressure_atm = p_atm / 101325.0
+    r_clo = 0.155 * clo
+    f_a_cl = 1.0 + 0.15 * clo
+    lr = 2.2 / pressure_atm  # Lewis ratio, C/torr
+    rm = (met - wme) * MET_FACTOR_W_M2
+    m = met * MET_FACTOR_W_M2
+
+    i_cl = 0.45 if clo > 0 else 1.0
+
+    if w_max is None:
+        w_max = (
+            0.59 * air_speed ** -0.08 if clo > 0 else 0.38 * air_speed ** -0.29
+        )
+
+    h_cc = 3.0 * pressure_atm ** 0.53
+    h_fc = 8.600001 * (air_speed * pressure_atm) ** 0.53
+    h_cc = max(h_cc, h_fc)
+    if met > 0.85:
+        h_cc = max(h_cc, 5.66 * (met - 0.85) ** 0.39)
+
+    h_r = 4.7
+    h_t = h_r + h_cc
+    r_a = 1.0 / (f_a_cl * h_t)
+    t_op = (h_r * tr + h_cc * tdb) / h_t
+
+    q_res = 0.0023 * m * (44.0 - vapor_pressure)
+    c_res = 0.0014 * m * (34.0 - tdb)
+
+    radiation_area_ratio = 0.7 if position == "sitting" else 0.73
+
+    points = [
+        GaggeReferencePoint(
+            minute=0,
+            core_temperature_c=t_core,
+            skin_temperature_c=t_skin,
+            skin_evaporation_w_m2=e_skin,
+            sensible_heat_loss_w_m2=q_sensible,
+            skin_blood_flow_kg_h_m2=m_bl,
+            skin_wettedness=w,
+        )
+    ]
+
+    for minute in range(1, duration_minutes + 1):
+        # Clothing surface temperature with a temperature-dependent h_r.
+        t_cl = (r_a * t_skin + r_clo * t_op) / (r_a + r_clo)
+        for _ in range(SURFACE_ITERATION_LIMIT):
+            h_r = (
+                4.0 * CLOTHING_EMISSIVITY * STEFAN_BOLTZMANN
+                * ((t_cl + tr) / 2.0 + 273.15) ** 3.0
+                * radiation_area_ratio
+            )
+            h_t = h_r + h_cc
+            r_a = 1.0 / (f_a_cl * h_t)
+            t_op = (h_r * tr + h_cc * tdb) / h_t
+            t_cl_new = (r_a * t_skin + r_clo * t_op) / (r_a + r_clo)
+            converged = abs(t_cl_new - t_cl) <= 0.01
+            t_cl = t_cl_new
+            if converged:
+                break
+        else:
+            raise RuntimeError("Gagge reference: clothing temperature did not converge")
+
+        q_sensible = (t_skin - t_op) / (r_a + r_clo)
+        hf_cs = (t_core - t_skin) * (5.28 + 1.163 * m_bl)
+        s_core = m - hf_cs - q_res - c_res - wme
+        s_skin = hf_cs - q_sensible - e_skin
+
+        tc_sk = BODY_SPECIFIC_HEAT_WH_KGK * alfa * body_mass_kg
+        tc_cr = BODY_SPECIFIC_HEAT_WH_KGK * (1.0 - alfa) * body_mass_kg
+        t_skin += s_skin * body_surface_area / (tc_sk * 60.0)
+        t_core += s_core * body_surface_area / (tc_cr * 60.0)
+        t_body = alfa * t_skin + (1.0 - alfa) * t_core
+
+        sk_sig = t_skin - SKIN_NEUTRAL_C
+        warm_sk = max(sk_sig, 0.0)
+        colds = max(-sk_sig, 0.0)
+        c_reg_sig = t_core - CORE_NEUTRAL_C
+        c_warm = max(c_reg_sig, 0.0)
+        c_cold = max(-c_reg_sig, 0.0)
+        warm_b = max(t_body - body_neutral_c, 0.0)
+
+        m_bl = (SKIN_BLOOD_FLOW_NEUTRAL + VASODILATION_COEFFICIENT * c_warm) / (
+            1.0 + VASOCONSTRICTION_COEFFICIENT * colds
+        )
+        m_bl = min(max(m_bl, 0.5), max_skin_blood_flow)
+
+        m_rsw = min(SWEATING_COEFFICIENT * warm_b * exp(warm_sk / 10.7), max_sweating)
+        e_rsw = 0.68 * m_rsw
+
+        r_ea = 1.0 / (lr * f_a_cl * h_cc)
+        r_ecl = r_clo / (lr * i_cl)
+        e_max = (saturation_vapor_pressure_torr(t_skin) - vapor_pressure) / (r_ea + r_ecl)
+        if e_max == 0.0:
+            e_max = 0.001  # library guard against division by zero
+
+        p_rsw = e_rsw / e_max
+        w = 0.06 + 0.94 * p_rsw
+        e_diff = w * e_max - e_rsw
+        if w > w_max:
+            w = w_max
+            p_rsw = w_max / 0.94
+            e_rsw = p_rsw * e_max
+            e_diff = 0.06 * (1.0 - p_rsw) * e_max
+        if e_max < 0.0:
+            e_diff = 0.0
+            e_rsw = 0.0
+            w = w_max
+
+        e_skin = e_rsw + e_diff
+        met_shivering = 19.4 * colds * c_cold
+        m = rm + met_shivering
+        alfa = 0.0417737 + 0.7451833 / (m_bl + 0.585417)
+
+        points.append(
+            GaggeReferencePoint(
+                minute=minute,
+                core_temperature_c=t_core,
+                skin_temperature_c=t_skin,
+                skin_evaporation_w_m2=e_skin,
+                sensible_heat_loss_w_m2=q_sensible,
+                skin_blood_flow_kg_h_m2=m_bl,
+                skin_wettedness=w,
+            )
+        )
+
+    return GaggeReferenceResult(
+        points=points,
+        respiratory_heat_loss_w_m2=q_res + c_res,
+        maximum_skin_wettedness=w_max,
     )
 ```
 
@@ -8937,16 +9466,25 @@ def get_job_or_none(
 
 ### File: `backend/app/services/model_parameters.py`
 ```python
-"""Registry of every numeric constant used by the thermal model (Stage 2).
+"""Registry of every numeric constant used by the thermal model (Stage 3).
 
 Rules
 -----
-* ``two_node.py``, ``clothing.py`` and ``environment_model.py`` must not
-  contain bare physical constants; they bind values from here at import.
+* ``two_node.py``, ``clothing.py``, ``body.py`` and ``environment_model.py``
+  must not contain bare physical constants; they bind values from here.
 * Changing any value changes ``model_parameter_set_sha256()``, which is
   written into every simulation response and checked by the golden test.
-* ``source_type == "assumed"`` marks values that still need validation
-  (Stage 3 benchmark work).
+* ``source_type == "assumed"`` marks values that still need validation.
+
+Stage 3 changes
+---------------
+* Removed: core_heat_capacity, skin_heat_capacity (derived from body mass),
+  linearized_radiative_coefficient (clothing surface temperature is solved),
+  sweating_gain_core/skin, skin_blood_flow_core/skin_gain (replaced by the
+  Gagge 1986 controllers).
+* Added: body_specific_heat, skin_mass_fraction, clothing_area_factor_slope,
+  sweating_gain_body, sweating_skin_signal_scale, vasodilation_gain,
+  vasoconstriction_gain, maximum_wettedness_*, shivering_coefficient.
 """
 
 from __future__ import annotations
@@ -8962,7 +9500,7 @@ from app.schemas.provenance import (
 )
 
 
-MODEL_PARAMETER_SET_VERSION = "2.0.0"
+MODEL_PARAMETER_SET_VERSION = "3.0.0"
 
 GAGGE_1986 = (
     "Gagge, Fobelets & Berglund (1986). A standard predictive index of "
@@ -8970,6 +9508,10 @@ GAGGE_1986 = (
 )
 ASHRAE_FUNDAMENTALS = (
     "ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort"
+)
+ASHRAE_55_SET = (
+    "ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); "
+    "reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node"
 )
 ISO_7730 = "ISO 7730:2005, Annex D (Fanger 1970 respiratory heat loss)"
 PROTOTYPE = "Project prototype value (radiative-cooling-platform, Stage 0-1)"
@@ -8985,13 +9527,8 @@ def _p(
     note: str | None = None,
 ) -> ModelParameter:
     return ModelParameter(
-        name=name,
-        value=value,
-        unit=unit,
-        description=description,
-        source_type=source_type,
-        reference=reference,
-        note=note,
+        name=name, value=value, unit=unit, description=description,
+        source_type=source_type, reference=reference, note=note,
     )
 
 
@@ -9007,15 +9544,16 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
     _p("magnus_c", 237.3, "C", "Saturation vapour pressure denominator offset",
        "literature", "Murray (1967) J. Appl. Meteorol. 6:203-204"),
 
-    # --- body thermal mass --------------------------------------------------
-    _p("core_heat_capacity", 245_000.0, "J/(m^2 K)",
-       "Area-normalised effective heat capacity of the core node",
-       "assumed", PROTOTYPE,
-       "Core + skin = 280 kJ/(m^2 K), about 2x the lumped Gagge value for a "
-       "70 kg / 1.8 m^2 person (~136 kJ/(m^2 K)). Revisit in Stage 3."),
-    _p("skin_heat_capacity", 35_000.0, "J/(m^2 K)",
-       "Area-normalised effective heat capacity of the skin node",
-       "assumed", PROTOTYPE, "See core_heat_capacity."),
+    # --- body thermal mass (Stage 3, ADR 0001) ------------------------------
+    _p("body_specific_heat", 3490.0, "J/(kg K)",
+       "Average specific heat of body tissue (0.97 W h/(kg K))",
+       "literature", GAGGE_1986),
+    _p("skin_mass_fraction", 0.1, "-",
+       "Fraction of body mass assigned to the skin node (alpha)",
+       "literature", GAGGE_1986,
+       "Gagge lets alpha vary with skin blood flow "
+       "(alpha = 0.0418 + 0.745/(SKBF + 0.585)). Kept constant here so the "
+       "node heat capacities are state-independent."),
 
     # --- convection ---------------------------------------------------------
     _p("natural_convection_minimum_coefficient", 3.1, "W/(m^2 K)",
@@ -9025,59 +9563,74 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
        "h_c = 8.3 * v^0.5",
        "literature", ASHRAE_FUNDAMENTALS + ", Table 6 (Mitchell 1974: 8.3 v^0.6)",
        "Exponent simplified from 0.6 to 0.5 in this prototype."),
-    _p("linearized_radiative_coefficient", 5.5, "W/(m^2 K)",
-       "Linearised radiative coefficient inside the clothing coupling factor "
-       "1/(1 + R_cl (h_c + h_r))",
-       "assumed", PROTOTYPE,
-       "Typical h_r is 4.7-5.5 W/(m^2 K) near 30 C."),
 
+   # --- longwave radiation geometry ----------------------------------------
+    _p("effective_radiation_area_ratio", 0.73, "-",
+       "A_r / A_D: fraction of the DuBois area exchanging longwave radiation "
+       "with the surroundings (standing person)",
+       "literature",
+       "Fanger (1970) Thermal Comfort, McGraw-Hill; " + ASHRAE_FUNDAMENTALS
+       + " (0.70 seated, 0.73 standing); " + ASHRAE_55_SET,
+       "Applied to the clothing surface emission and to skin emission "
+       "transmitted through IR-transparent textiles. Posture is fixed at "
+       "standing; a PersonInput.position field is Stage 4 work."),
+    
     # --- clothing -----------------------------------------------------------
     _p("clo_to_si", 0.155, "m^2 K/(W clo)", "1 clo = 0.155 m^2 K/W",
        "standard", "ISO 9920:2007"),
+    _p("clothing_area_factor_slope", 0.15, "1/clo",
+       "f_cl = 1 + slope * clo when the material supplies no measured f_cl",
+       "literature", GAGGE_1986 + "; " + ASHRAE_55_SET,
+       "ASHRAE Fundamentals Ch. 9 quotes 1 + 0.3 clo (McCullough & Jones "
+       "1984). 0.15 is retained for parity with the reference model."),
     _p("lewis_relation", 16.5, "K/kPa",
        "Lewis relation h_e / h_c at sea level",
        "standard", ASHRAE_FUNDAMENTALS),
     _p("clothing_vapor_permeation_efficiency", 0.45, "-",
        "i_cl used to derive Re,cl = R_cl / (LR * i_cl) when the material "
        "does not supply a measured evaporative resistance",
-       "literature", GAGGE_1986 + "; ASHRAE 55 SET procedure",
-       "The Stage 1 factor 1/(1 + 0.45 clo h_c) was equivalent to "
-       "i_cl ~ 0.344 (Re,cl ~ 27.3 clo m^2 Pa/W). New default gives "
-       "Re,cl ~ 20.9 clo m^2 Pa/W."),
+       "literature", GAGGE_1986 + "; ASHRAE 55 SET procedure"),
     _p("skin_emissivity", 0.95, "-",
        "Longwave emissivity of skin, used for radiation transmitted through "
        "IR-transparent textiles",
        "literature", "Steketee (1973) Phys. Med. Biol. 18:686-694"),
 
-    # --- thermoregulation ---------------------------------------------------
+    # --- thermoregulation (Gagge 1986 controllers, Stage 3 ADR 0002) --------
     _p("core_setpoint_temperature", 36.8, "C", "Core temperature set point",
        "literature", GAGGE_1986),
     _p("skin_setpoint_temperature", 33.7, "C", "Skin temperature set point",
        "literature", GAGGE_1986),
-    _p("sweating_gain_core", 170.0, "g/(h m^2 K)",
-       "Regulatory sweating per K of core warm signal",
-       "assumed", PROTOTYPE + " adapted from " + GAGGE_1986,
-       "Gagge uses 170 g/(h m^2 K) on the body-temperature signal with an "
-       "exponential skin modifier; this prototype uses separate linear gains."),
-    _p("sweating_gain_skin", 200.0, "g/(h m^2 K)",
-       "Regulatory sweating per K of skin warm signal",
-       "assumed", PROTOTYPE),
+    _p("sweating_gain_body", 170.0, "g/(h m^2 K)",
+       "Regulatory sweating per K of mean-body warm signal (c_sw)",
+       "literature", GAGGE_1986),
+    _p("sweating_skin_signal_scale", 10.7, "K",
+       "Exponential skin modifier of sweating: exp(WSIG_sk / 10.7)",
+       "literature", GAGGE_1986),
     _p("maximum_sweat_rate", 500.0, "g/(h m^2)", "Upper bound of sweating",
        "literature", GAGGE_1986),
     _p("latent_heat_of_sweat", 0.68, "W h/g",
        "Converts g/(h m^2) to W/m^2 (h_fg 2430 kJ/kg / 3600)",
        "standard", ASHRAE_FUNDAMENTALS),
     _p("skin_diffusion_fraction", 0.06, "-",
-       "Skin diffusion evaporation as a fraction of E_max",
+       "Skin diffusion wettedness: w = 0.06 + 0.94 * E_rsw / E_max",
        "literature", GAGGE_1986),
+    _p("maximum_wettedness_clothed_coefficient", 0.59, "-",
+       "w_max = 0.59 * v^-0.08 for a clothed subject", "literature", GAGGE_1986),
+    _p("maximum_wettedness_clothed_exponent", -0.08, "-",
+       "Exponent of w_max (clothed)", "literature", GAGGE_1986),
+    _p("maximum_wettedness_nude_coefficient", 0.38, "-",
+       "w_max = 0.38 * v^-0.29 for a nude subject", "literature", GAGGE_1986),
+    _p("maximum_wettedness_nude_exponent", -0.29, "-",
+       "Exponent of w_max (nude)", "literature", GAGGE_1986),
     _p("skin_blood_flow_basal", 6.3, "kg/(h m^2)", "Neutral skin blood flow",
        "literature", GAGGE_1986),
-    _p("skin_blood_flow_core_gain", 75.0, "kg/(h m^2 K)",
-       "Vasodilation per K of core warm signal",
-       "assumed", PROTOTYPE + " adapted from " + GAGGE_1986),
-    _p("skin_blood_flow_skin_gain", 20.0, "kg/(h m^2 K)",
-       "Vasodilation per K of skin warm signal",
-       "assumed", PROTOTYPE),
+    _p("vasodilation_gain", 120.0, "kg/(h m^2 K)",
+       "SKBF = (6.3 + c_dil * WSIG_cr) / (1 + c_str * CSIG_sk)",
+       "literature", ASHRAE_55_SET,
+       "ASHRAE Fundamentals Ch. 9 prints 200; 120 is the value of the "
+       "SET reference code and is kept for benchmark parity."),
+    _p("vasoconstriction_gain", 0.5, "1/K",
+       "c_str in the skin blood flow controller", "literature", GAGGE_1986),
     _p("skin_blood_flow_minimum", 0.5, "kg/(h m^2)", "Lower clamp",
        "literature", GAGGE_1986),
     _p("skin_blood_flow_maximum", 90.0, "kg/(h m^2)", "Upper clamp",
@@ -9088,6 +9641,8 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
     _p("blood_heat_capacity_per_flow", 1.163, "W h/(kg K)",
        "Blood c_p per unit flow (4186 J/(kg K) / 3600)",
        "literature", GAGGE_1986),
+    _p("shivering_coefficient", 19.4, "W/(m^2 K^2)",
+       "M_shiv = 19.4 * CSIG_sk * CSIG_cr", "literature", GAGGE_1986),
 
     # --- metabolism and respiration -----------------------------------------
     _p("metabolic_rate_per_met", 58.15, "W/m^2", "1 met",
@@ -9133,10 +9688,7 @@ def list_model_parameters() -> list[ModelParameter]:
 
 def model_parameter_set_sha256() -> str:
     serialized = json.dumps(
-        [
-            {"name": p.name, "value": p.value, "unit": p.unit}
-            for p in _PARAMETERS
-        ],
+        [{"name": p.name, "value": p.value, "unit": p.unit} for p in _PARAMETERS],
         sort_keys=True,
         separators=(",", ":"),
     )
@@ -9179,7 +9731,7 @@ What is NOT in the fingerprint
 
 Hard limit
     Only constants registered in ``model_parameters.MODEL_PARAMETERS``,
-    ``model_parameters.SOLVER_SETTINGS`` or ``EnvironmentAssumptions`` are
+    or ``EnvironmentAssumptions`` are
     visible here. A literal left inside ``two_node.py`` is invisible.
 """
 
@@ -9322,11 +9874,12 @@ def diff_snapshots(
 
 
 _REGEN_HINT = (
-    "If intentional: bump MODEL_VERSION in app/services/model_parameters.py, "
-    "note it in the changelog, then regenerate the fixture "
-    "(python -m scripts.regenerate_golden). Otherwise revert the constant."
+    "If intentional: bump MODEL_PARAMETER_SET_VERSION in "
+    "app/services/model_parameters.py, record the change in "
+    "docs/acceptance/<stage>/golden-refresh.md, then regenerate the fixture "
+    "(UPDATE_GOLDEN=1 pytest tests/test_golden_dubai_2h.py). "
+    "Otherwise revert the constant."
 )
-
 
 def _compare_parameter_fingerprint(
     expected: Mapping[str, Any],
@@ -9477,47 +10030,48 @@ def compare_regression_payloads(
 import csv
 import io
 import json
+from typing import Any
 
-from app.schemas.simulation import (
-    WeatherSimulationResponse,
-)
+from app.schemas.simulation import WeatherSimulationResponse
 
 
-def export_result_csv(
-    result: WeatherSimulationResponse,
-) -> str:
+CSV_HEADERS = [
+    "minute",
+    "control_core_temperature_c",
+    "control_skin_temperature_c",
+    "rc_core_temperature_c",
+    "rc_skin_temperature_c",
+    "control_convection_w_m2",
+    "rc_convection_w_m2",
+    "control_longwave_w_m2",
+    "rc_longwave_w_m2",
+    "control_evaporation_w_m2",
+    "rc_evaporation_w_m2",
+    "control_absorbed_solar_w_m2",
+    "rc_absorbed_solar_w_m2",
+    # Stage 2 / 3 diagnostics; blank for results stored before they existed.
+    "control_maximum_evaporation_w_m2",
+    "rc_maximum_evaporation_w_m2",
+    "control_skin_wettedness",
+    "rc_skin_wettedness",
+    "control_clothing_surface_temperature_c",
+    "rc_clothing_surface_temperature_c",
+]
+
+
+def _optional(point: Any, name: str) -> Any:
+    value = getattr(point, name, None)
+    return "" if value is None else value
+
+
+def export_result_csv(result: WeatherSimulationResponse) -> str:
     output = io.StringIO()
-
     writer = csv.writer(output)
-
-    writer.writerow(
-        [
-            "minute",
-            "control_core_temperature_c",
-            "control_skin_temperature_c",
-            "rc_core_temperature_c",
-            "rc_skin_temperature_c",
-            "control_convection_w_m2",
-            "rc_convection_w_m2",
-            "control_longwave_w_m2",
-            "rc_longwave_w_m2",
-            "control_evaporation_w_m2",
-            "rc_evaporation_w_m2",
-            "control_absorbed_solar_w_m2",
-            "rc_absorbed_solar_w_m2",
-        ]
-    )
-
-    control_points = (
-        result.control.time_series
-    )
-    rc_points = (
-        result.radiative_cooling.time_series
-    )
+    writer.writerow(CSV_HEADERS)
 
     for control, rc in zip(
-        control_points,
-        rc_points,
+        result.control.time_series,
+        result.radiative_cooling.time_series,
         strict=True,
     ):
         writer.writerow(
@@ -9535,20 +10089,20 @@ def export_result_csv(
                 rc.evaporation_w_m2,
                 control.absorbed_solar_w_m2,
                 rc.absorbed_solar_w_m2,
+                _optional(control, "maximum_evaporation_w_m2"),
+                _optional(rc, "maximum_evaporation_w_m2"),
+                _optional(control, "skin_wettedness"),
+                _optional(rc, "skin_wettedness"),
+                _optional(control, "clothing_surface_temperature_c"),
+                _optional(rc, "clothing_surface_temperature_c"),
             ]
         )
 
     return output.getvalue()
 
 
-def export_result_json(
-    result: WeatherSimulationResponse,
-) -> str:
-    return json.dumps(
-        result.model_dump(mode="json"),
-        ensure_ascii=False,
-        indent=2,
-    )
+def export_result_json(result: WeatherSimulationResponse) -> str:
+    return json.dumps(result.model_dump(mode="json"), ensure_ascii=False, indent=2)
 ```
 
 ### File: `backend/app/services/result_storage.py`
@@ -9816,17 +10370,18 @@ def parse_spectrum_csv(
 ```python
 """Two-node transient human thermal model.
 
-Stage 2 changes
+Stage 3 changes
 ---------------
-* Evaporation is limited by an explicit clothing evaporative resistance
-  (``MaterialInput.evaporative_resistance_m2pa_w``). If the material does not
-  supply one it is derived from clo (see ``clothing.py``) and reported in
-  ``ScenarioResult.assumptions_applied``.
-* ``infrared_transmittance`` participates in the longwave term: transmitted
-  skin emission bypasses the clothing coupling factor (first-order model).
+* Node heat capacities are derived from body mass and surface area
+  (``body.body_heat_capacities``, ADR 0001).
+* The clothing surface temperature is solved explicitly; the clothing area
+  factor f_cl enters both the dry and the evaporative pathway (ADR 0003).
+  The linearised radiative coefficient is gone.
+* Thermoregulation uses the Gagge (1986) controllers: sweating on the
+  mean-body warm signal with the exponential skin modifier, skin blood flow
+  with vasodilation/vasoconstriction, a critical skin wettedness w_max and
+  shivering (ADR 0002).
 * Every numeric constant is bound from ``model_parameters`` (unit + source).
-* Fixed-environment and weather-driven runs share ``_integrate``; the
-  weather-driven path takes explicit ``EnvironmentAssumptions``.
 """
 
 from __future__ import annotations
@@ -9840,6 +10395,7 @@ from scipy.integrate import solve_ivp
 
 from app.schemas.environment import EnvironmentAssumptions
 from app.schemas.simulation import (
+    BodyThermalSummary,
     ClothingSummary,
     EnergyDiagnostics,
     EnvironmentInput,
@@ -9849,6 +10405,7 @@ from app.schemas.simulation import (
     TimeSeriesPoint,
 )
 from app.schemas.weather import WeatherTimeSeries
+from app.services.body import BodyHeatCapacities, body_heat_capacities
 from app.services.clothing import (
     ClothingResistances,
     assumptions_applied,
@@ -9861,26 +10418,30 @@ from app.services.weather_interpolation import WeatherInterpolator
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
-CORE_HEAT_CAPACITY = _param("core_heat_capacity")
-SKIN_HEAT_CAPACITY = _param("skin_heat_capacity")
 NATURAL_CONVECTION_MINIMUM = _param("natural_convection_minimum_coefficient")
 FORCED_CONVECTION_COEFFICIENT = _param("forced_convection_coefficient")
-LINEARIZED_RADIATIVE_COEFFICIENT = _param("linearized_radiative_coefficient")
 SKIN_EMISSIVITY = _param("skin_emissivity")
+RADIATION_AREA_RATIO = _param("effective_radiation_area_ratio")
+SKIN_MASS_FRACTION = _param("skin_mass_fraction")
 CORE_SETPOINT = _param("core_setpoint_temperature")
 SKIN_SETPOINT = _param("skin_setpoint_temperature")
-SWEATING_GAIN_CORE = _param("sweating_gain_core")
-SWEATING_GAIN_SKIN = _param("sweating_gain_skin")
+SWEATING_GAIN_BODY = _param("sweating_gain_body")
+SWEATING_SKIN_SIGNAL_SCALE = _param("sweating_skin_signal_scale")
 MAXIMUM_SWEAT_RATE = _param("maximum_sweat_rate")
 LATENT_HEAT_PER_GRAM_HOUR = _param("latent_heat_of_sweat")
 SKIN_DIFFUSION_FRACTION = _param("skin_diffusion_fraction")
+W_MAX_CLOTHED_COEFFICIENT = _param("maximum_wettedness_clothed_coefficient")
+W_MAX_CLOTHED_EXPONENT = _param("maximum_wettedness_clothed_exponent")
+W_MAX_NUDE_COEFFICIENT = _param("maximum_wettedness_nude_coefficient")
+W_MAX_NUDE_EXPONENT = _param("maximum_wettedness_nude_exponent")
 SKIN_BLOOD_FLOW_BASAL = _param("skin_blood_flow_basal")
-SKIN_BLOOD_FLOW_CORE_GAIN = _param("skin_blood_flow_core_gain")
-SKIN_BLOOD_FLOW_SKIN_GAIN = _param("skin_blood_flow_skin_gain")
+VASODILATION_GAIN = _param("vasodilation_gain")
+VASOCONSTRICTION_GAIN = _param("vasoconstriction_gain")
 SKIN_BLOOD_FLOW_MINIMUM = _param("skin_blood_flow_minimum")
 SKIN_BLOOD_FLOW_MAXIMUM = _param("skin_blood_flow_maximum")
 CORE_SKIN_CONDUCTANCE_BASAL = _param("core_skin_conductance_basal")
 BLOOD_HEAT_CAPACITY_PER_FLOW = _param("blood_heat_capacity_per_flow")
+SHIVERING_COEFFICIENT = _param("shivering_coefficient")
 METABOLIC_RATE_PER_MET = _param("metabolic_rate_per_met")
 RESPIRATORY_LATENT_COEFFICIENT = _param("respiratory_latent_coefficient")
 RESPIRATORY_REFERENCE_PRESSURE = _param("respiratory_reference_vapor_pressure")
@@ -9892,12 +10453,20 @@ MAGNUS_B = _param("magnus_b")
 MAGNUS_C = _param("magnus_c")
 
 KELVIN_OFFSET = 273.15
+BODY_SETPOINT = (
+    SKIN_MASS_FRACTION * SKIN_SETPOINT + (1.0 - SKIN_MASS_FRACTION) * CORE_SETPOINT
+)
 
 # Numerical (not physical) settings.
 SOLVER_METHOD = "RK45"
 SOLVER_RTOL = 1e-6
 SOLVER_ATOL = 1e-8
 SOLVER_MAX_STEP_SECONDS = 60.0
+SURFACE_TEMPERATURE_TOLERANCE_K = 1e-5
+SURFACE_TEMPERATURE_MAX_ITERATIONS = 30
+NUDE_RESISTANCE_THRESHOLD_M2K_W = 1e-6
+# Gagge's w_max correlations were fitted for v >= 0.1 m/s.
+MINIMUM_WIND_FOR_WETTEDNESS_M_S = 0.1
 
 EnvironmentAt = Callable[[float], EnvironmentInput]
 
@@ -9906,13 +10475,17 @@ EnvironmentAt = Callable[[float], EnvironmentInput]
 class HeatFluxes:
     convection: float
     longwave_radiation: float
+    longwave_transmitted: float
     evaporation: float
     maximum_evaporation: float
     skin_wettedness: float
+    maximum_skin_wettedness: float
     absorbed_solar: float
     core_to_skin: float
     respiration: float
     metabolism: float
+    skin_blood_flow: float
+    clothing_surface_temperature_c: float
 
     @property
     def net_body_gain(self) -> float:
@@ -9935,6 +10508,81 @@ def saturation_vapor_pressure_kpa(temperature_c: float) -> float:
     return MAGNUS_A * exp(MAGNUS_B * temperature_c / (temperature_c + MAGNUS_C))
 
 
+def convection_coefficient_w_m2k(wind_speed_m_s: float) -> float:
+    return max(
+        NATURAL_CONVECTION_MINIMUM,
+        FORCED_CONVECTION_COEFFICIENT * sqrt(max(wind_speed_m_s, 0.0)),
+    )
+
+
+def environment_radiant_fourth_power_k4(environment: EnvironmentInput) -> float:
+    """F_sky * T_sky^4 + (1 - F_sky) * T_mrt^4 in K^4."""
+    sky_temperature_c = environment.sky_temperature_c
+    if sky_temperature_c is None:
+        sky_temperature_c = environment.air_temperature_c - FALLBACK_SKY_OFFSET
+
+    sky_k = sky_temperature_c + KELVIN_OFFSET
+    radiant_k = environment.mean_radiant_temperature_c + KELVIN_OFFSET
+    f = environment.sky_view_factor
+
+    return f * sky_k**4 + (1.0 - f) * radiant_k**4
+
+
+def clothing_surface_temperature_c(
+    *,
+    skin_temperature_c: float,
+    air_temperature_c: float,
+    environment_fourth_k4: float,
+    clothing: ClothingResistances,
+    convection_coefficient: float,
+    emissivity: float,
+) -> float:
+    """Solve (T_sk - T_cl)/R_cl = f_cl [h_c (T_cl - T_a) + eps sigma (T_cl^4 - T_env^4)].
+
+    The residual is strictly decreasing and concave in T_cl, so Newton's method
+    started at T_sk converges monotonically after at most one overshoot.
+    """
+    if clothing.dry_resistance_m2k_w < NUDE_RESISTANCE_THRESHOLD_M2K_W:
+        return skin_temperature_c
+
+    resistance = clothing.dry_resistance_m2k_w
+    area_factor = clothing.area_factor
+    skin_k = skin_temperature_c + KELVIN_OFFSET
+    air_k = air_temperature_c + KELVIN_OFFSET
+
+    t = skin_k
+
+    radiative_factor = RADIATION_AREA_RATIO * emissivity * SIGMA
+
+    for _ in range(SURFACE_TEMPERATURE_MAX_ITERATIONS):
+        emission = radiative_factor * (t**4 - environment_fourth_k4)
+        residual = (skin_k - t) / resistance - area_factor * (
+            convection_coefficient * (t - air_k) + emission
+        )
+        derivative = -1.0 / resistance - area_factor * (
+            convection_coefficient + 4.0 * radiative_factor * t**3
+        )
+        step = residual / derivative
+        t -= step
+
+        if abs(step) < SURFACE_TEMPERATURE_TOLERANCE_K:
+            return t - KELVIN_OFFSET
+
+    raise RuntimeError(
+        "Clothing surface temperature iteration did not converge "
+        f"(T_sk = {skin_temperature_c:.3f} C, T_a = {air_temperature_c:.3f} C)"
+    )
+
+
+def maximum_skin_wettedness(wind_speed_m_s: float, clothing: ClothingResistances) -> float:
+    v = max(wind_speed_m_s, MINIMUM_WIND_FOR_WETTEDNESS_M_S)
+    if clothing.is_nude:
+        w_max = W_MAX_NUDE_COEFFICIENT * v**W_MAX_NUDE_EXPONENT
+    else:
+        w_max = W_MAX_CLOTHED_COEFFICIENT * v**W_MAX_CLOTHED_EXPONENT
+    return clamp(w_max, SKIN_DIFFUSION_FRACTION, 1.0)
+
+
 def calculate_fluxes(
     core_temperature_c: float,
     skin_temperature_c: float,
@@ -9948,50 +10596,57 @@ def calculate_fluxes(
 
     air_temperature_c = environment.air_temperature_c
 
-    sky_temperature_c = environment.sky_temperature_c
-    if sky_temperature_c is None:
-        sky_temperature_c = air_temperature_c - FALLBACK_SKY_OFFSET
+    # --- thermoregulatory signals (Gagge 1986) ------------------------------
+    warm_skin = max(skin_temperature_c - SKIN_SETPOINT, 0.0)
+    cold_skin = max(SKIN_SETPOINT - skin_temperature_c, 0.0)
+    warm_core = max(core_temperature_c - CORE_SETPOINT, 0.0)
+    cold_core = max(CORE_SETPOINT - core_temperature_c, 0.0)
 
-    # --- convection ---------------------------------------------------------
-    convection_coefficient = max(
-        NATURAL_CONVECTION_MINIMUM,
-        FORCED_CONVECTION_COEFFICIENT * sqrt(max(environment.wind_speed_m_s, 0.0)),
+    body_temperature_c = (
+        SKIN_MASS_FRACTION * skin_temperature_c
+        + (1.0 - SKIN_MASS_FRACTION) * core_temperature_c
     )
+    warm_body = max(body_temperature_c - BODY_SETPOINT, 0.0)
 
-    clothing_coupling = 1.0 / (
-        1.0
-        + clothing.dry_resistance_m2k_w
-        * (convection_coefficient + LINEARIZED_RADIATIVE_COEFFICIENT)
+    # --- dry heat: clothing surface balance ---------------------------------
+    convection_coefficient = convection_coefficient_w_m2k(environment.wind_speed_m_s)
+    environment_fourth = environment_radiant_fourth_power_k4(environment)
+
+    surface_c = clothing_surface_temperature_c(
+        skin_temperature_c=skin_temperature_c,
+        air_temperature_c=air_temperature_c,
+        environment_fourth_k4=environment_fourth,
+        clothing=clothing,
+        convection_coefficient=convection_coefficient,
+        emissivity=material.infrared_emissivity,
     )
-
-    convection = (
-        convection_coefficient
-        * (skin_temperature_c - air_temperature_c)
-        * clothing_coupling
-    )
-
-    # --- longwave radiation -------------------------------------------------
+    surface_k = surface_c + KELVIN_OFFSET
     skin_k = skin_temperature_c + KELVIN_OFFSET
-    sky_k = sky_temperature_c + KELVIN_OFFSET
-    radiant_k = environment.mean_radiant_temperature_c + KELVIN_OFFSET
 
-    sky_view_factor = environment.sky_view_factor
-
-    net_radiation = SIGMA * (
-        sky_view_factor * (skin_k**4 - sky_k**4)
-        + (1.0 - sky_view_factor) * (skin_k**4 - radiant_k**4)
+    convection = clothing.area_factor * convection_coefficient * (
+        surface_c - air_temperature_c
     )
 
-    # Emission from the textile surface (attenuated by the clothing coupling)
-    # plus skin emission transmitted directly through an IR-transparent textile.
-    effective_emitter = (
-        material.infrared_emissivity * clothing_coupling
-        + clothing.infrared_transmittance * SKIN_EMISSIVITY
+    longwave_surface = (
+        clothing.area_factor
+        * RADIATION_AREA_RATIO
+        * material.infrared_emissivity
+        * SIGMA
+        * (surface_k**4 - environment_fourth)
     )
 
-    longwave_radiation = effective_emitter * net_radiation
+    # Skin emission transmitted directly through an IR-transparent textile.
+    longwave_transmitted = (
+        RADIATION_AREA_RATIO
+        * clothing.infrared_transmittance
+        * SKIN_EMISSIVITY
+        * SIGMA
+        * (skin_k**4 - environment_fourth)
+    )
 
-    # --- solar --------------------------------------------------------------
+    longwave_radiation = longwave_surface + longwave_transmitted
+
+    # --- solar (ADR 0003: deposited on the skin node) -----------------------
     solar_absorptance = clamp(
         1.0 - material.solar_reflectance - material.solar_transmittance, 0.0, 1.0
     )
@@ -10017,27 +10672,29 @@ def calculate_fluxes(
         ambient_vapor_pressure_kpa,
     )
 
-    regulatory_sweating_g_h_m2 = clamp(
-        SWEATING_GAIN_CORE * max(core_temperature_c - CORE_SETPOINT, 0.0)
-        + SWEATING_GAIN_SKIN * max(skin_temperature_c - SKIN_SETPOINT, 0.0),
-        0.0,
+    regulatory_sweating_g_h_m2 = min(
+        SWEATING_GAIN_BODY * warm_body * exp(warm_skin / SWEATING_SKIN_SIGNAL_SCALE),
         MAXIMUM_SWEAT_RATE,
     )
-
     regulatory_evaporation = regulatory_sweating_g_h_m2 * LATENT_HEAT_PER_GRAM_HOUR
-    diffusion_evaporation = SKIN_DIFFUSION_FRACTION * maximum_evaporation
 
-    evaporation = min(maximum_evaporation, regulatory_evaporation + diffusion_evaporation)
+    w_max = maximum_skin_wettedness(environment.wind_speed_m_s, clothing)
 
-    skin_wettedness = (
-        evaporation / maximum_evaporation if maximum_evaporation > 0.0 else 1.0
-    )
+    if maximum_evaporation <= 0.0:
+        skin_wettedness = w_max
+        evaporation = 0.0
+    else:
+        sweat_ratio = regulatory_evaporation / maximum_evaporation
+        skin_wettedness = min(
+            SKIN_DIFFUSION_FRACTION + (1.0 - SKIN_DIFFUSION_FRACTION) * sweat_ratio,
+            w_max,
+        )
+        evaporation = skin_wettedness * maximum_evaporation
 
     # --- core <-> skin ------------------------------------------------------
     skin_blood_flow = clamp(
-        SKIN_BLOOD_FLOW_BASAL
-        + SKIN_BLOOD_FLOW_CORE_GAIN * max(core_temperature_c - CORE_SETPOINT, 0.0)
-        + SKIN_BLOOD_FLOW_SKIN_GAIN * max(skin_temperature_c - SKIN_SETPOINT, 0.0),
+        (SKIN_BLOOD_FLOW_BASAL + VASODILATION_GAIN * warm_core)
+        / (1.0 + VASOCONSTRICTION_GAIN * cold_skin),
         SKIN_BLOOD_FLOW_MINIMUM,
         SKIN_BLOOD_FLOW_MAXIMUM,
     )
@@ -10049,7 +10706,10 @@ def calculate_fluxes(
     core_to_skin = core_skin_conductance * (core_temperature_c - skin_temperature_c)
 
     # --- metabolism and respiration -----------------------------------------
-    metabolism = person.met * METABOLIC_RATE_PER_MET
+    metabolism = (
+        person.met * METABOLIC_RATE_PER_MET
+        + SHIVERING_COEFFICIENT * cold_skin * cold_core
+    )
 
     respiration_latent = max(
         0.0,
@@ -10069,13 +10729,17 @@ def calculate_fluxes(
     return HeatFluxes(
         convection=convection,
         longwave_radiation=longwave_radiation,
+        longwave_transmitted=longwave_transmitted,
         evaporation=evaporation,
         maximum_evaporation=maximum_evaporation,
         skin_wettedness=skin_wettedness,
+        maximum_skin_wettedness=w_max,
         absorbed_solar=absorbed_solar,
         core_to_skin=core_to_skin,
         respiration=respiration,
         metabolism=metabolism,
+        skin_blood_flow=skin_blood_flow,
+        clothing_surface_temperature_c=surface_c,
     )
 
 
@@ -10092,12 +10756,13 @@ def _energy_diagnostics(
     skin_temperatures: np.ndarray,
     net_heat_fluxes: np.ndarray,
     solver_function_evaluations: int,
+    capacities: BodyHeatCapacities,
 ) -> EnergyDiagnostics:
     integrated_net_heat = float(np.trapezoid(net_heat_fluxes, times_seconds))
 
     stored_energy_change = float(
-        CORE_HEAT_CAPACITY * (core_temperatures[-1] - core_temperatures[0])
-        + SKIN_HEAT_CAPACITY * (skin_temperatures[-1] - skin_temperatures[0])
+        capacities.core_j_m2k * (core_temperatures[-1] - core_temperatures[0])
+        + capacities.skin_j_m2k * (skin_temperatures[-1] - skin_temperatures[0])
     )
 
     residual = stored_energy_change - integrated_net_heat
@@ -10127,6 +10792,7 @@ def _integrate(
     failure_label: str,
 ) -> ScenarioResult:
     clothing = resolve_clothing(material)
+    capacities = body_heat_capacities(person)
 
     duration_seconds = duration_minutes * 60.0
     output_times = _output_times(duration_seconds, output_interval_minutes * 60.0)
@@ -10150,7 +10816,10 @@ def _integrate(
             - fluxes.evaporation
         )
 
-        return [core_storage / CORE_HEAT_CAPACITY, skin_storage / SKIN_HEAT_CAPACITY]
+        return [
+            core_storage / capacities.core_j_m2k,
+            skin_storage / capacities.skin_j_m2k,
+        ]
 
     solution = solve_ivp(
         fun=derivatives,
@@ -10197,11 +10866,15 @@ def _integrate(
                 core_to_skin_w_m2=round(fluxes.core_to_skin, 4),
                 maximum_evaporation_w_m2=round(fluxes.maximum_evaporation, 4),
                 skin_wettedness=round(fluxes.skin_wettedness, 4),
+                clothing_surface_temperature_c=round(
+                    fluxes.clothing_surface_temperature_c, 4
+                ),
+                skin_blood_flow_kg_h_m2=round(fluxes.skin_blood_flow, 4),
             )
         )
 
     diagnostics = _energy_diagnostics(
-        times, core_array, skin_array, np.asarray(net_heat), solution.nfev
+        times, core_array, skin_array, np.asarray(net_heat), solution.nfev, capacities
     )
 
     core_temperatures = [p.core_temperature_c for p in time_series]
@@ -10220,8 +10893,16 @@ def _integrate(
             evaporative_resistance_m2pa_w=round(clothing.evaporative_resistance_m2pa_w, 4),
             evaporative_resistance_source=clothing.evaporative_resistance_source,
             infrared_transmittance=clothing.infrared_transmittance,
+            clothing_area_factor=round(clothing.area_factor, 6),
+            clothing_area_factor_source=clothing.area_factor_source,
         ),
         assumptions_applied=assumptions_applied(clothing),
+        body=BodyThermalSummary(
+            body_mass_kg=person.body_mass_kg,
+            body_surface_area_m2=person.body_surface_area_m2,
+            core_heat_capacity_j_m2k=round(capacities.core_j_m2k, 2),
+            skin_heat_capacity_j_m2k=round(capacities.skin_j_m2k, 2),
+        ),
     )
 
 
@@ -10254,7 +10935,6 @@ def simulate_material_with_weather(
         weather, assumptions=assumptions or EnvironmentAssumptions()
     )
 
-    # Fail before solving if the requested duration exceeds the weather data.
     interpolator.ensure_covers(0.0, duration_minutes * 60.0)
 
     return _integrate(
@@ -13822,25 +14502,7 @@ def run_global_city_analysis_task(
 
 ```
 
-### File: `backend/docs/acceptance/stage-2/golden-refresh.md`
-```
-# Stage 2 golden refresh (Dubai 2023-07-15 12:00, 2 h)
-
-Cause: evaporation limited by explicit Re,cl. Previous factor 1/(1 + 0.45·clo·h_c)
-was equivalent to Re,cl ≈ 27.3·clo m²·Pa/W; new default derivation R_cl/(LR·i_cl)
-with i_cl = 0.45 gives Re,cl ≈ 20.9·clo m²·Pa/W (control 0.5 clo: 13.6 → 10.4;
-RC 0.4 clo: 10.9 → 8.4). Expect slightly lower skin temperatures for both garments.
-
-| metric | before | after | delta |
-|---|---|---|---|
-| final_skin_temperature_improvement_c | 1.3193 | <fill> | |
-| final_core_temperature_improvement_c | 0.6571 | <fill> | |
-| average_skin_temperature_improvement_c | 0.9531 | <fill> | |
-
-model_parameter_set_sha256: <fill>
-```
-
-### File: `backend/docs/acceptance/stage-3/energy-residual.txt`
+### File: `backend/docs/acceptance/legacy-stage-3-two-node-prototype/energy-residual.txt`
 ```
 ============================= test session starts =============================
 platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
@@ -13862,7 +14524,7 @@ tests/test_two_node.py::test_energy_balance_residual_is_small PASSED
 
 ```
 
-### File: `backend/docs/acceptance/stage-3/pytest-all.txt`
+### File: `backend/docs/acceptance/legacy-stage-3-two-node-prototype/pytest-all.txt`
 ```
 Python:
 C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
@@ -13918,19 +14580,326 @@ tests/test_two_node.py::test_identical_materials_produce_identical_results PASSE
 
 ```
 
+### File: `backend/docs/acceptance/stage-2/golden-refresh.md`
+```
+# Stage 2 golden refresh (Dubai 2023-07-15 12:00, 2 h)
+
+Cause: evaporation limited by explicit Re,cl. Previous factor 1/(1 + 0.45·clo·h_c)
+was equivalent to Re,cl ≈ 27.3·clo m²·Pa/W; new default derivation R_cl/(LR·i_cl)
+with i_cl = 0.45 gives Re,cl ≈ 20.9·clo m²·Pa/W (control 0.5 clo: 13.6 → 10.4;
+RC 0.4 clo: 10.9 → 8.4). Expect slightly lower skin temperatures for both garments.
+
+| metric | before | after | delta |
+|---|---|---|---|
+| final_skin_temperature_improvement_c | 1.3193 | <fill> | |
+| final_core_temperature_improvement_c | 0.6571 | <fill> | |
+| average_skin_temperature_improvement_c | 0.9531 | <fill> | |
+
+model_parameter_set_sha256: <fill>
+```
+
+### File: `backend/docs/acceptance/stage-3-reference-comparison/golden-refresh.md`
+```
+# Stage 3 golden refresh (Dubai 2023-07-15 12:00, 2 h)
+
+Causes (all intentional, see ADR 0001-0003):
+1. Heat capacities 280 -> 135.7 kJ/(m^2 K) (70 kg / 1.8 m^2). Transients are
+   roughly twice as fast; the 2 h case is closer to steady state.
+2. Explicit clothing surface temperature with f_cl = 1 + 0.15 clo replaces the
+   linearised coupling factor.
+3. Gagge 1986 controllers replace the prototype's linear gains.
+
+| metric | before (2.0.0) | after (3.0.0) | delta |
+|---|---|---|---|
+| final_skin_temperature_improvement_c | 0.7846 | <fill> | |
+| final_core_temperature_improvement_c | 0.1362 | <fill> | |
+| average_skin_temperature_improvement_c | 0.43 | <fill> | |
+
+model_parameter_set_sha256: ebc0c642... -> <fill>
+Gagge benchmark (default fixture, 60 min): core max|dT| = <fill> C, skin max|dT| = <fill> C
+Reference port parity (60 min, 70 kg): max|dT| = <fill> C
+```
+
+### File: `backend/docs/acceptance/stage-3-reference-comparison/pytest-all.txt`
+```
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 203 items
+
+tests/core/test_numba_cache_integration.py::test_numba_writes_cache_files_to_configured_directory PASSED [  0%]
+tests/core/test_runtime.py::test_uses_configured_cache_directory PASSED  [  0%]
+tests/core/test_runtime.py::test_environment_variable_takes_precedence PASSED [  1%]
+tests/core/test_runtime.py::test_uses_cross_platform_temporary_default PASSED [  1%]
+tests/core/test_runtime.py::test_creates_missing_parent_directories PASSED [  2%]
+tests/test_api.py::test_health_endpoint PASSED                           [  2%]
+tests/test_api.py::test_simulation_endpoint PASSED                       [  3%]
+tests/test_api.py::test_invalid_material_is_rejected PASSED              [  3%]
+tests/test_api.py::test_identical_material_api_improvement_is_zero PASSED [  4%]
+tests/test_body.py::test_default_person_reproduces_gagge_lumped_value PASSED [  4%]
+tests/test_body.py::test_heavier_person_has_larger_capacity_per_area PASSED [  5%]
+tests/test_body.py::test_larger_surface_area_lowers_capacity_per_area PASSED [  5%]
+tests/test_cities.py::test_get_city_returns_supported_city PASSED        [  6%]
+tests/test_cities.py::test_get_city_normalizes_case_and_spaces PASSED    [  6%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[dubai] PASSED [  7%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[guangzhou] PASSED [  7%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[lhasa] PASSED [  8%]
+tests/test_cities.py::test_get_city_rejects_unknown_city PASSED          [  8%]
+tests/test_cities.py::test_unknown_city_error_lists_supported_cities PASSED [  9%]
+tests/test_climate_adaptation.py::test_global_batch_month_range PASSED   [  9%]
+tests/test_climate_adaptation.py::test_global_batch_rejects_duplicate_cities PASSED [ 10%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_dry-42.0-20.0-2.0-900.0] PASSED [ 10%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_humid-34.0-85.0-1.0-700.0] PASSED [ 11%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[high_altitude_solar-24.0-25.0-2.5-1000.0] PASSED [ 11%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[night-30.0-60.0-0.5-0.0] PASSED [ 12%]
+tests/test_clothing.py::test_derived_evaporative_resistance_matches_formula PASSED [ 12%]
+tests/test_clothing.py::test_none_resistance_is_derived_and_flagged PASSED [ 13%]
+tests/test_clothing.py::test_explicit_resistance_overrides_derivation PASSED [ 13%]
+tests/test_clothing.py::test_higher_resistance_lowers_maximum_evaporation PASSED [ 14%]
+tests/test_clothing.py::test_explicit_derived_value_reproduces_none_result PASSED [ 14%]
+tests/test_clothing.py::test_impermeable_garment_ends_warmer PASSED      [ 15%]
+tests/test_clothing.py::test_infrared_transmittance_amplifies_longwave_exchange PASSED [ 15%]
+tests/test_clothing.py::test_area_factor_is_derived_and_flagged PASSED   [ 16%]
+tests/test_clothing.py::test_explicit_area_factor_overrides_derivation PASSED [ 16%]
+tests/test_clothing.py::test_clothing_surface_balance_is_consistent PASSED [ 17%]
+tests/test_clothing.py::test_nude_surface_temperature_equals_skin PASSED [ 17%]
+tests/test_clothing.py::test_emissivity_plus_transmittance_above_one_is_rejected PASSED [ 18%]
+tests/test_clothing.py::test_unknown_parameter_source_key_is_rejected PASSED [ 18%]
+tests/test_cors.py::test_allows_configured_origin PASSED                 [ 19%]
+tests/test_cors.py::test_allows_configured_preflight_request PASSED      [ 19%]
+tests/test_cors.py::test_rejects_unknown_preflight_origin PASSED         [ 20%]
+tests/test_cors.py::test_rejects_duplicate_cors_registration PASSED      [ 20%]
+tests/test_cors.py::test_main_application_registers_cors_once PASSED     [ 21%]
+tests/test_environment_model.py::test_defaults_reproduce_stage_1_formulas PASSED [ 21%]
+tests/test_environment_model.py::test_swinbank_clear_sky PASSED          [ 22%]
+tests/test_environment_model.py::test_wind_scaling_and_negative_inputs_are_clamped PASSED [ 22%]
+tests/test_environment_model.py::test_describe_mentions_every_active_rule PASSED [ 23%]
+tests/test_exposure_statistics.py::test_time_weighted_mean_matches_trapezoid PASSED [ 23%]
+tests/test_exposure_statistics.py::test_statistics_use_exposure_window_not_padded_points PASSED [ 24%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[1] PASSED [ 24%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[3] PASSED [ 25%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[6] PASSED [ 25%]
+tests/test_exposure_statistics.py::test_half_hour_start_uses_interpolated_boundary PASSED [ 26%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_returns_finite_values PASSED [ 26%]
+tests/test_gagge_benchmark.py::test_gagge_output_is_in_broad_range PASSED [ 27%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_api PASSED           [ 27%]
+tests/test_gagge_benchmark.py::test_gagge_api_converts_service_error_to_500 PASSED [ 28%]
+tests/test_gagge_benchmark.py::test_benchmark_returns_aligned_transient_series PASSED [ 28%]
+tests/test_gagge_benchmark.py::test_default_case_is_within_stage_3_tolerances PASSED [ 29%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[38.0-45.0-1.5-40.0-2.6-0.5] PASSED [ 29%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[30.0-30.0-0.3-60.0-1.2-0.6] PASSED [ 30%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[42.0-42.0-2.0-20.0-2.0-0.4] PASSED [ 30%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[34.0-36.0-1.0-85.0-1.8-0.5] PASSED [ 31%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[25.0-25.0-0.1-50.0-1.0-1.0] PASSED [ 31%]
+tests/test_gagge_reference.py::test_port_returns_one_point_per_minute_plus_initial_state PASSED [ 32%]
+tests/test_gagge_reference.py::test_heavier_body_warms_more_slowly PASSED [ 32%]
+tests/test_global_batch_geojson.py::test_geojson_structure PASSED        [ 33%]
+tests/test_golden_dubai_2h.py::test_dubai_two_hour_golden_case PASSED    [ 33%]
+tests/test_job_service.py::test_job_to_response_maps_job_fields PASSED   [ 33%]
+tests/test_job_service.py::test_job_to_detail_validates_saved_request PASSED [ 34%]
+tests/test_job_service.py::test_get_job_or_none_uses_session_get PASSED  [ 34%]
+tests/test_job_service.py::test_get_job_or_none_returns_none PASSED      [ 35%]
+tests/test_model_parameters.py::test_every_parameter_has_unit_and_reference PASSED [ 35%]
+tests/test_model_parameters.py::test_manifest_sha_is_stable_and_hex PASSED [ 36%]
+tests/test_model_parameters.py::test_unknown_parameter_raises PASSED     [ 36%]
+tests/test_model_parameters.py::test_model_parameter_endpoint PASSED     [ 37%]
+tests/test_model_parameters.py::test_default_assumptions_endpoint PASSED [ 37%]
+tests/test_parameter_participation.py::test_every_material_field_participates[absorbed_solar_to_body_fraction-0.6] PASSED [ 38%]
+tests/test_parameter_participation.py::test_every_material_field_participates[clothing_area_factor-1.4] PASSED [ 38%]
+tests/test_parameter_participation.py::test_every_material_field_participates[clothing_insulation_clo-0.9] PASSED [ 39%]
+tests/test_parameter_participation.py::test_every_material_field_participates[evaporative_resistance_m2pa_w-40.0] PASSED [ 39%]
+tests/test_parameter_participation.py::test_every_material_field_participates[infrared_emissivity-0.5] PASSED [ 40%]
+tests/test_parameter_participation.py::test_every_material_field_participates[infrared_transmittance-0.15] PASSED [ 40%]
+tests/test_parameter_participation.py::test_every_material_field_participates[projected_solar_area_factor-0.4] PASSED [ 41%]
+tests/test_parameter_participation.py::test_every_material_field_participates[solar_reflectance-0.7] PASSED [ 41%]
+tests/test_parameter_participation.py::test_every_material_field_participates[solar_transmittance-0.2] PASSED [ 42%]
+tests/test_parameter_participation.py::test_every_person_field_participates[body_mass_kg-95.0] PASSED [ 42%]
+tests/test_parameter_participation.py::test_every_person_field_participates[body_surface_area_m2-2.4] PASSED [ 43%]
+tests/test_parameter_participation.py::test_every_person_field_participates[initial_core_temperature_c-37.4] PASSED [ 43%]
+tests/test_parameter_participation.py::test_every_person_field_participates[initial_skin_temperature_c-31.0] PASSED [ 44%]
+tests/test_parameter_participation.py::test_every_person_field_participates[met-1.2] PASSED [ 44%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update0-perturbed_update0] PASSED [ 45%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update1-perturbed_update1] PASSED [ 45%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update2-perturbed_update2] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update3-perturbed_update3] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update4-perturbed_update4] PASSED [ 47%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update5-perturbed_update5] PASSED [ 47%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update6-perturbed_update6] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update7-perturbed_update7] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update8-perturbed_update8] PASSED [ 49%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update9-perturbed_update9] PASSED [ 49%]
+tests/test_physics.py::test_saturation_pressure_increases_with_temperature PASSED [ 50%]
+tests/test_physics.py::test_saturation_pressure_near_reference_value PASSED [ 50%]
+tests/test_physics.py::test_invalid_optical_sum_is_rejected PASSED       [ 51%]
+tests/test_physics.py::test_higher_reflectance_reduces_solar_absorption PASSED [ 51%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.0] PASSED       [ 52%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.1] PASSED       [ 52%]
+tests/test_physics.py::test_flux_calculation_is_finite[1.0] PASSED       [ 53%]
+tests/test_physics.py::test_flux_calculation_is_finite[3.0] PASSED       [ 53%]
+tests/test_physics.py::test_flux_calculation_is_finite[8.0] PASSED       [ 54%]
+tests/test_result_export.py::test_missing_stage_3_diagnostics_export_as_blank_cells PASSED [ 54%]
+tests/test_result_export.py::test_stage_3_diagnostics_are_exported_when_present PASSED [ 55%]
+tests/test_result_export.py::test_result_csv_contains_expected_headers PASSED [ 55%]
+tests/test_result_export.py::test_result_csv_contains_control_and_rc_values PASSED [ 56%]
+tests/test_result_export.py::test_result_csv_with_empty_time_series_contains_only_headers PASSED [ 56%]
+tests/test_result_export.py::test_result_csv_rejects_different_time_series_lengths PASSED [ 57%]
+tests/test_result_export.py::test_result_json_serializes_model_dump_as_unicode PASSED [ 57%]
+tests/test_result_storage.py::test_save_simulation_result_creates_gzip_json_file PASSED [ 58%]
+tests/test_result_storage.py::test_save_simulation_result_creates_missing_directory PASSED [ 58%]
+tests/test_result_storage.py::test_save_simulation_result_removes_temporary_file PASSED [ 59%]
+tests/test_result_storage.py::test_save_simulation_result_preserves_unicode PASSED [ 59%]
+tests/test_result_storage.py::test_save_simulation_result_replaces_existing_file PASSED [ 60%]
+tests/test_result_storage.py::test_load_simulation_result_reads_and_validates_payload PASSED [ 60%]
+tests/test_result_storage.py::test_load_simulation_result_raises_for_missing_file PASSED [ 61%]
+tests/test_spectrum_parser.py::test_parse_valid_spectrum_csv PASSED      [ 61%]
+tests/test_spectrum_parser.py::test_reject_value_above_one PASSED        [ 62%]
+tests/test_spectrum_parser.py::test_reject_unsorted_wavelengths PASSED   [ 62%]
+tests/test_spectrum_parser.py::test_parse_spectrum_returns_checksum PASSED [ 63%]
+tests/test_spectrum_parser.py::test_parse_normalizes_header_names PASSED [ 63%]
+tests/test_spectrum_parser.py::test_reject_empty_spectrum PASSED         [ 64%]
+tests/test_spectrum_parser.py::test_reject_non_utf8_spectrum PASSED      [ 64%]
+tests/test_spectrum_parser.py::test_reject_missing_wavelength_column PASSED [ 65%]
+tests/test_spectrum_parser.py::test_reject_missing_value_column PASSED   [ 65%]
+tests/test_spectrum_parser.py::test_reject_invalid_numeric_values[not-a-number,0.8] PASSED [ 66%]
+tests/test_spectrum_parser.py::test_reject_invalid_numeric_values[0.3,not-a-number] PASSED [ 66%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[nan,0.8-wavelength] PASSED [ 66%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[0.3,nan-spectrum value] PASSED [ 67%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[-0.3,0.8-positive] PASSED [ 67%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[0.3,-0.1-between 0 and 1] PASSED [ 68%]
+tests/test_spectrum_parser.py::test_reject_single_data_point PASSED      [ 68%]
+tests/test_spectrum_parser.py::test_reject_file_above_size_limit PASSED  [ 69%]
+tests/test_spectrum_parser.py::test_reject_too_many_points PASSED        [ 69%]
+tests/test_stage_4_2_export.py::test_export_contains_required_files PASSED [ 70%]
+tests/test_stage_4_2_exposure.py::test_all_mode_requires_all_thresholds PASSED [ 70%]
+tests/test_stage_4_2_exposure.py::test_any_mode_requires_one_threshold PASSED [ 71%]
+tests/test_stage_4_2_exposure.py::test_no_threshold_means_all_samples_eligible PASSED [ 71%]
+tests/test_stage_4_2_sampling.py::test_three_samples_cover_entire_month PASSED [ 72%]
+tests/test_stage_4_2_sampling.py::test_one_legacy_sample_uses_requested_day PASSED [ 72%]
+tests/test_stage_4_2_sampling.py::test_sample_count_cannot_exceed_month_days PASSED [ 73%]
+tests/test_stage_4_3_estimate.py::test_daily_batch_estimate PASSED       [ 73%]
+tests/test_stage_4_3_sampling.py::test_daily_stride_one_has_one_sample_per_day PASSED [ 74%]
+tests/test_stage_4_3_sampling.py::test_daily_stride_seven_covers_month PASSED [ 74%]
+tests/test_stage_4_3_sampling.py::test_leap_year_daily_plan_has_366_samples PASSED [ 75%]
+tests/test_stage_4_3_sampling.py::test_month_plan_returns_actual_dates PASSED [ 75%]
+tests/test_stage_4_3_weather_slice.py::test_slice_weather_includes_padding PASSED [ 76%]
+tests/test_stage_4_3_weather_slice.py::test_slice_fails_when_range_not_covered PASSED [ 76%]
+tests/test_stage_4_4_analytics.py::test_weighted_percentile PASSED       [ 77%]
+tests/test_stage_4_4_analytics.py::test_weighted_percentile_uses_weights PASSED [ 77%]
+tests/test_stage_4_4_analytics.py::test_detects_consecutive_heatwave PASSED [ 78%]
+tests/test_stage_4_4_analytics.py::test_non_consecutive_hot_days_are_not_heatwave PASSED [ 78%]
+tests/test_stage_4_4_checkpoint.py::test_retry_preserves_checkpoint_when_enabled PASSED [ 79%]
+tests/test_stage_4_4_checkpoint.py::test_monthly_checkpoint_round_trip PASSED [ 79%]
+tests/test_two_node.py::test_simulation_returns_expected_number_of_points PASSED [ 80%]
+tests/test_two_node.py::test_initial_temperatures_are_preserved PASSED   [ 80%]
+tests/test_two_node.py::test_all_temperatures_are_finite PASSED          [ 81%]
+tests/test_two_node.py::test_temperature_stays_in_broad_physiological_range PASSED [ 81%]
+tests/test_two_node.py::test_energy_balance_residual_is_small PASSED     [ 82%]
+tests/test_two_node.py::test_rc_material_reduces_skin_temperature PASSED [ 82%]
+tests/test_two_node.py::test_identical_materials_produce_identical_results PASSED [ 83%]
+tests/test_weather_api.py::test_weather_cities_endpoint PASSED           [ 83%]
+tests/test_weather_api.py::test_weather_history_endpoint PASSED          [ 84%]
+tests/test_weather_api.py::test_weather_history_rejects_unknown_city PASSED [ 84%]
+tests/test_weather_api.py::test_weather_history_converts_service_error_to_502 PASSED [ 85%]
+tests/test_weather_api.py::test_weather_history_validates_duration[0] PASSED [ 85%]
+tests/test_weather_api.py::test_weather_history_validates_duration[1441] PASSED [ 86%]
+tests/test_weather_interpolation.py::test_weather_interpolation_at_start PASSED [ 86%]
+tests/test_weather_interpolation.py::test_weather_interpolation_at_half_hour PASSED [ 87%]
+tests/test_weather_interpolation.py::test_environment_clamps_negative_wind_and_solar PASSED [ 87%]
+tests/test_weather_interpolation.py::test_mean_radiant_temperature_increase_is_capped PASSED [ 88%]
+tests/test_weather_interpolation.py::test_interpolation_outside_range_raises PASSED [ 88%]
+tests/test_weather_interpolation.py::test_interpolation_at_exact_boundaries_is_allowed PASSED [ 89%]
+tests/test_weather_interpolation.py::test_from_series_rejects_series_not_covering_requested_window PASSED [ 89%]
+tests/test_weather_quality.py::test_unsorted_input_is_sorted_and_noted PASSED [ 90%]
+tests/test_weather_quality.py::test_identical_duplicate_is_removed PASSED [ 90%]
+tests/test_weather_quality.py::test_conflicting_duplicate_is_rejected PASSED [ 91%]
+tests/test_weather_quality.py::test_naive_timestamp_is_rejected PASSED   [ 91%]
+tests/test_weather_quality.py::test_gap_is_reported_but_not_raised_by_normalize PASSED [ 92%]
+tests/test_weather_quality.py::test_window_with_gap_inside_is_rejected PASSED [ 92%]
+tests/test_weather_quality.py::test_window_outside_gap_is_accepted PASSED [ 93%]
+tests/test_weather_quality.py::test_missing_tail_is_rejected PASSED      [ 93%]
+tests/test_weather_quality.py::test_exact_boundaries_are_accepted PASSED [ 94%]
+tests/test_weather_service.py::test_historical_weather_with_mock PASSED  [ 94%]
+tests/test_weather_simulation.py::test_execute_weather_simulation PASSED [ 95%]
+tests/test_weather_simulation.py::test_execute_weather_simulation_without_callback PASSED [ 95%]
+tests/test_worker_tasks.py::test_update_job_updates_fields_and_commits PASSED [ 96%]
+tests/test_worker_tasks.py::test_update_job_rejects_missing_job PASSED   [ 96%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[queued] PASSED [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[running] PASSED [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[completed] PASSED [ 98%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[failed] PASSED [ 98%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_raises_for_cancelled_job[cancelling] PASSED [ 99%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_raises_for_cancelled_job[cancelled] PASSED [ 99%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_rejects_missing_job PASSED [100%]
+
+============================= 203 passed in 2.83s =============================
+
+```
+
 ### File: `backend/docs/decisions/0001-body-surface-area.md`
 ```
-# ADR 0001: body_surface_area_m2 is currently informational
+# ADR 0001: body_surface_area_m2 is currently informational — RESOLVED (Stage 3)
 
-Finding (Stage 2): heat capacities are fixed per m² (245 + 35 kJ/(m²·K)), so
-`PersonInput.body_surface_area_m2` has no effect on results. The lumped
-value is also ~2× the Gagge two-node value for 70 kg / 1.8 m².
+Finding (Stage 2): heat capacities were fixed per m^2 (245 + 35 kJ/(m^2 K)), so
+`PersonInput.body_surface_area_m2` had no effect and the lumped value was
+about 2x the Gagge two-node value for 70 kg / 1.8 m^2.
 
-Decision: do not change in Stage 2 (would invalidate the golden case and the
-Gagge benchmark simultaneously). Add `body_mass_kg` in Stage 3 and derive
-C_core, C_skin = m·c_p·(1−α)/A_D, m·c_p·α/A_D with c_p = 3490 J/(kg·K),
-α = 0.1 (Gagge 1986), validated against `benchmarks/gagge`.
-Until then `test_body_surface_area_participates` is `xfail(strict=True)`.
+Resolution (Stage 3, PR-1): `PersonInput.body_mass_kg` (default 70) added.
+C_core = m c_p (1 - alpha) / A_D, C_skin = m c_p alpha / A_D with
+c_p = 3490 J/(kg K) and alpha = 0.1 (Gagge 1986). Default person gives
+135.7 kJ/(m^2 K), matching the reference model. alpha is kept constant
+(Gagge varies it with skin blood flow) so node capacities are state-independent
+and the energy diagnostics stay exact. `test_body_surface_area_participates`
+xfail removed; both fields are now covered by test_parameter_participation.
+```
+
+### File: `backend/docs/decisions/0002-gagge-controllers.md`
+```
+# ADR 0002: adopt the Gagge (1986) thermoregulatory controllers
+
+Context: the prototype used separate linear gains for sweating and skin blood
+flow (170/200 g/(h m^2 K), 75/20 kg/(h m^2 K)) marked `assumed`. A transient
+comparison with the reference cannot separate controller differences from
+clothing/radiation differences while these remain arbitrary.
+
+Decision: use the controllers of Gagge, Fobelets & Berglund (1986) as
+implemented in the ASHRAE 55 SET reference procedure:
+- m_rsw = 170 * WSIG_body * exp(WSIG_sk / 10.7), <= 500 g/(h m^2)
+- SKBF  = (6.3 + 120 * WSIG_cr) / (1 + 0.5 * CSIG_sk), clamped [0.5, 90]
+- w     = min(0.06 + 0.94 E_rsw / E_max, w_max), w_max = 0.59 v^-0.08 (clothed)
+- M_shiv = 19.4 * CSIG_sk * CSIG_cr
+All constants are `literature`. The platform's contribution is the clothing
+optical/radiative model, not thermoregulation.
+
+Known difference kept: when w is capped, the reference sets
+E_skin = (0.06 + w_max) E_max; the prototype uses E_skin = w_max E_max.
+```
+
+### File: `backend/docs/decisions/0003-clothing-surface-balance.md`
+```
+# ADR 0003: explicit clothing surface temperature; solar stays on the skin node
+
+Decision: solve (T_sk - T_cl)/R_cl = f_cl [h_c (T_cl - T_a) + eps sigma (T_cl^4 - T_env^4)]
+each evaluation (Newton, monotone). f_cl = material value or 1 + 0.15 clo, and
+also enters Re,a = 1/(LR f_cl h_c). The `assumed` linearised h_r is removed.
+T_cl is exported (`clothing_surface_temperature_c`) because it governs the net
+sky radiation of a radiative-cooling garment.
+
+Kept simplification: absorbed solar is still deposited on the skin via
+`absorbed_solar_to_body_fraction` and does not enter the surface balance.
+Moving it to the surface would remove a MaterialInput field and a DB column
+and requires spectral data; scheduled for Stage 4. Recorded in
+`assumptions_applied` of every result.
+
+Effective radiation area (added after the first Stage 3 benchmark run): the
+surface balance and both longwave terms are scaled by A_r/A_D = 0.73
+(Fanger 1970, standing). Without it the prototype exchanged ~37 % more
+longwave radiation than the reference, which appeared as a +0.30 K core bias
+after 60 min in the default benchmark scenario (T_mrt = 45 C > T_cl).
 ```
 
 ### File: `backend/docs/environment-assumptions.md`
@@ -13960,8 +14929,8 @@ ground surface temperature, urban canyon geometry, direct/diffuse split
 ```
 # Model parameters
 
-Parameter set version: `2.0.0`  
-SHA-256: `ebc0c64245c3d751ef4bc00bdb0f3bd4b2b8ed696842009f770e5ec4e6603e71`
+Parameter set version: `3.0.0`  
+SHA-256: `5e0cbe090c73d0c64f563d0eee0001d268a9d85a2d9aa0b3d17dd353caa8bcb3`
 
 Generated by `scripts/render_model_parameters_doc.py`. Do not edit by hand.
 
@@ -13971,29 +14940,35 @@ Generated by `scripts/render_model_parameters_doc.py`. Do not edit by hand.
 | `magnus_a` | 0.61078 | kPa | literature | Murray (1967) J. Appl. Meteorol. 6:203-204 |  |
 | `magnus_b` | 17.2694 | - | literature | Murray (1967) J. Appl. Meteorol. 6:203-204 |  |
 | `magnus_c` | 237.3 | C | literature | Murray (1967) J. Appl. Meteorol. 6:203-204 |  |
-| `core_heat_capacity` | 245000 | J/(m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) | Core + skin = 280 kJ/(m^2 K), about 2x the lumped Gagge value for a 70 kg / 1.8 m^2 person (~136 kJ/(m^2 K)). Revisit in Stage 3. |
-| `skin_heat_capacity` | 35000 | J/(m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) | See core_heat_capacity. |
+| `body_specific_heat` | 3490 | J/(kg K) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `skin_mass_fraction` | 0.1 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 | Gagge lets alpha vary with skin blood flow (alpha = 0.0418 + 0.745/(SKBF + 0.585)). Kept constant here so the node heat capacities are state-independent. |
 | `natural_convection_minimum_coefficient` | 3.1 | W/(m^2 K) | literature | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort, Table 6 (seated, v < 0.2 m/s) |  |
 | `forced_convection_coefficient` | 8.3 | W/(m^2 K (m/s)^-0.5) | literature | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort, Table 6 (Mitchell 1974: 8.3 v^0.6) | Exponent simplified from 0.6 to 0.5 in this prototype. |
-| `linearized_radiative_coefficient` | 5.5 | W/(m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) | Typical h_r is 4.7-5.5 W/(m^2 K) near 30 C. |
+| `effective_radiation_area_ratio` | 0.73 | - | literature | Fanger (1970) Thermal Comfort, McGraw-Hill; ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort (0.70 seated, 0.73 standing); ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node | Applied to the clothing surface emission and to skin emission transmitted through IR-transparent textiles. Posture is fixed at standing; a PersonInput.position field is Stage 4 work. |
 | `clo_to_si` | 0.155 | m^2 K/(W clo) | standard | ISO 9920:2007 |  |
+| `clothing_area_factor_slope` | 0.15 | 1/clo | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731; ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node | ASHRAE Fundamentals Ch. 9 quotes 1 + 0.3 clo (McCullough & Jones 1984). 0.15 is retained for parity with the reference model. |
 | `lewis_relation` | 16.5 | K/kPa | standard | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort |  |
-| `clothing_vapor_permeation_efficiency` | 0.45 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731; ASHRAE 55 SET procedure | The Stage 1 factor 1/(1 + 0.45 clo h_c) was equivalent to i_cl ~ 0.344 (Re,cl ~ 27.3 clo m^2 Pa/W). New default gives Re,cl ~ 20.9 clo m^2 Pa/W. |
+| `clothing_vapor_permeation_efficiency` | 0.45 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731; ASHRAE 55 SET procedure |  |
 | `skin_emissivity` | 0.95 | - | literature | Steketee (1973) Phys. Med. Biol. 18:686-694 |  |
 | `core_setpoint_temperature` | 36.8 | C | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `skin_setpoint_temperature` | 33.7 | C | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
-| `sweating_gain_core` | 170 | g/(h m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) adapted from Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 | Gagge uses 170 g/(h m^2 K) on the body-temperature signal with an exponential skin modifier; this prototype uses separate linear gains. |
-| `sweating_gain_skin` | 200 | g/(h m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) |  |
+| `sweating_gain_body` | 170 | g/(h m^2 K) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `sweating_skin_signal_scale` | 10.7 | K | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `maximum_sweat_rate` | 500 | g/(h m^2) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `latent_heat_of_sweat` | 0.68 | W h/g | standard | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort |  |
 | `skin_diffusion_fraction` | 0.06 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `maximum_wettedness_clothed_coefficient` | 0.59 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `maximum_wettedness_clothed_exponent` | -0.08 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `maximum_wettedness_nude_coefficient` | 0.38 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `maximum_wettedness_nude_exponent` | -0.29 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `skin_blood_flow_basal` | 6.3 | kg/(h m^2) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
-| `skin_blood_flow_core_gain` | 75 | kg/(h m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) adapted from Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
-| `skin_blood_flow_skin_gain` | 20 | kg/(h m^2 K) | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) |  |
+| `vasodilation_gain` | 120 | kg/(h m^2 K) | literature | ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node | ASHRAE Fundamentals Ch. 9 prints 200; 120 is the value of the SET reference code and is kept for benchmark parity. |
+| `vasoconstriction_gain` | 0.5 | 1/K | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `skin_blood_flow_minimum` | 0.5 | kg/(h m^2) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `skin_blood_flow_maximum` | 90 | kg/(h m^2) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `core_skin_conductance_basal` | 5.28 | W/(m^2 K) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `blood_heat_capacity_per_flow` | 1.163 | W h/(kg K) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
+| `shivering_coefficient` | 19.4 | W/(m^2 K^2) | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 |  |
 | `metabolic_rate_per_met` | 58.15 | W/m^2 | standard | ISO 7730:2005 (58.2 W/m^2); ASHRAE 55 (58.15) |  |
 | `respiratory_latent_coefficient` | 1.7e-05 | 1/Pa | standard | ISO 7730:2005, Annex D (Fanger 1970 respiratory heat loss) | ISO 7730 uses 1.72e-5. |
 | `respiratory_reference_vapor_pressure` | 5867 | Pa | standard | ISO 7730:2005, Annex D (Fanger 1970 respiratory heat loss) |  |
@@ -14751,69 +15726,69 @@ def test_creates_missing_parent_directories(
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 36.9379,
+      "core_temperature_c": 37.3154,
       "minute": 10.0,
-      "skin_temperature_c": 34.9716
+      "skin_temperature_c": 36.8813
     },
     {
-      "core_temperature_c": 37.0113,
+      "core_temperature_c": 37.7534,
       "minute": 20.0,
-      "skin_temperature_c": 35.1433
+      "skin_temperature_c": 37.194
     },
     {
-      "core_temperature_c": 37.0564,
+      "core_temperature_c": 38.1452,
       "minute": 30.0,
-      "skin_temperature_c": 35.1971
+      "skin_temperature_c": 37.5355
     },
     {
-      "core_temperature_c": 37.086,
+      "core_temperature_c": 38.511,
       "minute": 40.0,
-      "skin_temperature_c": 35.2977
+      "skin_temperature_c": 37.8548
     },
     {
-      "core_temperature_c": 37.1099,
+      "core_temperature_c": 38.8528,
       "minute": 50.0,
-      "skin_temperature_c": 35.4135
+      "skin_temperature_c": 38.1533
     },
     {
-      "core_temperature_c": 37.1321,
+      "core_temperature_c": 39.1722,
       "minute": 60.0,
-      "skin_temperature_c": 35.519
+      "skin_temperature_c": 38.4329
     },
     {
-      "core_temperature_c": 37.1533,
+      "core_temperature_c": 39.4699,
       "minute": 70.0,
-      "skin_temperature_c": 35.6062
+      "skin_temperature_c": 38.6885
     },
     {
-      "core_temperature_c": 37.1733,
+      "core_temperature_c": 39.7453,
       "minute": 80.0,
-      "skin_temperature_c": 35.6777
+      "skin_temperature_c": 38.9242
     },
     {
-      "core_temperature_c": 37.1919,
+      "core_temperature_c": 40.0003,
       "minute": 90.0,
-      "skin_temperature_c": 35.7401
+      "skin_temperature_c": 39.1425
     },
     {
-      "core_temperature_c": 37.2096,
+      "core_temperature_c": 40.2363,
       "minute": 100.0,
-      "skin_temperature_c": 35.7961
+      "skin_temperature_c": 39.3447
     },
     {
-      "core_temperature_c": 37.2264,
+      "core_temperature_c": 40.4549,
       "minute": 110.0,
-      "skin_temperature_c": 35.8474
+      "skin_temperature_c": 39.5322
     },
     {
-      "core_temperature_c": 37.2426,
+      "core_temperature_c": 40.6575,
       "minute": 120.0,
-      "skin_temperature_c": 35.8951
+      "skin_temperature_c": 39.7062
     }
   ],
   "duration_minutes": 120,
   "model_version": "0.5.0",
-  "parameter_fingerprint": "9e691f502d7c347e6231ffd12907cee422ff8a374b7c62c3a404d7f222ff3257",
+  "parameter_fingerprint": "407990587a76b25896954f71012bcf4cb47f0fa3fb3a91dee211dda08529b1a5",
   "parameter_snapshot": {
     "environment_assumptions": {
       "fixed_sky_offset_k": 15.0,
@@ -14826,43 +15801,49 @@ def test_creates_missing_parent_directories(
       "solar_mrt_gain_k_per_w_m2": 0.012,
       "wind_speed_scaling_factor": 1.0
     },
-    "model_parameter_set_sha256": "ebc0c64245c3d751ef4bc00bdb0f3bd4b2b8ed696842009f770e5ec4e6603e71",
-    "model_parameter_set_version": "2.0.0",
+    "model_parameter_set_sha256": "5e0cbe090c73d0c64f563d0eee0001d268a9d85a2d9aa0b3d17dd353caa8bcb3",
+    "model_parameter_set_version": "3.0.0",
     "model_parameters": {
       "blood_heat_capacity_per_flow": 1.163,
+      "body_specific_heat": 3490.0,
       "clo_to_si": 0.155,
+      "clothing_area_factor_slope": 0.15,
       "clothing_vapor_permeation_efficiency": 0.45,
-      "core_heat_capacity": 245000.0,
       "core_setpoint_temperature": 36.8,
       "core_skin_conductance_basal": 5.28,
+      "effective_radiation_area_ratio": 0.73,
       "exhaled_air_temperature": 34.0,
       "fallback_sky_temperature_offset": 15.0,
       "forced_convection_coefficient": 8.3,
       "latent_heat_of_sweat": 0.68,
       "lewis_relation": 16.5,
-      "linearized_radiative_coefficient": 5.5,
       "magnus_a": 0.61078,
       "magnus_b": 17.2694,
       "magnus_c": 237.3,
       "maximum_sweat_rate": 500.0,
+      "maximum_wettedness_clothed_coefficient": 0.59,
+      "maximum_wettedness_clothed_exponent": -0.08,
+      "maximum_wettedness_nude_coefficient": 0.38,
+      "maximum_wettedness_nude_exponent": -0.29,
       "metabolic_rate_per_met": 58.15,
       "natural_convection_minimum_coefficient": 3.1,
       "respiratory_latent_coefficient": 1.7e-05,
       "respiratory_reference_vapor_pressure": 5867.0,
       "respiratory_sensible_coefficient": 0.0014,
+      "shivering_coefficient": 19.4,
       "skin_blood_flow_basal": 6.3,
-      "skin_blood_flow_core_gain": 75.0,
       "skin_blood_flow_maximum": 90.0,
       "skin_blood_flow_minimum": 0.5,
-      "skin_blood_flow_skin_gain": 20.0,
       "skin_diffusion_fraction": 0.06,
       "skin_emissivity": 0.95,
-      "skin_heat_capacity": 35000.0,
+      "skin_mass_fraction": 0.1,
       "skin_setpoint_temperature": 33.7,
       "stefan_boltzmann_constant": 5.670374419e-08,
-      "sweating_gain_core": 170.0,
-      "sweating_gain_skin": 200.0,
-      "swinbank_coefficient": 0.0552
+      "sweating_gain_body": 170.0,
+      "sweating_skin_signal_scale": 10.7,
+      "swinbank_coefficient": 0.0552,
+      "vasoconstriction_gain": 0.5,
+      "vasodilation_gain": 120.0
     },
     "schema_version": 1
   },
@@ -14873,70 +15854,70 @@ def test_creates_missing_parent_directories(
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 36.9404,
+      "core_temperature_c": 37.2525,
       "minute": 10.0,
-      "skin_temperature_c": 34.7869
+      "skin_temperature_c": 36.5204
     },
     {
-      "core_temperature_c": 37.0084,
+      "core_temperature_c": 37.5858,
       "minute": 20.0,
-      "skin_temperature_c": 34.9578
+      "skin_temperature_c": 36.7421
     },
     {
-      "core_temperature_c": 37.048,
+      "core_temperature_c": 37.7897,
       "minute": 30.0,
-      "skin_temperature_c": 35.0098
+      "skin_temperature_c": 36.8187
     },
     {
-      "core_temperature_c": 37.0711,
+      "core_temperature_c": 37.9672,
       "minute": 40.0,
-      "skin_temperature_c": 35.0394
+      "skin_temperature_c": 36.9749
     },
     {
-      "core_temperature_c": 37.0848,
+      "core_temperature_c": 38.134,
       "minute": 50.0,
-      "skin_temperature_c": 35.0592
+      "skin_temperature_c": 37.1226
     },
     {
-      "core_temperature_c": 37.093,
+      "core_temperature_c": 38.2911,
       "minute": 60.0,
-      "skin_temperature_c": 35.0735
+      "skin_temperature_c": 37.2622
     },
     {
-      "core_temperature_c": 37.098,
+      "core_temperature_c": 38.4386,
       "minute": 70.0,
-      "skin_temperature_c": 35.0832
+      "skin_temperature_c": 37.3911
     },
     {
-      "core_temperature_c": 37.1012,
+      "core_temperature_c": 38.5764,
       "minute": 80.0,
-      "skin_temperature_c": 35.0903
+      "skin_temperature_c": 37.5114
     },
     {
-      "core_temperature_c": 37.1032,
+      "core_temperature_c": 38.7053,
       "minute": 90.0,
-      "skin_temperature_c": 35.0962
+      "skin_temperature_c": 37.6242
     },
     {
-      "core_temperature_c": 37.1046,
+      "core_temperature_c": 38.826,
       "minute": 100.0,
-      "skin_temperature_c": 35.1014
+      "skin_temperature_c": 37.7304
     },
     {
-      "core_temperature_c": 37.1056,
+      "core_temperature_c": 38.9393,
       "minute": 110.0,
-      "skin_temperature_c": 35.1061
+      "skin_temperature_c": 37.8303
     },
     {
-      "core_temperature_c": 37.1064,
+      "core_temperature_c": 39.0458,
       "minute": 120.0,
-      "skin_temperature_c": 35.1105
+      "skin_temperature_c": 37.9247
     }
   ],
   "summary": {
-    "average_skin_temperature_improvement_c": 0.43,
-    "final_core_temperature_improvement_c": 0.1362,
-    "final_skin_temperature_improvement_c": 0.7846
+    "average_skin_temperature_improvement_c": 1.0721,
+    "final_core_temperature_improvement_c": 1.6117,
+    "final_skin_temperature_improvement_c": 1.7815
   },
   "weather": {
     "payload_sha256": "b568200999e8bc079896b86d451e3c82213682d90698ef1f846100fcc863f9d3",
@@ -15120,6 +16101,40 @@ def test_identical_material_api_improvement_is_zero(
             "final_core_temperature_improvement_c"
         ]
     ) < 1e-6
+```
+
+### File: `backend/tests/test_body.py`
+```python
+import pytest
+
+from app.schemas.simulation import PersonInput
+from app.services.body import body_heat_capacities
+
+
+@pytest.mark.unit
+def test_default_person_reproduces_gagge_lumped_value():
+    capacities = body_heat_capacities(PersonInput())
+
+    # 3490 * 70 / 1.8 = 135 722 J/(m^2 K); alpha = 0.1
+    assert capacities.total_j_m2k == pytest.approx(135_722.2, abs=0.5)
+    assert capacities.skin_j_m2k == pytest.approx(13_572.2, abs=0.5)
+    assert capacities.core_j_m2k == pytest.approx(122_150.0, abs=0.5)
+
+
+@pytest.mark.unit
+def test_heavier_person_has_larger_capacity_per_area():
+    light = body_heat_capacities(PersonInput(body_mass_kg=55.0))
+    heavy = body_heat_capacities(PersonInput(body_mass_kg=95.0))
+
+    assert heavy.total_j_m2k > light.total_j_m2k
+
+
+@pytest.mark.unit
+def test_larger_surface_area_lowers_capacity_per_area():
+    small = body_heat_capacities(PersonInput(body_surface_area_m2=1.6))
+    large = body_heat_capacities(PersonInput(body_surface_area_m2=2.2))
+
+    assert large.total_j_m2k < small.total_j_m2k
 ```
 
 ### File: `backend/tests/test_cities.py`
@@ -15418,7 +16433,13 @@ def test_explicit_derived_value_reproduces_none_result(environment, person, cont
     assert a.final_skin_temperature_c == pytest.approx(b.final_skin_temperature_c, abs=1e-8)
     assert a.clothing.evaporative_resistance_source == "derived_from_clo"
     assert b.clothing.evaporative_resistance_source == "material_input"
-    assert b.assumptions_applied == []
+
+    # Stage 3: f_cl and the ADR 0003 solar note are always reported; only the
+    # Re,cl derivation note must disappear when the value is supplied.
+    assert any("evaporative_resistance" in note for note in a.assumptions_applied)
+    assert not any("evaporative_resistance" in note for note in b.assumptions_applied)
+
+
 
 
 @pytest.mark.unit
@@ -15440,8 +16461,8 @@ def test_infrared_transmittance_amplifies_longwave_exchange(
     opaque = control_material.model_copy(update={"infrared_emissivity": 0.5})
     transparent = opaque.model_copy(update={"infrared_transmittance": 0.4})
 
-    # Cold radiant surroundings: the body loses heat, transmittance must
-    # increase the loss (more positive under the "positive = loss" convention).
+    # Cold radiant surroundings: the body loses heat; transmittance increases
+    # the loss (more positive under the "positive = loss" convention).
     cold = environment.model_copy(
         update={"mean_radiant_temperature_c": 15.0, "sky_temperature_c": 0.0}
     )
@@ -15450,13 +16471,50 @@ def test_infrared_transmittance_amplifies_longwave_exchange(
     assert opaque_cold.longwave_radiation > 0
     assert transparent_cold.longwave_radiation > opaque_cold.longwave_radiation
 
-    # Hot radiant surroundings (the default fixture, T_eff ≈ 34.6 °C > skin):
-    # the body gains heat, transmittance must increase the gain (more negative).
-    opaque_hot = calculate_fluxes(36.8, 33.7, environment, person, opaque)
-    transparent_hot = calculate_fluxes(36.8, 33.7, environment, person, transparent)
+    # Hot radiant surroundings well above any clothing surface temperature:
+    # the body gains heat; transmittance increases the gain (more negative).
+    hot = environment.model_copy(
+        update={"mean_radiant_temperature_c": 60.0, "sky_temperature_c": 60.0}
+    )
+    opaque_hot = calculate_fluxes(36.8, 33.7, hot, person, opaque)
+    transparent_hot = calculate_fluxes(36.8, 33.7, hot, person, transparent)
     assert opaque_hot.longwave_radiation < 0
     assert transparent_hot.longwave_radiation < opaque_hot.longwave_radiation
 
+@pytest.mark.unit
+def test_area_factor_is_derived_and_flagged(control_material):
+    clothing = resolve_clothing(control_material)
+
+    assert clothing.area_factor_source == "derived_from_clo"
+    assert clothing.area_factor == pytest.approx(1.0 + 0.15 * 0.5)
+
+@pytest.mark.unit
+def test_explicit_area_factor_overrides_derivation(control_material):
+    material = control_material.model_copy(update={"clothing_area_factor": 1.4})
+    clothing = resolve_clothing(material)
+
+    assert clothing.area_factor_source == "material_input"
+    assert clothing.area_factor == pytest.approx(1.4)
+
+@pytest.mark.unit
+def test_clothing_surface_balance_is_consistent(environment, person, control_material):
+    """Conduction through the textile equals what leaves its outer surface."""
+    clothing = resolve_clothing(control_material)
+    fluxes = calculate_fluxes(36.8, 33.7, environment, person, control_material, clothing)
+
+    conduction = (33.7 - fluxes.clothing_surface_temperature_c) / clothing.dry_resistance_m2k_w
+    surface_losses = fluxes.convection + fluxes.longwave_radiation - fluxes.longwave_transmitted
+
+    assert conduction == pytest.approx(surface_losses, abs=1e-3)
+
+@pytest.mark.unit
+def test_nude_surface_temperature_equals_skin(environment, person, control_material):
+    nude = control_material.model_copy(update={"clothing_insulation_clo": 0.0})
+    fluxes = calculate_fluxes(36.8, 33.7, environment, person, nude)
+
+    assert fluxes.clothing_surface_temperature_c == pytest.approx(33.7)
+    
+    
 @pytest.mark.unit
 def test_emissivity_plus_transmittance_above_one_is_rejected():
     with pytest.raises(ValidationError, match="infrared_emissivity"):
@@ -15921,6 +16979,105 @@ def test_gagge_api_converts_service_error_to_500(
         "invalid benchmark input"
         in error.value.detail
     )
+    
+@pytest.mark.benchmark
+def test_benchmark_returns_aligned_transient_series(environment, person, control_material):
+    request = GaggeBenchmarkRequest(
+        duration_minutes=90, environment=environment, person=person, material=control_material
+    )
+
+    result = run_gagge_benchmark(request)
+
+    assert len(result.time_series) == 91
+    assert result.time_series[0].minute == 0
+    assert result.time_series[-1].minute == 90
+    assert result.core_temperature.maximum_absolute_difference_c >= abs(
+        result.core_temperature.final_difference_c
+    )
+    assert result.reference_port_parity.maximum_absolute_difference_c < 0.05
+    assert any("solar_radiation" in note for note in result.alignment_applied)
+
+
+@pytest.mark.benchmark
+def test_default_case_is_within_stage_3_tolerances(environment, person, control_material):
+    """Acceptance criterion of Stage 3 for the reference scenario."""
+    result = run_gagge_benchmark(
+        GaggeBenchmarkRequest(environment=environment, person=person, material=control_material)
+    )
+
+    assert result.core_temperature.passed, result.core_temperature
+    assert result.skin_temperature.passed, result.skin_temperature
+    assert result.passed
+```
+
+### File: `backend/tests/test_gagge_reference.py`
+```python
+import math
+
+import pytest
+from pythermalcomfort.models import two_nodes_gagge
+
+from app.services.gagge_reference import run_gagge_reference
+
+
+PARITY_TOLERANCE_C = 0.05
+
+CASES = [
+    # tdb, tr, v, rh, met, clo
+    (38.0, 45.0, 1.5, 40.0, 2.6, 0.5),
+    (30.0, 30.0, 0.3, 60.0, 1.2, 0.6),
+    (42.0, 42.0, 2.0, 20.0, 2.0, 0.4),
+    (34.0, 36.0, 1.0, 85.0, 1.8, 0.5),
+    (25.0, 25.0, 0.1, 50.0, 1.0, 1.0),
+]
+
+
+@pytest.mark.benchmark
+@pytest.mark.parametrize(("tdb", "tr", "v", "rh", "met", "clo"), CASES)
+def test_port_matches_library_after_sixty_minutes(tdb, tr, v, rh, met, clo):
+    library = two_nodes_gagge(
+        tdb=tdb, tr=tr, v=v, rh=rh, met=met, clo=clo, wme=0,
+        body_surface_area=1.8, p_atm=101325, position="standing",
+        max_skin_blood_flow=90, max_sweating=500, round_output=False,
+    )
+
+    port = run_gagge_reference(
+        tdb=tdb, tr=tr, v=v, rh=rh, met=met, clo=clo,
+        body_surface_area=1.8, body_mass_kg=70.0, duration_minutes=60,
+    ).final
+
+    assert port.core_temperature_c == pytest.approx(
+        float(library.t_core), abs=PARITY_TOLERANCE_C
+    )
+    assert port.skin_temperature_c == pytest.approx(
+        float(library.t_skin), abs=PARITY_TOLERANCE_C
+    )
+    assert port.skin_wettedness == pytest.approx(float(library.w), abs=0.02)
+
+
+@pytest.mark.unit
+def test_port_returns_one_point_per_minute_plus_initial_state():
+    result = run_gagge_reference(
+        tdb=38.0, tr=45.0, v=1.5, rh=40.0, met=2.6, clo=0.5, duration_minutes=90
+    )
+
+    assert len(result.points) == 91
+    assert result.points[0].minute == 0
+    assert result.points[0].skin_temperature_c == 33.7
+    assert result.points[-1].minute == 90
+    assert all(math.isfinite(p.core_temperature_c) for p in result.points)
+
+
+@pytest.mark.unit
+def test_heavier_body_warms_more_slowly():
+    light = run_gagge_reference(
+        tdb=40.0, tr=40.0, v=0.5, rh=40.0, met=2.0, clo=0.5, body_mass_kg=55.0
+    ).final
+    heavy = run_gagge_reference(
+        tdb=40.0, tr=40.0, v=0.5, rh=40.0, met=2.0, clo=0.5, body_mass_kg=95.0
+    ).final
+
+    assert heavy.core_temperature_c < light.core_temperature_c
 ```
 
 ### File: `backend/tests/test_global_batch_geojson.py`
@@ -16251,6 +17408,7 @@ def final_skin(result) -> float:
 MATERIAL_PERTURBATIONS = {
     "clothing_insulation_clo": 0.9,
     "evaporative_resistance_m2pa_w": 40.0,
+    "clothing_area_factor": 1.4,           # Stage 3
     "solar_reflectance": 0.7,
     "solar_transmittance": 0.2,
     "infrared_emissivity": 0.5,
@@ -16277,6 +17435,8 @@ def test_every_material_field_participates(
 
 PERSON_PERTURBATIONS = {
     "met": 1.2,
+    "body_surface_area_m2": 2.4,           # Stage 3: was xfail (ADR 0001)
+    "body_mass_kg": 95.0,                  # Stage 3
     "initial_core_temperature_c": 37.4,
     "initial_skin_temperature_c": 31.0,
 }
@@ -16293,27 +17453,6 @@ def test_every_person_field_participates(
     )
 
     assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C
-
-
-@pytest.mark.unit
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Known Stage 2 finding: heat capacities are per-m^2 constants, so "
-        "body_surface_area_m2 is informational only. Decision recorded in "
-        "docs/decisions/0001-body-surface-area.md; fix planned for Stage 3."
-    ),
-)
-def test_body_surface_area_participates(environment, person, control_material):
-    baseline = simulate_material(60, 1, environment, person, control_material)
-    perturbed = simulate_material(
-        60, 1, environment,
-        person.model_copy(update={"body_surface_area_m2": 2.4}),
-        control_material,
-    )
-
-    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C
-
 
 # (baseline update, perturbed update). Method-dependent parameters are tested
 # with the method that uses them switched on in both runs.
@@ -16467,39 +17606,22 @@ from types import SimpleNamespace
 import pytest
 
 from app.services.result_export import (
+    CSV_HEADERS,
     export_result_csv,
     export_result_json,
 )
 
 
-EXPECTED_HEADERS = [
-    "minute",
-    "control_core_temperature_c",
-    "control_skin_temperature_c",
-    "rc_core_temperature_c",
-    "rc_skin_temperature_c",
-    "control_convection_w_m2",
-    "rc_convection_w_m2",
-    "control_longwave_w_m2",
-    "rc_longwave_w_m2",
-    "control_evaporation_w_m2",
-    "rc_evaporation_w_m2",
-    "control_absorbed_solar_w_m2",
-    "rc_absorbed_solar_w_m2",
-]
+EXPECTED_HEADERS = CSV_HEADERS  # single source of truth
 
 
 def make_point(
     *,
-    minute: float,
-    core_temperature_c: float,
-    skin_temperature_c: float,
-    convection_w_m2: float,
-    longwave_radiation_w_m2: float,
-    evaporation_w_m2: float,
-    absorbed_solar_w_m2: float,
+    minute, core_temperature_c, skin_temperature_c, convection_w_m2,
+    longwave_radiation_w_m2, evaporation_w_m2, absorbed_solar_w_m2,
+    maximum_evaporation_w_m2=None, skin_wettedness=None,
+    clothing_surface_temperature_c=None,
 ):
-    """Minimal time-series test objects required to create a CSV exporter."""
     return SimpleNamespace(
         minute=minute,
         core_temperature_c=core_temperature_c,
@@ -16508,8 +17630,30 @@ def make_point(
         longwave_radiation_w_m2=longwave_radiation_w_m2,
         evaporation_w_m2=evaporation_w_m2,
         absorbed_solar_w_m2=absorbed_solar_w_m2,
+        maximum_evaporation_w_m2=maximum_evaporation_w_m2,
+        skin_wettedness=skin_wettedness,
+        clothing_surface_temperature_c=clothing_surface_temperature_c,
     )
 
+@pytest.mark.unit
+def test_missing_stage_3_diagnostics_export_as_blank_cells():
+    rows = list(csv.reader(io.StringIO(export_result_csv(make_export_result()))))
+    assert rows[1][13:] == [""] * 6
+
+@pytest.mark.unit
+def test_stage_3_diagnostics_are_exported_when_present():
+    point = make_point(
+        minute=0, core_temperature_c=36.8, skin_temperature_c=33.7,
+        convection_w_m2=1.0, longwave_radiation_w_m2=1.0, evaporation_w_m2=1.0,
+        absorbed_solar_w_m2=1.0, maximum_evaporation_w_m2=120.0,
+        skin_wettedness=0.25, clothing_surface_temperature_c=35.1,
+    )
+    rows = list(csv.reader(io.StringIO(export_result_csv(
+        make_export_result(control_points=[point], rc_points=[point])
+    ))))
+    assert float(rows[1][13]) == pytest.approx(120.0)
+    assert float(rows[1][15]) == pytest.approx(0.25)
+    assert float(rows[1][17]) == pytest.approx(35.1)
 
 def make_export_result(
     *,
@@ -16557,6 +17701,8 @@ def test_result_csv_contains_expected_headers():
     rows = list(csv.reader(io.StringIO(csv_text)))
 
     assert rows[0] == EXPECTED_HEADERS
+    assert "control_clothing_surface_temperature_c" in rows[0]
+    assert len(rows[0]) == 1 + 2 * 9  # minute + 9 paired quantities
 
 
 @pytest.mark.unit

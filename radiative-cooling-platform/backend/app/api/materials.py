@@ -36,6 +36,13 @@ from app.schemas.material import (
     MaterialVersionResponse,
     SpectrumResponse,
     SpectrumSummary,
+    MaterialVersionListItem,
+    MaterialVersionListResponse,
+)
+from app.services.material_resolution import (
+    MaterialVersionNotFoundError,
+    load_material_version,
+    material_input_from_version,
 )
 from app.schemas.simulation import MaterialInput
 from app.services.spectrum_parser import (
@@ -67,6 +74,74 @@ def version_column_values(request: MaterialVersionCreate) -> dict:
     values = request.model_dump(mode="json")
     values["parameter_sources_json"] = values.pop("parameter_sources")
     return values
+
+
+@router.get(
+    "/versions",
+    response_model=MaterialVersionListResponse,
+)
+def list_material_versions(
+    include_archived: bool = False,
+    material_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_db),
+) -> MaterialVersionListResponse:
+    """Flat list of versions for simulation-form pickers (Stage 4)."""
+    filters = []
+
+    if not include_archived:
+        filters.append(Material.is_archived.is_(False))
+
+    if material_id:
+        filters.append(MaterialVersion.material_id == material_id)
+
+    total = session.scalar(
+        select(func.count())
+        .select_from(MaterialVersion)
+        .join(MaterialVersion.material)
+        .where(*filters)
+    ) or 0
+
+    versions = session.scalars(
+        select(MaterialVersion)
+        .join(MaterialVersion.material)
+        .options(selectinload(MaterialVersion.material))
+        .where(*filters)
+        .order_by(
+            Material.name.asc(),
+            MaterialVersion.version_number.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return MaterialVersionListResponse(
+        items=[
+            MaterialVersionListItem(
+                id=version.id,
+                material_id=version.material_id,
+                material_name=version.material.name,
+                material_slug=version.material.slug,
+                version_number=version.version_number,
+                mode=version.mode,
+                clothing_insulation_clo=version.clothing_insulation_clo,
+                evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
+                clothing_area_factor=version.clothing_area_factor,
+                solar_reflectance=version.solar_reflectance,
+                solar_transmittance=version.solar_transmittance,
+                infrared_emissivity=version.infrared_emissivity,
+                infrared_transmittance=version.infrared_transmittance,
+                source_type=version.source_type,
+                is_archived=version.material.is_archived,
+                created_at=version.created_at,
+            )
+            for version in versions
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 @router.post(
     "",
@@ -309,32 +384,24 @@ def create_material_version(
     )
 
 
-@router.get("/versions/{version_id}/simulation-input", response_model=MaterialInput)
-def material_version_to_simulation_input(version_id: str, session: Session = Depends(get_db)) -> MaterialInput:
-    version = session.scalar(
-        select(MaterialVersion)
-        .options(selectinload(MaterialVersion.material))
-        .where(MaterialVersion.id == version_id)
-    )
-    if version is None:
-        raise HTTPException(status_code=404, detail="Material version not found")
+@router.get(
+    "/versions/{version_id}/simulation-input",
+    response_model=MaterialInput,
+)
+def material_version_to_simulation_input(
+    version_id: str,
+    session: Session = Depends(get_db),
+) -> MaterialInput:
+    try:
+        version = load_material_version(session, version_id)
+    except MaterialVersionNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail="Material version not found",
+        ) from error
 
-    return MaterialInput(
-        name=f"{version.material.name} v{version.version_number}",
-        clothing_insulation_clo=version.clothing_insulation_clo,
-        evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
-        solar_reflectance=version.solar_reflectance,
-        solar_transmittance=version.solar_transmittance,
-        infrared_emissivity=version.infrared_emissivity,
-        infrared_transmittance=version.infrared_transmittance,
-        projected_solar_area_factor=version.projected_solar_area_factor,
-        absorbed_solar_to_body_fraction=version.absorbed_solar_to_body_fraction,
-        material_version_id=version.id,
-        source_type=version.source_type,
-        source_reference=version.source_reference,
-        parameter_sources=version.parameter_sources_json,
-        clothing_area_factor=version.clothing_area_factor,
-    )
+    # MaterialVersionInvalidError propagates to the global 422 handler.
+    return material_input_from_version(version)
 
 
 @router.post(

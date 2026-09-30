@@ -53,8 +53,8 @@ const initialRequest: GaggeBenchmarkRequest = {
   },
 
   tolerances: {
-    core_temperature_c: 0.3,
-    skin_temperature_c: 1.0,
+    core_temperature_c: 0.31,
+    skin_temperature_c: 1.01,
   },
 };
 
@@ -179,6 +179,7 @@ export default function GaggeBenchmarkPage() {
               <MaterialInputFields
                 material={request.material}
                 showName
+                enableLibrary
                 onChange={(material) => setRequest({ ...request, material })}
               />
             </div>

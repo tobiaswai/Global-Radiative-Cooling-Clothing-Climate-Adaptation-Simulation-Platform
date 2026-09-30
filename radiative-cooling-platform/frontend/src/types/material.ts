@@ -82,3 +82,29 @@ export type MaterialListResponse = {
   limit: number;
   offset: number;
 };
+
+export type MaterialVersionListItem = {
+  id: string;
+  material_id: string;
+  material_name: string;
+  material_slug: string;
+  version_number: number;
+  mode: string;
+  clothing_insulation_clo: number;
+  evaporative_resistance_m2pa_w: number | null;
+  clothing_area_factor: number | null;
+  solar_reflectance: number;
+  solar_transmittance: number;
+  infrared_emissivity: number;
+  infrared_transmittance: number;
+  source_type: string;
+  is_archived: boolean;
+  created_at: string;
+};
+
+export type MaterialVersionListResponse = {
+  items: MaterialVersionListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+};

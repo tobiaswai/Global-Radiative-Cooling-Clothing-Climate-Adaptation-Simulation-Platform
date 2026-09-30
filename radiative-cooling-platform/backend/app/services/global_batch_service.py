@@ -144,6 +144,8 @@ def batch_to_response(
         updated_at=batch.updated_at,
         started_at=batch.started_at,
         completed_at=batch.completed_at,
+        control_material_version_id=getattr(batch, "control_material_version_id", None),
+        rc_material_version_id=getattr(batch, "rc_material_version_id", None),
     )
 
 

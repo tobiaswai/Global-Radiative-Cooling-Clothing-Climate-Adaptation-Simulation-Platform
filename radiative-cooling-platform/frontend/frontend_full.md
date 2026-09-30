@@ -9,6 +9,8 @@ frontend/eslint.config.mjs
 frontend/AGENTS.md
 frontend/CLAUDE.md
 frontend/README.md
+frontend/.env.example
+frontend/src/app/benchmarks/gagge/page.tsx
 frontend/src/app/global-analysis/[batchId]/page.tsx
 frontend/src/app/global-analysis/page.tsx
 frontend/src/app/globals.css
@@ -21,16 +23,26 @@ frontend/src/app/simulations/[jobId]/page.tsx
 frontend/src/app/simulations/new/page.tsx
 frontend/src/app/simulations/page.tsx
 frontend/src/app/simulations/weather/page.tsx
+frontend/src/components/charts/benchmark-chart.tsx
 frontend/src/components/charts/heat-flux-chart.tsx
+frontend/src/components/charts/physiology-chart.tsx
 frontend/src/components/charts/temperature-chart.tsx
 frontend/src/components/charts/weather-chart.tsx
+frontend/src/components/forms/number-field.tsx
 frontend/src/components/global-adaptation-map.tsx
 frontend/src/components/layout/NavBar.tsx
+frontend/src/components/simulation/environment-input-fields.tsx
+frontend/src/components/simulation/material-input-fields.tsx
+frontend/src/components/simulation/model-provenance-panel.tsx
 frontend/src/components/simulation/model-quality-panel.tsx
+frontend/src/components/simulation/person-input-fields.tsx
 frontend/src/config/navigation.ts
 frontend/src/lib/api-client.ts
 frontend/src/lib/date-defaults.ts
+frontend/src/lib/format.ts
+frontend/src/lib/time-series.ts
 frontend/src/locales/en.ts
+frontend/src/types/benchmark.ts
 frontend/src/types/global-batch.ts
 frontend/src/types/material.ts
 frontend/src/types/simulation.ts
@@ -206,26 +218,576 @@ npm run build
 npm run lint
 ```
 
+### File: `frontend/.env.example`
+```text
+# Base URL of the FastAPI backend (no trailing slash)
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
+### File: `frontend/src/app/benchmarks/gagge/page.tsx`
+```tsx
+"use client";
+
+import { type FormEvent, useState } from "react";
+
+import { BenchmarkChart } from "@/components/charts/benchmark-chart";
+import { NumberField } from "@/components/forms/number-field";
+import { EnvironmentInputFields } from "@/components/simulation/environment-input-fields";
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
+import { compareWithGagge } from "@/lib/api-client";
+import { formatNumber, formatSignedNumber } from "@/lib/format";
+import type {
+  BenchmarkMetric,
+  GaggeBenchmarkRequest,
+  GaggeBenchmarkResponse,
+} from "@/types/benchmark";
+
+/**
+ * Defaults describe a warm, still, indoor-like scene where the Gagge two-node
+ * model is defined. Raise solar radiation to probe the outdoor extension; the
+ * backend reports how it aligned the inputs under "Alignment applied".
+ */
+const initialRequest: GaggeBenchmarkRequest = {
+  duration_minutes: 60,
+
+  environment: {
+    air_temperature_c: 34,
+    mean_radiant_temperature_c: 34,
+    sky_temperature_c: null,
+    relative_humidity_percent: 40,
+    wind_speed_m_s: 0.5,
+    solar_radiation_w_m2: 0,
+    sky_view_factor: 0.5,
+  },
+
+  person: {
+    met: 1.2,
+    body_mass_kg: 70,
+    body_surface_area_m2: 1.8,
+    initial_core_temperature_c: 36.8,
+    initial_skin_temperature_c: 33.7,
+  },
+
+  material: {
+    name: "Ordinary clothing",
+    clothing_insulation_clo: 0.5,
+    clothing_area_factor: null,
+    solar_reflectance: 0.4,
+    solar_transmittance: 0,
+    infrared_emissivity: 0.9,
+    projected_solar_area_factor: 0.25,
+    absorbed_solar_to_body_fraction: 0.35,
+  },
+
+  tolerances: {
+    core_temperature_c: 0.3,
+    skin_temperature_c: 1.0,
+  },
+};
+
+export default function GaggeBenchmarkPage() {
+  const [request, setRequest] = useState<GaggeBenchmarkRequest>(initialRequest);
+  const [result, setResult] = useState<GaggeBenchmarkResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    setLoading(true);
+    setError("");
+
+    try {
+      setResult(await compareWithGagge(request));
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : "Gagge benchmark failed",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <header>
+          <p className="text-sm font-medium text-cyan-400">Model Verification</p>
+
+          <h1 className="mt-2 text-3xl font-bold">Gagge Two-Node Benchmark</h1>
+
+          <p className="mt-3 max-w-3xl text-slate-400">
+            Run the platform prototype and the reference Gagge two-node model
+            on the same scenario, then compare the full core and skin
+            temperature trajectories against the acceptance tolerances.
+          </p>
+        </header>
+
+        <form onSubmit={handleSubmit} className="mt-10 space-y-8">
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Benchmark Settings</h2>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-3">
+              <NumberField
+                label="Duration"
+                suffix="min"
+                value={request.duration_minutes}
+                min={1}
+                max={240}
+                step={1}
+                hint="The reference library itself only runs 60 minutes; longer runs use the ported model."
+                onChange={(value) =>
+                  setRequest({ ...request, duration_minutes: value })
+                }
+              />
+
+              <NumberField
+                label="Core Temperature Tolerance"
+                suffix="°C"
+                value={request.tolerances.core_temperature_c}
+                min={0.01}
+                max={5}
+                step={0.05}
+                onChange={(value) =>
+                  setRequest({
+                    ...request,
+                    tolerances: { ...request.tolerances, core_temperature_c: value },
+                  })
+                }
+              />
+
+              <NumberField
+                label="Skin Temperature Tolerance"
+                suffix="°C"
+                value={request.tolerances.skin_temperature_c}
+                min={0.01}
+                max={10}
+                step={0.1}
+                onChange={(value) =>
+                  setRequest({
+                    ...request,
+                    tolerances: { ...request.tolerances, skin_temperature_c: value },
+                  })
+                }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Environment</h2>
+
+            <div className="mt-5">
+              <EnvironmentInputFields
+                environment={request.environment}
+                onChange={(environment) =>
+                  setRequest({ ...request, environment })
+                }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Person</h2>
+
+            <div className="mt-5">
+              <PersonInputFields
+                person={request.person}
+                onChange={(person) => setRequest({ ...request, person })}
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Clothing</h2>
+
+            <div className="mt-5">
+              <MaterialInputFields
+                material={request.material}
+                showName
+                onChange={(material) => setRequest({ ...request, material })}
+              />
+            </div>
+          </section>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-xl bg-cyan-400 px-8 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Running benchmark..." : "Run Benchmark"}
+          </button>
+
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-900 bg-red-950 p-4 text-red-300"
+            >
+              {error}
+            </div>
+          )}
+        </form>
+
+        {result && (
+          <section className="mt-12 space-y-8">
+            <VerdictBanner result={result} />
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <MetricCard title="Core Temperature" metric={result.core_temperature} />
+              <MetricCard title="Skin Temperature" metric={result.skin_temperature} />
+            </div>
+
+            <BenchmarkChart
+              points={result.time_series}
+              referenceLabel={result.reference_model}
+            />
+
+            <FinalStateTable result={result} />
+
+            <div className="grid gap-8 lg:grid-cols-2">
+              <AlignmentList items={result.alignment_applied} />
+              <PortParityPanel result={result} />
+            </div>
+
+            <div className="rounded-xl border border-amber-800 bg-amber-950/50 p-4 text-sm text-amber-200">
+              <p>{result.warning}</p>
+              <p className="mt-2">{result.environment_note}</p>
+            </div>
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function PassBadge({ passed }: { passed: boolean }) {
+  return (
+    <span
+      className={[
+        "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
+        passed
+          ? "border-emerald-800 bg-emerald-950 text-emerald-300"
+          : "border-red-800 bg-red-950 text-red-300",
+      ].join(" ")}
+    >
+      {passed ? "Within tolerance" : "Outside tolerance"}
+    </span>
+  );
+}
+
+function VerdictBanner({ result }: { result: GaggeBenchmarkResponse }) {
+  const { passed } = result;
+
+  return (
+    <div
+      className={[
+        "rounded-2xl border p-5",
+        passed
+          ? "border-emerald-800 bg-emerald-950/40"
+          : "border-red-800 bg-red-950/40",
+      ].join(" ")}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-6">
+        <div>
+          <p className="text-sm text-slate-400">Benchmark verdict</p>
+
+          <p
+            className={`mt-1 text-3xl font-bold ${
+              passed ? "text-emerald-300" : "text-red-300"
+            }`}
+          >
+            {passed ? "PASSED" : "FAILED"}
+          </p>
+        </div>
+
+        <dl className="grid gap-x-10 gap-y-2 text-sm sm:grid-cols-3">
+          <div>
+            <dt className="text-slate-500">Reference model</dt>
+            <dd className="mt-1 text-slate-200">{result.reference_model}</dd>
+          </div>
+
+          <div>
+            <dt className="text-slate-500">Reference library</dt>
+            <dd className="mt-1 text-slate-200">
+              {result.reference_library}{" "}
+              <span className="font-mono text-slate-400">
+                {result.reference_library_version}
+              </span>
+            </dd>
+          </div>
+
+          <div>
+            <dt className="text-slate-500">Port parity (60 min)</dt>
+            <dd className="mt-1 font-mono text-slate-200">
+              {formatNumber(
+                result.reference_port_parity.maximum_absolute_difference_c,
+                4,
+                " °C",
+              )}
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({
+  title,
+  metric,
+}: {
+  title: string;
+  metric: BenchmarkMetric;
+}) {
+  return (
+    <article
+      className={[
+        "rounded-2xl border p-5",
+        metric.passed
+          ? "border-slate-800 bg-slate-900"
+          : "border-red-900 bg-red-950/30",
+      ].join(" ")}
+    >
+      <div className="flex items-center justify-between gap-4">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <PassBadge passed={metric.passed} />
+      </div>
+
+      <p className="mt-4 text-3xl font-bold text-cyan-300">
+        {formatNumber(metric.maximum_absolute_difference_c, 3)}
+        <span className="ml-1 text-base font-normal">°C</span>
+      </p>
+
+      <p className="mt-1 text-sm text-slate-400">
+        maximum absolute difference · tolerance{" "}
+        {formatNumber(metric.tolerance_c, 2, " °C")}
+      </p>
+
+      <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+        <div>
+          <dt className="text-slate-500">Final difference</dt>
+          <dd className="mt-1 text-slate-200">
+            {formatSignedNumber(metric.final_difference_c, 3, " °C")}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">RMS difference</dt>
+          <dd className="mt-1 text-slate-200">
+            {formatNumber(metric.root_mean_square_difference_c, 3, " °C")}
+          </dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function FinalStateTable({ result }: { result: GaggeBenchmarkResponse }) {
+  const rows = [
+    {
+      label: "Core temperature",
+      unit: " °C",
+      digits: 3,
+      prototype: result.prototype.core_temperature_c,
+      reference: result.gagge.core_temperature_c,
+    },
+    {
+      label: "Skin temperature",
+      unit: " °C",
+      digits: 3,
+      prototype: result.prototype.skin_temperature_c,
+      reference: result.gagge.skin_temperature_c,
+    },
+    {
+      label: "Skin evaporative heat loss",
+      unit: " W/m²",
+      digits: 1,
+      prototype: result.prototype.evaporation_w_m2,
+      reference: result.gagge.skin_evaporation_w_m2,
+    },
+    {
+      label: "Skin wettedness",
+      unit: "",
+      digits: 3,
+      prototype: result.prototype.skin_wettedness,
+      reference: result.gagge.skin_wettedness,
+    },
+    {
+      label: "Skin blood flow",
+      unit: " kg/(h·m²)",
+      digits: 2,
+      prototype: result.prototype.skin_blood_flow_kg_h_m2,
+      reference: result.gagge.skin_blood_flow_kg_h_m2,
+    },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Final State Comparison</h2>
+
+      <p className="mt-2 text-sm text-slate-400">
+        Values at the end of the {result.time_series.at(-1)?.minute ?? "—"}
+        -minute run. Difference is prototype minus reference.
+      </p>
+
+      <div className="mt-5 overflow-x-auto">
+        <table className="w-full min-w-160 text-left text-sm">
+          <thead className="border-b border-slate-700 text-slate-400">
+            <tr>
+              <th className="px-3 py-3">Quantity</th>
+              <th className="px-3 py-3">Prototype</th>
+              <th className="px-3 py-3">{result.reference_model}</th>
+              <th className="px-3 py-3">Difference</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} className="border-b border-slate-800">
+                <td className="px-3 py-3 text-slate-300">{row.label}</td>
+                <td className="px-3 py-3">
+                  {formatNumber(row.prototype, row.digits, row.unit)}
+                </td>
+                <td className="px-3 py-3">
+                  {formatNumber(row.reference, row.digits, row.unit)}
+                </td>
+                <td className="px-3 py-3 font-mono text-cyan-300">
+                  {formatSignedNumber(
+                    row.prototype - row.reference,
+                    row.digits,
+                    row.unit,
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="text-slate-500">Prototype energy residual</dt>
+          <dd className="mt-1 text-slate-200">
+            {formatNumber(result.prototype.energy_residual_percent, 4, " %")}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">Reference skin heat loss</dt>
+          <dd className="mt-1 text-slate-200">
+            {formatNumber(result.gagge.skin_heat_loss_w_m2, 1, " W/m²")}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">Reference respiratory loss</dt>
+          <dd className="mt-1 text-slate-200">
+            {formatNumber(result.gagge.respiratory_heat_loss_w_m2, 1, " W/m²")}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">Reference SET</dt>
+          <dd className="mt-1 text-slate-200">
+            {formatNumber(
+              result.gagge.standard_effective_temperature_c,
+              2,
+              " °C",
+            )}
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
+function AlignmentList({ items }: { items: string[] }) {
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Alignment Applied</h2>
+
+      <p className="mt-2 text-sm text-slate-400">
+        Adjustments the backend made so both models see an equivalent scenario.
+      </p>
+
+      {items.length === 0 ? (
+        <p className="mt-4 text-sm text-slate-500">
+          No alignment adjustments were needed.
+        </p>
+      ) : (
+        <ul className="mt-4 list-inside list-disc space-y-2 text-sm text-slate-300">
+          {items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function PortParityPanel({ result }: { result: GaggeBenchmarkResponse }) {
+  const parity = result.reference_port_parity;
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Reference Port Parity</h2>
+
+      <p className="mt-2 text-sm text-slate-400">
+        The in-house port of the reference model versus the published library
+        after 60 minutes. This guards the port itself, independent of the
+        prototype.
+      </p>
+
+      <table className="mt-4 w-full text-left text-sm">
+        <thead className="border-b border-slate-700 text-slate-400">
+          <tr>
+            <th className="px-3 py-2">Quantity</th>
+            <th className="px-3 py-2">Library</th>
+            <th className="px-3 py-2">Port</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr className="border-b border-slate-800">
+            <td className="px-3 py-2 text-slate-300">Core temperature</td>
+            <td className="px-3 py-2">
+              {formatNumber(parity.library_core_temperature_c, 4, " °C")}
+            </td>
+            <td className="px-3 py-2">
+              {formatNumber(parity.port_core_temperature_c, 4, " °C")}
+            </td>
+          </tr>
+
+          <tr className="border-b border-slate-800">
+            <td className="px-3 py-2 text-slate-300">Skin temperature</td>
+            <td className="px-3 py-2">
+              {formatNumber(parity.library_skin_temperature_c, 4, " °C")}
+            </td>
+            <td className="px-3 py-2">
+              {formatNumber(parity.port_skin_temperature_c, 4, " °C")}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p className="mt-4 text-sm text-slate-400">
+        Maximum absolute difference:{" "}
+        <span className="font-mono text-cyan-300">
+          {formatNumber(parity.maximum_absolute_difference_c, 4, " °C")}
+        </span>
+      </p>
+    </section>
+  );
+}
+```
+
 ### File: `frontend/src/app/global-analysis/[batchId]/page.tsx`
 ```tsx
 "use client";
 import Link from "next/link";
 
-// ... inside the component, before the main content:
-<div className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-  <Link
-    href="/global-analysis"
-    className="hover:text-slate-100"
-  >
-    Global Analysis
-  </Link>
-
-  <span>/</span>
-
-  <span className="text-slate-200">
-    Batch Result
-  </span>
-</div>
 import dynamic from "next/dynamic";
 
 import { useParams } from "next/navigation";
@@ -627,6 +1189,13 @@ export default function GlobalBatchPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-[95rem] px-6 py-10">
+        <nav className="mb-4 flex items-center gap-2 text-sm text-slate-400">
+          <Link href="/global-analysis" className="hover:text-slate-100">
+            Global Analysis
+          </Link>
+          <span>/</span>
+          <span className="text-slate-200">Batch Result</span>
+        </nav>
         <header className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <p className="text-sm font-medium text-cyan-400">
@@ -1844,6 +2413,7 @@ const initialRequest: GlobalBatchCreate = {
 
   person: {
     met: 2,
+    body_mass_kg: 70,            // ← 加這行
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
@@ -1852,6 +2422,7 @@ const initialRequest: GlobalBatchCreate = {
   control_material: {
     name: "Conventional clothing",
     clothing_insulation_clo: 0.5,
+    clothing_area_factor: null,  // ← 加這行
     solar_reflectance: 0.3,
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
@@ -1862,6 +2433,7 @@ const initialRequest: GlobalBatchCreate = {
   rc_material: {
     name: "Radiative cooling clothing",
     clothing_insulation_clo: 0.4,
+    clothing_area_factor: null,  // ← 加這行
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
@@ -3374,7 +3946,7 @@ function MaterialDetailContent({
                   </span>
                 </div>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 md:grid-cols-5">
                   <Metric
                     label="solar reflectance"
                     value={
@@ -3402,6 +3974,12 @@ function MaterialDetailContent({
                       version.clothing_insulation_clo
                     }
                     unit="clo"
+                  />
+
+                  <Metric
+                    label="clothing area factor"
+                    value={version.clothing_area_factor}
+                    fallback="Derived from clo"
                   />
                 </div>
 
@@ -3544,24 +4122,26 @@ function Metric({
   label,
   value,
   unit,
+  fallback = "—",
+  digits = 3,
 }: {
   label: string;
-  value: number;
+  value: number | null | undefined;
   unit?: string;
+  fallback?: string;
+  digits?: number;
 }) {
+  const hasValue = typeof value === "number" && Number.isFinite(value);
+
   return (
     <div className="rounded-lg bg-slate-950 p-4">
-      <p className="text-sm text-slate-400">
-        {label}
-      </p>
+      <p className="text-sm text-slate-400">{label}</p>
 
       <p className="mt-1 text-xl font-semibold text-cyan-300">
-        {value.toFixed(3)}
+        {hasValue ? value.toFixed(digits) : fallback}
 
-        {unit && (
-          <span className="ml-1 text-sm font-normal text-slate-400">
-            {unit}
-          </span>
+        {hasValue && unit && (
+          <span className="ml-1 text-sm font-normal text-slate-400">{unit}</span>
         )}
       </p>
     </div>
@@ -3573,16 +4153,12 @@ function Metric({
 ```tsx
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
-import type {
-  MaterialCreate,
-} from "@/types/material";
+import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
 
 
 const initialMaterial: MaterialCreate = {
@@ -3593,6 +4169,7 @@ const initialMaterial: MaterialCreate = {
   initial_version: {
     mode: "opaque_emitter",
     clothing_insulation_clo: 0.4,
+    clothing_area_factor: null,
     evaporative_resistance_m2pa_w: 18,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
@@ -3646,16 +4223,13 @@ export default function NewMaterialPage() {
     }
   }
 
-  function updateVersion(
-    field: string,
-    value: string | number,
+  function updateVersion<K extends keyof MaterialVersionInput>(
+    field: K,
+    value: MaterialVersionInput[K],
   ) {
     setMaterial({
       ...material,
-      initial_version: {
-        ...material.initial_version,
-        [field]: value,
-      },
+      initial_version: { ...material.initial_version, [field]: value },
     });
   }
 
@@ -3751,6 +4325,17 @@ export default function NewMaterialPage() {
                     value,
                   )
                 }
+              />
+
+              <OptionalNumberField
+                label="Clothing Area Factor (f_cl)"
+                value={material.initial_version.clothing_area_factor}
+                placeholder="Derived from clo"
+                min={1}
+                max={2}
+                step={0.01}
+                hint="Leave empty to let the backend derive f_cl from clo."
+                onChange={(value) => updateVersion("clothing_area_factor", value)}
               />
 
               <NumberInput
@@ -4130,18 +4715,19 @@ export default function HomePage() {
 ```tsx
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
+import { PhysiologyChart } from "@/components/charts/physiology-chart";
 import { TemperatureChart } from "@/components/charts/temperature-chart";
 import { WeatherChart } from "@/components/charts/weather-chart";
+import { ModelProvenancePanel } from "@/components/simulation/model-provenance-panel";
+import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import {
   cancelSimulationJob,
   getSimulationEventsUrl,
+  getSimulationExportUrl,
   getSimulationJob,
   getSimulationResult,
 } from "@/lib/api-client";
@@ -4149,10 +4735,6 @@ import type {
   SimulationJob,
   WeatherSimulationResponse,
 } from "@/types/simulation";
-import {
-  getSimulationExportUrl,
-} from "@/lib/api-client";
-
 
 const terminalStatuses =
   new Set<SimulationJob["status"]>([
@@ -4637,19 +5219,19 @@ function SummaryCard({
 ```tsx
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { type FormEvent, useState } from "react";
 
-import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
+import { PhysiologyChart } from "@/components/charts/physiology-chart";
 import { TemperatureChart } from "@/components/charts/temperature-chart";
+import { NumberField } from "@/components/forms/number-field";
+import { EnvironmentInputFields } from "@/components/simulation/environment-input-fields";
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { ModelProvenancePanel } from "@/components/simulation/model-provenance-panel";
+import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import { runSimulation } from "@/lib/api-client";
-import type {
-  SimulationRequest,
-  SimulationResponse,
-} from "@/types/simulation";
+import type { SimulationRequest, SimulationResponse } from "@/types/simulation";
 
 const initialRequest: SimulationRequest = {
   city: "Dubai",
@@ -4668,6 +5250,7 @@ const initialRequest: SimulationRequest = {
 
   person: {
     met: 2.6,
+    body_mass_kg: 70,
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
@@ -4676,6 +5259,7 @@ const initialRequest: SimulationRequest = {
   control_material: {
     name: "Ordinary clothing",
     clothing_insulation_clo: 0.5,
+    clothing_area_factor: null,
     solar_reflectance: 0.4,
     solar_transmittance: 0,
     infrared_emissivity: 0.8,
@@ -4686,6 +5270,7 @@ const initialRequest: SimulationRequest = {
   rc_material: {
     name: "Radiative Cooling Clothing",
     clothing_insulation_clo: 0.4,
+    clothing_area_factor: null,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
@@ -4694,75 +5279,24 @@ const initialRequest: SimulationRequest = {
   },
 };
 
-type NumberFieldProps = {
-  label: string;
-  value: number;
-  min?: number;
-  max?: number;
-  step?: number;
-  onChange: (value: number) => void;
-};
-
-function NumberField({
-  label,
-  value,
-  min,
-  max,
-  step = 0.1,
-  onChange,
-}: NumberFieldProps) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm text-slate-300">
-        {label}
-      </span>
-
-      <input
-        type="number"
-        value={value}
-        min={min}
-        max={max}
-        step={step}
-        onChange={(event) =>
-          onChange(Number(event.target.value))
-        }
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500"
-      />
-    </label>
-  );
-}
-
 export default function NewSimulationPage() {
-  const [request, setRequest] =
-    useState<SimulationRequest>(initialRequest);
+  const [request, setRequest] = useState<SimulationRequest>(initialRequest);
+  const [result, setResult] = useState<SimulationResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [result, setResult] =
-    useState<SimulationResponse | null>(null);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setLoading(true);
     setError("");
 
     try {
-      const response =
-        await runSimulation(request);
-
+      const response = await runSimulation(request);
       setResult(response);
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Simulation failed",
+        caughtError instanceof Error ? caughtError.message : "Simulation failed",
       );
     } finally {
       setLoading(false);
@@ -4782,247 +5316,108 @@ export default function NewSimulationPage() {
           </h1>
 
           <p className="mt-3 max-w-3xl text-slate-400">
-            Compare the thermal performance of ordinary clothing and radiative cooling clothing under specified environmental conditions.
-            This simulation will track transient core temperature, skin temperature, and heat flux changes.
+            Compare the thermal performance of ordinary clothing and radiative
+            cooling clothing under specified environmental conditions. The
+            simulation tracks transient core, skin and clothing-surface
+            temperature, heat flux components and thermoregulatory response.
           </p>
         </header>
 
-        <form
-          onSubmit={handleSubmit}
-          className="mt-10 space-y-8"
-        >
+        <form onSubmit={handleSubmit} className="mt-10 space-y-8">
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">
-              Basic Scenario
-            </h2>
+            <h2 className="text-xl font-semibold">Basic Scenario</h2>
 
             <div className="mt-5 grid gap-5 md:grid-cols-3">
               <label className="block">
-                <span className="mb-2 block text-sm text-slate-300">
-                  City
-                </span>
+                <span className="mb-2 block text-sm text-slate-300">City</span>
 
                 <input
                   value={request.city}
                   onChange={(event) =>
-                    setRequest({
-                      ...request,
-                      city: event.target.value,
-                    })
+                    setRequest({ ...request, city: event.target.value })
                   }
                   className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500"
                 />
               </label>
 
               <NumberField
-                label="Simulation Duration (Minutes)"
+                label="Simulation Duration"
+                suffix="min"
                 value={request.duration_minutes}
                 min={1}
                 max={1440}
                 step={1}
                 onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    duration_minutes: value,
-                  })
+                  setRequest({ ...request, duration_minutes: value })
                 }
               />
 
               <NumberField
-                label="Output Interval (Minutes)"
-                value={
-                  request.output_interval_minutes
-                }
+                label="Output Interval"
+                suffix="min"
+                value={request.output_interval_minutes}
                 min={1}
                 max={60}
                 step={1}
                 onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    output_interval_minutes: value,
-                  })
+                  setRequest({ ...request, output_interval_minutes: value })
                 }
               />
             </div>
           </section>
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">
-              Environmental Parameters
-            </h2>
+            <h2 className="text-xl font-semibold">Environmental Parameters</h2>
 
-            <div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              <NumberField
-                label="Air Temperature (°C)"
-                value={
-                  request.environment
-                    .air_temperature_c
-                }
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      air_temperature_c: value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Mean Radiant Temperature (°C)"
-                value={
-                  request.environment
-                    .mean_radiant_temperature_c
-                }
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      mean_radiant_temperature_c:
-                        value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Sky Temperature (°C)"
-                value={
-                  request.environment
-                    .sky_temperature_c ?? 23
-                }
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      sky_temperature_c: value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Relative Humidity (%)"
-                value={
-                  request.environment
-                    .relative_humidity_percent
-                }
-                min={0}
-                max={100}
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      relative_humidity_percent:
-                        value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Wind Speed (m/s)"
-                value={
-                  request.environment
-                    .wind_speed_m_s
-                }
-                min={0}
-                max={30}
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      wind_speed_m_s: value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Solar Radiation (W/m²)"
-                value={
-                  request.environment
-                    .solar_radiation_w_m2
-                }
-                min={0}
-                max={1500}
-                step={10}
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      solar_radiation_w_m2: value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Sky View Factor"
-                value={
-                  request.environment
-                    .sky_view_factor
-                }
-                min={0}
-                max={1}
-                step={0.05}
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    environment: {
-                      ...request.environment,
-                      sky_view_factor: value,
-                    },
-                  })
-                }
-              />
-
-              <NumberField
-                label="Activity Level (MET)"
-                value={request.person.met}
-                min={0.7}
-                max={10}
-                onChange={(value) =>
-                  setRequest({
-                    ...request,
-                    person: {
-                      ...request.person,
-                      met: value,
-                    },
-                  })
+            <div className="mt-5">
+              <EnvironmentInputFields
+                environment={request.environment}
+                onChange={(environment) =>
+                  setRequest({ ...request, environment })
                 }
               />
             </div>
           </section>
 
-          <div className="grid gap-8 lg:grid-cols-2">
-            <MaterialSection
-              title="Control Clothing"
-              material={request.control_material}
-              onChange={(material) =>
-                setRequest({
-                  ...request,
-                  control_material: material,
-                })
-              }
-            />
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Person</h2>
 
-            <MaterialSection
-              title="Radiative Cooling Clothing"
-              material={request.rc_material}
-              onChange={(material) =>
-                setRequest({
-                  ...request,
-                  rc_material: material,
-                })
-              }
-            />
+            <div className="mt-5">
+              <PersonInputFields
+                person={request.person}
+                onChange={(person) => setRequest({ ...request, person })}
+              />
+            </div>
+          </section>
+
+          <div className="grid gap-8 lg:grid-cols-2">
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <h2 className="text-xl font-semibold">Control Clothing</h2>
+
+              <div className="mt-5">
+                <MaterialInputFields
+                  material={request.control_material}
+                  onChange={(material) =>
+                    setRequest({ ...request, control_material: material })
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <h2 className="text-xl font-semibold">
+                Radiative Cooling Clothing
+              </h2>
+
+              <div className="mt-5">
+                <MaterialInputFields
+                  material={request.rc_material}
+                  onChange={(material) =>
+                    setRequest({ ...request, rc_material: material })
+                  }
+                />
+              </div>
+            </section>
           </div>
 
           <button
@@ -5030,9 +5425,7 @@ export default function NewSimulationPage() {
             disabled={loading}
             className="rounded-xl bg-cyan-400 px-8 py-3 font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading
-              ? "Numerical solution in progress..."
-              : "Start simulation"}
+            {loading ? "Numerical solution in progress..." : "Start simulation"}
           </button>
 
           {error && (
@@ -5051,8 +5444,10 @@ export default function NewSimulationPage() {
             </div>
 
             <TemperatureChart result={result} />
+            <PhysiologyChart result={result} />
             <HeatFluxChart result={result} />
             <ModelQualityPanel result={result} />
+            <ModelProvenancePanel result={result} />
           </section>
         )}
       </div>
@@ -5060,119 +5455,23 @@ export default function NewSimulationPage() {
   );
 }
 
-type MaterialSectionProps = {
-  title: string;
-  material: SimulationRequest["control_material"];
-  onChange: (
-    material: SimulationRequest["control_material"],
-  ) => void;
-};
-
-function MaterialSection({
-  title,
-  material,
-  onChange,
-}: MaterialSectionProps) {
-  return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-      <h2 className="text-xl font-semibold">
-        {title}
-      </h2>
-
-      <div className="mt-5 grid gap-5 sm:grid-cols-2">
-        <NumberField
-          label="Clothing Insulation (clo)"
-          value={material.clothing_insulation_clo}
-          min={0}
-          max={5}
-          step={0.05}
-          onChange={(value) =>
-            onChange({
-              ...material,
-              clothing_insulation_clo: value,
-            })
-          }
-        />
-
-        <NumberField
-          label="Solar Reflectance"
-          value={material.solar_reflectance}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(value) =>
-            onChange({
-              ...material,
-              solar_reflectance: value,
-            })
-          }
-        />
-
-        <NumberField
-          label="Solar Transmittance"
-          value={material.solar_transmittance}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(value) =>
-            onChange({
-              ...material,
-              solar_transmittance: value,
-            })
-          }
-        />
-
-        <NumberField
-          label="Infrared Emissivity"
-          value={material.infrared_emissivity}
-          min={0}
-          max={1}
-          step={0.01}
-          onChange={(value) =>
-            onChange({
-              ...material,
-              infrared_emissivity: value,
-            })
-          }
-        />
-      </div>
-    </section>
-  );
-}
-
-function SummaryCards({
-  result,
-}: {
-  result: SimulationResponse;
-}) {
+function SummaryCards({ result }: { result: SimulationResponse }) {
   const cards = [
     {
       label: "Final Skin Temperature Improvement",
-      value:
-        result.summary
-          .final_skin_temperature_improvement_c,
-      unit: "°C",
+      value: result.summary.final_skin_temperature_improvement_c,
     },
     {
       label: "Average Skin Temperature Improvement",
-      value:
-        result.summary
-          .average_skin_temperature_improvement_c,
-      unit: "°C",
+      value: result.summary.average_skin_temperature_improvement_c,
     },
     {
       label: "Final Core Temperature Improvement",
-      value:
-        result.summary
-          .final_core_temperature_improvement_c,
-      unit: "°C",
+      value: result.summary.final_core_temperature_improvement_c,
     },
     {
       label: "RC Final Skin Temperature",
-      value:
-        result.radiative_cooling
-          .final_skin_temperature_c,
-      unit: "°C",
+      value: result.radiative_cooling.final_skin_temperature_c,
     },
   ];
 
@@ -5183,15 +5482,11 @@ function SummaryCards({
           key={card.label}
           className="rounded-2xl border border-slate-800 bg-slate-900 p-5"
         >
-          <p className="text-sm text-slate-400">
-            {card.label}
-          </p>
+          <p className="text-sm text-slate-400">{card.label}</p>
 
           <p className="mt-2 text-3xl font-bold text-cyan-300">
             {card.value.toFixed(3)}
-            <span className="ml-1 text-base font-normal">
-              {card.unit}
-            </span>
+            <span className="ml-1 text-base font-normal">°C</span>
           </p>
         </div>
       ))}
@@ -5379,6 +5674,7 @@ function StatusBadge({
 ```tsx
 "use client";
 
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import {
   type FormEvent,
   useEffect,
@@ -5407,6 +5703,7 @@ const initialRequest: WeatherSimulationRequest = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    body_mass_kg: 70,
   },
 
   control_material: {
@@ -5417,6 +5714,7 @@ const initialRequest: WeatherSimulationRequest = {
     infrared_emissivity: 0.8,
     projected_solar_area_factor: 0.25,
     absorbed_solar_to_body_fraction: 0.35,
+    clothing_area_factor: null,
   },
 
   rc_material: {
@@ -5427,6 +5725,7 @@ const initialRequest: WeatherSimulationRequest = {
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
     absorbed_solar_to_body_fraction: 0.35,
+    clothing_area_factor: null,
   },
 };
 
@@ -5635,38 +5934,26 @@ export default function WeatherSimulationPage() {
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-300">
-                Activity Intensity (MET)
-              </span>
-
-              <input
-                type="number"
-                required
-                min={0.7}
-                max={10}
-                step={0.1}
-                value={request.person.met}
-                disabled={submitting}
-                onChange={(event) => {
-                  const met = Number(
-                    event.target.value,
-                  );
-
-                  setRequest((current) => ({
-                    ...current,
-                    person: {
-                      ...current.person,
-                      met,
-                    },
-                  }));
-                }}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </label>
           </div>
 
+          <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">Person</h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Body mass sets the core and skin heat capacities used by the
+              transient solver (Stage 3).
+            </p>
+
+            <div className="mt-4">
+              <PersonInputFields
+                person={request.person}
+                disabled={submitting}
+                onChange={(person) =>
+                  setRequest((current) => ({ ...current, person }))
+                }
+              />
+            </div>
+          </section>
           <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
             <h2 className="text-lg font-semibold">
               Simulation Configuration Summary
@@ -5771,6 +6058,133 @@ export default function WeatherSimulationPage() {
         </section>
       </div>
     </main>
+  );
+}
+```
+
+### File: `frontend/src/components/charts/benchmark-chart.tsx`
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import type { Data } from "plotly.js";
+
+import type { BenchmarkSeriesPoint } from "@/types/benchmark";
+
+const Plot = dynamic(() => import("react-plotly.js"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-96 items-center justify-center text-slate-400">
+      Loading chart...
+    </div>
+  ),
+});
+
+type BenchmarkChartProps = {
+  points: BenchmarkSeriesPoint[];
+  referenceLabel: string;
+};
+
+export function BenchmarkChart({ points, referenceLabel }: BenchmarkChartProps) {
+  const minutes = points.map((point) => point.minute);
+
+  const data: Data[] = [
+    {
+      x: minutes,
+      y: points.map((point) => point.prototype_core_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: "Prototype: Core",
+      line: { color: "#ef4444", width: 3 },
+    },
+    {
+      x: minutes,
+      y: points.map((point) => point.reference_core_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: `${referenceLabel}: Core`,
+      line: { color: "#fca5a5", width: 2, dash: "dash" },
+    },
+    {
+      x: minutes,
+      y: points.map((point) => point.prototype_skin_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: "Prototype: Skin",
+      line: { color: "#22d3ee", width: 3 },
+    },
+    {
+      x: minutes,
+      y: points.map((point) => point.reference_skin_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: `${referenceLabel}: Skin`,
+      line: { color: "#a5f3fc", width: 2, dash: "dash" },
+    },
+    {
+      x: minutes,
+      y: points.map((point) => point.prototype_evaporation_w_m2),
+      type: "scatter",
+      mode: "lines",
+      name: "Prototype: Evaporation",
+      line: { color: "#a3e635", width: 2 },
+      yaxis: "y2",
+      visible: "legendonly",
+    },
+    {
+      x: minutes,
+      y: points.map((point) => point.reference_evaporation_w_m2),
+      type: "scatter",
+      mode: "lines",
+      name: `${referenceLabel}: Evaporation`,
+      line: { color: "#d9f99d", width: 2, dash: "dash" },
+      yaxis: "y2",
+      visible: "legendonly",
+    },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 className="mb-4 text-xl font-semibold">Trajectory Comparison</h2>
+
+      <Plot
+        data={data}
+        layout={{
+          autosize: true,
+          height: 480,
+          paper_bgcolor: "#0f172a",
+          plot_bgcolor: "#0f172a",
+          font: { color: "#cbd5e1" },
+          margin: { l: 65, r: 70, t: 20, b: 60 },
+          xaxis: { title: { text: "Time (min)" }, gridcolor: "#334155" },
+          yaxis: { title: { text: "Temperature (°C)" }, gridcolor: "#334155" },
+          yaxis2: {
+            title: { text: "Evaporation (W/m²)" },
+            overlaying: "y",
+            side: "right",
+            showgrid: false,
+          },
+          legend: { orientation: "h", y: -0.25 },
+          hovermode: "x unified",
+        }}
+        config={{
+          responsive: true,
+          displaylogo: false,
+          toImageButtonOptions: {
+            format: "png",
+            filename: "gagge-benchmark",
+            scale: 2,
+          },
+        }}
+        useResizeHandler
+        style={{ width: "100%", height: "100%" }}
+      />
+
+      <p className="mt-3 text-sm text-slate-400">
+        Solid lines are the platform prototype; dashed lines are the reference
+        model. Evaporation is on the right axis and hidden until toggled.
+      </p>
+    </div>
   );
 }
 ```
@@ -5892,37 +6306,231 @@ export function HeatFluxChart({
 }
 ```
 
+### File: `frontend/src/components/charts/physiology-chart.tsx`
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import type { Data } from "plotly.js";
+
+import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
+import type { SimulationResponse } from "@/types/simulation";
+
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+
+type PhysiologyChartProps = {
+  result: SimulationResponse;
+};
+
+/**
+ * Stage 3 physiological state: skin blood flow (left axis) and skin
+ * wettedness (right axis). Renders nothing for results that predate Stage 3.
+ */
+export function PhysiologyChart({ result }: PhysiologyChartProps) {
+  const control = result.control.time_series;
+  const rc = result.radiative_cooling.time_series;
+
+  const hasBloodFlow =
+    hasOptionalSeries(control, "skin_blood_flow_kg_h_m2") ||
+    hasOptionalSeries(rc, "skin_blood_flow_kg_h_m2");
+
+  const hasWettedness =
+    hasOptionalSeries(control, "skin_wettedness") ||
+    hasOptionalSeries(rc, "skin_wettedness");
+
+  if (!hasBloodFlow && !hasWettedness) {
+    return null;
+  }
+
+  const controlMinutes = control.map((point) => point.minute);
+  const rcMinutes = rc.map((point) => point.minute);
+
+  const data: Data[] = [];
+
+  if (hasBloodFlow) {
+    data.push(
+      {
+        x: controlMinutes,
+        y: pluckOptionalSeries(control, "skin_blood_flow_kg_h_m2"),
+        type: "scatter",
+        mode: "lines",
+        name: "Standard Clothing: Skin Blood Flow",
+        line: { color: "#f97316", width: 3 },
+        yaxis: "y",
+      },
+      {
+        x: rcMinutes,
+        y: pluckOptionalSeries(rc, "skin_blood_flow_kg_h_m2"),
+        type: "scatter",
+        mode: "lines",
+        name: "Radiative Cooling: Skin Blood Flow",
+        line: { color: "#22d3ee", width: 3 },
+        yaxis: "y",
+      },
+    );
+  }
+
+  if (hasWettedness) {
+    data.push(
+      {
+        x: controlMinutes,
+        y: pluckOptionalSeries(control, "skin_wettedness"),
+        type: "scatter",
+        mode: "lines",
+        name: "Standard Clothing: Skin Wettedness",
+        line: { color: "#fdba74", width: 2, dash: "dot" },
+        yaxis: "y2",
+        visible: hasBloodFlow ? "legendonly" : true,
+      },
+      {
+        x: rcMinutes,
+        y: pluckOptionalSeries(rc, "skin_wettedness"),
+        type: "scatter",
+        mode: "lines",
+        name: "Radiative Cooling: Skin Wettedness",
+        line: { color: "#67e8f9", width: 2, dash: "dot" },
+        yaxis: "y2",
+        visible: hasBloodFlow ? "legendonly" : true,
+      },
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 className="mb-4 text-xl font-semibold">
+        Thermoregulatory Response
+      </h2>
+
+      <Plot
+        data={data}
+        layout={{
+          autosize: true,
+          height: 420,
+          paper_bgcolor: "#0f172a",
+          plot_bgcolor: "#0f172a",
+          font: { color: "#cbd5e1" },
+          margin: { l: 65, r: 70, t: 20, b: 60 },
+          xaxis: { title: { text: "Time (min)" }, gridcolor: "#334155" },
+          yaxis: {
+            title: { text: "Skin Blood Flow (kg/(h·m²))" },
+            gridcolor: "#334155",
+          },
+          yaxis2: {
+            title: { text: "Skin Wettedness" },
+            overlaying: "y",
+            side: "right",
+            range: [0, 1],
+            showgrid: false,
+          },
+          legend: { orientation: "h", y: -0.25 },
+          hovermode: "x unified",
+        }}
+        config={{ responsive: true, displaylogo: false }}
+        useResizeHandler
+        style={{ width: "100%", height: "100%" }}
+      />
+
+      <p className="mt-3 text-sm text-slate-400">
+        Skin blood flow follows the Gagge two-node control law ported in
+        Stage 3. Skin wettedness is shown on the right axis; toggle it from the
+        legend.
+      </p>
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/charts/temperature-chart.tsx`
 ```tsx
 "use client";
 
 import dynamic from "next/dynamic";
+import type { Data } from "plotly.js";
 
+import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
 import type { SimulationResponse } from "@/types/simulation";
 
-const Plot = dynamic(
-  () => import("react-plotly.js"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-96 items-center justify-center text-slate-400">
-        Loading charts...
-      </div>
-    ),
-  },
-);
+const Plot = dynamic(() => import("react-plotly.js"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-96 items-center justify-center text-slate-400">
+      Loading charts...
+    </div>
+  ),
+});
 
 type TemperatureChartProps = {
   result: SimulationResponse;
 };
 
-export function TemperatureChart({
-  result,
-}: TemperatureChartProps) {
-  const control =
-    result.control.time_series;
-  const rc =
-    result.radiative_cooling.time_series;
+export function TemperatureChart({ result }: TemperatureChartProps) {
+  const control = result.control.time_series;
+  const rc = result.radiative_cooling.time_series;
+
+  const controlMinutes = control.map((point) => point.minute);
+  const rcMinutes = rc.map((point) => point.minute);
+
+  const hasClothingSurface =
+    hasOptionalSeries(control, "clothing_surface_temperature_c") ||
+    hasOptionalSeries(rc, "clothing_surface_temperature_c");
+
+  const data: Data[] = [
+    {
+      x: controlMinutes,
+      y: control.map((point) => point.skin_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: "Standard Clothing: Skin Temperature",
+      line: { color: "#f97316", width: 3 },
+    },
+    {
+      x: rcMinutes,
+      y: rc.map((point) => point.skin_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: "Radiative Cooling: Skin Temperature",
+      line: { color: "#22d3ee", width: 3 },
+    },
+    {
+      x: controlMinutes,
+      y: control.map((point) => point.core_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: "Standard Clothing: Core Temperature",
+      line: { color: "#ef4444", width: 2, dash: "dot" },
+    },
+    {
+      x: rcMinutes,
+      y: rc.map((point) => point.core_temperature_c),
+      type: "scatter",
+      mode: "lines",
+      name: "Radiative Cooling: Core Temperature",
+      line: { color: "#3b82f6", width: 2, dash: "dot" },
+    },
+  ];
+
+  if (hasClothingSurface) {
+    data.push(
+      {
+        x: controlMinutes,
+        y: pluckOptionalSeries(control, "clothing_surface_temperature_c"),
+        type: "scatter",
+        mode: "lines",
+        name: "Standard Clothing: Clothing Surface",
+        line: { color: "#fdba74", width: 2, dash: "dashdot" },
+        visible: "legendonly",
+      },
+      {
+        x: rcMinutes,
+        y: pluckOptionalSeries(rc, "clothing_surface_temperature_c"),
+        type: "scatter",
+        mode: "lines",
+        name: "Radiative Cooling: Clothing Surface",
+        line: { color: "#67e8f9", width: 2, dash: "dashdot" },
+        visible: "legendonly",
+      },
+    );
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
@@ -5931,92 +6539,17 @@ export function TemperatureChart({
       </h2>
 
       <Plot
-        data={[
-          {
-            x: control.map((point) => point.minute),
-            y: control.map(
-              (point) => point.skin_temperature_c,
-            ),
-            type: "scatter",
-            mode: "lines",
-            name: "Standard Clothing: Skin Temperature",
-            line: {
-              color: "#f97316",
-              width: 3,
-            },
-          },
-          {
-            x: rc.map((point) => point.minute),
-            y: rc.map(
-              (point) => point.skin_temperature_c,
-            ),
-            type: "scatter",
-            mode: "lines",
-            name: "Radiative Cooling: Skin Temperature",
-            line: {
-              color: "#22d3ee",
-              width: 3,
-            },
-          },
-          {
-            x: control.map((point) => point.minute),
-            y: control.map(
-              (point) => point.core_temperature_c,
-            ),
-            type: "scatter",
-            mode: "lines",
-            name: "Standard Clothing: Core Temperature",
-            line: {
-              color: "#ef4444",
-              width: 2,
-              dash: "dot",
-            },
-          },
-          {
-            x: rc.map((point) => point.minute),
-            y: rc.map(
-              (point) => point.core_temperature_c,
-            ),
-            type: "scatter",
-            mode: "lines",
-            name: "Radiative Cooling: Core Temperature",
-            line: {
-              color: "#3b82f6",
-              width: 2,
-              dash: "dot",
-            },
-          },
-        ]}
+        data={data}
         layout={{
           autosize: true,
           height: 480,
           paper_bgcolor: "#0f172a",
           plot_bgcolor: "#0f172a",
-          font: {
-            color: "#cbd5e1",
-          },
-          margin: {
-            l: 65,
-            r: 30,
-            t: 20,
-            b: 60,
-          },
-          xaxis: {
-            title: {
-              text: "Time (min)",
-            },
-            gridcolor: "#334155",
-          },
-          yaxis: {
-            title: {
-              text: "Temperature (°C)",
-            },
-            gridcolor: "#334155",
-          },
-          legend: {
-            orientation: "h",
-            y: -0.25,
-          },
+          font: { color: "#cbd5e1" },
+          margin: { l: 65, r: 30, t: 20, b: 60 },
+          xaxis: { title: { text: "Time (min)" }, gridcolor: "#334155" },
+          yaxis: { title: { text: "Temperature (°C)" }, gridcolor: "#334155" },
+          legend: { orientation: "h", y: -0.25 },
           hovermode: "x unified",
         }}
         config={{
@@ -6029,11 +6562,15 @@ export function TemperatureChart({
           },
         }}
         useResizeHandler
-        style={{
-          width: "100%",
-          height: "100%",
-        }}
+        style={{ width: "100%", height: "100%" }}
       />
+
+      {hasClothingSurface && (
+        <p className="mt-3 text-sm text-slate-400">
+          Clothing surface temperature is hidden by default. Click its legend
+          entry to overlay it on the skin and core curves.
+        </p>
+      )}
     </div>
   );
 }
@@ -6187,6 +6724,135 @@ export function WeatherChart({
         </p>
       </div>
     </section>
+  );
+}
+```
+
+### File: `frontend/src/components/forms/number-field.tsx`
+```tsx
+"use client";
+
+const inputClassName =
+  "w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50";
+
+type BaseProps = {
+  label: string;
+  min?: number;
+  max?: number;
+  step?: number;
+  suffix?: string;
+  hint?: string;
+  disabled?: boolean;
+};
+
+type NumberFieldProps = BaseProps & {
+  value: number;
+  onChange: (value: number) => void;
+};
+
+export function NumberField({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix,
+  hint,
+  disabled = false,
+  onChange,
+}: NumberFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm text-slate-300">{label}</span>
+
+      <div className="relative">
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(event) => {
+            const parsed = Number(event.target.value);
+
+            if (Number.isFinite(parsed)) {
+              onChange(parsed);
+            }
+          }}
+          className={`${inputClassName} ${suffix ? "pr-16" : ""}`}
+        />
+
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-slate-500">
+            {suffix}
+          </span>
+        )}
+      </div>
+
+      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+    </label>
+  );
+}
+
+type OptionalNumberFieldProps = BaseProps & {
+  value: number | null;
+  placeholder?: string;
+  onChange: (value: number | null) => void;
+};
+
+/** Empty input means `null`, i.e. "let the backend derive this value". */
+export function OptionalNumberField({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix,
+  hint,
+  placeholder,
+  disabled = false,
+  onChange,
+}: OptionalNumberFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm text-slate-300">{label}</span>
+
+      <div className="relative">
+        <input
+          type="number"
+          value={value ?? ""}
+          placeholder={placeholder}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(event) => {
+            const raw = event.target.value;
+
+            if (raw === "") {
+              onChange(null);
+              return;
+            }
+
+            const parsed = Number(raw);
+
+            if (Number.isFinite(parsed)) {
+              onChange(parsed);
+            }
+          }}
+          className={`${inputClassName} ${suffix ? "pr-16" : ""}`}
+        />
+
+        {suffix && (
+          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs text-slate-500">
+            {suffix}
+          </span>
+        )}
+      </div>
+
+      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+    </label>
   );
 }
 ```
@@ -6909,6 +7575,418 @@ export function NavBar() {
 }
 ```
 
+### File: `frontend/src/components/simulation/environment-input-fields.tsx`
+```tsx
+"use client";
+
+import {
+  NumberField,
+  OptionalNumberField,
+} from "@/components/forms/number-field";
+import type { EnvironmentInput } from "@/types/simulation";
+
+type EnvironmentInputFieldsProps = {
+  environment: EnvironmentInput;
+  disabled?: boolean;
+  onChange: (environment: EnvironmentInput) => void;
+};
+
+export function EnvironmentInputFields({
+  environment,
+  disabled = false,
+  onChange,
+}: EnvironmentInputFieldsProps) {
+  function update<K extends keyof EnvironmentInput>(
+    key: K,
+    value: EnvironmentInput[K],
+  ) {
+    onChange({ ...environment, [key]: value });
+  }
+
+  return (
+    <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <NumberField
+        label="Air Temperature"
+        suffix="°C"
+        value={environment.air_temperature_c}
+        min={-50}
+        max={70}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("air_temperature_c", value)}
+      />
+
+      <NumberField
+        label="Mean Radiant Temperature"
+        suffix="°C"
+        value={environment.mean_radiant_temperature_c}
+        min={-50}
+        max={100}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("mean_radiant_temperature_c", value)}
+      />
+
+      <OptionalNumberField
+        label="Sky Temperature"
+        suffix="°C"
+        value={environment.sky_temperature_c}
+        placeholder="Derived by backend"
+        min={-100}
+        max={70}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("sky_temperature_c", value)}
+      />
+
+      <NumberField
+        label="Relative Humidity"
+        suffix="%"
+        value={environment.relative_humidity_percent}
+        min={0}
+        max={100}
+        step={1}
+        disabled={disabled}
+        onChange={(value) => update("relative_humidity_percent", value)}
+      />
+
+      <NumberField
+        label="Wind Speed"
+        suffix="m/s"
+        value={environment.wind_speed_m_s}
+        min={0}
+        max={30}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("wind_speed_m_s", value)}
+      />
+
+      <NumberField
+        label="Solar Radiation"
+        suffix="W/m²"
+        value={environment.solar_radiation_w_m2}
+        min={0}
+        max={1500}
+        step={10}
+        disabled={disabled}
+        onChange={(value) => update("solar_radiation_w_m2", value)}
+      />
+
+      <NumberField
+        label="Sky View Factor"
+        value={environment.sky_view_factor}
+        min={0}
+        max={1}
+        step={0.05}
+        disabled={disabled}
+        onChange={(value) => update("sky_view_factor", value)}
+      />
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/simulation/material-input-fields.tsx`
+```tsx
+"use client";
+
+import {
+  NumberField,
+  OptionalNumberField,
+} from "@/components/forms/number-field";
+import type { MaterialInput } from "@/types/simulation";
+
+type MaterialInputFieldsProps = {
+  material: MaterialInput;
+  showName?: boolean;
+  disabled?: boolean;
+  onChange: (material: MaterialInput) => void;
+};
+
+export function MaterialInputFields({
+  material,
+  showName = false,
+  disabled = false,
+  onChange,
+}: MaterialInputFieldsProps) {
+  function update<K extends keyof MaterialInput>(
+    key: K,
+    value: MaterialInput[K],
+  ) {
+    onChange({ ...material, [key]: value });
+  }
+
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      {showName && (
+        <label className="block sm:col-span-2">
+          <span className="mb-2 block text-sm text-slate-300">
+            Material Name
+          </span>
+
+          <input
+            type="text"
+            value={material.name}
+            maxLength={100}
+            disabled={disabled}
+            onChange={(event) => update("name", event.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </label>
+      )}
+
+      <NumberField
+        label="Clothing Insulation"
+        suffix="clo"
+        value={material.clothing_insulation_clo}
+        min={0}
+        max={5}
+        step={0.05}
+        disabled={disabled}
+        onChange={(value) => update("clothing_insulation_clo", value)}
+      />
+
+      <OptionalNumberField
+        label="Clothing Area Factor (f_cl)"
+        value={material.clothing_area_factor}
+        placeholder="Derived from clo"
+        min={1}
+        max={2}
+        step={0.01}
+        disabled={disabled}
+        hint="Leave empty to let the backend derive f_cl from clo (Stage 3)."
+        onChange={(value) => update("clothing_area_factor", value)}
+      />
+
+      <NumberField
+        label="Solar Reflectance"
+        value={material.solar_reflectance}
+        min={0}
+        max={1}
+        step={0.01}
+        disabled={disabled}
+        onChange={(value) => update("solar_reflectance", value)}
+      />
+
+      <NumberField
+        label="Solar Transmittance"
+        value={material.solar_transmittance}
+        min={0}
+        max={1}
+        step={0.01}
+        disabled={disabled}
+        onChange={(value) => update("solar_transmittance", value)}
+      />
+
+      <NumberField
+        label="Infrared Emissivity"
+        value={material.infrared_emissivity}
+        min={0}
+        max={1}
+        step={0.01}
+        disabled={disabled}
+        onChange={(value) => update("infrared_emissivity", value)}
+      />
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/simulation/model-provenance-panel.tsx`
+```tsx
+import { formatNumber } from "@/lib/format";
+import type {
+  ResolvedParameterSource,
+  ScenarioResult,
+  SimulationResponse,
+} from "@/types/simulation";
+
+type ModelProvenancePanelProps = {
+  result: SimulationResponse;
+};
+
+type ResolvedRow = {
+  label: string;
+  render: (scenario: ScenarioResult) => string;
+};
+
+function sourceLabel(
+  source: ResolvedParameterSource | null | undefined,
+): string {
+  switch (source) {
+    case "material_input":
+      return "material input";
+    case "derived_from_clo":
+      return "derived from clo";
+    default:
+      return "";
+  }
+}
+
+function withSource(
+  value: string,
+  source: ResolvedParameterSource | null | undefined,
+): string {
+  const label = sourceLabel(source);
+
+  return label && value !== "—" ? `${value} (${label})` : value;
+}
+
+const resolvedRows: ResolvedRow[] = [
+  {
+    label: "Dry resistance",
+    render: (scenario) =>
+      formatNumber(scenario.clothing?.dry_resistance_m2k_w, 4, " m²·K/W"),
+  },
+  {
+    label: "Evaporative resistance",
+    render: (scenario) =>
+      withSource(
+        formatNumber(
+          scenario.clothing?.evaporative_resistance_m2pa_w,
+          2,
+          " m²·Pa/W",
+        ),
+        scenario.clothing?.evaporative_resistance_source,
+      ),
+  },
+  {
+    label: "Clothing area factor (f_cl)",
+    render: (scenario) =>
+      withSource(
+        formatNumber(scenario.clothing?.clothing_area_factor, 3),
+        scenario.clothing?.clothing_area_factor_source,
+      ),
+  },
+  {
+    label: "Infrared transmittance",
+    render: (scenario) =>
+      formatNumber(scenario.clothing?.infrared_transmittance, 3),
+  },
+  {
+    label: "Body mass",
+    render: (scenario) => formatNumber(scenario.body?.body_mass_kg, 1, " kg"),
+  },
+  {
+    label: "Body surface area",
+    render: (scenario) =>
+      formatNumber(scenario.body?.body_surface_area_m2, 2, " m²"),
+  },
+  {
+    label: "Core heat capacity",
+    render: (scenario) =>
+      formatNumber(scenario.body?.core_heat_capacity_j_m2k, 0, " J/(m²·K)"),
+  },
+  {
+    label: "Skin heat capacity",
+    render: (scenario) =>
+      formatNumber(scenario.body?.skin_heat_capacity_j_m2k, 0, " J/(m²·K)"),
+  },
+];
+
+export function ModelProvenancePanel({ result }: ModelProvenancePanelProps) {
+  const metadata = result.model_metadata ?? null;
+  const scenarios = [result.control, result.radiative_cooling];
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Model Provenance</h2>
+
+      <p className="mt-2 text-sm text-slate-400">
+        Model and parameter-set identifiers written into this result, plus the
+        clothing and body quantities the solver actually used.
+      </p>
+
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <dt className="text-slate-500">Model</dt>
+          <dd className="mt-1 text-slate-200">{result.model_name}</dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">Model version</dt>
+          <dd className="mt-1 font-mono text-cyan-300">{result.model_version}</dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">Parameter set version</dt>
+          <dd className="mt-1 font-mono text-cyan-300">
+            {metadata?.parameter_set_version ?? "—"}
+          </dd>
+        </div>
+
+        <div>
+          <dt className="text-slate-500">Parameter set SHA-256</dt>
+          <dd
+            className="mt-1 font-mono text-slate-300"
+            title={metadata?.parameter_set_sha256}
+          >
+            {metadata ? `${metadata.parameter_set_sha256.slice(0, 12)}…` : "—"}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-6 overflow-x-auto">
+        <table className="w-full min-w-160 text-left text-sm">
+          <thead className="border-b border-slate-700 text-slate-400">
+            <tr>
+              <th className="px-3 py-3">Resolved quantity</th>
+              {scenarios.map((scenario) => (
+                <th key={scenario.material_name} className="px-3 py-3">
+                  {scenario.material_name}
+                </th>
+              ))}
+            </tr>
+          </thead>
+
+          <tbody>
+            {resolvedRows.map((row) => (
+              <tr key={row.label} className="border-b border-slate-800">
+                <td className="px-3 py-3 text-slate-300">{row.label}</td>
+                {scenarios.map((scenario) => (
+                  <td
+                    key={`${row.label}-${scenario.material_name}`}
+                    className="px-3 py-3 text-slate-200"
+                  >
+                    {row.render(scenario)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {scenarios.map((scenario) => {
+          const assumptions = scenario.assumptions_applied ?? [];
+
+          return (
+            <div key={scenario.material_name}>
+              <h3 className="text-sm font-semibold text-slate-300">
+                Assumptions applied — {scenario.material_name}
+              </h3>
+
+              {assumptions.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-500">
+                  No assumptions were recorded for this scenario.
+                </p>
+              ) : (
+                <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-slate-400">
+                  {assumptions.map((assumption) => (
+                    <li key={assumption}>{assumption}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+```
+
 ### File: `frontend/src/components/simulation/model-quality-panel.tsx`
 ```tsx
 import type {
@@ -7035,6 +8113,90 @@ export function ModelQualityPanel({
 }
 ```
 
+### File: `frontend/src/components/simulation/person-input-fields.tsx`
+```tsx
+"use client";
+
+import { NumberField } from "@/components/forms/number-field";
+import type { PersonInput } from "@/types/simulation";
+
+type PersonInputFieldsProps = {
+  person: PersonInput;
+  disabled?: boolean;
+  onChange: (person: PersonInput) => void;
+};
+
+export function PersonInputFields({
+  person,
+  disabled = false,
+  onChange,
+}: PersonInputFieldsProps) {
+  function update<K extends keyof PersonInput>(key: K, value: PersonInput[K]) {
+    onChange({ ...person, [key]: value });
+  }
+
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+      <NumberField
+        label="Activity Level"
+        suffix="MET"
+        value={person.met}
+        min={0.7}
+        max={10}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("met", value)}
+      />
+
+      <NumberField
+        label="Body Mass"
+        suffix="kg"
+        value={person.body_mass_kg}
+        min={30}
+        max={200}
+        step={0.5}
+        disabled={disabled}
+        hint="Sets the core and skin heat capacities (Stage 3)."
+        onChange={(value) => update("body_mass_kg", value)}
+      />
+
+      <NumberField
+        label="Body Surface Area"
+        suffix="m²"
+        value={person.body_surface_area_m2}
+        min={1}
+        max={3}
+        step={0.01}
+        disabled={disabled}
+        onChange={(value) => update("body_surface_area_m2", value)}
+      />
+
+      <NumberField
+        label="Initial Core Temperature"
+        suffix="°C"
+        value={person.initial_core_temperature_c}
+        min={34}
+        max={40}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("initial_core_temperature_c", value)}
+      />
+
+      <NumberField
+        label="Initial Skin Temperature"
+        suffix="°C"
+        value={person.initial_skin_temperature_c}
+        min={20}
+        max={40}
+        step={0.1}
+        disabled={disabled}
+        onChange={(value) => update("initial_skin_temperature_c", value)}
+      />
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/config/navigation.ts`
 ```typescript
 export type NavLink = {
@@ -7043,18 +8205,10 @@ export type NavLink = {
 };
 
 export const NAV_LINKS: NavLink[] = [
-  {
-    href: "/simulations",
-    label: "Simulations",
-  },
-  {
-    href: "/materials",
-    label: "Materials",
-  },
-  {
-    href: "/global-analysis",
-    label: "Global Analysis",
-  },
+  { href: "/simulations", label: "Simulations" },
+  { href: "/materials", label: "Materials" },
+  { href: "/global-analysis", label: "Global Analysis" },
+  { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
 ];
 
 ```
@@ -7062,7 +8216,25 @@ export const NAV_LINKS: NavLink[] = [
 ### File: `frontend/src/lib/api-client.ts`
 ```typescript
 import type {
+  GaggeBenchmarkRequest,
+  GaggeBenchmarkResponse,
+} from "@/types/benchmark";
+import type {
+  GeoJsonFeatureCollection,
+  GlobalBatch,
+  GlobalBatchCreate,
+  GlobalBatchDetail,
+  GlobalBatchEstimate,
+  GlobalCity,
+} from "@/types/global-batch";
+import type {
+  Material,
+  MaterialCreate,
+  MaterialListResponse,
+} from "@/types/material";
+import type {
   City,
+  MaterialInput,
   SimulationJob,
   SimulationJobDetail,
   SimulationJobList,
@@ -7357,14 +8529,6 @@ export function getSimulationEventsUrl(
   );
 }
 
-import type {
-  Material,
-  MaterialCreate,
-  MaterialListResponse,
-} from "@/types/material";
-import type {
-  MaterialInput,
-} from "@/types/simulation";
 
 
 export async function getMaterials(
@@ -7503,14 +8667,6 @@ export function getSimulationExportUrl(
   );
 }
 
-import type {
-  GeoJsonFeatureCollection,
-  GlobalBatch,
-  GlobalBatchCreate,
-  GlobalBatchEstimate,
-  GlobalBatchDetail,
-  GlobalCity,
-} from "@/types/global-batch";
 
 export async function getGlobalCities(): Promise<
   GlobalCity[]
@@ -7687,6 +8843,24 @@ export function getGlobalBatchExportUrl(
     `global-batches/${batchId}/export`
   );
 }
+
+export async function compareWithGagge(
+  request: GaggeBenchmarkRequest,
+): Promise<GaggeBenchmarkResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/benchmarks/gagge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Gagge benchmark request failed"),
+    );
+  }
+
+  return response.json() as Promise<GaggeBenchmarkResponse>;
+}
 ```
 
 ### File: `frontend/src/lib/date-defaults.ts`
@@ -7724,6 +8898,65 @@ export function getDefaultSimulationDateTime(
 }
 ```
 
+### File: `frontend/src/lib/format.ts`
+```typescript
+export function formatNumber(
+  value: number | null | undefined,
+  digits = 2,
+  unit = "",
+): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  return `${value.toFixed(digits)}${unit}`;
+}
+
+export function formatSignedNumber(
+  value: number | null | undefined,
+  digits = 2,
+  unit = "",
+): string {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "—";
+  }
+
+  const sign = value > 0 ? "+" : "";
+
+  return `${sign}${value.toFixed(digits)}${unit}`;
+}
+```
+
+### File: `frontend/src/lib/time-series.ts`
+```typescript
+import type { TimeSeriesPoint } from "@/types/simulation";
+
+/** Series that may be null on the wire or absent on pre-Stage-3 results. */
+export type OptionalSeriesKey =
+  | "maximum_evaporation_w_m2"
+  | "skin_wettedness"
+  | "clothing_surface_temperature_c"
+  | "skin_blood_flow_kg_h_m2";
+
+export function hasOptionalSeries(
+  points: TimeSeriesPoint[],
+  key: OptionalSeriesKey,
+): boolean {
+  return points.some((point) => typeof point[key] === "number");
+}
+
+export function pluckOptionalSeries(
+  points: TimeSeriesPoint[],
+  key: OptionalSeriesKey,
+): Array<number | null> {
+  return points.map((point) => {
+    const value = point[key];
+
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  });
+}
+```
+
 ### File: `frontend/src/locales/en.ts`
 ```typescript
 export const en = {
@@ -7758,6 +8991,94 @@ export const en = {
     cancelled: "Cancelled",
   },
 } as const;
+```
+
+### File: `frontend/src/types/benchmark.ts`
+```typescript
+import type {
+  EnvironmentInput,
+  MaterialInput,
+  PersonInput,
+} from "@/types/simulation";
+
+/** Acceptance thresholds on the maximum absolute trajectory difference. */
+export type BenchmarkTolerances = {
+  core_temperature_c: number;
+  skin_temperature_c: number;
+};
+
+export type GaggeBenchmarkRequest = {
+  duration_minutes: number;
+  environment: EnvironmentInput;
+  person: PersonInput;
+  material: MaterialInput;
+  tolerances: BenchmarkTolerances;
+};
+
+export type BenchmarkMetric = {
+  final_difference_c: number;
+  maximum_absolute_difference_c: number;
+  root_mean_square_difference_c: number;
+  tolerance_c: number;
+  passed: boolean;
+};
+
+export type BenchmarkSeriesPoint = {
+  minute: number;
+  prototype_core_temperature_c: number;
+  prototype_skin_temperature_c: number;
+  prototype_evaporation_w_m2: number;
+  reference_core_temperature_c: number;
+  reference_skin_temperature_c: number;
+  reference_evaporation_w_m2: number;
+};
+
+export type PrototypeBenchmarkOutput = {
+  core_temperature_c: number;
+  skin_temperature_c: number;
+  evaporation_w_m2: number;
+  skin_wettedness: number;
+  skin_blood_flow_kg_h_m2: number;
+  energy_residual_percent: number;
+};
+
+export type GaggeModelOutput = {
+  core_temperature_c: number;
+  skin_temperature_c: number;
+  skin_evaporation_w_m2: number;
+  skin_heat_loss_w_m2: number;
+  respiratory_heat_loss_w_m2: number;
+  skin_blood_flow_kg_h_m2: number;
+  skin_wettedness: number;
+  standard_effective_temperature_c: number;
+};
+
+/** Port vs. library after 60 minutes (the only duration the library runs). */
+export type ReferencePortParity = {
+  library_core_temperature_c: number;
+  port_core_temperature_c: number;
+  library_skin_temperature_c: number;
+  port_skin_temperature_c: number;
+  maximum_absolute_difference_c: number;
+};
+
+export type GaggeBenchmarkResponse = {
+  reference_model: string;
+  reference_library: string;
+  reference_library_version: string;
+  environment_note: string;
+  alignment_applied: string[];
+  prototype: PrototypeBenchmarkOutput;
+  gagge: GaggeModelOutput;
+  difference_core_temperature_c: number;
+  difference_skin_temperature_c: number;
+  core_temperature: BenchmarkMetric;
+  skin_temperature: BenchmarkMetric;
+  passed: boolean;
+  time_series: BenchmarkSeriesPoint[];
+  reference_port_parity: ReferencePortParity;
+  warning: string;
+};
 ```
 
 ### File: `frontend/src/types/global-batch.ts`
@@ -8240,6 +9561,8 @@ export type GeoJsonFeatureCollection = {
 
 ### File: `frontend/src/types/material.ts`
 ```typescript
+import type { ParameterSource } from "@/types/simulation";
+
 export type MaterialMode =
   | "ordinary"
   | "opaque_emitter"
@@ -8249,6 +9572,8 @@ export type MaterialMode =
 export type MaterialVersionInput = {
   mode: MaterialMode;
   clothing_insulation_clo: number;
+  /** Stage 3: f_cl in [1, 2]; `null` = derived from clo by the backend. */
+  clothing_area_factor: number | null;
   evaporative_resistance_m2pa_w: number | null;
   solar_reflectance: number;
   solar_transmittance: number;
@@ -8261,6 +9586,7 @@ export type MaterialVersionInput = {
   source_type: string;
   source_reference: string | null;
   notes: string | null;
+  parameter_sources?: Record<string, ParameterSource> | null;
 };
 
 export type MaterialCreate = {
@@ -8323,9 +9649,28 @@ export type MaterialListResponse = {
 
 ### File: `frontend/src/types/simulation.ts`
 ```typescript
+export type ParameterSourceType =
+  | "measured"
+  | "manufacturer"
+  | "literature"
+  | "standard"
+  | "derived"
+  | "assumed"
+  | "manual";
+
+export type ParameterSource = {
+  source_type: ParameterSourceType;
+  reference?: string | null;
+  note?: string | null;
+};
+
+/** How the solver obtained a resolved clothing quantity. */
+export type ResolvedParameterSource = "material_input" | "derived_from_clo";
+
 export type EnvironmentInput = {
   air_temperature_c: number;
   mean_radiant_temperature_c: number;
+  /** `null` lets the backend derive the sky temperature. */
   sky_temperature_c: number | null;
   relative_humidity_percent: number;
   wind_speed_m_s: number;
@@ -8335,6 +9680,8 @@ export type EnvironmentInput = {
 
 export type PersonInput = {
   met: number;
+  /** Stage 3 (ADR 0001): drives core/skin heat capacities. Backend default 70 kg. */
+  body_mass_kg: number;
   body_surface_area_m2: number;
   initial_core_temperature_c: number;
   initial_skin_temperature_c: number;
@@ -8343,11 +9690,19 @@ export type PersonInput = {
 export type MaterialInput = {
   name: string;
   clothing_insulation_clo: number;
+  /** Stage 3: f_cl in [1, 2]. `null` lets the backend derive it from clo. */
+  clothing_area_factor: number | null;
+  evaporative_resistance_m2pa_w?: number | null;
   solar_reflectance: number;
   solar_transmittance: number;
   infrared_emissivity: number;
+  infrared_transmittance?: number;
   projected_solar_area_factor: number;
   absorbed_solar_to_body_fraction: number;
+  material_version_id?: string | null;
+  parameter_sources?: Record<string, ParameterSource> | null;
+  source_type?: string | null;
+  source_reference?: string | null;
 };
 
 export type SimulationRequest = {
@@ -8360,6 +9715,10 @@ export type SimulationRequest = {
   rc_material: MaterialInput;
 };
 
+/**
+ * Optional members are nullable on the wire and may be absent entirely on
+ * results persisted before Stage 3. Always read them defensively.
+ */
 export type TimeSeriesPoint = {
   minute: number;
   core_temperature_c: number;
@@ -8369,31 +9728,12 @@ export type TimeSeriesPoint = {
   evaporation_w_m2: number;
   absorbed_solar_w_m2: number;
   core_to_skin_w_m2: number;
-};
-
-export type ScenarioResult = {
-  material_name: string;
-  time_series: TimeSeriesPoint[];
-  final_core_temperature_c: number;
-  final_skin_temperature_c: number;
-  peak_core_temperature_c: number;
-  peak_skin_temperature_c: number;
-  diagnostics: EnergyDiagnostics;
-};
-
-export type SimulationResponse = {
-  model_name: string;
-  model_version: string;
-  city: string;
-  duration_minutes: number;
-  control: ScenarioResult;
-  radiative_cooling: ScenarioResult;
-  summary: {
-    final_skin_temperature_improvement_c: number;
-    final_core_temperature_improvement_c: number;
-    average_skin_temperature_improvement_c: number;
-  };
-  warning: string;
+  maximum_evaporation_w_m2?: number | null;
+  skin_wettedness?: number | null;
+  /** Stage 3 */
+  clothing_surface_temperature_c?: number | null;
+  /** Stage 3 */
+  skin_blood_flow_kg_h_m2?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -8404,6 +9744,62 @@ export type EnergyDiagnostics = {
   maximum_core_step_c: number;
   maximum_skin_step_c: number;
   solver_function_evaluations: number;
+};
+
+export type ClothingSummary = {
+  dry_resistance_m2k_w: number;
+  evaporative_resistance_m2pa_w: number;
+  evaporative_resistance_source: ResolvedParameterSource;
+  infrared_transmittance: number;
+  /** Stage 3 */
+  clothing_area_factor?: number | null;
+  /** Stage 3 */
+  clothing_area_factor_source?: ResolvedParameterSource | null;
+};
+
+/** Stage 3 (ADR 0001): heat capacities derived from PersonInput. */
+export type BodyThermalSummary = {
+  body_mass_kg: number;
+  body_surface_area_m2: number;
+  core_heat_capacity_j_m2k: number;
+  skin_heat_capacity_j_m2k: number;
+};
+
+export type ScenarioResult = {
+  material_name: string;
+  time_series: TimeSeriesPoint[];
+  final_core_temperature_c: number;
+  final_skin_temperature_c: number;
+  peak_core_temperature_c: number;
+  peak_skin_temperature_c: number;
+  diagnostics: EnergyDiagnostics;
+  assumptions_applied?: string[];
+  clothing?: ClothingSummary | null;
+  /** Stage 3 */
+  body?: BodyThermalSummary | null;
+};
+
+export type ModelMetadata = {
+  parameter_set_version: string;
+  parameter_set_sha256: string;
+};
+
+export type SimulationSummary = {
+  final_skin_temperature_improvement_c: number;
+  final_core_temperature_improvement_c: number;
+  average_skin_temperature_improvement_c: number;
+};
+
+export type SimulationResponse = {
+  model_name: string;
+  model_version: string;
+  model_metadata?: ModelMetadata | null;
+  city: string;
+  duration_minutes: number;
+  control: ScenarioResult;
+  radiative_cooling: ScenarioResult;
+  summary: SimulationSummary;
+  warning: string;
 };
 
 export type City = {
@@ -8457,11 +9853,10 @@ export type WeatherSimulationRequest = {
   rc_material: MaterialInput;
 };
 
-export type WeatherSimulationResponse =
-  SimulationResponse & {
-    weather: WeatherTimeSeries;
-    environment_model_note: string;
-  };
+export type WeatherSimulationResponse = SimulationResponse & {
+  weather: WeatherTimeSeries;
+  environment_model_note: string;
+};
 
 export type SimulationJobStatus =
   | "queued"
@@ -8486,10 +9881,9 @@ export type SimulationJob = {
   completed_at: string | null;
 };
 
-export type SimulationJobDetail =
-  SimulationJob & {
-    request: WeatherSimulationRequest;
-  };
+export type SimulationJobDetail = SimulationJob & {
+  request: WeatherSimulationRequest;
+};
 
 export type SimulationJobList = {
   items: SimulationJob[];

@@ -2,7 +2,7 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import {ProvenanceEditor} from "@/components/materials/provenance-editor";
 import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
 import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
@@ -185,6 +185,25 @@ export default function NewMaterialPage() {
                 onChange={(value) => updateVersion("clothing_area_factor", value)}
               />
 
+              <OptionalNumberField
+                label="Evaporative Resistance (Re,cl)"
+                suffix="m²·Pa/W"
+                value={material.initial_version.evaporative_resistance_m2pa_w}
+                placeholder="Derived from clo"
+                min={0} max={1000} step={0.5}
+                onChange={(value) => updateVersion("evaporative_resistance_m2pa_w", value)}
+              />
+              <NumberInput
+                label="Projected Solar Area Factor"
+                value={material.initial_version.projected_solar_area_factor}
+                onChange={(value) => updateVersion("projected_solar_area_factor", value)}
+              />
+              <NumberInput
+                label="Absorbed Solar to Body Fraction"
+                value={material.initial_version.absorbed_solar_to_body_fraction}
+                onChange={(value) => updateVersion("absorbed_solar_to_body_fraction", value)}
+              />
+
               <NumberInput
                 label="Solar Reflectance"
                 value={
@@ -253,6 +272,22 @@ export default function NewMaterialPage() {
                     value,
                   )
                 }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Parameter Provenance</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Record where each value came from. Provenance travels with the
+              version into every simulation that references it.
+            </p>
+            <div className="mt-5">
+              <ProvenanceEditor
+                sources={material.initial_version.parameter_sources ?? null}
+                values={material.initial_version}
+                disabled={loading}
+                onChange={(sources) => updateVersion("parameter_sources", sources)}
               />
             </div>
           </section>

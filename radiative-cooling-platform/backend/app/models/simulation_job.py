@@ -7,6 +7,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    ForeignKey,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import (
@@ -110,4 +111,19 @@ class SimulationJob(Base):
             DateTime(timezone=True),
             nullable=True,
         )
+    )
+
+    # Stage 4. Material library versions the request was resolved against.
+    control_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    rc_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )

@@ -14,6 +14,8 @@ import {
   getGlobalCities,
 } from "@/lib/api-client";
 
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+
 import type {
   AnalysisResolution,
   ExecutionProfile,
@@ -805,6 +807,38 @@ export default function GlobalAnalysisPage() {
               </div>
             )}
         </section>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Control Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.control_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(control_material) =>
+                    setRequest((current) => ({ ...current, control_material }))
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.rc_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(rc_material) =>
+                    setRequest((current) => ({ ...current, rc_material }))
+                  }
+                />
+              </div>
+            </section>
+          </div>
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">

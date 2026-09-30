@@ -228,6 +228,8 @@ export type SimulationJob = {
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
+  control_material_version_id?: string | null;
+  rc_material_version_id?: string | null;
 };
 
 export type SimulationJobDetail = SimulationJob & {
@@ -239,4 +241,34 @@ export type SimulationJobList = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type MaterialFieldDescriptor = {
+  name: string;
+  unit: string;
+  description: string;
+  minimum: number | null;
+  maximum: number | null;
+  default: number | null;
+  nullable: boolean;
+  derived_when_null: string | null;
+};
+
+export type MaterialFieldManifest = ModelMetadata & {
+  source_types: ParameterSourceType[];
+  fields: MaterialFieldDescriptor[];
+};
+
+export type ModelParameter = {
+  name: string;
+  value: number;
+  unit: string;
+  description: string;
+  source_type: ParameterSourceType;
+  reference: string;
+  note: string | null;
+};
+
+export type ModelParameterManifest = ModelMetadata & {
+  parameters: ModelParameter[];
 };

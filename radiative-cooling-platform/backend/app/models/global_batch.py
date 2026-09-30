@@ -124,6 +124,20 @@ class GlobalBatchJob(Base):
         order_by="GlobalCityResult.city_id",
     )
 
+    # Stage 4. Material library versions the request was resolved against.
+    control_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    rc_material_version_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("material_versions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
 class GlobalCityResult(Base):
     __tablename__ = "global_city_results"

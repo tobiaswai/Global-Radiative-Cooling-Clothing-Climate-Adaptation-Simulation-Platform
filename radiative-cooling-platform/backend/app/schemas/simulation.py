@@ -6,7 +6,15 @@ from app.schemas.weather import WeatherTimeSeries
 
 from app.schemas.environment import EnvironmentAssumptions
 
-from app.schemas.provenance import ModelMetadata, ParameterSource
+from app.schemas.provenance import (  # replace the existing provenance import
+    MATERIAL_PHYSICAL_FIELD_ORDER,
+    MATERIAL_PHYSICAL_FIELDS,
+    ModelMetadata,
+    ParameterSource,
+    validate_parameter_source_keys,
+)
+
+__all__ = ["MATERIAL_PHYSICAL_FIELDS", "MATERIAL_PHYSICAL_FIELD_ORDER"]  # re-export
 
 from typing import Literal
 
@@ -75,31 +83,86 @@ MATERIAL_PHYSICAL_FIELDS = frozenset(
 )
 
 class MaterialInput(BaseModel):
+    """Garment parameters for one scenario.
+
+    ``material_version_id`` links the input to an immutable material library
+    version. When it is set, the API resolves it (Stage 4, PR-4):
+    * physical fields that are omitted are filled from the stored version;
+    * physical fields that are supplied must equal the stored version,
+      otherwise the request is rejected with MATERIAL_PARAMETER_CONFLICT;
+    * provenance fields are filled from the stored version when omitted.
+    """
+
     name: str = Field(min_length=1, max_length=100)
 
-    clothing_insulation_clo: float = Field(default=0.5, ge=0, le=5)
+    clothing_insulation_clo: float = Field(
+        default=0.5, ge=0, le=5,
+        description="Intrinsic dry thermal insulation of the garment",
+        json_schema_extra={"unit": "clo"},
+    )
 
     # Stage 2. Intrinsic clothing evaporative resistance Re,cl.
-    # None -> derived from clo (clothing.derive_evaporative_resistance_m2pa_w)
-    # and reported in ScenarioResult.assumptions_applied.
     evaporative_resistance_m2pa_w: float | None = Field(
-        default=None, ge=0, le=1000
+        default=None, ge=0, le=1000,
+        description="Intrinsic evaporative resistance Re,cl of the garment",
+        json_schema_extra={
+            "unit": "m^2 Pa/W",
+            "derived_when_null": "R_cl / (LR * i_cl)",
+        },
     )
-    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
 
+    # Stage 3. Measured clothing area factor f_cl.
+    clothing_area_factor: float | None = Field(
+        default=None, ge=1.0, le=2.0,
+        description="Clothing area factor f_cl = A_cl / A_D",
+        json_schema_extra={
+            "unit": "-",
+            "derived_when_null": "1 + clothing_area_factor_slope * clo",
+        },
+    )
 
-    solar_reflectance: float = Field(default=0.5, ge=0, le=1)
-    solar_transmittance: float = Field(default=0, ge=0, le=1)
-    infrared_emissivity: float = Field(default=0.9, ge=0, le=1)
+    solar_reflectance: float = Field(
+        default=0.5, ge=0, le=1,
+        description="Hemispherical solar reflectance (0.3-2.5 um)",
+        json_schema_extra={"unit": "-"},
+    )
+    solar_transmittance: float = Field(
+        default=0, ge=0, le=1,
+        description="Hemispherical solar transmittance (0.3-2.5 um)",
+        json_schema_extra={"unit": "-"},
+    )
+    infrared_emissivity: float = Field(
+        default=0.9, ge=0, le=1,
+        description="Longwave emissivity of the outer surface (8-13 um)",
+        json_schema_extra={"unit": "-"},
+    )
 
     # Stage 2. Longwave transmittance of the textile (IR-transparent designs).
-    infrared_transmittance: float = Field(default=0.0, ge=0, le=1)
+    infrared_transmittance: float = Field(
+        default=0.0, ge=0, le=1,
+        description="Longwave transmittance of the textile (8-13 um)",
+        json_schema_extra={"unit": "-"},
+    )
 
-    projected_solar_area_factor: float = Field(default=0.25, ge=0, le=1)
-    absorbed_solar_to_body_fraction: float = Field(default=0.35, ge=0, le=1)
+    projected_solar_area_factor: float = Field(
+        default=0.25, ge=0, le=1,
+        description="Projected area factor A_p / A_D for direct solar radiation",
+        json_schema_extra={"unit": "-"},
+    )
+    absorbed_solar_to_body_fraction: float = Field(
+        default=0.35, ge=0, le=1,
+        description=(
+            "Fraction of solar radiation absorbed by the textile that reaches "
+            "the skin node (ADR 0003)"
+        ),
+        json_schema_extra={"unit": "-"},
+    )
 
     # Provenance (no effect on the physics).
-    material_version_id: str | None = None
+    material_version_id: str | None = Field(
+        default=None,
+        description="Material library version this input was taken from",
+    )
     source_type: str | None = Field(default=None, max_length=50)
     source_reference: str | None = None
     # Stage 2. Per-parameter provenance keyed by field name.
@@ -117,13 +180,7 @@ class MaterialInput(BaseModel):
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
             )
 
-        if self.parameter_sources:
-            unknown = set(self.parameter_sources) - MATERIAL_PHYSICAL_FIELDS
-            if unknown:
-                raise ValueError(
-                    "parameter_sources refers to unknown material fields: "
-                    + ", ".join(sorted(unknown))
-                )
+        validate_parameter_source_keys(self.parameter_sources)
 
         return self
 

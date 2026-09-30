@@ -16,11 +16,14 @@ import type {
   City,
   WeatherSimulationRequest,
 } from "@/types/simulation";
+import { NumberField } from "@/components/forms/number-field";
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { getDefaultSimulationDateTime } from "@/lib/date-defaults";
 
 
 const initialRequest: WeatherSimulationRequest = {
   city_id: "dubai",
-  start_time_local: "2026-07-15T10:00",
+  start_time_local: getDefaultSimulationDateTime(), 
   duration_minutes: 120,
   output_interval_minutes: 1,
 
@@ -260,6 +263,16 @@ export default function WeatherSimulationPage() {
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
+            <NumberField
+              label="Output Interval"
+              suffix="min"
+              value={request.output_interval_minutes}
+              min={1} max={60} step={1}
+              disabled={submitting}
+              onChange={(value) =>
+                setRequest((current) => ({ ...current, output_interval_minutes: value }))
+              }
+            />
           </div>
 
           <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
@@ -280,63 +293,38 @@ export default function WeatherSimulationPage() {
               />
             </div>
           </section>
-          <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-            <h2 className="text-lg font-semibold">
-              Simulation Configuration Summary
-            </h2>
 
-            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-slate-500">
-                  Output Interval
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request
-                      .output_interval_minutes
-                  }{" "}
-                  minutes
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-slate-500">
-                  Control Clothing
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.control_material
-                      .clothing_insulation_clo
-                  }{" "}
-                  clo
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-slate-500">
-                  Control Clothing Solar Reflectance
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.control_material
-                      .solar_reflectance
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Control Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.control_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(control_material) =>
+                    setRequest((current) => ({ ...current, control_material }))
                   }
-                </dd>
+                />
               </div>
+            </section>
 
-              <div>
-                <dt className="text-slate-500">
-                  RC Clothing Solar Reflectance
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.rc_material
-                      .solar_reflectance
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.rc_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(rc_material) =>
+                    setRequest((current) => ({ ...current, rc_material }))
                   }
-                </dd>
+                />
               </div>
-            </dl>
-          </section>
+            </section>
+          </div>
 
           <button
             type="submit"

@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import Literal
-from app.schemas.provenance import ParameterSource
+from app.schemas.provenance import (
+    ParameterSource,
+    validate_parameter_source_keys,
+)
 
 from pydantic import (
     BaseModel,
@@ -37,6 +40,7 @@ class MaterialVersionCreate(BaseModel):
     evaporative_resistance_m2pa_w: float | None = Field(
         default=None,
         ge=0,
+        le=1000,
     )
 
     clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
@@ -96,8 +100,9 @@ class MaterialVersionCreate(BaseModel):
     notes: str | None = None
     parameter_sources: dict[str, ParameterSource] | None = None
 
+# 3. MaterialVersionCreate validator: also check provenance keys
     @model_validator(mode="after")
-    def validate_optical_properties(self):
+    def validate_version(self):
         if self.solar_reflectance + self.solar_transmittance > 1.0 + 1e-6:
             raise ValueError(
                 "solar_reflectance + solar_transmittance cannot be greater than 1"
@@ -106,6 +111,7 @@ class MaterialVersionCreate(BaseModel):
             raise ValueError(
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
             )
+        validate_parameter_source_keys(self.parameter_sources)
         return self
 
 
@@ -229,3 +235,32 @@ class SpectrumPoint(BaseModel):
 class SpectrumResponse(BaseModel):
     summary: SpectrumSummary
     points: list[SpectrumPoint]
+
+class MaterialVersionListItem(BaseModel):
+    """Flat row for version pickers: one line per material version."""
+
+    id: str
+    material_id: str
+    material_name: str
+    material_slug: str
+    version_number: int
+    mode: str
+
+    clothing_insulation_clo: float
+    evaporative_resistance_m2pa_w: float | None
+    clothing_area_factor: float | None
+    solar_reflectance: float
+    solar_transmittance: float
+    infrared_emissivity: float
+    infrared_transmittance: float
+
+    source_type: str
+    is_archived: bool
+    created_at: datetime
+
+
+class MaterialVersionListResponse(BaseModel):
+    items: list[MaterialVersionListItem]
+    total: int
+    limit: int
+    offset: int
