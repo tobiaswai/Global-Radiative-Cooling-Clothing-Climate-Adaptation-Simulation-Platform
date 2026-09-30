@@ -14,7 +14,6 @@ from fastapi import (
 from fastapi.responses import Response
 from sqlalchemy import (
     func,
-    or_,
     select,
 )
 from sqlalchemy.orm import (
@@ -225,20 +224,6 @@ def create_global_batch(
         request_json=request.model_dump(mode="json"),
         control_material_version_id=control_version_id,
         rc_material_version_id=rc_version_id,
-    )
-
-    queue_name = resolve_queue_name(
-        request
-    )
-
-    batch = GlobalBatchJob(
-        status="queued",
-        stage="creating_city_tasks",
-        progress=0,
-        total_city_count=len(cities),
-        request_json=request.model_dump(
-            mode="json"
-        ),
     )
 
     session.add(batch)

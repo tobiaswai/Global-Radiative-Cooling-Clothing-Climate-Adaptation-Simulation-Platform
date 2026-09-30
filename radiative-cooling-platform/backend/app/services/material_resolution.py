@@ -74,7 +74,7 @@ def version_display_name(version: MaterialVersion) -> str:
     name = f"{version.material.name} v{version.version_number}"
     return name[:MATERIAL_NAME_MAX_LENGTH]
 
-
+# absorbed_solar_to_body_fraction is deprecated (ADR 0005) and not mapped.
 def material_input_from_version(version: MaterialVersion) -> MaterialInput:
     """The single mapping from a stored version to a simulation input."""
     try:
@@ -88,9 +88,6 @@ def material_input_from_version(version: MaterialVersion) -> MaterialInput:
             infrared_emissivity=version.infrared_emissivity,
             infrared_transmittance=version.infrared_transmittance,
             projected_solar_area_factor=version.projected_solar_area_factor,
-            absorbed_solar_to_body_fraction=(
-                version.absorbed_solar_to_body_fraction
-            ),
             material_version_id=version.id,
             source_type=version.source_type,
             source_reference=version.source_reference,

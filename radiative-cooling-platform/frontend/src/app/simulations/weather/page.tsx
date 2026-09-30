@@ -19,6 +19,8 @@ import type {
 import { NumberField } from "@/components/forms/number-field";
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
 import { getDefaultSimulationDateTime } from "@/lib/date-defaults";
+import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 
 
 const initialRequest: WeatherSimulationRequest = {
@@ -26,6 +28,7 @@ const initialRequest: WeatherSimulationRequest = {
   start_time_local: getDefaultSimulationDateTime(), 
   duration_minutes: 120,
   output_interval_minutes: 1,
+  environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
 
   person: {
     met: 2.6,
@@ -33,6 +36,7 @@ const initialRequest: WeatherSimulationRequest = {
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
     body_mass_kg: 70,
+    position: "standing",
   },
 
   control_material: {
@@ -42,7 +46,6 @@ const initialRequest: WeatherSimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.8,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     clothing_area_factor: null,
   },
 
@@ -53,7 +56,6 @@ const initialRequest: WeatherSimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     clothing_area_factor: null,
   },
 };
@@ -293,6 +295,16 @@ export default function WeatherSimulationPage() {
               />
             </div>
           </section>
+
+          <div className="mt-8">
+            <EnvironmentAssumptionsFields
+              value={request.environment_assumptions ?? DEFAULT_ENVIRONMENT_ASSUMPTIONS}
+              disabled={submitting}
+              onChange={(environment_assumptions) =>
+                setRequest((current) => ({ ...current, environment_assumptions }))
+              }
+            />
+          </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">

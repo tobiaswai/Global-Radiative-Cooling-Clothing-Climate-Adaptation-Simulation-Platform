@@ -1,6 +1,7 @@
 "use client";
 
 import { NumberField } from "@/components/forms/number-field";
+import { SelectField } from "@/components/forms/select-field";
 import type { PersonInput } from "@/types/simulation";
 
 type PersonInputFieldsProps = {
@@ -19,7 +20,7 @@ export function PersonInputFields({
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
       <NumberField
         label="Activity Level"
         suffix="MET"
@@ -74,6 +75,18 @@ export function PersonInputFields({
         step={0.1}
         disabled={disabled}
         onChange={(value) => update("initial_skin_temperature_c", value)}
+      />
+
+      <SelectField
+        label="Posture"
+        value={person.position}
+        disabled={disabled}
+        options={[
+          { value: "standing", label: "Standing (A_r/A_D = 0.73)" },
+          { value: "sitting", label: "Sitting (A_r/A_D = 0.70)" },
+        ]}
+        hint="Effective radiation area for longwave and diffuse solar (Stage 5)."
+        onChange={(value) => update("position", value)}
       />
     </div>
   );

@@ -31,20 +31,24 @@ MATERIAL_PHYSICAL_FIELD_ORDER: tuple[str, ...] = (
     "infrared_emissivity",
     "infrared_transmittance",
     "projected_solar_area_factor",
-    "absorbed_solar_to_body_fraction",
 )
 
 MATERIAL_PHYSICAL_FIELDS = frozenset(MATERIAL_PHYSICAL_FIELD_ORDER)
+
+# Kept in the schema and the database for backward compatibility, but no longer
+# read by the physics (Stage 5, ADR 0005). Accepted in parameter_sources so
+# stored versions keep loading; never verified against a library version and
+# never listed in the field manifest.
+MATERIAL_DEPRECATED_FIELDS = frozenset({"absorbed_solar_to_body_fraction"})
 
 
 def validate_parameter_source_keys(
     sources: Mapping[str, object] | None,
 ) -> None:
-    """Reject provenance entries that do not name a physical material field."""
     if not sources:
         return
 
-    unknown = set(sources) - MATERIAL_PHYSICAL_FIELDS
+    unknown = set(sources) - MATERIAL_PHYSICAL_FIELDS - MATERIAL_DEPRECATED_FIELDS
 
     if unknown:
         raise ValueError(

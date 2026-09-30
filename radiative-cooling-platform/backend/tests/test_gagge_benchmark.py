@@ -166,3 +166,16 @@ def test_default_case_is_within_stage_3_tolerances(environment, person, control_
     assert result.core_temperature.passed, result.core_temperature
     assert result.skin_temperature.passed, result.skin_temperature
     assert result.passed
+    
+@pytest.mark.benchmark
+def test_sitting_posture_runs_and_reports_seated_area_ratio(
+    environment, person, control_material
+):
+    result = run_gagge_benchmark(
+        GaggeBenchmarkRequest(
+            environment=environment,
+            person=person.model_copy(update={"position": "sitting"}),
+            material=control_material,
+        )
+    )
+    assert result.reference_port_parity.maximum_absolute_difference_c < 0.05

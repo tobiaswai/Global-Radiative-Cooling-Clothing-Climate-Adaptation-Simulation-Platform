@@ -27,6 +27,9 @@ CSV_HEADERS = [
     "rc_skin_wettedness",
     "control_clothing_surface_temperature_c",
     "rc_clothing_surface_temperature_c",
+    # Stage 5
+    "control_solar_incident_w_m2",
+    "rc_solar_incident_w_m2",
 ]
 
 
@@ -66,6 +69,8 @@ def export_result_csv(result: WeatherSimulationResponse) -> str:
                 _optional(rc, "skin_wettedness"),
                 _optional(control, "clothing_surface_temperature_c"),
                 _optional(rc, "clothing_surface_temperature_c"),
+                _optional(control, "solar_incident_w_m2"),
+                _optional(rc, "solar_incident_w_m2"),
             ]
         )
 

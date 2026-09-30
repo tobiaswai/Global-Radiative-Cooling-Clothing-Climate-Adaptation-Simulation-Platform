@@ -23,7 +23,6 @@ const initialMaterial: MaterialCreate = {
     infrared_emissivity: 0.95,
     infrared_transmittance: 0,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     areal_density_g_m2: 150,
     specific_heat_j_kgk: 1300,
     source_type: "manual",
@@ -198,11 +197,7 @@ export default function NewMaterialPage() {
                 value={material.initial_version.projected_solar_area_factor}
                 onChange={(value) => updateVersion("projected_solar_area_factor", value)}
               />
-              <NumberInput
-                label="Absorbed Solar to Body Fraction"
-                value={material.initial_version.absorbed_solar_to_body_fraction}
-                onChange={(value) => updateVersion("absorbed_solar_to_body_fraction", value)}
-              />
+
 
               <NumberInput
                 label="Solar Reflectance"

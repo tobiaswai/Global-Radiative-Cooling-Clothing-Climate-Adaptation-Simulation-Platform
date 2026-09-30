@@ -18,69 +18,63 @@ __all__ = ["MATERIAL_PHYSICAL_FIELDS", "MATERIAL_PHYSICAL_FIELD_ORDER"]  # re-ex
 
 from typing import Literal
 
+BodyPosition = Literal["standing", "sitting"]
+
 class EnvironmentInput(BaseModel):
-    air_temperature_c: float = Field(
-        default=38.0,
-        ge=-50,
-        le=70,
-    )
-    mean_radiant_temperature_c: float = Field(
-        default=45.0,
-        ge=-50,
-        le=100,
-    )
-    sky_temperature_c: float | None = Field(
-        default=None,
-        ge=-100,
-        le=70,
-    )
-    relative_humidity_percent: float = Field(
-        default=40.0,
-        ge=0,
-        le=100,
-    )
-    wind_speed_m_s: float = Field(
-        default=1.5,
-        ge=0,
-        le=30,
-    )
+    air_temperature_c: float = Field(default=38.0, ge=-50, le=70)
+    mean_radiant_temperature_c: float = Field(default=45.0, ge=-50, le=100)
+    sky_temperature_c: float | None = Field(default=None, ge=-100, le=70)
+    relative_humidity_percent: float = Field(default=40.0, ge=0, le=100)
+    wind_speed_m_s: float = Field(default=1.5, ge=0, le=30)
     solar_radiation_w_m2: float = Field(
-        default=800.0,
-        ge=0,
-        le=1500,
+        default=800.0, ge=0, le=1500,
+        description="Global horizontal irradiance (GHI)",
     )
-    sky_view_factor: float = Field(
-        default=0.5,
-        ge=0,
-        le=1,
+    sky_view_factor: float = Field(default=0.5, ge=0, le=1)
+    
+    # Stage 5 (ADR 0006). Optional beam/diffuse split; supply both or neither.
+    direct_normal_irradiance_w_m2: float | None = Field(
+        default=None, ge=0, le=1500,
+        description="Direct normal irradiance (DNI) on a plane facing the sun",
+    )
+    diffuse_horizontal_irradiance_w_m2: float | None = Field(
+        default=None, ge=0, le=1500,
+        description="Diffuse horizontal irradiance (DHI) from the sky vault",
+    )
+    ground_albedo: float = Field(
+        default=0.2, ge=0, le=1,
+        description="Shortwave reflectance of the ground (reflected-diffuse term)",
     )
 
+    @model_validator(mode="after")
+    def validate_solar_split(self):
+        has_dni = self.direct_normal_irradiance_w_m2 is not None
+        has_dhi = self.diffuse_horizontal_irradiance_w_m2 is not None
+
+        if has_dni != has_dhi:
+            raise ValueError(
+                "direct_normal_irradiance_w_m2 and "
+                "diffuse_horizontal_irradiance_w_m2 must be supplied together"
+            )
+
+        return self
+
+    @property
+    def has_solar_split(self) -> bool:
+        return self.direct_normal_irradiance_w_m2 is not None
 
 class PersonInput(BaseModel):
     met: float = Field(default=2.6, ge=0.7, le=10)
-
     body_surface_area_m2: float = Field(default=1.8, ge=1.0, le=3.0)
-
-    # Stage 3. Heat capacities are derived from body mass (ADR 0001).
-    # 70 kg / 1.8 m^2 reproduces the Gagge two-node lumped value.
     body_mass_kg: float = Field(default=70.0, ge=30.0, le=200.0)
-
     initial_core_temperature_c: float = Field(default=36.8, ge=34, le=40)
     initial_skin_temperature_c: float = Field(default=33.7, ge=20, le=40)
 
-MATERIAL_PHYSICAL_FIELDS = frozenset(
-    {
-        "clothing_insulation_clo",
-        "evaporative_resistance_m2pa_w",
-        "clothing_area_factor",
-        "solar_reflectance",
-        "solar_transmittance",
-        "infrared_emissivity",
-        "infrared_transmittance",
-        "projected_solar_area_factor",
-        "absorbed_solar_to_body_fraction",
-    }
-)
+    # Stage 5 (ADR 0006). Selects A_r/A_D for longwave and diffuse shortwave.
+    position: BodyPosition = Field(
+        default="standing",
+        description="Posture; selects the effective radiation area ratio",
+    )
 
 class MaterialInput(BaseModel):
     """Garment parameters for one scenario.
@@ -152,10 +146,10 @@ class MaterialInput(BaseModel):
     absorbed_solar_to_body_fraction: float = Field(
         default=0.35, ge=0, le=1,
         description=(
-            "Fraction of solar radiation absorbed by the textile that reaches "
-            "the skin node (ADR 0003)"
+            "DEPRECATED since Stage 5 (ADR 0005): ignored by the physics. "
+            "Kept so stored requests and library versions keep loading."
         ),
-        json_schema_extra={"unit": "-"},
+        json_schema_extra={"unit": "-", "deprecated": True},
     )
 
     # Provenance (no effect on the physics).
@@ -226,6 +220,10 @@ class TimeSeriesPoint(BaseModel):
     # Stage 3 diagnostics.
     clothing_surface_temperature_c: float | None = None
     skin_blood_flow_kg_h_m2: float | None = None
+    # Stage 5 diagnostics.
+    solar_incident_w_m2: float | None = None
+    solar_absorbed_by_textile_w_m2: float | None = None
+    solar_transmitted_w_m2: float | None = None
 
 class ClothingSummary(BaseModel):
     """Resolved clothing quantities actually used by the solver."""
@@ -247,6 +245,9 @@ class BodyThermalSummary(BaseModel):
     body_surface_area_m2: float
     core_heat_capacity_j_m2k: float
     skin_heat_capacity_j_m2k: float
+    # Stage 5
+    position: BodyPosition | None = None
+    effective_radiation_area_ratio: float | None = None
 
 class ScenarioResult(BaseModel):
     material_name: str

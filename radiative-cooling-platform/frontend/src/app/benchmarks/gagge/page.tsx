@@ -31,6 +31,9 @@ const initialRequest: GaggeBenchmarkRequest = {
     wind_speed_m_s: 0.5,
     solar_radiation_w_m2: 0,
     sky_view_factor: 0.5,
+    direct_normal_irradiance_w_m2: null, 
+    diffuse_horizontal_irradiance_w_m2: null, 
+    ground_albedo: 0.2
   },
 
   person: {
@@ -39,6 +42,7 @@ const initialRequest: GaggeBenchmarkRequest = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    position: "standing",
   },
 
   material: {
@@ -49,7 +53,6 @@ const initialRequest: GaggeBenchmarkRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 
   tolerances: {

@@ -24,6 +24,7 @@ import type {
   GlobalBatchEstimate,
   GlobalCity,
 } from "@/types/global-batch";
+import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
 
 type EstimateState = {
   requestKey: string;
@@ -63,6 +64,7 @@ const initialRequest: GlobalBatchCreate = {
   minimum_solar_radiation_w_m2: 300,
 
   exposure_match_mode: "all",
+  environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
 
   person: {
     met: 2,
@@ -70,6 +72,7 @@ const initialRequest: GlobalBatchCreate = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    position: "standing",
   },
 
   control_material: {
@@ -80,7 +83,6 @@ const initialRequest: GlobalBatchCreate = {
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 
   rc_material: {
@@ -91,7 +93,6 @@ const initialRequest: GlobalBatchCreate = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 };
 

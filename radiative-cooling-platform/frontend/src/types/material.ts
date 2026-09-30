@@ -17,7 +17,7 @@ export type MaterialVersionInput = {
   infrared_emissivity: number;
   infrared_transmittance: number;
   projected_solar_area_factor: number;
-  absorbed_solar_to_body_fraction: number;
+  absorbed_solar_to_body_fraction?: number;
   areal_density_g_m2: number | null;
   specific_heat_j_kgk: number | null;
   source_type: string;

@@ -72,6 +72,8 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
     environment = request.environment.model_copy(
         update={
             "solar_radiation_w_m2": 0.0,
+            "direct_normal_irradiance_w_m2": 0.0,
+            "diffuse_horizontal_irradiance_w_m2": 0.0,
             "sky_view_factor": 0.0,
             "sky_temperature_c": request.environment.mean_radiant_temperature_c,
         }
@@ -120,7 +122,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
         body_surface_area=request.person.body_surface_area_m2,
         body_mass_kg=request.person.body_mass_kg,
         p_atm=101325.0,
-        position="standing",
+        position=request.person.position,
         max_skin_blood_flow=90.0,
         max_sweating=500.0,
     )
@@ -140,7 +142,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
         wme=0,
         body_surface_area=request.person.body_surface_area_m2,
         p_atm=101325,
-        position="standing",
+        position=request.person.position,
         max_skin_blood_flow=90,
         max_sweating=500,
         round_output=False,

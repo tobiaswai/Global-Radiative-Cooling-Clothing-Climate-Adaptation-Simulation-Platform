@@ -11,7 +11,16 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+_HERE = Path(__file__).resolve()
+_CANDIDATES = [
+    Path.cwd(),                                                  # 從 backend/ 執行
+    _HERE.parents[1] / "radiative-cooling-platform" / "backend",  # 腳本在 repo root/scripts
+    _HERE.parents[1] / "backend",                                # 腳本在 platform/scripts
+]
+_BACKEND = next((p for p in _CANDIDATES if (p / "app").is_dir()), None)
+if _BACKEND is None:
+    sys.exit("cannot locate backend/app; run from backend/ or set PYTHONPATH")
+sys.path.insert(0, str(_BACKEND))
 
 from app.schemas.simulation import WeatherSimulationRequest  # noqa: E402
 from app.services import weather as weather_service  # noqa: E402

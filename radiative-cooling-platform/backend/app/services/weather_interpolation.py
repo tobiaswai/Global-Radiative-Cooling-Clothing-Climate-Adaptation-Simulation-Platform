@@ -34,15 +34,22 @@ class WeatherInterpolator:
     assumptions: EnvironmentAssumptions = field(
         default_factory=EnvironmentAssumptions
     )
+    # Stage 5. Optional so keyword constructions without the split keep working.
+    dni_values: np.ndarray | None = None
+    dhi_values: np.ndarray | None = None
 
     def __post_init__(self) -> None:
-        arrays = (
+        arrays = [
             self.relative_seconds,
             self.temperatures,
             self.humidities,
             self.wind_speeds,
             self.ghi_values,
-        )
+        ]
+        if self.dni_values is not None:
+            arrays.append(self.dni_values)
+        if self.dhi_values is not None:
+            arrays.append(self.dhi_values)
 
         lengths = {len(array) for array in arrays}
 
@@ -126,6 +133,12 @@ class WeatherInterpolator:
                 [p.ghi_w_m2 for p in weather.points], dtype=float
             ),
             assumptions=assumptions or EnvironmentAssumptions(),  # Stage 2
+            dni_values=np.asarray(
+                [p.dni_w_m2 for p in weather.points], dtype=float
+            ),
+            dhi_values=np.asarray(
+                [p.diffuse_radiation_w_m2 for p in weather.points], dtype=float
+            ),
         )
 
         if check_requested_window:
@@ -179,17 +192,19 @@ class WeatherInterpolator:
         self._check_bounds(elapsed_seconds)
 
         return derive_environment(
-            air_temperature_c=self._interpolate(
-                self.temperatures, elapsed_seconds
+            air_temperature_c=self._interpolate(self.temperatures, elapsed_seconds),
+            relative_humidity_percent=self._interpolate(self.humidities, elapsed_seconds),
+            wind_speed_m_s=self._interpolate(self.wind_speeds, elapsed_seconds),
+            ghi_w_m2=self._interpolate(self.ghi_values, elapsed_seconds),
+            direct_normal_irradiance_w_m2=(
+                None
+                if self.dni_values is None
+                else self._interpolate(self.dni_values, elapsed_seconds)
             ),
-            relative_humidity_percent=self._interpolate(
-                self.humidities, elapsed_seconds
-            ),
-            wind_speed_m_s=self._interpolate(
-                self.wind_speeds, elapsed_seconds
-            ),
-            ghi_w_m2=self._interpolate(
-                self.ghi_values, elapsed_seconds
+            diffuse_horizontal_irradiance_w_m2=(
+                None
+                if self.dhi_values is None
+                else self._interpolate(self.dhi_values, elapsed_seconds)
             ),
             assumptions=self.assumptions,
         )

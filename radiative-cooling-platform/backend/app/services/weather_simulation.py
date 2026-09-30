@@ -10,7 +10,7 @@ from app.schemas.weather import (
     WeatherTimeSeries,
 )
 from app.services.two_node import (
-    simulate_material_with_weather,
+    MODEL_VERSION, simulate_material_with_weather,
 )
 from app.services.weather import (
     get_historical_weather,
@@ -19,7 +19,7 @@ from app.services.weather import (
 from app.services.model_parameters import build_model_metadata
 
 MODEL_NAME = "Weather-driven transient two-node prototype"
-MODEL_VERSION = "0.5.0"  # Stage 2: explicit Re,cl, IR transmittance, assumptions
+
 ProgressCallback = Callable[
     [int, str],
     None,

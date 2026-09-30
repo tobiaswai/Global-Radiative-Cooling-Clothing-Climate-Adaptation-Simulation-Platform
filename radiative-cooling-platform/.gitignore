@@ -50,3 +50,7 @@ coverage/
 # Operating system files
 .DS_Store
 Thumbs.db
+
+backend/coverage.xml
+backend/htmlcov/
+backend/.pytest_cache/

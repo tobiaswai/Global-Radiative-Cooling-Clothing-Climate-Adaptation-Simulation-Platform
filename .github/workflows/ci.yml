@@ -121,6 +121,12 @@ jobs:
           print(app.title)
           "
 
+      - name: Verify frozen API contract
+        working-directory: ${{ github.workspace }}
+        run: |
+          python scripts/dump_api_contract.py /tmp/api-contract.json
+          diff -u api-contract.json /tmp/api-contract.json
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
@@ -165,6 +171,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run frontend unit tests
+        run: npm test
+        
       - name: Build Next.js application
         run: npm run build
 
