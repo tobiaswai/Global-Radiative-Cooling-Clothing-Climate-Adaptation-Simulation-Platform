@@ -1,0 +1,5049 @@
+{
+  "components": {
+    "schemas": {
+      "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "spectrum_type": {
+            "title": "Spectrum Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "spectrum_type",
+          "file"
+        ],
+        "title": "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
+        "type": "object"
+      },
+      "CityResponse": {
+        "properties": {
+          "climate_type": {
+            "title": "Climate Type",
+            "type": "string"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "elevation_m": {
+            "title": "Elevation M",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "country",
+          "latitude",
+          "longitude",
+          "elevation_m",
+          "timezone",
+          "climate_type"
+        ],
+        "title": "CityResponse",
+        "type": "object"
+      },
+      "ClothingSummary": {
+        "description": "Resolved clothing resistances actually used by the solver.",
+        "properties": {
+          "dry_resistance_m2k_w": {
+            "title": "Dry Resistance M2K W",
+            "type": "number"
+          },
+          "evaporative_resistance_m2pa_w": {
+            "title": "Evaporative Resistance M2Pa W",
+            "type": "number"
+          },
+          "evaporative_resistance_source": {
+            "enum": [
+              "material_input",
+              "derived_from_clo"
+            ],
+            "title": "Evaporative Resistance Source",
+            "type": "string"
+          },
+          "infrared_transmittance": {
+            "title": "Infrared Transmittance",
+            "type": "number"
+          }
+        },
+        "required": [
+          "dry_resistance_m2k_w",
+          "evaporative_resistance_m2pa_w",
+          "evaporative_resistance_source",
+          "infrared_transmittance"
+        ],
+        "title": "ClothingSummary",
+        "type": "object"
+      },
+      "DailyAdaptationResult": {
+        "properties": {
+          "average_core_improvement_c": {
+            "title": "Average Core Improvement C",
+            "type": "number"
+          },
+          "average_skin_improvement_c": {
+            "title": "Average Skin Improvement C",
+            "type": "number"
+          },
+          "beneficial": {
+            "title": "Beneficial",
+            "type": "boolean"
+          },
+          "exposure_eligible": {
+            "title": "Exposure Eligible",
+            "type": "boolean"
+          },
+          "final_skin_improvement_c": {
+            "title": "Final Skin Improvement C",
+            "type": "number"
+          },
+          "maximum_air_temperature_c": {
+            "title": "Maximum Air Temperature C",
+            "type": "number"
+          },
+          "maximum_skin_improvement_c": {
+            "title": "Maximum Skin Improvement C",
+            "type": "number"
+          },
+          "maximum_solar_radiation_w_m2": {
+            "title": "Maximum Solar Radiation W M2",
+            "type": "number"
+          },
+          "mean_air_temperature_c": {
+            "title": "Mean Air Temperature C",
+            "type": "number"
+          },
+          "mean_solar_radiation_w_m2": {
+            "title": "Mean Solar Radiation W M2",
+            "type": "number"
+          },
+          "sample_date_local": {
+            "format": "date-time",
+            "title": "Sample Date Local",
+            "type": "string"
+          },
+          "weather_from_cache": {
+            "title": "Weather From Cache",
+            "type": "boolean"
+          },
+          "weight_days": {
+            "minimum": 1.0,
+            "title": "Weight Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sample_date_local",
+          "weight_days",
+          "mean_air_temperature_c",
+          "maximum_air_temperature_c",
+          "mean_solar_radiation_w_m2",
+          "maximum_solar_radiation_w_m2",
+          "exposure_eligible",
+          "beneficial",
+          "average_skin_improvement_c",
+          "final_skin_improvement_c",
+          "average_core_improvement_c",
+          "maximum_skin_improvement_c",
+          "weather_from_cache"
+        ],
+        "title": "DailyAdaptationResult",
+        "type": "object"
+      },
+      "EnergyDiagnostics": {
+        "properties": {
+          "energy_residual_j_m2": {
+            "title": "Energy Residual J M2",
+            "type": "number"
+          },
+          "integrated_net_heat_j_m2": {
+            "title": "Integrated Net Heat J M2",
+            "type": "number"
+          },
+          "maximum_core_step_c": {
+            "title": "Maximum Core Step C",
+            "type": "number"
+          },
+          "maximum_skin_step_c": {
+            "title": "Maximum Skin Step C",
+            "type": "number"
+          },
+          "normalized_residual_percent": {
+            "title": "Normalized Residual Percent",
+            "type": "number"
+          },
+          "solver_function_evaluations": {
+            "title": "Solver Function Evaluations",
+            "type": "integer"
+          },
+          "stored_energy_change_j_m2": {
+            "title": "Stored Energy Change J M2",
+            "type": "number"
+          }
+        },
+        "required": [
+          "stored_energy_change_j_m2",
+          "integrated_net_heat_j_m2",
+          "energy_residual_j_m2",
+          "normalized_residual_percent",
+          "maximum_core_step_c",
+          "maximum_skin_step_c",
+          "solver_function_evaluations"
+        ],
+        "title": "EnergyDiagnostics",
+        "type": "object"
+      },
+      "EnvironmentAssumptions": {
+        "additionalProperties": false,
+        "properties": {
+          "fixed_sky_offset_k": {
+            "default": 15.0,
+            "description": "fixed_offset: T_air - T_sky",
+            "maximum": 50.0,
+            "minimum": 0.0,
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Fixed Sky Offset K",
+            "type": "number"
+          },
+          "mean_radiant_temperature_method": {
+            "default": "air_plus_solar_linear",
+            "enum": [
+              "air_plus_solar_linear",
+              "equal_to_air"
+            ],
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Mean Radiant Temperature Method",
+            "type": "string"
+          },
+          "sky_offset_base_k": {
+            "default": 5.0,
+            "description": "humidity_offset: depression at 100 % RH",
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Sky Offset Base K",
+            "type": "number"
+          },
+          "sky_offset_humidity_range_k": {
+            "default": 10.0,
+            "description": "humidity_offset: additional depression at 0 % RH",
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Sky Offset Humidity Range K",
+            "type": "number"
+          },
+          "sky_temperature_method": {
+            "default": "humidity_offset",
+            "enum": [
+              "humidity_offset",
+              "fixed_offset",
+              "swinbank"
+            ],
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Sky Temperature Method",
+            "type": "string"
+          },
+          "sky_view_factor": {
+            "default": 0.5,
+            "description": "Fraction of the body's radiative view occupied by sky",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "reference": "Standing person on an open, unobstructed site",
+            "source_type": "assumed",
+            "title": "Sky View Factor",
+            "type": "number"
+          },
+          "solar_mrt_gain_cap_k": {
+            "default": 15.0,
+            "description": "Upper bound of the solar MRT rise",
+            "maximum": 40.0,
+            "minimum": 0.0,
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Solar Mrt Gain Cap K",
+            "type": "number"
+          },
+          "solar_mrt_gain_k_per_w_m2": {
+            "default": 0.012,
+            "description": "MRT rise per W/m^2 of GHI (air_plus_solar_linear only)",
+            "maximum": 0.05,
+            "minimum": 0.0,
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Solar Mrt Gain K Per W M2",
+            "type": "number"
+          },
+          "wind_speed_scaling_factor": {
+            "default": 1.0,
+            "description": "Multiplier from ERA5 10 m wind to body-height wind. 1.0 keeps Stage 1 behaviour; ~0.67 approximates 1.1 m height via a logarithmic profile over open terrain.",
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.5,
+            "reference": "Stage 1 prototype",
+            "source_type": "assumed",
+            "title": "Wind Speed Scaling Factor",
+            "type": "number"
+          }
+        },
+        "title": "EnvironmentAssumptions",
+        "type": "object"
+      },
+      "EnvironmentInput": {
+        "properties": {
+          "air_temperature_c": {
+            "default": 38.0,
+            "maximum": 70.0,
+            "minimum": -50.0,
+            "title": "Air Temperature C",
+            "type": "number"
+          },
+          "mean_radiant_temperature_c": {
+            "default": 45.0,
+            "maximum": 100.0,
+            "minimum": -50.0,
+            "title": "Mean Radiant Temperature C",
+            "type": "number"
+          },
+          "relative_humidity_percent": {
+            "default": 40.0,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Relative Humidity Percent",
+            "type": "number"
+          },
+          "sky_temperature_c": {
+            "anyOf": [
+              {
+                "maximum": 70.0,
+                "minimum": -100.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sky Temperature C"
+          },
+          "sky_view_factor": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Sky View Factor",
+            "type": "number"
+          },
+          "solar_radiation_w_m2": {
+            "default": 800.0,
+            "maximum": 1500.0,
+            "minimum": 0.0,
+            "title": "Solar Radiation W M2",
+            "type": "number"
+          },
+          "wind_speed_m_s": {
+            "default": 1.5,
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Wind Speed M S",
+            "type": "number"
+          }
+        },
+        "title": "EnvironmentInput",
+        "type": "object"
+      },
+      "GaggeBenchmarkRequest": {
+        "properties": {
+          "duration_minutes": {
+            "default": 60,
+            "maximum": 240.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/EnvironmentInput"
+          },
+          "material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonInput"
+          }
+        },
+        "required": [
+          "environment",
+          "person",
+          "material"
+        ],
+        "title": "GaggeBenchmarkRequest",
+        "type": "object"
+      },
+      "GaggeBenchmarkResponse": {
+        "properties": {
+          "difference_core_temperature_c": {
+            "title": "Difference Core Temperature C",
+            "type": "number"
+          },
+          "difference_skin_temperature_c": {
+            "title": "Difference Skin Temperature C",
+            "type": "number"
+          },
+          "environment_note": {
+            "title": "Environment Note",
+            "type": "string"
+          },
+          "gagge": {
+            "$ref": "#/components/schemas/GaggeModelOutput"
+          },
+          "prototype": {
+            "$ref": "#/components/schemas/PrototypeBenchmarkOutput"
+          },
+          "reference_library": {
+            "title": "Reference Library",
+            "type": "string"
+          },
+          "reference_model": {
+            "title": "Reference Model",
+            "type": "string"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference_model",
+          "reference_library",
+          "environment_note",
+          "prototype",
+          "gagge",
+          "difference_core_temperature_c",
+          "difference_skin_temperature_c",
+          "warning"
+        ],
+        "title": "GaggeBenchmarkResponse",
+        "type": "object"
+      },
+      "GaggeModelOutput": {
+        "properties": {
+          "core_temperature_c": {
+            "title": "Core Temperature C",
+            "type": "number"
+          },
+          "respiratory_heat_loss_w_m2": {
+            "title": "Respiratory Heat Loss W M2",
+            "type": "number"
+          },
+          "skin_blood_flow_kg_h_m2": {
+            "title": "Skin Blood Flow Kg H M2",
+            "type": "number"
+          },
+          "skin_evaporation_w_m2": {
+            "title": "Skin Evaporation W M2",
+            "type": "number"
+          },
+          "skin_heat_loss_w_m2": {
+            "title": "Skin Heat Loss W M2",
+            "type": "number"
+          },
+          "skin_temperature_c": {
+            "title": "Skin Temperature C",
+            "type": "number"
+          },
+          "skin_wettedness": {
+            "title": "Skin Wettedness",
+            "type": "number"
+          },
+          "standard_effective_temperature_c": {
+            "title": "Standard Effective Temperature C",
+            "type": "number"
+          }
+        },
+        "required": [
+          "core_temperature_c",
+          "skin_temperature_c",
+          "skin_evaporation_w_m2",
+          "skin_heat_loss_w_m2",
+          "respiratory_heat_loss_w_m2",
+          "skin_blood_flow_kg_h_m2",
+          "skin_wettedness",
+          "standard_effective_temperature_c"
+        ],
+        "title": "GaggeModelOutput",
+        "type": "object"
+      },
+      "GlobalBatchCreate": {
+        "properties": {
+          "analysis_resolution": {
+            "default": "representative",
+            "enum": [
+              "representative",
+              "daily"
+            ],
+            "title": "Analysis Resolution",
+            "type": "string"
+          },
+          "city_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "City Ids",
+            "type": "array"
+          },
+          "control_material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          },
+          "daily_stride_days": {
+            "default": 1,
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Daily Stride Days",
+            "type": "integer"
+          },
+          "duration_minutes": {
+            "default": 120,
+            "maximum": 1440.0,
+            "minimum": 30.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "enable_heatwave_analysis": {
+            "default": true,
+            "title": "Enable Heatwave Analysis",
+            "type": "boolean"
+          },
+          "end_month": {
+            "default": 12,
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "End Month",
+            "type": "integer"
+          },
+          "environment_assumptions": {
+            "$ref": "#/components/schemas/EnvironmentAssumptions"
+          },
+          "execution_profile": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "standard",
+              "large"
+            ],
+            "title": "Execution Profile",
+            "type": "string"
+          },
+          "exposure_match_mode": {
+            "default": "all",
+            "enum": [
+              "all",
+              "any"
+            ],
+            "title": "Exposure Match Mode",
+            "type": "string"
+          },
+          "heatwave_minimum_consecutive_days": {
+            "default": 3,
+            "maximum": 30.0,
+            "minimum": 2.0,
+            "title": "Heatwave Minimum Consecutive Days",
+            "type": "integer"
+          },
+          "heatwave_temperature_threshold_c": {
+            "default": 35.0,
+            "maximum": 70.0,
+            "minimum": -20.0,
+            "title": "Heatwave Temperature Threshold C",
+            "type": "number"
+          },
+          "local_start_hour": {
+            "default": 12,
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Local Start Hour",
+            "type": "integer"
+          },
+          "minimum_air_temperature_c": {
+            "anyOf": [
+              {
+                "maximum": 70.0,
+                "minimum": -50.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 30.0,
+            "title": "Minimum Air Temperature C"
+          },
+          "minimum_skin_improvement_c": {
+            "default": 0.2,
+            "maximum": 10.0,
+            "minimum": -5.0,
+            "title": "Minimum Skin Improvement C",
+            "type": "number"
+          },
+          "minimum_solar_radiation_w_m2": {
+            "anyOf": [
+              {
+                "maximum": 1500.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 300.0,
+            "title": "Minimum Solar Radiation W M2"
+          },
+          "name": {
+            "default": "Global multi-day climate adaptation analysis",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "output_interval_minutes": {
+            "default": 10,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Output Interval Minutes",
+            "type": "integer"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonInput"
+          },
+          "rc_material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          },
+          "representative_day": {
+            "anyOf": [
+              {
+                "maximum": 28.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representative Day"
+          },
+          "resume_from_checkpoint": {
+            "default": true,
+            "title": "Resume From Checkpoint",
+            "type": "boolean"
+          },
+          "sample_days_per_month": {
+            "default": 3,
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Sample Days Per Month",
+            "type": "integer"
+          },
+          "start_month": {
+            "default": 1,
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Start Month",
+            "type": "integer"
+          },
+          "year": {
+            "default": 2023,
+            "maximum": 2100.0,
+            "minimum": 1940.0,
+            "title": "Year",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "city_ids",
+          "person",
+          "control_material",
+          "rc_material"
+        ],
+        "title": "GlobalBatchCreate",
+        "type": "object"
+      },
+      "GlobalBatchDetail": {
+        "properties": {
+          "cancelled_city_count": {
+            "title": "Cancelled City Count",
+            "type": "integer"
+          },
+          "celery_group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Group Id"
+          },
+          "city_results": {
+            "items": {
+              "$ref": "#/components/schemas/GlobalCityResultResponse"
+            },
+            "title": "City Results",
+            "type": "array"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "completed_city_count": {
+            "title": "Completed City Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "failed_city_count": {
+            "title": "Failed City Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "request": {
+            "$ref": "#/components/schemas/GlobalBatchCreate"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "cancelling",
+              "cancelled",
+              "completed",
+              "partial_completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "total_city_count": {
+            "title": "Total City Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "celery_group_id",
+          "status",
+          "stage",
+          "progress",
+          "total_city_count",
+          "completed_city_count",
+          "failed_city_count",
+          "cancelled_city_count",
+          "summary",
+          "error_message",
+          "created_at",
+          "updated_at",
+          "started_at",
+          "completed_at",
+          "request",
+          "city_results"
+        ],
+        "title": "GlobalBatchDetail",
+        "type": "object"
+      },
+      "GlobalBatchEstimateResponse": {
+        "properties": {
+          "analysis_resolution": {
+            "enum": [
+              "representative",
+              "daily"
+            ],
+            "title": "Analysis Resolution",
+            "type": "string"
+          },
+          "checkpoint_count_per_city": {
+            "title": "Checkpoint Count Per City",
+            "type": "integer"
+          },
+          "city_count": {
+            "title": "City Count",
+            "type": "integer"
+          },
+          "estimated_weather_requests": {
+            "title": "Estimated Weather Requests",
+            "type": "integer"
+          },
+          "heatwave_analysis_available": {
+            "title": "Heatwave Analysis Available",
+            "type": "boolean"
+          },
+          "month_count": {
+            "title": "Month Count",
+            "type": "integer"
+          },
+          "resolved_execution_profile": {
+            "enum": [
+              "auto",
+              "standard",
+              "large"
+            ],
+            "title": "Resolved Execution Profile",
+            "type": "string"
+          },
+          "resolved_queue": {
+            "title": "Resolved Queue",
+            "type": "string"
+          },
+          "samples_per_city": {
+            "title": "Samples Per City",
+            "type": "integer"
+          },
+          "thermal_simulation_count": {
+            "title": "Thermal Simulation Count",
+            "type": "integer"
+          },
+          "total_samples": {
+            "title": "Total Samples",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "city_count",
+          "month_count",
+          "samples_per_city",
+          "total_samples",
+          "thermal_simulation_count",
+          "estimated_weather_requests",
+          "analysis_resolution",
+          "resolved_execution_profile",
+          "resolved_queue",
+          "checkpoint_count_per_city",
+          "heatwave_analysis_available"
+        ],
+        "title": "GlobalBatchEstimateResponse",
+        "type": "object"
+      },
+      "GlobalBatchListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GlobalBatchResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "GlobalBatchListResponse",
+        "type": "object"
+      },
+      "GlobalBatchResponse": {
+        "properties": {
+          "cancelled_city_count": {
+            "title": "Cancelled City Count",
+            "type": "integer"
+          },
+          "celery_group_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Group Id"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "completed_city_count": {
+            "title": "Completed City Count",
+            "type": "integer"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "failed_city_count": {
+            "title": "Failed City Count",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "cancelling",
+              "cancelled",
+              "completed",
+              "partial_completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "total_city_count": {
+            "title": "Total City Count",
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "celery_group_id",
+          "status",
+          "stage",
+          "progress",
+          "total_city_count",
+          "completed_city_count",
+          "failed_city_count",
+          "cancelled_city_count",
+          "summary",
+          "error_message",
+          "created_at",
+          "updated_at",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "GlobalBatchResponse",
+        "type": "object"
+      },
+      "GlobalCityResultResponse": {
+        "properties": {
+          "annual_average_core_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Average Core Improvement C"
+          },
+          "annual_average_skin_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Annual Average Skin Improvement C"
+          },
+          "batch_id": {
+            "title": "Batch Id",
+            "type": "string"
+          },
+          "beneficial_weighted_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beneficial Weighted Days"
+          },
+          "celery_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Task Id"
+          },
+          "city_id": {
+            "title": "City Id",
+            "type": "string"
+          },
+          "city_name": {
+            "title": "City Name",
+            "type": "string"
+          },
+          "climate_adaptation_rate_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Climate Adaptation Rate Percent"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "completed_month_count": {
+            "default": 0,
+            "title": "Completed Month Count",
+            "type": "integer"
+          },
+          "core_improvement_p50_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Improvement P50 C"
+          },
+          "core_improvement_p90_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Improvement P90 C"
+          },
+          "core_improvement_p95_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Core Improvement P95 C"
+          },
+          "country": {
+            "title": "Country",
+            "type": "string"
+          },
+          "data_quality": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Quality"
+          },
+          "effective_cooling_hours": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Cooling Hours"
+          },
+          "eligible_sample_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eligible Sample Count"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "evaluated_weighted_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated Weighted Days"
+          },
+          "exposure_coverage_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exposure Coverage Percent"
+          },
+          "heatwave_event_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heatwave Event Count"
+          },
+          "heatwave_events": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/HeatwaveEvent"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Heatwave Events"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "last_checkpoint_month": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Checkpoint Month"
+          },
+          "last_heartbeat_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Heartbeat At"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longest_heatwave_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longest Heatwave Days"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "maximum_skin_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Skin Improvement C"
+          },
+          "metric_definitions": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metric Definitions"
+          },
+          "monthly_results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MonthlyAdaptationResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Monthly Results"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "resumed_from_checkpoint": {
+            "default": false,
+            "title": "Resumed From Checkpoint",
+            "type": "boolean"
+          },
+          "retry_count": {
+            "title": "Retry Count",
+            "type": "integer"
+          },
+          "sampled_day_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sampled Day Count"
+          },
+          "skin_improvement_p50_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skin Improvement P50 C"
+          },
+          "skin_improvement_p90_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skin Improvement P90 C"
+          },
+          "skin_improvement_p95_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skin Improvement P95 C"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "cancelled",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "batch_id",
+          "celery_task_id",
+          "city_id",
+          "city_name",
+          "country",
+          "latitude",
+          "longitude",
+          "status",
+          "stage",
+          "progress",
+          "climate_adaptation_rate_percent",
+          "exposure_coverage_percent",
+          "annual_average_skin_improvement_c",
+          "annual_average_core_improvement_c",
+          "maximum_skin_improvement_c",
+          "effective_cooling_hours",
+          "sampled_day_count",
+          "eligible_sample_count",
+          "evaluated_weighted_days",
+          "beneficial_weighted_days",
+          "retry_count",
+          "monthly_results",
+          "error_message",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "GlobalCityResultResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HeatwaveEvent": {
+        "properties": {
+          "beneficial_day_count": {
+            "minimum": 0.0,
+            "title": "Beneficial Day Count",
+            "type": "integer"
+          },
+          "duration_days": {
+            "minimum": 1.0,
+            "title": "Duration Days",
+            "type": "integer"
+          },
+          "end_date_local": {
+            "format": "date-time",
+            "title": "End Date Local",
+            "type": "string"
+          },
+          "mean_maximum_air_temperature_c": {
+            "title": "Mean Maximum Air Temperature C",
+            "type": "number"
+          },
+          "mean_skin_improvement_c": {
+            "title": "Mean Skin Improvement C",
+            "type": "number"
+          },
+          "p90_skin_improvement_c": {
+            "title": "P90 Skin Improvement C",
+            "type": "number"
+          },
+          "peak_air_temperature_c": {
+            "title": "Peak Air Temperature C",
+            "type": "number"
+          },
+          "start_date_local": {
+            "format": "date-time",
+            "title": "Start Date Local",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_date_local",
+          "end_date_local",
+          "duration_days",
+          "mean_maximum_air_temperature_c",
+          "peak_air_temperature_c",
+          "mean_skin_improvement_c",
+          "p90_skin_improvement_c",
+          "beneficial_day_count"
+        ],
+        "title": "HeatwaveEvent",
+        "type": "object"
+      },
+      "MaterialCreate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "initial_version": {
+            "$ref": "#/components/schemas/MaterialVersionCreate"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "initial_version"
+        ],
+        "title": "MaterialCreate",
+        "type": "object"
+      },
+      "MaterialInput": {
+        "properties": {
+          "absorbed_solar_to_body_fraction": {
+            "default": 0.35,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Absorbed Solar To Body Fraction",
+            "type": "number"
+          },
+          "clothing_insulation_clo": {
+            "default": 0.5,
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Clothing Insulation Clo",
+            "type": "number"
+          },
+          "evaporative_resistance_m2pa_w": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaporative Resistance M2Pa W"
+          },
+          "infrared_emissivity": {
+            "default": 0.9,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Infrared Emissivity",
+            "type": "number"
+          },
+          "infrared_transmittance": {
+            "default": 0.0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Infrared Transmittance",
+            "type": "number"
+          },
+          "material_version_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Material Version Id"
+          },
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "parameter_sources": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterSource"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameter Sources"
+          },
+          "projected_solar_area_factor": {
+            "default": 0.25,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Projected Solar Area Factor",
+            "type": "number"
+          },
+          "solar_reflectance": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Solar Reflectance",
+            "type": "number"
+          },
+          "solar_transmittance": {
+            "default": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Solar Transmittance",
+            "type": "number"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_type": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Type"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "MaterialInput",
+        "type": "object"
+      },
+      "MaterialListItem": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "is_archived": {
+            "title": "Is Archived",
+            "type": "boolean"
+          },
+          "latest_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version Number"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "institution",
+          "is_archived",
+          "latest_version_number",
+          "created_at"
+        ],
+        "title": "MaterialListItem",
+        "type": "object"
+      },
+      "MaterialListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialListItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "MaterialListResponse",
+        "type": "object"
+      },
+      "MaterialResponse": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "is_archived": {
+            "title": "Is Archived",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/MaterialVersionResponse"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "institution",
+          "is_archived",
+          "created_at",
+          "updated_at",
+          "versions"
+        ],
+        "title": "MaterialResponse",
+        "type": "object"
+      },
+      "MaterialUpdate": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "institution": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institution"
+          },
+          "is_archived": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Archived"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "MaterialUpdate",
+        "type": "object"
+      },
+      "MaterialVersionCreate": {
+        "properties": {
+          "absorbed_solar_to_body_fraction": {
+            "default": 0.35,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Absorbed Solar To Body Fraction",
+            "type": "number"
+          },
+          "areal_density_g_m2": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Areal Density G M2"
+          },
+          "clothing_insulation_clo": {
+            "default": 0.5,
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Clothing Insulation Clo",
+            "type": "number"
+          },
+          "evaporative_resistance_m2pa_w": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaporative Resistance M2Pa W"
+          },
+          "infrared_emissivity": {
+            "default": 0.9,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Infrared Emissivity",
+            "type": "number"
+          },
+          "infrared_transmittance": {
+            "default": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Infrared Transmittance",
+            "type": "number"
+          },
+          "mode": {
+            "default": "opaque_emitter",
+            "enum": [
+              "ordinary",
+              "opaque_emitter",
+              "infrared_transparent",
+              "hybrid"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "parameter_sources": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterSource"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameter Sources"
+          },
+          "projected_solar_area_factor": {
+            "default": 0.25,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Projected Solar Area Factor",
+            "type": "number"
+          },
+          "solar_reflectance": {
+            "default": 0.5,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Solar Reflectance",
+            "type": "number"
+          },
+          "solar_transmittance": {
+            "default": 0,
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Solar Transmittance",
+            "type": "number"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_type": {
+            "default": "manual",
+            "maxLength": 50,
+            "title": "Source Type",
+            "type": "string"
+          },
+          "specific_heat_j_kgk": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specific Heat J Kgk"
+          }
+        },
+        "title": "MaterialVersionCreate",
+        "type": "object"
+      },
+      "MaterialVersionResponse": {
+        "properties": {
+          "absorbed_solar_to_body_fraction": {
+            "title": "Absorbed Solar To Body Fraction",
+            "type": "number"
+          },
+          "areal_density_g_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Areal Density G M2"
+          },
+          "clothing_insulation_clo": {
+            "title": "Clothing Insulation Clo",
+            "type": "number"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "evaporative_resistance_m2pa_w": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaporative Resistance M2Pa W"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "infrared_emissivity": {
+            "title": "Infrared Emissivity",
+            "type": "number"
+          },
+          "infrared_transmittance": {
+            "title": "Infrared Transmittance",
+            "type": "number"
+          },
+          "material_id": {
+            "title": "Material Id",
+            "type": "string"
+          },
+          "mode": {
+            "title": "Mode",
+            "type": "string"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "parameter_sources": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ParameterSource"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parameter Sources"
+          },
+          "projected_solar_area_factor": {
+            "title": "Projected Solar Area Factor",
+            "type": "number"
+          },
+          "solar_reflectance": {
+            "title": "Solar Reflectance",
+            "type": "number"
+          },
+          "solar_transmittance": {
+            "title": "Solar Transmittance",
+            "type": "number"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_type": {
+            "title": "Source Type",
+            "type": "string"
+          },
+          "specific_heat_j_kgk": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Specific Heat J Kgk"
+          },
+          "spectra": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SpectrumSummary"
+            },
+            "title": "Spectra",
+            "type": "array"
+          },
+          "version_number": {
+            "title": "Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "material_id",
+          "version_number",
+          "mode",
+          "clothing_insulation_clo",
+          "evaporative_resistance_m2pa_w",
+          "solar_reflectance",
+          "solar_transmittance",
+          "infrared_emissivity",
+          "infrared_transmittance",
+          "projected_solar_area_factor",
+          "absorbed_solar_to_body_fraction",
+          "areal_density_g_m2",
+          "specific_heat_j_kgk",
+          "source_type",
+          "source_reference",
+          "notes",
+          "created_at"
+        ],
+        "title": "MaterialVersionResponse",
+        "type": "object"
+      },
+      "ModelMetadata": {
+        "description": "Written into every simulation response for traceability.",
+        "properties": {
+          "parameter_set_sha256": {
+            "title": "Parameter Set Sha256",
+            "type": "string"
+          },
+          "parameter_set_version": {
+            "title": "Parameter Set Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parameter_set_version",
+          "parameter_set_sha256"
+        ],
+        "title": "ModelMetadata",
+        "type": "object"
+      },
+      "ModelParameter": {
+        "description": "A physical constant used by the thermal model.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "source_type": {
+            "enum": [
+              "measured",
+              "manufacturer",
+              "literature",
+              "standard",
+              "derived",
+              "assumed",
+              "manual"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "name",
+          "value",
+          "unit",
+          "description",
+          "source_type",
+          "reference"
+        ],
+        "title": "ModelParameter",
+        "type": "object"
+      },
+      "ModelParameterManifest": {
+        "properties": {
+          "parameter_set_sha256": {
+            "title": "Parameter Set Sha256",
+            "type": "string"
+          },
+          "parameter_set_version": {
+            "title": "Parameter Set Version",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ModelParameter"
+            },
+            "title": "Parameters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parameter_set_version",
+          "parameter_set_sha256",
+          "parameters"
+        ],
+        "title": "ModelParameterManifest",
+        "type": "object"
+      },
+      "MonthlyAdaptationResult": {
+        "properties": {
+          "average_core_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Core Improvement C"
+          },
+          "average_skin_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Skin Improvement C"
+          },
+          "beneficial": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beneficial"
+          },
+          "beneficial_weighted_days": {
+            "default": 0,
+            "title": "Beneficial Weighted Days",
+            "type": "integer"
+          },
+          "climate_adaptation_rate_percent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Climate Adaptation Rate Percent"
+          },
+          "eligible_sample_count": {
+            "default": 0,
+            "title": "Eligible Sample Count",
+            "type": "integer"
+          },
+          "evaluated_weighted_days": {
+            "default": 0,
+            "title": "Evaluated Weighted Days",
+            "type": "integer"
+          },
+          "exposure_coverage_percent": {
+            "default": 0.0,
+            "title": "Exposure Coverage Percent",
+            "type": "number"
+          },
+          "final_skin_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Final Skin Improvement C"
+          },
+          "maximum_skin_improvement_c": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Skin Improvement C"
+          },
+          "month": {
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Month",
+            "type": "integer"
+          },
+          "representative_date_local": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Representative Date Local"
+          },
+          "sampled_day_count": {
+            "default": 1,
+            "title": "Sampled Day Count",
+            "type": "integer"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/DailyAdaptationResult"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "skipped_samples": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedSample"
+            },
+            "title": "Skipped Samples",
+            "type": "array"
+          },
+          "skipped_weighted_days": {
+            "default": 0,
+            "title": "Skipped Weighted Days",
+            "type": "integer"
+          },
+          "total_weighted_days": {
+            "default": 0,
+            "title": "Total Weighted Days",
+            "type": "integer"
+          },
+          "weight_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Days"
+          }
+        },
+        "required": [
+          "month"
+        ],
+        "title": "MonthlyAdaptationResult",
+        "type": "object"
+      },
+      "ParameterSource": {
+        "additionalProperties": false,
+        "description": "Provenance of one numeric input.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference"
+          },
+          "source_type": {
+            "default": "assumed",
+            "enum": [
+              "measured",
+              "manufacturer",
+              "literature",
+              "standard",
+              "derived",
+              "assumed",
+              "manual"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          }
+        },
+        "title": "ParameterSource",
+        "type": "object"
+      },
+      "PersonInput": {
+        "properties": {
+          "body_surface_area_m2": {
+            "default": 1.8,
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Body Surface Area M2",
+            "type": "number"
+          },
+          "initial_core_temperature_c": {
+            "default": 36.8,
+            "maximum": 40.0,
+            "minimum": 34.0,
+            "title": "Initial Core Temperature C",
+            "type": "number"
+          },
+          "initial_skin_temperature_c": {
+            "default": 33.7,
+            "maximum": 40.0,
+            "minimum": 20.0,
+            "title": "Initial Skin Temperature C",
+            "type": "number"
+          },
+          "met": {
+            "default": 2.6,
+            "maximum": 10.0,
+            "minimum": 0.7,
+            "title": "Met",
+            "type": "number"
+          }
+        },
+        "title": "PersonInput",
+        "type": "object"
+      },
+      "PrototypeBenchmarkOutput": {
+        "properties": {
+          "core_temperature_c": {
+            "title": "Core Temperature C",
+            "type": "number"
+          },
+          "energy_residual_percent": {
+            "title": "Energy Residual Percent",
+            "type": "number"
+          },
+          "evaporation_w_m2": {
+            "title": "Evaporation W M2",
+            "type": "number"
+          },
+          "skin_temperature_c": {
+            "title": "Skin Temperature C",
+            "type": "number"
+          }
+        },
+        "required": [
+          "core_temperature_c",
+          "skin_temperature_c",
+          "evaporation_w_m2",
+          "energy_residual_percent"
+        ],
+        "title": "PrototypeBenchmarkOutput",
+        "type": "object"
+      },
+      "ScenarioResult": {
+        "properties": {
+          "assumptions_applied": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Assumptions Applied",
+            "type": "array"
+          },
+          "clothing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClothingSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "diagnostics": {
+            "$ref": "#/components/schemas/EnergyDiagnostics"
+          },
+          "final_core_temperature_c": {
+            "title": "Final Core Temperature C",
+            "type": "number"
+          },
+          "final_skin_temperature_c": {
+            "title": "Final Skin Temperature C",
+            "type": "number"
+          },
+          "material_name": {
+            "title": "Material Name",
+            "type": "string"
+          },
+          "peak_core_temperature_c": {
+            "title": "Peak Core Temperature C",
+            "type": "number"
+          },
+          "peak_skin_temperature_c": {
+            "title": "Peak Skin Temperature C",
+            "type": "number"
+          },
+          "time_series": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesPoint"
+            },
+            "title": "Time Series",
+            "type": "array"
+          }
+        },
+        "required": [
+          "material_name",
+          "time_series",
+          "final_core_temperature_c",
+          "final_skin_temperature_c",
+          "peak_core_temperature_c",
+          "peak_skin_temperature_c",
+          "diagnostics"
+        ],
+        "title": "ScenarioResult",
+        "type": "object"
+      },
+      "SimulationJobDetail": {
+        "properties": {
+          "celery_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Task Id"
+          },
+          "city_id": {
+            "title": "City Id",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "request": {
+            "$ref": "#/components/schemas/WeatherSimulationRequest"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "cancelling",
+              "cancelled",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "celery_task_id",
+          "status",
+          "stage",
+          "progress",
+          "city_id",
+          "summary",
+          "error_message",
+          "created_at",
+          "updated_at",
+          "started_at",
+          "completed_at",
+          "request"
+        ],
+        "title": "SimulationJobDetail",
+        "type": "object"
+      },
+      "SimulationJobListResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/SimulationJobResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "title": "SimulationJobListResponse",
+        "type": "object"
+      },
+      "SimulationJobResponse": {
+        "properties": {
+          "celery_task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Celery Task Id"
+          },
+          "city_id": {
+            "title": "City Id",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "integer"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "cancelling",
+              "cancelled",
+              "completed",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "celery_task_id",
+          "status",
+          "stage",
+          "progress",
+          "city_id",
+          "summary",
+          "error_message",
+          "created_at",
+          "updated_at",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "SimulationJobResponse",
+        "type": "object"
+      },
+      "SimulationRequest": {
+        "properties": {
+          "city": {
+            "default": "Dubai",
+            "minLength": 1,
+            "title": "City",
+            "type": "string"
+          },
+          "control_material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          },
+          "duration_minutes": {
+            "default": 120,
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "environment": {
+            "$ref": "#/components/schemas/EnvironmentInput"
+          },
+          "output_interval_minutes": {
+            "default": 1,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Output Interval Minutes",
+            "type": "integer"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonInput"
+          },
+          "rc_material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          }
+        },
+        "required": [
+          "environment",
+          "person",
+          "control_material",
+          "rc_material"
+        ],
+        "title": "SimulationRequest",
+        "type": "object"
+      },
+      "SimulationResponse": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "control": {
+            "$ref": "#/components/schemas/ScenarioResult"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "model_metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "radiative_cooling": {
+            "$ref": "#/components/schemas/ScenarioResult"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SimulationSummary"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_name",
+          "model_version",
+          "city",
+          "duration_minutes",
+          "control",
+          "radiative_cooling",
+          "summary",
+          "warning"
+        ],
+        "title": "SimulationResponse",
+        "type": "object"
+      },
+      "SimulationSummary": {
+        "properties": {
+          "average_skin_temperature_improvement_c": {
+            "title": "Average Skin Temperature Improvement C",
+            "type": "number"
+          },
+          "final_core_temperature_improvement_c": {
+            "title": "Final Core Temperature Improvement C",
+            "type": "number"
+          },
+          "final_skin_temperature_improvement_c": {
+            "title": "Final Skin Temperature Improvement C",
+            "type": "number"
+          }
+        },
+        "required": [
+          "final_skin_temperature_improvement_c",
+          "final_core_temperature_improvement_c",
+          "average_skin_temperature_improvement_c"
+        ],
+        "title": "SimulationSummary",
+        "type": "object"
+      },
+      "SkippedSample": {
+        "description": "A planned sample day that could not be simulated for data reasons.",
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "reason_code": {
+            "title": "Reason Code",
+            "type": "string"
+          },
+          "sample_date_local": {
+            "format": "date-time",
+            "title": "Sample Date Local",
+            "type": "string"
+          },
+          "weight_days": {
+            "minimum": 1.0,
+            "title": "Weight Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sample_date_local",
+          "weight_days",
+          "reason_code",
+          "message"
+        ],
+        "title": "SkippedSample",
+        "type": "object"
+      },
+      "SpectrumPoint": {
+        "properties": {
+          "value": {
+            "title": "Value",
+            "type": "number"
+          },
+          "wavelength_um": {
+            "title": "Wavelength Um",
+            "type": "number"
+          }
+        },
+        "required": [
+          "wavelength_um",
+          "value"
+        ],
+        "title": "SpectrumPoint",
+        "type": "object"
+      },
+      "SpectrumResponse": {
+        "properties": {
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/SpectrumPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SpectrumSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "points"
+        ],
+        "title": "SpectrumResponse",
+        "type": "object"
+      },
+      "SpectrumSummary": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "file_checksum_sha256": {
+            "title": "File Checksum Sha256",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "maximum_wavelength_um": {
+            "title": "Maximum Wavelength Um",
+            "type": "number"
+          },
+          "minimum_wavelength_um": {
+            "title": "Minimum Wavelength Um",
+            "type": "number"
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "point_count": {
+            "title": "Point Count",
+            "type": "integer"
+          },
+          "spectrum_type": {
+            "title": "Spectrum Type",
+            "type": "string"
+          },
+          "wavelength_unit": {
+            "title": "Wavelength Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "spectrum_type",
+          "wavelength_unit",
+          "point_count",
+          "minimum_wavelength_um",
+          "maximum_wavelength_um",
+          "original_filename",
+          "file_checksum_sha256",
+          "created_at"
+        ],
+        "title": "SpectrumSummary",
+        "type": "object"
+      },
+      "TimeSeriesPoint": {
+        "properties": {
+          "absorbed_solar_w_m2": {
+            "title": "Absorbed Solar W M2",
+            "type": "number"
+          },
+          "convection_w_m2": {
+            "title": "Convection W M2",
+            "type": "number"
+          },
+          "core_temperature_c": {
+            "title": "Core Temperature C",
+            "type": "number"
+          },
+          "core_to_skin_w_m2": {
+            "title": "Core To Skin W M2",
+            "type": "number"
+          },
+          "evaporation_w_m2": {
+            "title": "Evaporation W M2",
+            "type": "number"
+          },
+          "longwave_radiation_w_m2": {
+            "title": "Longwave Radiation W M2",
+            "type": "number"
+          },
+          "maximum_evaporation_w_m2": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum Evaporation W M2"
+          },
+          "minute": {
+            "title": "Minute",
+            "type": "number"
+          },
+          "skin_temperature_c": {
+            "title": "Skin Temperature C",
+            "type": "number"
+          },
+          "skin_wettedness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skin Wettedness"
+          }
+        },
+        "required": [
+          "minute",
+          "core_temperature_c",
+          "skin_temperature_c",
+          "convection_w_m2",
+          "longwave_radiation_w_m2",
+          "evaporation_w_m2",
+          "absorbed_solar_w_m2",
+          "core_to_skin_w_m2"
+        ],
+        "title": "TimeSeriesPoint",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "WeatherGap": {
+        "description": "A break in the hourly timeline between two consecutive points.",
+        "properties": {
+          "end": {
+            "format": "date-time",
+            "title": "End",
+            "type": "string"
+          },
+          "missing_steps": {
+            "minimum": 1.0,
+            "title": "Missing Steps",
+            "type": "integer"
+          },
+          "start": {
+            "format": "date-time",
+            "title": "Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "missing_steps"
+        ],
+        "title": "WeatherGap",
+        "type": "object"
+      },
+      "WeatherPoint": {
+        "properties": {
+          "air_temperature_c": {
+            "title": "Air Temperature C",
+            "type": "number"
+          },
+          "diffuse_radiation_w_m2": {
+            "title": "Diffuse Radiation W M2",
+            "type": "number"
+          },
+          "direct_radiation_w_m2": {
+            "title": "Direct Radiation W M2",
+            "type": "number"
+          },
+          "dni_w_m2": {
+            "title": "Dni W M2",
+            "type": "number"
+          },
+          "ghi_w_m2": {
+            "title": "Ghi W M2",
+            "type": "number"
+          },
+          "relative_humidity_percent": {
+            "title": "Relative Humidity Percent",
+            "type": "number"
+          },
+          "timestamp": {
+            "format": "date-time",
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "wind_speed_m_s": {
+            "title": "Wind Speed M S",
+            "type": "number"
+          }
+        },
+        "required": [
+          "timestamp",
+          "air_temperature_c",
+          "relative_humidity_percent",
+          "wind_speed_m_s",
+          "ghi_w_m2",
+          "direct_radiation_w_m2",
+          "diffuse_radiation_w_m2",
+          "dni_w_m2"
+        ],
+        "title": "WeatherPoint",
+        "type": "object"
+      },
+      "WeatherQualityReport": {
+        "description": "Result of normalising a raw weather timeline (Stage 1, PR-1).",
+        "properties": {
+          "duplicates_removed": {
+            "default": 0,
+            "title": "Duplicates Removed",
+            "type": "integer"
+          },
+          "expected_step_seconds": {
+            "exclusiveMinimum": 0.0,
+            "title": "Expected Step Seconds",
+            "type": "integer"
+          },
+          "first_timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Timestamp"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/WeatherGap"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "last_timestamp": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Timestamp"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "point_count": {
+            "minimum": 0.0,
+            "title": "Point Count",
+            "type": "integer"
+          },
+          "was_sorted": {
+            "default": true,
+            "title": "Was Sorted",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_step_seconds",
+          "point_count"
+        ],
+        "title": "WeatherQualityReport",
+        "type": "object"
+      },
+      "WeatherSimulationRequest": {
+        "properties": {
+          "city_id": {
+            "default": "dubai",
+            "minLength": 1,
+            "title": "City Id",
+            "type": "string"
+          },
+          "control_material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          },
+          "duration_minutes": {
+            "default": 120,
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "environment_assumptions": {
+            "$ref": "#/components/schemas/EnvironmentAssumptions"
+          },
+          "output_interval_minutes": {
+            "default": 1,
+            "maximum": 60.0,
+            "minimum": 1.0,
+            "title": "Output Interval Minutes",
+            "type": "integer"
+          },
+          "person": {
+            "$ref": "#/components/schemas/PersonInput"
+          },
+          "rc_material": {
+            "$ref": "#/components/schemas/MaterialInput"
+          },
+          "start_time_local": {
+            "format": "date-time",
+            "title": "Start Time Local",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start_time_local",
+          "person",
+          "control_material",
+          "rc_material"
+        ],
+        "title": "WeatherSimulationRequest",
+        "type": "object"
+      },
+      "WeatherSimulationResponse": {
+        "properties": {
+          "city": {
+            "title": "City",
+            "type": "string"
+          },
+          "control": {
+            "$ref": "#/components/schemas/ScenarioResult"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "environment_assumptions": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnvironmentAssumptions"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environment_model_note": {
+            "title": "Environment Model Note",
+            "type": "string"
+          },
+          "model_metadata": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "radiative_cooling": {
+            "$ref": "#/components/schemas/ScenarioResult"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/SimulationSummary"
+          },
+          "warning": {
+            "title": "Warning",
+            "type": "string"
+          },
+          "weather": {
+            "$ref": "#/components/schemas/WeatherTimeSeries"
+          }
+        },
+        "required": [
+          "model_name",
+          "model_version",
+          "city",
+          "duration_minutes",
+          "control",
+          "radiative_cooling",
+          "summary",
+          "warning",
+          "weather",
+          "environment_model_note"
+        ],
+        "title": "WeatherSimulationResponse",
+        "type": "object"
+      },
+      "WeatherSourceMetadata": {
+        "properties": {
+          "attribution": {
+            "title": "Attribution",
+            "type": "string"
+          },
+          "dataset": {
+            "title": "Dataset",
+            "type": "string"
+          },
+          "downloaded_at": {
+            "format": "date-time",
+            "title": "Downloaded At",
+            "type": "string"
+          },
+          "elevation_m": {
+            "title": "Elevation M",
+            "type": "number"
+          },
+          "from_cache": {
+            "title": "From Cache",
+            "type": "boolean"
+          },
+          "latitude": {
+            "title": "Latitude",
+            "type": "number"
+          },
+          "longitude": {
+            "title": "Longitude",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "payload_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payload Sha256"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeatherQualityReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timezone": {
+            "title": "Timezone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "dataset",
+          "model",
+          "latitude",
+          "longitude",
+          "elevation_m",
+          "timezone",
+          "downloaded_at",
+          "from_cache",
+          "attribution"
+        ],
+        "title": "WeatherSourceMetadata",
+        "type": "object"
+      },
+      "WeatherTimeSeries": {
+        "properties": {
+          "city": {
+            "$ref": "#/components/schemas/CityResponse"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/WeatherPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "requested_end_time": {
+            "format": "date-time",
+            "title": "Requested End Time",
+            "type": "string"
+          },
+          "requested_start_time": {
+            "format": "date-time",
+            "title": "Requested Start Time",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/WeatherSourceMetadata"
+          }
+        },
+        "required": [
+          "city",
+          "requested_start_time",
+          "requested_end_time",
+          "points",
+          "source"
+        ],
+        "title": "WeatherTimeSeries",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Backend API for simulating and evaluating radiative cooling clothing under global climate conditions.",
+    "title": "Global Radiative Cooling Clothing Climate Adaptation API",
+    "version": "0.2.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/benchmarks/gagge": {
+      "post": {
+        "operationId": "compare_with_gagge_api_v1_benchmarks_gagge_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GaggeBenchmarkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GaggeBenchmarkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compare With Gagge",
+        "tags": [
+          "benchmarks"
+        ]
+      }
+    },
+    "/api/v1/global-batches": {
+      "get": {
+        "operationId": "list_global_batches_api_v1_global_batches_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalBatchListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Global Batches",
+        "tags": [
+          "global-batches"
+        ]
+      },
+      "post": {
+        "operationId": "create_global_batch_api_v1_global_batches_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Global Batch",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/cities": {
+      "get": {
+        "operationId": "get_supported_cities_api_v1_global_batches_cities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Supported Cities Api V1 Global Batches Cities Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Supported Cities",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/estimate": {
+      "post": {
+        "operationId": "estimate_global_batch_api_v1_global_batches_estimate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalBatchCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalBatchEstimateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Estimate Global Batch",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/{batch_id}": {
+      "get": {
+        "operationId": "get_global_batch_api_v1_global_batches__batch_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalBatchDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Global Batch",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/{batch_id}/cancel": {
+      "post": {
+        "operationId": "cancel_global_batch_api_v1_global_batches__batch_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Global Batch",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/{batch_id}/export": {
+      "get": {
+        "operationId": "export_global_batch_api_v1_global_batches__batch_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Global Batch",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/{batch_id}/geojson": {
+      "get": {
+        "operationId": "get_global_batch_geojson_api_v1_global_batches__batch_id__geojson_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Global Batch Geojson Api V1 Global Batches  Batch Id  Geojson Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Global Batch Geojson",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/global-batches/{batch_id}/retry-failed": {
+      "post": {
+        "operationId": "retry_failed_cities_api_v1_global_batches__batch_id__retry_failed_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Failed Cities",
+        "tags": [
+          "global-batches"
+        ]
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "operationId": "health_check_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check"
+      }
+    },
+    "/api/v1/materials": {
+      "get": {
+        "operationId": "list_materials_api_v1_materials_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Materials",
+        "tags": [
+          "materials"
+        ]
+      },
+      "post": {
+        "operationId": "create_material_api_v1_materials_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/versions/{version_id}/simulation-input": {
+      "get": {
+        "operationId": "material_version_to_simulation_input_api_v1_materials_versions__version_id__simulation_input_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialInput"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Material Version To Simulation Input",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/versions/{version_id}/spectra": {
+      "post": {
+        "operationId": "upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpectrumResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Material Spectrum",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/versions/{version_id}/spectra/{spectrum_type}": {
+      "get": {
+        "operationId": "get_material_spectrum_api_v1_materials_versions__version_id__spectra__spectrum_type__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "title": "Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "spectrum_type",
+            "required": true,
+            "schema": {
+              "title": "Spectrum Type",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpectrumResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Material Spectrum",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}": {
+      "get": {
+        "operationId": "get_material_api_v1_materials__material_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Material",
+        "tags": [
+          "materials"
+        ]
+      },
+      "patch": {
+        "operationId": "update_material_api_v1_materials__material_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Material",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/materials/{material_id}/versions": {
+      "post": {
+        "operationId": "create_material_version_api_v1_materials__material_id__versions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "material_id",
+            "required": true,
+            "schema": {
+              "title": "Material Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaterialVersionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MaterialVersionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Material Version",
+        "tags": [
+          "materials"
+        ]
+      }
+    },
+    "/api/v1/model/environment-assumptions/defaults": {
+      "get": {
+        "operationId": "get_default_environment_assumptions_api_v1_model_environment_assumptions_defaults_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentAssumptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Default Environment Assumptions",
+        "tags": [
+          "model"
+        ]
+      }
+    },
+    "/api/v1/model/parameters": {
+      "get": {
+        "operationId": "get_model_parameters_api_v1_model_parameters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelParameterManifest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Model Parameters",
+        "tags": [
+          "model"
+        ]
+      }
+    },
+    "/api/v1/simulations/jobs": {
+      "get": {
+        "operationId": "list_simulation_jobs_api_v1_simulations_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationJobListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Simulation Jobs",
+        "tags": [
+          "simulations"
+        ]
+      },
+      "post": {
+        "operationId": "create_simulation_job_api_v1_simulations_jobs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeatherSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Simulation Job",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/jobs/{job_id}": {
+      "get": {
+        "operationId": "get_simulation_job_api_v1_simulations_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationJobDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Simulation Job",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/jobs/{job_id}/cancel": {
+      "post": {
+        "operationId": "cancel_simulation_job_api_v1_simulations_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Simulation Job",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/jobs/{job_id}/events": {
+      "get": {
+        "operationId": "simulation_job_events_api_v1_simulations_jobs__job_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simulation Job Events",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/jobs/{job_id}/export": {
+      "get": {
+        "operationId": "export_simulation_result_api_v1_simulations_jobs__job_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "format",
+            "required": false,
+            "schema": {
+              "default": "csv",
+              "pattern": "^(csv|json)$",
+              "title": "Format",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Simulation Result",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/jobs/{job_id}/result": {
+      "get": {
+        "operationId": "get_simulation_result_api_v1_simulations_jobs__job_id__result_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherSimulationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Simulation Result",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/run": {
+      "post": {
+        "operationId": "run_simulation_api_v1_simulations_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Simulation",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/simulations/run-weather": {
+      "post": {
+        "operationId": "run_weather_simulation_api_v1_simulations_run_weather_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WeatherSimulationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherSimulationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Weather Simulation",
+        "tags": [
+          "simulations"
+        ]
+      }
+    },
+    "/api/v1/weather/cities": {
+      "get": {
+        "operationId": "list_cities_api_v1_weather_cities_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CityResponse"
+                  },
+                  "title": "Response List Cities Api V1 Weather Cities Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Cities",
+        "tags": [
+          "weather"
+        ]
+      }
+    },
+    "/api/v1/weather/history": {
+      "get": {
+        "operationId": "weather_history_api_v1_weather_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "city_id",
+            "required": true,
+            "schema": {
+              "title": "City Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "start_time_local",
+            "required": true,
+            "schema": {
+              "format": "date-time",
+              "title": "Start Time Local",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "duration_minutes",
+            "required": false,
+            "schema": {
+              "default": 120,
+              "maximum": 1440,
+              "minimum": 1,
+              "title": "Duration Minutes",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherTimeSeries"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Weather History",
+        "tags": [
+          "weather"
+        ]
+      }
+    }
+  }
+}
