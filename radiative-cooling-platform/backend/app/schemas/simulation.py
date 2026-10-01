@@ -201,9 +201,17 @@ class EnergyDiagnostics(BaseModel):
     integrated_net_heat_j_m2: float
     energy_residual_j_m2: float
     normalized_residual_percent: float
-    maximum_core_step_c: float
-    maximum_skin_step_c: float
+    maximum_core_step_c: float = Field(
+        description="Largest core temperature change between two consecutive "
+        "audit-grid samples (NOT the solver's internal step)."
+    )
+    maximum_skin_step_c: float = Field(
+        description="Largest skin temperature change between two consecutive "
+        "audit-grid samples (NOT the solver's internal step)."
+    )
     solver_function_evaluations: int
+    # Stage 6. None on results stored before the audit grid existed.
+    diagnostic_interval_seconds: float | None = None
     
 class TimeSeriesPoint(BaseModel):
     minute: float
@@ -268,6 +276,16 @@ class SimulationSummary(BaseModel):
     final_skin_temperature_improvement_c: float
     final_core_temperature_improvement_c: float
     average_skin_temperature_improvement_c: float
+    # Stage 6. Optional so results stored before PR-1a still load.
+    averaging_method: str | None = Field(
+        default=None,
+        description=(
+            "How the average improvement was computed. "
+            "'time_weighted_trapezoid' = trapezoidal mean over the exposure "
+            "window; None = legacy arithmetic mean over output points."
+        ),
+    )
+
 
 
 class SimulationResponse(BaseModel):

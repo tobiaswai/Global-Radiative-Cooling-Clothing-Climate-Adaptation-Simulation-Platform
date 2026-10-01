@@ -18,6 +18,7 @@ from collections.abc import Callable
 from datetime import datetime, timedelta
 
 from app.core.cities import get_city
+from app.schemas import simulation
 from app.schemas.global_batch import (
     DailyAdaptationResult,
     GlobalBatchCreate,
@@ -32,9 +33,11 @@ from app.services.annual_sampling import (  # noqa: F401 (re-export)
 )
 from app.services.climate_analytics import build_city_analytics
 from app.services.exposure_statistics import (
+    compute_daily_maximum_air_temperature,
     compute_exposure_window_statistics,
     time_weighted_mean,
 )
+from app.services.scenario_summary import pair_scenarios
 from app.services.weather import (
     get_historical_weather_range,
     slice_weather_time_series,
@@ -372,7 +375,15 @@ async def analyze_city_climate_adaptation(
                 )
                 completed_sample_count += 1
                 continue
-
+            
+            paired = pair_scenarios(
+                simulation.control, simulation.radiative_cooling
+            )
+            average_skin_improvement_c = paired.average_skin_c
+            average_core_improvement_c = paired.average_core_c
+            maximum_skin_improvement_c = paired.maximum_skin_c
+            final_skin_improvement_c = paired.final_skin_c
+            
             paired_points = list(
                 zip(
                     simulation.control.time_series,
@@ -398,6 +409,12 @@ async def analyze_city_climate_adaptation(
 
             # Exposure statistics strictly over [start, start + duration].
             exposure = compute_exposure_window_statistics(sample_weather)
+
+            daily_maximum_air_temperature_c = compute_daily_maximum_air_temperature(
+                month_weather,
+                local_date=sample_day.date_local,
+                timezone_name=city.timezone,
+            )
 
             average_skin_improvement_c = time_weighted_mean(
                 minutes, skin_improvements
@@ -441,7 +458,7 @@ async def analyze_city_climate_adaptation(
                         average_skin_improvement_c, 4
                     ),
                     final_skin_improvement_c=round(
-                        simulation.summary.final_skin_temperature_improvement_c,
+                        final_skin_improvement_c,
                         4,
                     ),
                     average_core_improvement_c=round(
@@ -451,6 +468,7 @@ async def analyze_city_climate_adaptation(
                         maximum_skin_improvement_c, 4
                     ),
                     weather_from_cache=month_weather.source.from_cache,
+                    daily_maximum_air_temperature_c=round_optional(daily_maximum_air_temperature_c)
                 )
             )
 

@@ -227,3 +227,26 @@ def test_deprecated_absorbed_fraction_is_ignored(environment, person, control_ma
     assert altered.final_skin_temperature_c == pytest.approx(
         baseline.final_skin_temperature_c, abs=1e-9
     )
+    
+@pytest.mark.unit
+def test_energy_diagnostics_do_not_depend_on_output_interval(environment, person, control_material):
+    fine = simulate_material(120, 1, environment, person, control_material)
+    coarse = simulate_material(120, 30, environment, person, control_material)
+
+    assert coarse.diagnostics.integrated_net_heat_j_m2 == pytest.approx(
+        fine.diagnostics.integrated_net_heat_j_m2, abs=1e-3
+    )
+    assert coarse.diagnostics.normalized_residual_percent == pytest.approx(
+        fine.diagnostics.normalized_residual_percent, abs=1e-6
+    )
+    assert coarse.peak_skin_temperature_c == pytest.approx(fine.peak_skin_temperature_c, abs=1e-4)
+    assert coarse.diagnostics.diagnostic_interval_seconds == 60.0
+
+
+@pytest.mark.unit
+def test_output_interval_does_not_change_trajectory(environment, person, control_material):
+    fine = simulate_material(120, 1, environment, person, control_material)
+    coarse = simulate_material(120, 10, environment, person, control_material)
+    by_minute = {p.minute: p for p in fine.time_series}
+    for p in coarse.time_series:
+        assert p.skin_temperature_c == pytest.approx(by_minute[p.minute].skin_temperature_c, abs=1e-6)

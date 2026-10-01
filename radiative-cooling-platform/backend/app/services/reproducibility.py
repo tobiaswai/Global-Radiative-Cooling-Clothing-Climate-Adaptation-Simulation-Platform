@@ -262,7 +262,6 @@ def summarize_result_for_regression(
         ],
     }
 
-
 def compare_regression_payloads(
     expected: dict[str, Any],
     actual: dict[str, Any],
@@ -286,8 +285,13 @@ def compare_regression_payloads(
             differences.append(f"{key}: {expected.get(key)!r} != {actual.get(key)!r}")
 
     for key, value in expected["summary"].items():
-        if abs(value - actual["summary"][key]) > temperature_atol:
-            differences.append(f"summary.{key}: {value} != {actual['summary'][key]}")
+        actual_value = actual["summary"].get(key)
+        if isinstance(value, (int, float)):
+            if actual_value is None or abs(value - actual_value) > temperature_atol:
+                differences.append(f"summary.{key}: {value} != {actual_value}")
+        else:
+            if value != actual_value:
+                differences.append(f"summary.{key}: {value!r} != {actual_value!r}")
 
     for scenario in ("control", "radiative_cooling"):
         expected_points = expected[scenario]

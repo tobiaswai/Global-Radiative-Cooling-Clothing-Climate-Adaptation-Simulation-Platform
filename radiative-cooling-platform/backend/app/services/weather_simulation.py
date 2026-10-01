@@ -6,6 +6,7 @@ from app.schemas.simulation import (
     WeatherSimulationRequest,
     WeatherSimulationResponse,
 )
+from app.services.scenario_summary import build_simulation_summary
 from app.schemas.weather import (
     WeatherTimeSeries,
 )
@@ -69,12 +70,6 @@ def execute_weather_simulation_with_weather(
 
     report(90, "generating_summary")
 
-    control_average = sum(
-        p.skin_temperature_c for p in control_result.time_series
-    ) / len(control_result.time_series)
-    rc_average = sum(
-        p.skin_temperature_c for p in rc_result.time_series
-    ) / len(rc_result.time_series)
 
     return WeatherSimulationResponse(
         model_name=MODEL_NAME,
@@ -83,19 +78,7 @@ def execute_weather_simulation_with_weather(
         duration_minutes=request.duration_minutes,
         control=control_result,
         radiative_cooling=rc_result,
-        summary=SimulationSummary(
-            final_skin_temperature_improvement_c=round(
-                control_result.final_skin_temperature_c
-                - rc_result.final_skin_temperature_c, 4
-            ),
-            final_core_temperature_improvement_c=round(
-                control_result.final_core_temperature_c
-                - rc_result.final_core_temperature_c, 4
-            ),
-            average_skin_temperature_improvement_c=round(
-                control_average - rc_average, 4
-            ),
-        ),
+        summary=build_simulation_summary(control_result, rc_result),
         warning=RESULT_WARNING,
         weather=weather,
         environment_model_note=" ".join(assumptions.describe()),

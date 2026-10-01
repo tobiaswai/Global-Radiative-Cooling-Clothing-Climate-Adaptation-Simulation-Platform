@@ -13,6 +13,7 @@ OPEN_METEO_RESPONSE = {
     "longitude": 55.25,
     "elevation": 12.0,
     "timezone": "Asia/Dubai",
+    "utc_offset_seconds": 14400,
     "hourly": {
         "time": [
             "2025-07-15T09:00",

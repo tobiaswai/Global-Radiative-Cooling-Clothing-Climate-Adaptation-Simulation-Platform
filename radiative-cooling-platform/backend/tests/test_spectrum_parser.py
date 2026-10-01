@@ -243,3 +243,8 @@ def test_reject_too_many_points(
         spectrum_parser.parse_spectrum_csv(
             content
         )
+
+@pytest.mark.unit
+def test_header_only_file_reports_too_few_points():
+    with pytest.raises(ValueError, match="at least two"):
+        parse_spectrum_csv(b"wavelength_um,value\n")

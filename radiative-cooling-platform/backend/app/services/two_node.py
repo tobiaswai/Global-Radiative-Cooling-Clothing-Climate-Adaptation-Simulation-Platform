@@ -50,7 +50,7 @@ from app.services.weather_interpolation import WeatherInterpolator
 
 # Version of the physics engine written into every response. Bump together
 # with MODEL_PARAMETER_SET_VERSION whenever results change.
-MODEL_VERSION = "0.6.0"  # Stage 5: solar on the clothing surface, beam/diffuse split, posture
+MODEL_VERSION = "0.7.0"  # Stage 6: shared time-weighted summary, audit grid, radiation convention key
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
@@ -435,6 +435,7 @@ def _energy_diagnostics(
         maximum_core_step_c=round(max_step(core_temperatures), 6),
         maximum_skin_step_c=round(max_step(skin_temperatures), 6),
         solver_function_evaluations=int(solver_function_evaluations),
+        diagnostic_interval_seconds=DIAGNOSTIC_INTERVAL_SECONDS,
     )
 
 
@@ -454,6 +455,7 @@ def _integrate(
 
     duration_seconds = duration_minutes * 60.0
     output_times = _output_times(duration_seconds, output_interval_minutes * 60.0)
+    eval_times = _diagnostic_times(duration_seconds, output_times)
 
     def derivatives(time_seconds: float, state: np.ndarray) -> list[float]:
         fluxes = calculate_fluxes(
@@ -485,7 +487,7 @@ def _integrate(
         fun=derivatives,
         t_span=(0.0, duration_seconds),
         y0=[person.initial_core_temperature_c, person.initial_skin_temperature_c],
-        t_eval=output_times,
+        t_eval=eval_times,
         method=SOLVER_METHOD,
         rtol=SOLVER_RTOL,
         atol=SOLVER_ATOL,
@@ -498,11 +500,14 @@ def _integrate(
     times = np.asarray(solution.t, dtype=float)
     core_array = np.asarray(solution.y[0], dtype=float)
     skin_array = np.asarray(solution.y[1], dtype=float)
+    is_output = np.isin(times, output_times)
 
     time_series: list[TimeSeriesPoint] = []
     net_heat: list[float] = []
 
-    for time_seconds, core_c, skin_c in zip(times, core_array, skin_array, strict=True):
+    for time_seconds, core_c, skin_c, emit in zip(
+        times, core_array, skin_array, is_output, strict=True
+    ):
         fluxes = calculate_fluxes(
             core_temperature_c=float(core_c),
             skin_temperature_c=float(skin_c),
@@ -512,7 +517,10 @@ def _integrate(
             clothing=clothing,
         )
 
-        net_heat.append(fluxes.net_body_gain)
+        net_heat.append(fluxes.net_body_gain)  # every audit point
+
+        if not emit:
+            continue
 
         time_series.append(
             TimeSeriesPoint(
@@ -542,16 +550,13 @@ def _integrate(
         times, core_array, skin_array, np.asarray(net_heat), solution.nfev, capacities
     )
 
-    core_temperatures = [p.core_temperature_c for p in time_series]
-    skin_temperatures = [p.skin_temperature_c for p in time_series]
-
     return ScenarioResult(
         material_name=material.name,
         time_series=time_series,
-        final_core_temperature_c=core_temperatures[-1],
-        final_skin_temperature_c=skin_temperatures[-1],
-        peak_core_temperature_c=max(core_temperatures),
-        peak_skin_temperature_c=max(skin_temperatures),
+        final_core_temperature_c=time_series[-1].core_temperature_c,
+        final_skin_temperature_c=time_series[-1].skin_temperature_c,
+        peak_core_temperature_c=round(float(core_array.max()), 4),
+        peak_skin_temperature_c=round(float(skin_array.max()), 4),
         diagnostics=diagnostics,
         clothing=ClothingSummary(
             dry_resistance_m2k_w=round(clothing.dry_resistance_m2k_w, 6),
@@ -614,3 +619,19 @@ def simulate_material_with_weather(
         material=material,
         failure_label="Weather-driven numerical solution failed",
     )
+    
+# Numerical (not physical) settings.
+DIAGNOSTIC_INTERVAL_SECONDS = 60.0  # energy audit grid, independent of output interval
+
+
+def _diagnostic_times(duration_seconds: float, output_times: np.ndarray) -> np.ndarray:
+    """Union of a fixed 60 s audit grid and the requested output times.
+
+    solve_ivp chooses its steps independently of t_eval, so evaluating on a
+    denser grid does not change the trajectory at the output times; it only
+    makes the energy-balance integral independent of output_interval_minutes.
+    """
+    fine = np.arange(0.0, duration_seconds + 0.1, DIAGNOSTIC_INTERVAL_SECONDS)
+    if fine[-1] < duration_seconds:
+        fine = np.append(fine, duration_seconds)
+    return np.unique(np.concatenate([fine, output_times]))

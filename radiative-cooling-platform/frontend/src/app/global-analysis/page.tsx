@@ -1299,7 +1299,7 @@ function EstimateMetric({
         {label}
       </p>
 
-      <p className="mt-2 break-words font-semibold text-cyan-300">
+      <p className="mt-2 wrap-break-word font-semibold text-cyan-300">
         {value}
       </p>
     </div>

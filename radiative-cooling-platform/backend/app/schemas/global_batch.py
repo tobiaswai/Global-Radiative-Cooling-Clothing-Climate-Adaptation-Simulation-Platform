@@ -203,7 +203,13 @@ class DailyAdaptationResult(BaseModel):
     weight_days: int = Field(ge=1)
 
     mean_air_temperature_c: float
-    maximum_air_temperature_c: float
+    maximum_air_temperature_c: float = Field(
+        description="Maximum over the exposure window only"
+    )
+
+    # Stage 6. Maximum over the local calendar day; basis for heatwave
+    # detection. None on checkpoints written before Stage 6.
+    daily_maximum_air_temperature_c: float | None = None
 
     mean_solar_radiation_w_m2: float
     maximum_solar_radiation_w_m2: float

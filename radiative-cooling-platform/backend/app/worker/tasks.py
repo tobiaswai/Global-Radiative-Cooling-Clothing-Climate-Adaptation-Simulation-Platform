@@ -567,9 +567,9 @@ def run_global_city_analysis_task(
             ]
             
             result.analytics_json = {
-                "heatwave_analysis_available": analysis[
-                    "heatwave_analysis_available"
-                ],
+                "heatwave_analysis_available": analysis["heatwave_analysis_available"],
+                "heatwave_unavailable_reason": analysis["heatwave_unavailable_reason"],
+                "heatwave_temperature_basis": analysis["heatwave_temperature_basis"],
                 "heatwave_events": analysis["heatwave_events"],
                 "data_quality": analysis["data_quality"],
                 "metric_definitions": analysis["metric_definitions"],

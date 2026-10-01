@@ -23,8 +23,6 @@ backend/app/api/global_batches.py
 backend/app/api/materials.py
 backend/app/api/model.py
 backend/app/api/router.py
-backend/app/api/routes/simulation_events.py
-backend/app/api/routes/simulation_jobs.py
 backend/app/api/simulations.py
 backend/app/api/weather.py
 backend/app/core/__init__.py
@@ -68,6 +66,7 @@ backend/app/services/model_parameters.py
 backend/app/services/reproducibility.py
 backend/app/services/result_export.py
 backend/app/services/result_storage.py
+backend/app/services/solar.py
 backend/app/services/spectrum_parser.py
 backend/app/services/two_node.py
 backend/app/services/weather.py
@@ -78,27 +77,26 @@ backend/app/utils/date_defaults.py
 backend/app/worker/__init__.py
 backend/app/worker/celery_app.py
 backend/app/worker/tasks.py
-backend/chinese-text-inventory.txt
-backend/coverage.xml
 backend/docs/acceptance/legacy-stage-3-two-node-prototype/energy-residual.txt
 backend/docs/acceptance/legacy-stage-3-two-node-prototype/pytest-all.txt
 backend/docs/acceptance/stage-2/golden-refresh.md
 backend/docs/acceptance/stage-3-reference-comparison/golden-refresh.md
 backend/docs/acceptance/stage-3-reference-comparison/pytest-all.txt
 backend/docs/acceptance/stage-4-material-library/pytest-all.txt
+backend/docs/acceptance/stage-5-solar-surface/golden-refresh.md
+backend/docs/acceptance/stage-5-solar-surface/pytest-all.txt
 backend/docs/decisions/0001-body-surface-area.md
 backend/docs/decisions/0002-gagge-controllers.md
 backend/docs/decisions/0003-clothing-surface-balance.md
 backend/docs/decisions/0004-material-library-provenance.md
+backend/docs/decisions/0005-solar-on-clothing-surface.md
+backend/docs/decisions/0006-shortwave-geometry-and-posture.md
 backend/docs/environment-assumptions.md
 backend/docs/model-parameters.md
-backend/package-lock.json
-backend/package.json
 backend/pyproject.toml
 backend/requirements.txt
 backend/run-tests.sh
 backend/scripts/capture_weather_fixture.py
-backend/scripts/export_openapi.py
 backend/scripts/render_model_parameters_doc.py
 backend/tests/__init__.py
 backend/tests/conftest.py
@@ -121,6 +119,7 @@ backend/tests/test_exposure_statistics.py
 backend/tests/test_gagge_benchmark.py
 backend/tests/test_gagge_reference.py
 backend/tests/test_global_batch_geojson.py
+backend/tests/test_global_batches_api.py
 backend/tests/test_golden_dubai_2h.py
 backend/tests/test_job_service.py
 backend/tests/test_material_fields.py
@@ -132,6 +131,7 @@ backend/tests/test_physics.py
 backend/tests/test_result_export.py
 backend/tests/test_result_storage.py
 backend/tests/test_route_registration.py
+backend/tests/test_solar.py
 backend/tests/test_spectrum_parser.py
 backend/tests/test_stage_4_2_export.py
 backend/tests/test_stage_4_2_exposure.py
@@ -1098,7 +1098,6 @@ from fastapi import (
 from fastapi.responses import Response
 from sqlalchemy import (
     func,
-    or_,
     select,
 )
 from sqlalchemy.orm import (
@@ -1309,20 +1308,6 @@ def create_global_batch(
         request_json=request.model_dump(mode="json"),
         control_material_version_id=control_version_id,
         rc_material_version_id=rc_version_id,
-    )
-
-    queue_name = resolve_queue_name(
-        request
-    )
-
-    batch = GlobalBatchJob(
-        status="queued",
-        stage="creating_city_tasks",
-        progress=0,
-        total_city_count=len(cities),
-        request_json=request.model_dump(
-            mode="json"
-        ),
     )
 
     session.add(batch)
@@ -2430,30 +2415,6 @@ for router in (
     api_router.include_router(router)
 ```
 
-### File: `backend/app/api/routes/simulation_events.py`
-```python
-"""Simulation event streaming API routes."""
-
-from fastapi import APIRouter
-
-
-router = APIRouter()
-
-# Move existing SSE decorators and handlers here unchanged.
-```
-
-### File: `backend/app/api/routes/simulation_jobs.py`
-```python
-"""Simulation job API routes."""
-
-from fastapi import APIRouter
-
-
-router = APIRouter()
-
-# Move existing job decorators and handlers here unchanged.
-```
-
 ### File: `backend/app/api/simulations.py`
 ```python
 import asyncio
@@ -2499,7 +2460,7 @@ from app.services.material_resolution import (
 from app.services.model_parameters import build_model_metadata
 from app.services.result_export import export_result_csv, export_result_json
 from app.services.result_storage import load_simulation_result
-from app.services.two_node import simulate_material
+from app.services.two_node import MODEL_VERSION, simulate_material
 from app.services.weather import get_historical_weather
 from app.services.weather_quality import WeatherDataError
 from app.services.weather_simulation import (
@@ -2571,7 +2532,7 @@ def run_simulation(
 
     return SimulationResponse(
         model_name="RC transient two-node prototype",
-        model_version="0.1.0",
+        model_version=MODEL_VERSION,
         city=request.city,
         duration_minutes=request.duration_minutes,
         control=control_result,
@@ -4718,6 +4679,17 @@ class EnvironmentAssumptions(BaseModel):
         json_schema_extra={"source_type": "assumed", "reference": "Stage 1 prototype"},
     )
 
+    # Stage 5 (ADR 0006). Ground-reflected shortwave = 0.5 f_eff rho_g GHI.
+    ground_albedo: float = Field(
+        default=0.2, ge=0.0, le=1.0,
+        description="Shortwave reflectance of the ground surface",
+        json_schema_extra={
+            "source_type": "assumed",
+            "reference": "Typical dry soil / urban pavement (0.15-0.25)",
+        },
+    )
+
+
     def describe(self) -> list[str]:
         """Human-readable summary written into ``environment_model_note``."""
         if self.mean_radiant_temperature_method == "air_plus_solar_linear":
@@ -4745,6 +4717,10 @@ class EnvironmentAssumptions(BaseModel):
             sky,
             f"Sky view factor = {self.sky_view_factor}",
             f"Body-height wind = {self.wind_speed_scaling_factor} * ERA5 10 m wind",
+            "Direct normal and diffuse horizontal irradiance are taken from "
+            "ERA5; the body-incident shortwave follows ASHRAE 55 Appendix C "
+            "geometry (ADR 0006).",
+            f"Ground albedo = {self.ground_albedo}",
         ]
 ```
 
@@ -5271,6 +5247,10 @@ class MaterialVersionCreate(BaseModel):
         default=0.35,
         ge=0,
         le=1,
+        description=(
+            "DEPRECATED since Stage 5 (ADR 0005): ignored by the physics. "
+            "Kept so stored requests and library versions keep loading."
+        ),
     )
 
     areal_density_g_m2: float | None = Field(
@@ -5493,20 +5473,24 @@ MATERIAL_PHYSICAL_FIELD_ORDER: tuple[str, ...] = (
     "infrared_emissivity",
     "infrared_transmittance",
     "projected_solar_area_factor",
-    "absorbed_solar_to_body_fraction",
 )
 
 MATERIAL_PHYSICAL_FIELDS = frozenset(MATERIAL_PHYSICAL_FIELD_ORDER)
+
+# Kept in the schema and the database for backward compatibility, but no longer
+# read by the physics (Stage 5, ADR 0005). Accepted in parameter_sources so
+# stored versions keep loading; never verified against a library version and
+# never listed in the field manifest.
+MATERIAL_DEPRECATED_FIELDS = frozenset({"absorbed_solar_to_body_fraction"})
 
 
 def validate_parameter_source_keys(
     sources: Mapping[str, object] | None,
 ) -> None:
-    """Reject provenance entries that do not name a physical material field."""
     if not sources:
         return
 
-    unknown = set(sources) - MATERIAL_PHYSICAL_FIELDS
+    unknown = set(sources) - MATERIAL_PHYSICAL_FIELDS - MATERIAL_DEPRECATED_FIELDS
 
     if unknown:
         raise ValueError(
@@ -5596,69 +5580,63 @@ __all__ = ["MATERIAL_PHYSICAL_FIELDS", "MATERIAL_PHYSICAL_FIELD_ORDER"]  # re-ex
 
 from typing import Literal
 
+BodyPosition = Literal["standing", "sitting"]
+
 class EnvironmentInput(BaseModel):
-    air_temperature_c: float = Field(
-        default=38.0,
-        ge=-50,
-        le=70,
-    )
-    mean_radiant_temperature_c: float = Field(
-        default=45.0,
-        ge=-50,
-        le=100,
-    )
-    sky_temperature_c: float | None = Field(
-        default=None,
-        ge=-100,
-        le=70,
-    )
-    relative_humidity_percent: float = Field(
-        default=40.0,
-        ge=0,
-        le=100,
-    )
-    wind_speed_m_s: float = Field(
-        default=1.5,
-        ge=0,
-        le=30,
-    )
+    air_temperature_c: float = Field(default=38.0, ge=-50, le=70)
+    mean_radiant_temperature_c: float = Field(default=45.0, ge=-50, le=100)
+    sky_temperature_c: float | None = Field(default=None, ge=-100, le=70)
+    relative_humidity_percent: float = Field(default=40.0, ge=0, le=100)
+    wind_speed_m_s: float = Field(default=1.5, ge=0, le=30)
     solar_radiation_w_m2: float = Field(
-        default=800.0,
-        ge=0,
-        le=1500,
+        default=800.0, ge=0, le=1500,
+        description="Global horizontal irradiance (GHI)",
     )
-    sky_view_factor: float = Field(
-        default=0.5,
-        ge=0,
-        le=1,
+    sky_view_factor: float = Field(default=0.5, ge=0, le=1)
+    
+    # Stage 5 (ADR 0006). Optional beam/diffuse split; supply both or neither.
+    direct_normal_irradiance_w_m2: float | None = Field(
+        default=None, ge=0, le=1500,
+        description="Direct normal irradiance (DNI) on a plane facing the sun",
+    )
+    diffuse_horizontal_irradiance_w_m2: float | None = Field(
+        default=None, ge=0, le=1500,
+        description="Diffuse horizontal irradiance (DHI) from the sky vault",
+    )
+    ground_albedo: float = Field(
+        default=0.2, ge=0, le=1,
+        description="Shortwave reflectance of the ground (reflected-diffuse term)",
     )
 
+    @model_validator(mode="after")
+    def validate_solar_split(self):
+        has_dni = self.direct_normal_irradiance_w_m2 is not None
+        has_dhi = self.diffuse_horizontal_irradiance_w_m2 is not None
+
+        if has_dni != has_dhi:
+            raise ValueError(
+                "direct_normal_irradiance_w_m2 and "
+                "diffuse_horizontal_irradiance_w_m2 must be supplied together"
+            )
+
+        return self
+
+    @property
+    def has_solar_split(self) -> bool:
+        return self.direct_normal_irradiance_w_m2 is not None
 
 class PersonInput(BaseModel):
     met: float = Field(default=2.6, ge=0.7, le=10)
-
     body_surface_area_m2: float = Field(default=1.8, ge=1.0, le=3.0)
-
-    # Stage 3. Heat capacities are derived from body mass (ADR 0001).
-    # 70 kg / 1.8 m^2 reproduces the Gagge two-node lumped value.
     body_mass_kg: float = Field(default=70.0, ge=30.0, le=200.0)
-
     initial_core_temperature_c: float = Field(default=36.8, ge=34, le=40)
     initial_skin_temperature_c: float = Field(default=33.7, ge=20, le=40)
 
-MATERIAL_PHYSICAL_FIELDS = frozenset(
-    {
-        "clothing_insulation_clo",
-        "evaporative_resistance_m2pa_w",
-        "clothing_area_factor",
-        "solar_reflectance",
-        "solar_transmittance",
-        "infrared_emissivity",
-        "infrared_transmittance",
-        "projected_solar_area_factor",
-        "absorbed_solar_to_body_fraction",
-    }
-)
+    # Stage 5 (ADR 0006). Selects A_r/A_D for longwave and diffuse shortwave.
+    position: BodyPosition = Field(
+        default="standing",
+        description="Posture; selects the effective radiation area ratio",
+    )
 
 class MaterialInput(BaseModel):
     """Garment parameters for one scenario.
@@ -5730,10 +5708,10 @@ class MaterialInput(BaseModel):
     absorbed_solar_to_body_fraction: float = Field(
         default=0.35, ge=0, le=1,
         description=(
-            "Fraction of solar radiation absorbed by the textile that reaches "
-            "the skin node (ADR 0003)"
+            "DEPRECATED since Stage 5 (ADR 0005): ignored by the physics. "
+            "Kept so stored requests and library versions keep loading."
         ),
-        json_schema_extra={"unit": "-"},
+        json_schema_extra={"unit": "-", "deprecated": True},
     )
 
     # Provenance (no effect on the physics).
@@ -5804,6 +5782,10 @@ class TimeSeriesPoint(BaseModel):
     # Stage 3 diagnostics.
     clothing_surface_temperature_c: float | None = None
     skin_blood_flow_kg_h_m2: float | None = None
+    # Stage 5 diagnostics.
+    solar_incident_w_m2: float | None = None
+    solar_absorbed_by_textile_w_m2: float | None = None
+    solar_transmitted_w_m2: float | None = None
 
 class ClothingSummary(BaseModel):
     """Resolved clothing quantities actually used by the solver."""
@@ -5825,6 +5807,9 @@ class BodyThermalSummary(BaseModel):
     body_surface_area_m2: float
     core_heat_capacity_j_m2k: float
     skin_heat_capacity_j_m2k: float
+    # Stage 5
+    position: BodyPosition | None = None
+    effective_radiation_area_ratio: float | None = None
 
 class ScenarioResult(BaseModel):
     material_name: str
@@ -7346,7 +7331,11 @@ def maximum_evaporation_w_m2(
     )
 
 
-def assumptions_applied(clothing: ClothingResistances) -> list[str]:
+def assumptions_applied(
+    clothing: ClothingResistances,
+    *,
+    solar_split_available: bool = False,
+) -> list[str]:
     notes: list[str] = []
 
     if clothing.evaporative_resistance_source == "derived_from_clo":
@@ -7369,10 +7358,21 @@ def assumptions_applied(clothing: ClothingResistances) -> list[str]:
         )
 
     notes.append(
-        "absorbed solar radiation is deposited on the skin node via "
-        "absorbed_solar_to_body_fraction and does not enter the clothing "
-        "surface balance (ADR 0003)"
+        "solar radiation absorbed by the textile enters the clothing surface "
+        "balance; transmitted solar reaches the skin node directly. "
+        "absorbed_solar_to_body_fraction is ignored (ADR 0005)"
     )
+
+    if solar_split_available:
+        notes.append(
+            "body-incident shortwave = f_p * DNI + 0.5 f_eff F_sky DHI "
+            "+ 0.5 f_eff rho_g GHI (ASHRAE 55 Appendix C geometry, ADR 0006)"
+        )
+    else:
+        notes.append(
+            "no beam/diffuse split supplied; GHI treated as beam on the "
+            "projected area (legacy Stage 0-4 geometry, ADR 0006)"
+        )
 
     return notes
 ```
@@ -7399,6 +7399,8 @@ def derive_environment(
     wind_speed_m_s: float,
     ghi_w_m2: float,
     assumptions: EnvironmentAssumptions,
+    direct_normal_irradiance_w_m2: float | None = None,
+    diffuse_horizontal_irradiance_w_m2: float | None = None,
 ) -> EnvironmentInput:
     air = float(air_temperature_c)
     ghi = max(0.0, float(ghi_w_m2))
@@ -7424,6 +7426,20 @@ def derive_environment(
     else:
         sky = SWINBANK_COEFFICIENT * (air + KELVIN_OFFSET) ** 1.5 - KELVIN_OFFSET
 
+    dni = (
+        None
+        if direct_normal_irradiance_w_m2 is None
+        else max(0.0, float(direct_normal_irradiance_w_m2))
+    )
+    dhi = (
+        None
+        if diffuse_horizontal_irradiance_w_m2 is None
+        else max(0.0, float(diffuse_horizontal_irradiance_w_m2))
+    )
+
+    if (dni is None) != (dhi is None):
+        raise ValueError("DNI and DHI must be supplied together")
+
     return EnvironmentInput(
         air_temperature_c=air,
         mean_radiant_temperature_c=mean_radiant,
@@ -7432,6 +7448,9 @@ def derive_environment(
         wind_speed_m_s=wind,
         solar_radiation_w_m2=ghi,
         sky_view_factor=assumptions.sky_view_factor,
+        direct_normal_irradiance_w_m2=dni,
+        diffuse_horizontal_irradiance_w_m2=dhi,
+        ground_albedo=assumptions.ground_albedo,
     )
 ```
 
@@ -7674,6 +7693,8 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
     environment = request.environment.model_copy(
         update={
             "solar_radiation_w_m2": 0.0,
+            "direct_normal_irradiance_w_m2": 0.0,
+            "diffuse_horizontal_irradiance_w_m2": 0.0,
             "sky_view_factor": 0.0,
             "sky_temperature_c": request.environment.mean_radiant_temperature_c,
         }
@@ -7722,7 +7743,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
         body_surface_area=request.person.body_surface_area_m2,
         body_mass_kg=request.person.body_mass_kg,
         p_atm=101325.0,
-        position="standing",
+        position=request.person.position,
         max_skin_blood_flow=90.0,
         max_sweating=500.0,
     )
@@ -7742,7 +7763,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
         wme=0,
         body_surface_area=request.person.body_surface_area_m2,
         p_atm=101325,
-        position="standing",
+        position=request.person.position,
         max_skin_blood_flow=90,
         max_sweating=500,
         round_output=False,
@@ -9989,7 +10010,7 @@ def version_display_name(version: MaterialVersion) -> str:
     name = f"{version.material.name} v{version.version_number}"
     return name[:MATERIAL_NAME_MAX_LENGTH]
 
-
+# absorbed_solar_to_body_fraction is deprecated (ADR 0005) and not mapped.
 def material_input_from_version(version: MaterialVersion) -> MaterialInput:
     """The single mapping from a stored version to a simulation input."""
     try:
@@ -10003,9 +10024,6 @@ def material_input_from_version(version: MaterialVersion) -> MaterialInput:
             infrared_emissivity=version.infrared_emissivity,
             infrared_transmittance=version.infrared_transmittance,
             projected_solar_area_factor=version.projected_solar_area_factor,
-            absorbed_solar_to_body_fraction=(
-                version.absorbed_solar_to_body_fraction
-            ),
             material_version_id=version.id,
             source_type=version.source_type,
             source_reference=version.source_reference,
@@ -10168,6 +10186,12 @@ Stage 3 changes
 * Added: body_specific_heat, skin_mass_fraction, clothing_area_factor_slope,
   sweating_gain_body, sweating_skin_signal_scale, vasodilation_gain,
   vasoconstriction_gain, maximum_wettedness_*, shivering_coefficient.
+
+Stage 5 changes
+---------------
+* Renamed: effective_radiation_area_ratio -> effective_radiation_area_ratio_standing;
+  added effective_radiation_area_ratio_sitting (selected by PersonInput.position).
+* Added: diffuse_hemisphere_fraction (ASHRAE 55 Appendix C shortwave geometry).
 """
 
 from __future__ import annotations
@@ -10183,7 +10207,7 @@ from app.schemas.provenance import (
 )
 
 
-MODEL_PARAMETER_SET_VERSION = "3.0.0"
+MODEL_PARAMETER_SET_VERSION = "4.0.0"
 
 GAGGE_1986 = (
     "Gagge, Fobelets & Berglund (1986). A standard predictive index of "
@@ -10247,16 +10271,26 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
        "literature", ASHRAE_FUNDAMENTALS + ", Table 6 (Mitchell 1974: 8.3 v^0.6)",
        "Exponent simplified from 0.6 to 0.5 in this prototype."),
 
-   # --- longwave radiation geometry ----------------------------------------
-    _p("effective_radiation_area_ratio", 0.73, "-",
-       "A_r / A_D: fraction of the DuBois area exchanging longwave radiation "
-       "with the surroundings (standing person)",
+    # --- radiation geometry (Stage 5: posture-dependent, ADR 0006) ----------
+    _p("effective_radiation_area_ratio_standing", 0.73, "-",
+       "A_r / A_D for a standing person: fraction of the DuBois area exchanging "
+       "radiation with the surroundings (longwave, sky-diffuse and "
+       "ground-reflected shortwave)",
        "literature",
        "Fanger (1970) Thermal Comfort, McGraw-Hill; " + ASHRAE_FUNDAMENTALS
-       + " (0.70 seated, 0.73 standing); " + ASHRAE_55_SET,
-       "Applied to the clothing surface emission and to skin emission "
-       "transmitted through IR-transparent textiles. Posture is fixed at "
-       "standing; a PersonInput.position field is Stage 4 work."),
+       + " (0.73 standing); " + ASHRAE_55_SET),
+    _p("effective_radiation_area_ratio_sitting", 0.70, "-",
+       "A_r / A_D for a seated person",
+       "literature",
+       "Fanger (1970) Thermal Comfort, McGraw-Hill; " + ASHRAE_FUNDAMENTALS
+       + " (0.70 seated); " + ASHRAE_55_SET),
+    _p("diffuse_hemisphere_fraction", 0.5, "-",
+       "Share of the effective radiation area facing one hemisphere; scales the "
+       "sky-diffuse (upper) and ground-reflected (lower) shortwave terms",
+       "standard",
+       "ASHRAE Standard 55-2020, Normative Appendix C (Arens et al. 2015): "
+       "ERF = [0.5 f_eff f_svv (I_diff + I_TH R_floor) + f_p f_bes I_dir] "
+       "alpha_SW / alpha_LW"),
     
     # --- clothing -----------------------------------------------------------
     _p("clo_to_si", 0.155, "m^2 K/(W clo)", "1 clo = 0.155 m^2 K/W",
@@ -10435,7 +10469,7 @@ from app.schemas.simulation import WeatherSimulationResponse
 from app.services import model_parameters as mp
 
 # Bump only when the *shape* of the snapshot changes (new section, renamed
-# key). A changed constant value must bump ``mp.MODEL_VERSION`` instead.
+# key). A changed constant value must bump ``mp.MODEL_PARAMETER_SET_VERSION``.
 SNAPSHOT_SCHEMA_VERSION = 1
 
 
@@ -10560,7 +10594,7 @@ _REGEN_HINT = (
     "If intentional: bump MODEL_PARAMETER_SET_VERSION in "
     "app/services/model_parameters.py, record the change in "
     "docs/acceptance/<stage>/golden-refresh.md, then regenerate the fixture "
-    "(UPDATE_GOLDEN=1 pytest tests/test_golden_dubai_2h.py). "
+    "(UPDATE_GOLDEN=1 python -m pytest tests/test_golden_dubai_2h.py). "
     "Otherwise revert the constant."
 )
 
@@ -10578,7 +10612,7 @@ def _compare_parameter_fingerprint(
     if expected_fp is None or expected_snapshot is None:
         return [
             "parameter_fingerprint: fixture has no fingerprint/snapshot; "
-            "regenerate it (python -m scripts.regenerate_golden)"
+            "regenerate it (UPDATE_GOLDEN=1 python -m pytest tests/test_golden_dubai_2h.py)"
         ]
 
     # Fixture integrity: catches hand-edited snapshots with a stale hash.
@@ -10739,6 +10773,9 @@ CSV_HEADERS = [
     "rc_skin_wettedness",
     "control_clothing_surface_temperature_c",
     "rc_clothing_surface_temperature_c",
+    # Stage 5
+    "control_solar_incident_w_m2",
+    "rc_solar_incident_w_m2",
 ]
 
 
@@ -10778,6 +10815,8 @@ def export_result_csv(result: WeatherSimulationResponse) -> str:
                 _optional(rc, "skin_wettedness"),
                 _optional(control, "clothing_surface_temperature_c"),
                 _optional(rc, "clothing_surface_temperature_c"),
+                _optional(control, "solar_incident_w_m2"),
+                _optional(rc, "solar_incident_w_m2"),
             ]
         )
 
@@ -10858,6 +10897,107 @@ def load_simulation_result(
 
     return WeatherSimulationResponse.model_validate(
         payload
+    )
+```
+
+### File: `backend/app/services/solar.py`
+```python
+"""Shortwave irradiance incident on the clothed body (Stage 5, ADR 0006).
+
+Per unit DuBois area:
+
+    I_body = f_p * DNI                          direct beam on the projected area
+           + 0.5 * f_eff * F_sky * DHI          sky diffuse, upper hemisphere
+           + 0.5 * f_eff * rho_g * GHI          ground reflected, lower hemisphere
+
+This is the geometry of ASHRAE 55-2020 Normative Appendix C (Arens et al.
+2015) with the measured diffuse component instead of the 0.2 * I_dir estimate,
+the sky view factor limiting the sky-diffuse term, and f_bes = 1 (no shading).
+
+Legacy path: when the beam/diffuse split is not available the whole GHI is
+treated as beam on the projected area (Stage 0-4 geometry). Fixed-environment
+requests that do not send DNI/DHI therefore keep their incident irradiance;
+only the surface-balance treatment (ADR 0005) changes their results.
+
+Partition at the textile (ADR 0005):
+    absorbed by textile   = (1 - rho_sol - tau_sol) * I_body   -> surface balance
+    transmitted to skin   = tau_sol * I_body                   -> skin node
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from app.schemas.simulation import EnvironmentInput, MaterialInput
+from app.services.model_parameters import get_parameter_value
+
+
+HEMISPHERE_FRACTION = get_parameter_value("diffuse_hemisphere_fraction")
+
+
+@dataclass(frozen=True)
+class SolarLoad:
+    incident_w_m2: float
+    direct_w_m2: float
+    sky_diffuse_w_m2: float
+    ground_reflected_w_m2: float
+    absorbed_by_textile_w_m2: float
+    transmitted_to_skin_w_m2: float
+    split_available: bool
+
+    @property
+    def entering_system_w_m2(self) -> float:
+        """Solar energy that ends up in the clothing-body system."""
+        return self.absorbed_by_textile_w_m2 + self.transmitted_to_skin_w_m2
+
+
+def solar_absorptance(material: MaterialInput) -> float:
+    value = 1.0 - material.solar_reflectance - material.solar_transmittance
+    return min(1.0, max(0.0, value))
+
+
+def solar_load(
+    environment: EnvironmentInput,
+    material: MaterialInput,
+    radiation_area_ratio: float,
+) -> SolarLoad:
+    ghi = max(0.0, environment.solar_radiation_w_m2)
+    projected = material.projected_solar_area_factor
+
+    dni = environment.direct_normal_irradiance_w_m2
+    dhi = environment.diffuse_horizontal_irradiance_w_m2
+
+    if dni is None or dhi is None:
+        direct = projected * ghi
+        sky_diffuse = 0.0
+        ground_reflected = 0.0
+        split_available = False
+    else:
+        direct = projected * max(0.0, dni)
+        sky_diffuse = (
+            HEMISPHERE_FRACTION
+            * radiation_area_ratio
+            * environment.sky_view_factor
+            * max(0.0, dhi)
+        )
+        ground_reflected = (
+            HEMISPHERE_FRACTION
+            * radiation_area_ratio
+            * environment.ground_albedo
+            * ghi
+        )
+        split_available = True
+
+    incident = direct + sky_diffuse + ground_reflected
+
+    return SolarLoad(
+        incident_w_m2=incident,
+        direct_w_m2=direct,
+        sky_diffuse_w_m2=sky_diffuse,
+        ground_reflected_w_m2=ground_reflected,
+        absorbed_by_textile_w_m2=solar_absorptance(material) * incident,
+        transmitted_to_skin_w_m2=material.solar_transmittance * incident,
+        split_available=split_available,
     )
 ```
 
@@ -11053,18 +11193,18 @@ def parse_spectrum_csv(
 ```python
 """Two-node transient human thermal model.
 
-Stage 3 changes
----------------
-* Node heat capacities are derived from body mass and surface area
-  (``body.body_heat_capacities``, ADR 0001).
-* The clothing surface temperature is solved explicitly; the clothing area
-  factor f_cl enters both the dry and the evaporative pathway (ADR 0003).
-  The linearised radiative coefficient is gone.
-* Thermoregulation uses the Gagge (1986) controllers: sweating on the
-  mean-body warm signal with the exponential skin modifier, skin blood flow
-  with vasodilation/vasoconstriction, a critical skin wettedness w_max and
-  shivering (ADR 0002).
-* Every numeric constant is bound from ``model_parameters`` (unit + source).
+Stage 5 changes (ADR 0005, ADR 0006)
+------------------------------------
+* Solar radiation absorbed by the textile is a source term in the clothing
+  surface balance; the share reaching the skin is an outcome of that balance.
+  ``MaterialInput.absorbed_solar_to_body_fraction`` is ignored.
+* Solar transmitted through the textile is deposited on the skin node.
+* Incident shortwave uses the beam/diffuse split when available
+  (``services.solar``); ``PersonInput.position`` selects A_r/A_D.
+
+Retained from Stage 3: body-mass heat capacities (ADR 0001), Gagge 1986
+controllers (ADR 0002), explicit clothing surface temperature (ADR 0003).
+Every numeric constant is bound from ``model_parameters``.
 """
 
 from __future__ import annotations
@@ -11078,6 +11218,7 @@ from scipy.integrate import solve_ivp
 
 from app.schemas.environment import EnvironmentAssumptions
 from app.schemas.simulation import (
+    BodyPosition,
     BodyThermalSummary,
     ClothingSummary,
     EnergyDiagnostics,
@@ -11096,15 +11237,21 @@ from app.services.clothing import (
     resolve_clothing,
 )
 from app.services.model_parameters import get_parameter_value as _param
+from app.services.solar import solar_load
 from app.services.weather_interpolation import WeatherInterpolator
 
+
+# Version of the physics engine written into every response. Bump together
+# with MODEL_PARAMETER_SET_VERSION whenever results change.
+MODEL_VERSION = "0.6.0"  # Stage 5: solar on the clothing surface, beam/diffuse split, posture
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
 NATURAL_CONVECTION_MINIMUM = _param("natural_convection_minimum_coefficient")
 FORCED_CONVECTION_COEFFICIENT = _param("forced_convection_coefficient")
 SKIN_EMISSIVITY = _param("skin_emissivity")
-RADIATION_AREA_RATIO = _param("effective_radiation_area_ratio")
+RADIATION_AREA_RATIO_STANDING = _param("effective_radiation_area_ratio_standing")
+RADIATION_AREA_RATIO_SITTING = _param("effective_radiation_area_ratio_sitting")
 SKIN_MASS_FRACTION = _param("skin_mass_fraction")
 CORE_SETPOINT = _param("core_setpoint_temperature")
 SKIN_SETPOINT = _param("skin_setpoint_temperature")
@@ -11163,12 +11310,16 @@ class HeatFluxes:
     maximum_evaporation: float
     skin_wettedness: float
     maximum_skin_wettedness: float
-    absorbed_solar: float
+    solar_incident: float
+    solar_absorbed_by_textile: float
+    solar_transmitted: float
+    absorbed_solar: float  # solar entering the clothing-body system
     core_to_skin: float
     respiration: float
     metabolism: float
     skin_blood_flow: float
     clothing_surface_temperature_c: float
+    radiation_area_ratio: float
 
     @property
     def net_body_gain(self) -> float:
@@ -11185,6 +11336,13 @@ class HeatFluxes:
 
 def clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(value, upper))
+
+
+def effective_radiation_area_ratio(position: BodyPosition) -> float:
+    """A_r / A_D for the given posture (ADR 0006)."""
+    if position == "sitting":
+        return RADIATION_AREA_RATIO_SITTING
+    return RADIATION_AREA_RATIO_STANDING
 
 
 def saturation_vapor_pressure_kpa(temperature_c: float) -> float:
@@ -11219,11 +11377,18 @@ def clothing_surface_temperature_c(
     clothing: ClothingResistances,
     convection_coefficient: float,
     emissivity: float,
+    radiation_area_ratio: float,
+    absorbed_solar_w_m2: float = 0.0,
 ) -> float:
-    """Solve (T_sk - T_cl)/R_cl = f_cl [h_c (T_cl - T_a) + eps sigma (T_cl^4 - T_env^4)].
+    """Solve the clothing surface balance (ADR 0003 + ADR 0005)
 
-    The residual is strictly decreasing and concave in T_cl, so Newton's method
-    started at T_sk converges monotonically after at most one overshoot.
+        (T_sk - T_cl)/R_cl + S_abs
+            = f_cl [h_c (T_cl - T_a) + (A_r/A_D) eps sigma (T_cl^4 - T_env^4)]
+
+    S_abs (solar absorbed by the textile, per unit A_D) does not depend on
+    T_cl, so the residual stays strictly decreasing and concave. Newton from
+    T_sk lands at or below the root after the first step and then converges
+    monotonically.
     """
     if clothing.dry_resistance_m2k_w < NUDE_RESISTANCE_THRESHOLD_M2K_W:
         return skin_temperature_c
@@ -11235,12 +11400,14 @@ def clothing_surface_temperature_c(
 
     t = skin_k
 
-    radiative_factor = RADIATION_AREA_RATIO * emissivity * SIGMA
+    radiative_factor = radiation_area_ratio * emissivity * SIGMA
 
     for _ in range(SURFACE_TEMPERATURE_MAX_ITERATIONS):
         emission = radiative_factor * (t**4 - environment_fourth_k4)
-        residual = (skin_k - t) / resistance - area_factor * (
-            convection_coefficient * (t - air_k) + emission
+        residual = (
+            (skin_k - t) / resistance
+            + absorbed_solar_w_m2
+            - area_factor * (convection_coefficient * (t - air_k) + emission)
         )
         derivative = -1.0 / resistance - area_factor * (
             convection_coefficient + 4.0 * radiative_factor * t**3
@@ -11253,7 +11420,8 @@ def clothing_surface_temperature_c(
 
     raise RuntimeError(
         "Clothing surface temperature iteration did not converge "
-        f"(T_sk = {skin_temperature_c:.3f} C, T_a = {air_temperature_c:.3f} C)"
+        f"(T_sk = {skin_temperature_c:.3f} C, T_a = {air_temperature_c:.3f} C, "
+        f"S_abs = {absorbed_solar_w_m2:.1f} W/m^2)"
     )
 
 
@@ -11278,6 +11446,7 @@ def calculate_fluxes(
         clothing = resolve_clothing(material)
 
     air_temperature_c = environment.air_temperature_c
+    area_ratio = effective_radiation_area_ratio(person.position)
 
     # --- thermoregulatory signals (Gagge 1986) ------------------------------
     warm_skin = max(skin_temperature_c - SKIN_SETPOINT, 0.0)
@@ -11291,7 +11460,10 @@ def calculate_fluxes(
     )
     warm_body = max(body_temperature_c - BODY_SETPOINT, 0.0)
 
-    # --- dry heat: clothing surface balance ---------------------------------
+    # --- solar (ADR 0005 / 0006) --------------------------------------------
+    solar = solar_load(environment, material, area_ratio)
+
+    # --- dry heat: clothing surface balance with the solar source -----------
     convection_coefficient = convection_coefficient_w_m2k(environment.wind_speed_m_s)
     environment_fourth = environment_radiant_fourth_power_k4(environment)
 
@@ -11302,6 +11474,8 @@ def calculate_fluxes(
         clothing=clothing,
         convection_coefficient=convection_coefficient,
         emissivity=material.infrared_emissivity,
+        radiation_area_ratio=area_ratio,
+        absorbed_solar_w_m2=solar.absorbed_by_textile_w_m2,
     )
     surface_k = surface_c + KELVIN_OFFSET
     skin_k = skin_temperature_c + KELVIN_OFFSET
@@ -11312,7 +11486,7 @@ def calculate_fluxes(
 
     longwave_surface = (
         clothing.area_factor
-        * RADIATION_AREA_RATIO
+        * area_ratio
         * material.infrared_emissivity
         * SIGMA
         * (surface_k**4 - environment_fourth)
@@ -11320,7 +11494,7 @@ def calculate_fluxes(
 
     # Skin emission transmitted directly through an IR-transparent textile.
     longwave_transmitted = (
-        RADIATION_AREA_RATIO
+        area_ratio
         * clothing.infrared_transmittance
         * SKIN_EMISSIVITY
         * SIGMA
@@ -11328,18 +11502,6 @@ def calculate_fluxes(
     )
 
     longwave_radiation = longwave_surface + longwave_transmitted
-
-    # --- solar (ADR 0003: deposited on the skin node) -----------------------
-    solar_absorptance = clamp(
-        1.0 - material.solar_reflectance - material.solar_transmittance, 0.0, 1.0
-    )
-
-    absorbed_solar = (
-        solar_absorptance
-        * environment.solar_radiation_w_m2
-        * material.projected_solar_area_factor
-        * material.absorbed_solar_to_body_fraction
-    )
 
     # --- evaporation --------------------------------------------------------
     ambient_vapor_pressure_kpa = (
@@ -11417,12 +11579,16 @@ def calculate_fluxes(
         maximum_evaporation=maximum_evaporation,
         skin_wettedness=skin_wettedness,
         maximum_skin_wettedness=w_max,
-        absorbed_solar=absorbed_solar,
+        solar_incident=solar.incident_w_m2,
+        solar_absorbed_by_textile=solar.absorbed_by_textile_w_m2,
+        solar_transmitted=solar.transmitted_to_skin_w_m2,
+        absorbed_solar=solar.entering_system_w_m2,
         core_to_skin=core_to_skin,
         respiration=respiration,
         metabolism=metabolism,
         skin_blood_flow=skin_blood_flow,
         clothing_surface_temperature_c=surface_c,
+        radiation_area_ratio=area_ratio,
     )
 
 
@@ -11476,6 +11642,8 @@ def _integrate(
 ) -> ScenarioResult:
     clothing = resolve_clothing(material)
     capacities = body_heat_capacities(person)
+    area_ratio = effective_radiation_area_ratio(person.position)
+    solar_split_available = environment_at(0.0).has_solar_split
 
     duration_seconds = duration_minutes * 60.0
     output_times = _output_times(duration_seconds, output_interval_minutes * 60.0)
@@ -11491,6 +11659,8 @@ def _integrate(
         )
 
         core_storage = fluxes.metabolism - fluxes.respiration - fluxes.core_to_skin
+        # absorbed_solar = textile absorption (routed through the surface
+        # balance, which already raised convection/longwave) + transmission.
         skin_storage = (
             fluxes.core_to_skin
             + fluxes.absorbed_solar
@@ -11553,6 +11723,11 @@ def _integrate(
                     fluxes.clothing_surface_temperature_c, 4
                 ),
                 skin_blood_flow_kg_h_m2=round(fluxes.skin_blood_flow, 4),
+                solar_incident_w_m2=round(fluxes.solar_incident, 4),
+                solar_absorbed_by_textile_w_m2=round(
+                    fluxes.solar_absorbed_by_textile, 4
+                ),
+                solar_transmitted_w_m2=round(fluxes.solar_transmitted, 4),
             )
         )
 
@@ -11579,12 +11754,16 @@ def _integrate(
             clothing_area_factor=round(clothing.area_factor, 6),
             clothing_area_factor_source=clothing.area_factor_source,
         ),
-        assumptions_applied=assumptions_applied(clothing),
+        assumptions_applied=assumptions_applied(
+            clothing, solar_split_available=solar_split_available
+        ),
         body=BodyThermalSummary(
             body_mass_kg=person.body_mass_kg,
             body_surface_area_m2=person.body_surface_area_m2,
             core_heat_capacity_j_m2k=round(capacities.core_j_m2k, 2),
             skin_heat_capacity_j_m2k=round(capacities.skin_j_m2k, 2),
+            position=person.position,
+            effective_radiation_area_ratio=area_ratio,
         ),
     )
 
@@ -12302,15 +12481,22 @@ class WeatherInterpolator:
     assumptions: EnvironmentAssumptions = field(
         default_factory=EnvironmentAssumptions
     )
+    # Stage 5. Optional so keyword constructions without the split keep working.
+    dni_values: np.ndarray | None = None
+    dhi_values: np.ndarray | None = None
 
     def __post_init__(self) -> None:
-        arrays = (
+        arrays = [
             self.relative_seconds,
             self.temperatures,
             self.humidities,
             self.wind_speeds,
             self.ghi_values,
-        )
+        ]
+        if self.dni_values is not None:
+            arrays.append(self.dni_values)
+        if self.dhi_values is not None:
+            arrays.append(self.dhi_values)
 
         lengths = {len(array) for array in arrays}
 
@@ -12394,6 +12580,12 @@ class WeatherInterpolator:
                 [p.ghi_w_m2 for p in weather.points], dtype=float
             ),
             assumptions=assumptions or EnvironmentAssumptions(),  # Stage 2
+            dni_values=np.asarray(
+                [p.dni_w_m2 for p in weather.points], dtype=float
+            ),
+            dhi_values=np.asarray(
+                [p.diffuse_radiation_w_m2 for p in weather.points], dtype=float
+            ),
         )
 
         if check_requested_window:
@@ -12447,17 +12639,19 @@ class WeatherInterpolator:
         self._check_bounds(elapsed_seconds)
 
         return derive_environment(
-            air_temperature_c=self._interpolate(
-                self.temperatures, elapsed_seconds
+            air_temperature_c=self._interpolate(self.temperatures, elapsed_seconds),
+            relative_humidity_percent=self._interpolate(self.humidities, elapsed_seconds),
+            wind_speed_m_s=self._interpolate(self.wind_speeds, elapsed_seconds),
+            ghi_w_m2=self._interpolate(self.ghi_values, elapsed_seconds),
+            direct_normal_irradiance_w_m2=(
+                None
+                if self.dni_values is None
+                else self._interpolate(self.dni_values, elapsed_seconds)
             ),
-            relative_humidity_percent=self._interpolate(
-                self.humidities, elapsed_seconds
-            ),
-            wind_speed_m_s=self._interpolate(
-                self.wind_speeds, elapsed_seconds
-            ),
-            ghi_w_m2=self._interpolate(
-                self.ghi_values, elapsed_seconds
+            diffuse_horizontal_irradiance_w_m2=(
+                None
+                if self.dhi_values is None
+                else self._interpolate(self.dhi_values, elapsed_seconds)
             ),
             assumptions=self.assumptions,
         )
@@ -12772,7 +12966,7 @@ from app.schemas.weather import (
     WeatherTimeSeries,
 )
 from app.services.two_node import (
-    simulate_material_with_weather,
+    MODEL_VERSION, simulate_material_with_weather,
 )
 from app.services.weather import (
     get_historical_weather,
@@ -12781,7 +12975,7 @@ from app.services.weather import (
 from app.services.model_parameters import build_model_metadata
 
 MODEL_NAME = "Weather-driven transient two-node prototype"
-MODEL_VERSION = "0.5.0"  # Stage 2: explicit Re,cl, IR transmittance, assumptions
+
 ProgressCallback = Callable[
     [int, str],
     None,
@@ -13660,1531 +13854,6 @@ def run_global_city_analysis_task(
         raise
 ```
 
-### File: `backend/chinese-text-inventory.txt`
-```
-./alembic/env.py:10:# 必須導入模型，才能註冊到 Base.metadata。
-./app/api/benchmarks.py:30:            detail=f"Gagge 基準計算失敗：{error}",
-./app/api/materials.py:97:            detail="材料 slug 已存在",
-./app/api/materials.py:108:            detail="材料建立後無法重新讀取",
-./app/api/materials.py:212:            detail="找不到材料",
-./app/api/materials.py:237:            detail="找不到材料",
-./app/api/materials.py:277:            detail="找不到材料",
-./app/api/materials.py:330:            detail="找不到材料版本",
-./app/api/materials.py:385:            detail="不支持的光譜類型",
-./app/api/materials.py:396:            detail="找不到材料版本",
-./app/api/materials.py:402:            detail="缺少文件名稱",
-./app/api/materials.py:410:            detail="只接受 CSV 文件",
-./app/api/materials.py:506:            detail="找不到光譜資料",
-./app/api/simulations.py:105:            "本結果來自簡化瞬態原型，尚未完成熱人偶、"
-./app/api/simulations.py:106:            "人體實驗或 JOS-3 基準驗證，不可用於醫療、"
-./app/api/simulations.py:107:            "職業安全或產品認證。"
-./app/api/simulations.py:210:            "這是氣象驅動的簡化人體熱平衡原型，"
-./app/api/simulations.py:211:            "尚未完成 JOS-3、熱人偶或人體實驗驗證。"
-./app/api/simulations.py:215:            "氣溫、濕度、風速和短波輻射來自 ERA5；"
-./app/api/simulations.py:216:            "平均輻射溫度和有效天空溫度目前使用"
-./app/api/simulations.py:217:            "經驗公式估計。"
-./app/api/simulations.py:308:                "無法將任務提交給Celery："
-./app/api/simulations.py:371:            detail="找不到模擬任務",
-./app/api/simulations.py:392:            detail="找不到模擬任務",
-./app/api/simulations.py:399:                "模擬尚未完成，"
-./app/api/simulations.py:400:                f"目前狀態：{job.status}"
-./app/api/simulations.py:407:            detail="任務完成但缺少結果路徑",
-./app/api/simulations.py:436:            detail="找不到模擬任務",
-./app/api/simulations.py:447:                "終止狀態的任務不能取消"
-./app/api/simulations.py:508:            detail="找不到模擬任務",
-./app/api/simulations.py:594:            detail="找不到模擬任務",
-./app/api/simulations.py:600:            detail="模擬尚未完成",
-./app/api/simulations.py:606:            detail="任務缺少結果文件",
-./app/core/cities.py:56:            f"不支持城市 '{city_id}'。"
-./app/core/cities.py:57:            f"目前支持：{supported}"
-./app/main.py:26:        "輻射製冷服裝全球氣候適應性模擬平台後端"
-./app/schemas/material.py:104:                "solar_transmittance 不能大於 1"
-./app/schemas/simulation.py:107:                "solar_reflectance + solar_transmittance 不能大於 1"
-./app/schemas/weather.py:54:                "動態模擬至少需要兩個氣象時間點"
-./app/schemas/weather.py:64:                "氣象時間序列必須按時間升序排列"
-./app/services/gagge_benchmark.py:14:    將 Python float、NumPy scalar 或單元素陣列轉為 float。
-./app/services/gagge_benchmark.py:27:    將自研原型與 pythermalcomfort Gagge Two-Node 比較。
-./app/services/gagge_benchmark.py:29:    注意：
-./app/services/gagge_benchmark.py:30:    Gagge 的標準接口不直接處理材料太陽光譜屬性，
-./app/services/gagge_benchmark.py:31:    因此基準情景會把太陽輻射設為零。
-./app/services/gagge_benchmark.py:92:            "為確保模型邊界條件可比較，"
-./app/services/gagge_benchmark.py:93:            "基準計算已將直接太陽輻射設為 0 W/m²。"
-./app/services/gagge_benchmark.py:153:            "這是模型診斷比較，不是等價性驗證。"
-./app/services/gagge_benchmark.py:154:            "自研原型與 Gagge 模型的熱容量、"
-./app/services/gagge_benchmark.py:155:            "服裝模型、血流控制和蒸發控制方程不同。"
-./app/services/result_storage.py:57:            f"結果文件不存在：{path}"
-./app/services/spectrum_parser.py:36:        raise ValueError("上傳文件為空")
-./app/services/spectrum_parser.py:40:            "光譜 CSV 不能超過 2 MB"
-./app/services/spectrum_parser.py:47:            "CSV 必須使用 UTF-8 編碼"
-./app/services/spectrum_parser.py:55:        raise ValueError("CSV 缺少表頭")
-./app/services/spectrum_parser.py:95:            "CSV 必須包含 wavelength_um 欄位"
-./app/services/spectrum_parser.py:100:            "CSV 必須包含 value 欄位"
-./app/services/spectrum_parser.py:122:                f"第 {row_number} 行包含無效數值"
-./app/services/spectrum_parser.py:127:                f"第 {row_number} 行波長不是有限數值"
-./app/services/spectrum_parser.py:132:                f"第 {row_number} 行光譜值不是有限數值"
-./app/services/spectrum_parser.py:137:                f"第 {row_number} 行波長必須大於 0"
-./app/services/spectrum_parser.py:142:                f"第 {row_number} 行光譜值必須位於 0 至 1"
-./app/services/spectrum_parser.py:154:                "光譜點數不能超過 20000"
-./app/services/spectrum_parser.py:159:            "光譜文件至少需要兩個數據點"
-./app/services/spectrum_parser.py:174:                "波長必須嚴格遞增且不能重複"
-./app/services/two_node.py:26:# 人體核心與皮膚的面積歸一化有效熱容量，J/(m²·K)
-./app/services/two_node.py:48:    Magnus 型近似飽和水汽壓，單位 kPa。
-./app/services/two_node.py:81:    # 強制對流與自然對流中取較大者
-./app/services/two_node.py:85:    # 服裝熱阻造成皮膚熱量傳到外表面的衰減
-./app/services/two_node.py:254:    計算整個模擬期間的人體總能量守恆殘差。
-./app/services/two_node.py:256:    人體核心與皮膚之間的熱交換 core_to_skin 是內部熱流，
-./app/services/two_node.py:257:    在人體總能量平衡中會互相抵消，因此不放入總淨熱流。
-./app/services/two_node.py:447:            f"數值求解失敗：{solution.message}"
-./app/services/two_node.py:621:            f"動態氣象數值求解失敗："
-./app/services/weather.py:74:    # ERA5 通常約有五天延遲。
-./app/services/weather.py:82:            "ERA5 歷史數據通常有約 5 天延遲。"
-./app/services/weather.py:83:            f"請選擇不晚於 {latest_safe_date.isoformat()} "
-./app/services/weather.py:84:            "的日期。"
-./app/services/weather.py:162:            "Open-Meteo 請求失敗："
-./app/services/weather.py:188:            f"Open-Meteo 回應缺少變量：{name}"
-./app/services/weather.py:193:            f"氣象變量 {name} 長度不一致"
-./app/services/weather.py:206:            f"{variable_name} 在索引 {index} 缺失"
-./app/services/weather.py:220:            "Open-Meteo 回應缺少 hourly 數據"
-./app/services/weather.py:228:            "Open-Meteo 沒有返回氣象時間點"
-./app/services/weather.py:271:        # Open-Meteo 在指定 timezone 時返回當地時間，
-./app/services/weather.py:272:        # 字符串本身通常不附帶 UTC offset。
-./app/services/weather.py:349:    # 前後各多取得一小時，供線性插值使用。
-./app/services/weather.py:376:            "氣象數據不足，無法進行時間插值"
-./app/services/weather_interpolation.py:108:        # MVP 經驗估計：
-./app/services/weather_interpolation.py:109:        # 戶外平均輻射溫度會因短波太陽輻射上升。
-./app/services/weather_interpolation.py:115:        # Open-Meteo 歷史接口未直接提供有效天空溫度，
-./app/services/weather_interpolation.py:116:        # 第一版按濕度估計天空相對空氣的溫差。
-./app/services/weather_simulation.py:141:            "本結果來自氣象驅動的簡化人體"
-./app/services/weather_simulation.py:142:            "熱平衡原型，尚未完成JOS-3、"
-./app/services/weather_simulation.py:143:            "熱人偶或人體實驗驗證。"
-./app/services/weather_simulation.py:147:            "氣溫、濕度、風速及短波輻射"
-./app/services/weather_simulation.py:148:            "來自ERA5；平均輻射溫度和有效"
-./app/services/weather_simulation.py:149:            "天空溫度目前使用經驗公式估計。"
-./app/worker/tasks.py:40:                f"找不到模擬任務：{job_id}"
-./app/worker/tasks.py:60:                f"找不到模擬任務：{job_id}"
-./app/worker/tasks.py:88:                    f"找不到模擬任務：{job_id}"
-./docs/acceptance/stage-3/pytest-all.txt:7:開始執行測試...
-./run-tests.sh:11:  echo "錯誤：找不到 $PYTHON"
-./run-tests.sh:12:  echo "請先在 backend 目錄建立 .venv"
-./run-tests.sh:27:echo "開始執行測試..."
-./tests/test_climate_scenarios.py:84:    ), f"{name} 能量殘差過大"
-./tests/test_result_export.py:12:    # 可使用現有模擬 fixture 建立結果，
-./tests/test_result_export.py:13:    # 或在此使用已保存的測試結果 fixture。
-./tests/test_spectrum_parser.py:40:        match="0 至 1",
-./tests/test_spectrum_parser.py:55:        match="嚴格遞增",
-
-```
-
-### File: `backend/coverage.xml`
-```
-<?xml version="1.0" ?>
-<coverage version="7.15.3" timestamp="1788165731429" lines-valid="1200" lines-covered="909" line-rate="0.7575" branches-covered="0" branches-valid="0" branch-rate="0" complexity="0">
-	<!-- Generated by coverage.py: https://coverage.readthedocs.io/en/7.15.3 -->
-	<!-- Based on https://raw.githubusercontent.com/cobertura/web/master/htdocs/xml/coverage-04.dtd -->
-	<sources>
-		<source>C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\app</source>
-	</sources>
-	<packages>
-		<package name="." line-rate="1" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="main.py" filename="main.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="8" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="14" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="19" hits="1"/>
-						<line number="20" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="43" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="48" hits="1"/>
-						<line number="49" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="59" hits="1"/>
-						<line number="61" hits="1"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="api" line-rate="0.36" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="api/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="benchmarks.py" filename="api/benchmarks.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="22" hits="1"/>
-						<line number="25" hits="1"/>
-						<line number="26" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="28" hits="1"/>
-					</lines>
-				</class>
-				<class name="materials.py" filename="api/materials.py" complexity="0" line-rate="0.25" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="40" hits="1"/>
-						<line number="41" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="52" hits="1"/>
-						<line number="56" hits="0"/>
-						<line number="66" hits="1"/>
-						<line number="71" hits="1"/>
-						<line number="75" hits="0"/>
-						<line number="82" hits="0"/>
-						<line number="87" hits="0"/>
-						<line number="88" hits="0"/>
-						<line number="90" hits="0"/>
-						<line number="91" hits="0"/>
-						<line number="92" hits="0"/>
-						<line number="93" hits="0"/>
-						<line number="95" hits="0"/>
-						<line number="100" hits="0"/>
-						<line number="105" hits="0"/>
-						<line number="106" hits="0"/>
-						<line number="111" hits="0"/>
-						<line number="116" hits="1"/>
-						<line number="120" hits="1"/>
-						<line number="134" hits="0"/>
-						<line number="136" hits="0"/>
-						<line number="137" hits="0"/>
-						<line number="141" hits="0"/>
-						<line number="142" hits="0"/>
-						<line number="148" hits="0"/>
-						<line number="154" hits="0"/>
-						<line number="165" hits="0"/>
-						<line number="167" hits="0"/>
-						<line number="168" hits="0"/>
-						<line number="176" hits="0"/>
-						<line number="188" hits="0"/>
-						<line number="196" hits="1"/>
-						<line number="200" hits="1"/>
-						<line number="204" hits="0"/>
-						<line number="209" hits="0"/>
-						<line number="210" hits="0"/>
-						<line number="215" hits="0"/>
-						<line number="220" hits="1"/>
-						<line number="224" hits="1"/>
-						<line number="229" hits="0"/>
-						<line number="234" hits="0"/>
-						<line number="235" hits="0"/>
-						<line number="240" hits="0"/>
-						<line number="244" hits="0"/>
-						<line number="245" hits="0"/>
-						<line number="247" hits="0"/>
-						<line number="249" hits="0"/>
-						<line number="254" hits="0"/>
-						<line number="259" hits="1"/>
-						<line number="264" hits="1"/>
-						<line number="269" hits="0"/>
-						<line number="274" hits="0"/>
-						<line number="275" hits="0"/>
-						<line number="280" hits="0"/>
-						<line number="292" hits="0"/>
-						<line number="298" hits="0"/>
-						<line number="299" hits="0"/>
-						<line number="300" hits="0"/>
-						<line number="302" hits="0"/>
-						<line number="307" hits="1"/>
-						<line number="311" hits="1"/>
-						<line number="315" hits="0"/>
-						<line number="327" hits="0"/>
-						<line number="328" hits="0"/>
-						<line number="333" hits="0"/>
-						<line number="359" hits="1"/>
-						<line number="363" hits="1"/>
-						<line number="375" hits="0"/>
-						<line number="382" hits="0"/>
-						<line number="383" hits="0"/>
-						<line number="388" hits="0"/>
-						<line number="393" hits="0"/>
-						<line number="394" hits="0"/>
-						<line number="399" hits="0"/>
-						<line number="400" hits="0"/>
-						<line number="405" hits="0"/>
-						<line number="408" hits="0"/>
-						<line number="413" hits="0"/>
-						<line number="415" hits="0"/>
-						<line number="416" hits="0"/>
-						<line number="419" hits="0"/>
-						<line number="420" hits="0"/>
-						<line number="425" hits="0"/>
-						<line number="435" hits="0"/>
-						<line number="436" hits="0"/>
-						<line number="454" hits="0"/>
-						<line number="456" hits="0"/>
-						<line number="457" hits="0"/>
-						<line number="460" hits="0"/>
-						<line number="463" hits="0"/>
-						<line number="466" hits="0"/>
-						<line number="469" hits="0"/>
-						<line number="473" hits="0"/>
-						<line number="474" hits="0"/>
-						<line number="476" hits="0"/>
-						<line number="484" hits="1"/>
-						<line number="488" hits="1"/>
-						<line number="493" hits="0"/>
-						<line number="503" hits="0"/>
-						<line number="504" hits="0"/>
-						<line number="509" hits="0"/>
-					</lines>
-				</class>
-				<class name="simulations.py" filename="api/simulations.py" complexity="0" line-rate="0.325" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="8" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="21" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="30" hits="1"/>
-						<line number="34" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="48" hits="1"/>
-						<line number="57" hits="0"/>
-						<line number="58" hits="0"/>
-						<line number="63" hits="1"/>
-						<line number="68" hits="1"/>
-						<line number="73" hits="1"/>
-						<line number="78" hits="1"/>
-						<line number="83" hits="1"/>
-						<line number="112" hits="1"/>
-						<line number="116" hits="1"/>
-						<line number="119" hits="0"/>
-						<line number="120" hits="0"/>
-						<line number="122" hits="0"/>
-						<line number="132" hits="0"/>
-						<line number="146" hits="0"/>
-						<line number="159" hits="0"/>
-						<line number="160" hits="0"/>
-						<line number="164" hits="0"/>
-						<line number="165" hits="0"/>
-						<line number="170" hits="0"/>
-						<line number="175" hits="0"/>
-						<line number="180" hits="0"/>
-						<line number="224" hits="1"/>
-						<line number="225" hits="1"/>
-						<line number="227" hits="1"/>
-						<line number="228" hits="1"/>
-						<line number="235" hits="1"/>
-						<line number="238" hits="1"/>
-						<line number="239" hits="1"/>
-						<line number="241" hits="1"/>
-						<line number="245" hits="1"/>
-						<line number="248" hits="1"/>
-						<line number="253" hits="1"/>
-						<line number="258" hits="1"/>
-						<line number="261" hits="1"/>
-						<line number="264" hits="1"/>
-						<line number="268" hits="1"/>
-						<line number="273" hits="1"/>
-						<line number="277" hits="0"/>
-						<line number="287" hits="0"/>
-						<line number="288" hits="0"/>
-						<line number="289" hits="0"/>
-						<line number="291" hits="0"/>
-						<line number="292" hits="0"/>
-						<line number="298" hits="0"/>
-						<line number="299" hits="0"/>
-						<line number="300" hits="0"/>
-						<line number="302" hits="0"/>
-						<line number="303" hits="0"/>
-						<line number="304" hits="0"/>
-						<line number="305" hits="0"/>
-						<line number="306" hits="0"/>
-						<line number="308" hits="0"/>
-						<line number="316" hits="0"/>
-						<line number="318" hits="1"/>
-						<line number="322" hits="1"/>
-						<line number="334" hits="0"/>
-						<line number="339" hits="0"/>
-						<line number="348" hits="0"/>
-						<line number="358" hits="1"/>
-						<line number="362" hits="1"/>
-						<line number="366" hits="0"/>
-						<line number="371" hits="0"/>
-						<line number="372" hits="0"/>
-						<line number="377" hits="0"/>
-						<line number="379" hits="1"/>
-						<line number="383" hits="1"/>
-						<line number="387" hits="0"/>
-						<line number="392" hits="0"/>
-						<line number="393" hits="0"/>
-						<line number="398" hits="0"/>
-						<line number="399" hits="0"/>
-						<line number="407" hits="0"/>
-						<line number="408" hits="0"/>
-						<line number="413" hits="0"/>
-						<line number="414" hits="0"/>
-						<line number="417" hits="0"/>
-						<line number="418" hits="0"/>
-						<line number="423" hits="1"/>
-						<line number="427" hits="1"/>
-						<line number="431" hits="0"/>
-						<line number="436" hits="0"/>
-						<line number="437" hits="0"/>
-						<line number="442" hits="0"/>
-						<line number="447" hits="0"/>
-						<line number="454" hits="0"/>
-						<line number="455" hits="0"/>
-						<line number="460" hits="0"/>
-						<line number="461" hits="0"/>
-						<line number="462" hits="0"/>
-						<line number="464" hits="0"/>
-						<line number="465" hits="0"/>
-						<line number="469" hits="0"/>
-						<line number="470" hits="0"/>
-						<line number="472" hits="0"/>
-						<line number="474" hits="1"/>
-						<line number="481" hits="1"/>
-						<line number="484" hits="0"/>
-						<line number="485" hits="0"/>
-						<line number="490" hits="0"/>
-						<line number="491" hits="0"/>
-						<line number="493" hits="0"/>
-						<line number="496" hits="1"/>
-						<line number="499" hits="1"/>
-						<line number="503" hits="0"/>
-						<line number="508" hits="0"/>
-						<line number="509" hits="0"/>
-						<line number="514" hits="0"/>
-						<line number="515" hits="0"/>
-						<line number="517" hits="0"/>
-						<line number="518" hits="0"/>
-						<line number="519" hits="0"/>
-						<line number="521" hits="0"/>
-						<line number="528" hits="0"/>
-						<line number="529" hits="0"/>
-						<line number="533" hits="0"/>
-						<line number="535" hits="0"/>
-						<line number="542" hits="0"/>
-						<line number="543" hits="0"/>
-						<line number="548" hits="0"/>
-						<line number="550" hits="0"/>
-						<line number="553" hits="0"/>
-						<line number="557" hits="0"/>
-						<line number="559" hits="0"/>
-						<line number="561" hits="0"/>
-						<line number="571" hits="1"/>
-						<line number="573" hits="1"/>
-						<line number="578" hits="1"/>
-						<line number="581" hits="1"/>
-						<line number="589" hits="0"/>
-						<line number="594" hits="0"/>
-						<line number="595" hits="0"/>
-						<line number="600" hits="0"/>
-						<line number="601" hits="0"/>
-						<line number="606" hits="0"/>
-						<line number="607" hits="0"/>
-						<line number="612" hits="0"/>
-						<line number="613" hits="0"/>
-						<line number="616" hits="0"/>
-						<line number="617" hits="0"/>
-						<line number="622" hits="0"/>
-						<line number="623" hits="0"/>
-						<line number="624" hits="0"/>
-						<line number="625" hits="0"/>
-						<line number="627" hits="0"/>
-						<line number="628" hits="0"/>
-						<line number="629" hits="0"/>
-						<line number="631" hits="0"/>
-					</lines>
-				</class>
-				<class name="weather.py" filename="api/weather.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="22" hits="1"/>
-						<line number="26" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="49" hits="1"/>
-						<line number="54" hits="1"/>
-						<line number="55" hits="1"/>
-						<line number="59" hits="1"/>
-						<line number="60" hits="1"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="core" line-rate="1" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="core/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="cities.py" filename="core/cities.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="8" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="51" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="54" hits="1"/>
-						<line number="55" hits="1"/>
-						<line number="60" hits="1"/>
-					</lines>
-				</class>
-				<class name="config.py" filename="core/config.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="31" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="47" hits="1"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="db" line-rate="0.8333" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="db/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="base.py" filename="db/base.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="5" hits="1"/>
-					</lines>
-				</class>
-				<class name="session.py" filename="db/session.py" complexity="0" line-rate="0.7778" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="25" hits="0"/>
-						<line number="26" hits="0"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="models" line-rate="1" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="models/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="8" hits="1"/>
-					</lines>
-				</class>
-				<class name="material.py" filename="models/material.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="26" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="41" hits="1"/>
-						<line number="48" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="58" hits="1"/>
-						<line number="66" hits="1"/>
-						<line number="72" hits="1"/>
-						<line number="79" hits="1"/>
-						<line number="86" hits="1"/>
-						<line number="87" hits="1"/>
-						<line number="89" hits="1"/>
-						<line number="121" hits="1"/>
-						<line number="127" hits="1"/>
-						<line number="136" hits="1"/>
-						<line number="141" hits="1"/>
-						<line number="147" hits="1"/>
-						<line number="152" hits="1"/>
-						<line number="159" hits="1"/>
-						<line number="164" hits="1"/>
-						<line number="170" hits="1"/>
-						<line number="175" hits="1"/>
-						<line number="181" hits="1"/>
-						<line number="187" hits="1"/>
-						<line number="195" hits="1"/>
-						<line number="200" hits="1"/>
-						<line number="205" hits="1"/>
-						<line number="211" hits="1"/>
-						<line number="216" hits="1"/>
-						<line number="221" hits="1"/>
-						<line number="227" hits="1"/>
-						<line number="231" hits="1"/>
-						<line number="237" hits="1"/>
-						<line number="238" hits="1"/>
-						<line number="240" hits="1"/>
-						<line number="248" hits="1"/>
-						<line number="254" hits="1"/>
-						<line number="263" hits="1"/>
-						<line number="268" hits="1"/>
-						<line number="274" hits="1"/>
-						<line number="279" hits="1"/>
-						<line number="284" hits="1"/>
-						<line number="289" hits="1"/>
-						<line number="294" hits="1"/>
-						<line number="299" hits="1"/>
-						<line number="304" hits="1"/>
-						<line number="310" hits="1"/>
-					</lines>
-				</class>
-				<class name="simulation_job.py" filename="models/simulation_job.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="20" hits="1"/>
-						<line number="21" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="56" hits="1"/>
-						<line number="62" hits="1"/>
-						<line number="67" hits="1"/>
-						<line number="74" hits="1"/>
-						<line number="81" hits="1"/>
-						<line number="88" hits="1"/>
-						<line number="94" hits="1"/>
-						<line number="101" hits="1"/>
-						<line number="108" hits="1"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="schemas" line-rate="0.9826" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="schemas/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="job.py" filename="schemas/job.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="21" hits="1"/>
-						<line number="22" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="25" hits="1"/>
-						<line number="26" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="30" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="34" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="41" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="48" hits="1"/>
-					</lines>
-				</class>
-				<class name="material.py" filename="schemas/material.py" complexity="0" line-rate="0.9694" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="19" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="30" hits="1"/>
-						<line number="36" hits="1"/>
-						<line number="41" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="59" hits="1"/>
-						<line number="65" hits="1"/>
-						<line number="71" hits="1"/>
-						<line number="77" hits="1"/>
-						<line number="82" hits="1"/>
-						<line number="87" hits="1"/>
-						<line number="92" hits="1"/>
-						<line number="93" hits="1"/>
-						<line number="95" hits="1"/>
-						<line number="96" hits="1"/>
-						<line number="97" hits="0"/>
-						<line number="102" hits="0"/>
-						<line number="107" hits="0"/>
-						<line number="110" hits="1"/>
-						<line number="111" hits="1"/>
-						<line number="116" hits="1"/>
-						<line number="122" hits="1"/>
-						<line number="123" hits="1"/>
-						<line number="125" hits="1"/>
-						<line number="128" hits="1"/>
-						<line number="129" hits="1"/>
-						<line number="135" hits="1"/>
-						<line number="136" hits="1"/>
-						<line number="137" hits="1"/>
-						<line number="140" hits="1"/>
-						<line number="141" hits="1"/>
-						<line number="143" hits="1"/>
-						<line number="144" hits="1"/>
-						<line number="145" hits="1"/>
-						<line number="146" hits="1"/>
-						<line number="147" hits="1"/>
-						<line number="148" hits="1"/>
-						<line number="149" hits="1"/>
-						<line number="150" hits="1"/>
-						<line number="151" hits="1"/>
-						<line number="154" hits="1"/>
-						<line number="155" hits="1"/>
-						<line number="157" hits="1"/>
-						<line number="158" hits="1"/>
-						<line number="159" hits="1"/>
-						<line number="160" hits="1"/>
-						<line number="162" hits="1"/>
-						<line number="163" hits="1"/>
-						<line number="165" hits="1"/>
-						<line number="166" hits="1"/>
-						<line number="167" hits="1"/>
-						<line number="168" hits="1"/>
-						<line number="170" hits="1"/>
-						<line number="171" hits="1"/>
-						<line number="173" hits="1"/>
-						<line number="174" hits="1"/>
-						<line number="176" hits="1"/>
-						<line number="177" hits="1"/>
-						<line number="178" hits="1"/>
-						<line number="180" hits="1"/>
-						<line number="181" hits="1"/>
-						<line number="184" hits="1"/>
-						<line number="185" hits="1"/>
-						<line number="187" hits="1"/>
-						<line number="188" hits="1"/>
-						<line number="189" hits="1"/>
-						<line number="190" hits="1"/>
-						<line number="191" hits="1"/>
-						<line number="192" hits="1"/>
-						<line number="193" hits="1"/>
-						<line number="194" hits="1"/>
-						<line number="196" hits="1"/>
-						<line number="199" hits="1"/>
-						<line number="200" hits="1"/>
-						<line number="201" hits="1"/>
-						<line number="202" hits="1"/>
-						<line number="203" hits="1"/>
-						<line number="204" hits="1"/>
-						<line number="205" hits="1"/>
-						<line number="206" hits="1"/>
-						<line number="209" hits="1"/>
-						<line number="210" hits="1"/>
-						<line number="211" hits="1"/>
-						<line number="212" hits="1"/>
-						<line number="213" hits="1"/>
-						<line number="216" hits="1"/>
-						<line number="217" hits="1"/>
-						<line number="218" hits="1"/>
-						<line number="221" hits="1"/>
-						<line number="222" hits="1"/>
-						<line number="223" hits="1"/>
-					</lines>
-				</class>
-				<class name="simulation.py" filename="schemas/simulation.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="8" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="51" hits="1"/>
-						<line number="56" hits="1"/>
-						<line number="61" hits="1"/>
-						<line number="68" hits="1"/>
-						<line number="69" hits="1"/>
-						<line number="70" hits="1"/>
-						<line number="75" hits="1"/>
-						<line number="80" hits="1"/>
-						<line number="85" hits="1"/>
-						<line number="90" hits="1"/>
-						<line number="95" hits="1"/>
-						<line number="101" hits="1"/>
-						<line number="102" hits="1"/>
-						<line number="103" hits="1"/>
-						<line number="105" hits="1"/>
-						<line number="106" hits="1"/>
-						<line number="110" hits="1"/>
-						<line number="113" hits="1"/>
-						<line number="114" hits="1"/>
-						<line number="115" hits="1"/>
-						<line number="120" hits="1"/>
-						<line number="125" hits="1"/>
-						<line number="126" hits="1"/>
-						<line number="127" hits="1"/>
-						<line number="128" hits="1"/>
-						<line number="130" hits="1"/>
-						<line number="131" hits="1"/>
-						<line number="132" hits="1"/>
-						<line number="133" hits="1"/>
-						<line number="134" hits="1"/>
-						<line number="135" hits="1"/>
-						<line number="136" hits="1"/>
-						<line number="137" hits="1"/>
-						<line number="139" hits="1"/>
-						<line number="140" hits="1"/>
-						<line number="141" hits="1"/>
-						<line number="142" hits="1"/>
-						<line number="143" hits="1"/>
-						<line number="144" hits="1"/>
-						<line number="145" hits="1"/>
-						<line number="146" hits="1"/>
-						<line number="147" hits="1"/>
-						<line number="150" hits="1"/>
-						<line number="151" hits="1"/>
-						<line number="152" hits="1"/>
-						<line number="153" hits="1"/>
-						<line number="154" hits="1"/>
-						<line number="155" hits="1"/>
-						<line number="156" hits="1"/>
-						<line number="157" hits="1"/>
-						<line number="160" hits="1"/>
-						<line number="161" hits="1"/>
-						<line number="162" hits="1"/>
-						<line number="163" hits="1"/>
-						<line number="166" hits="1"/>
-						<line number="167" hits="1"/>
-						<line number="168" hits="1"/>
-						<line number="169" hits="1"/>
-						<line number="170" hits="1"/>
-						<line number="171" hits="1"/>
-						<line number="172" hits="1"/>
-						<line number="173" hits="1"/>
-						<line number="174" hits="1"/>
-						<line number="178" hits="1"/>
-						<line number="179" hits="1"/>
-						<line number="184" hits="1"/>
-						<line number="185" hits="1"/>
-						<line number="186" hits="1"/>
-						<line number="189" hits="1"/>
-						<line number="190" hits="1"/>
-						<line number="191" hits="1"/>
-						<line number="192" hits="1"/>
-						<line number="193" hits="1"/>
-						<line number="194" hits="1"/>
-						<line number="195" hits="1"/>
-						<line number="196" hits="1"/>
-						<line number="197" hits="1"/>
-						<line number="200" hits="1"/>
-						<line number="201" hits="1"/>
-						<line number="202" hits="1"/>
-						<line number="203" hits="1"/>
-						<line number="204" hits="1"/>
-						<line number="207" hits="1"/>
-						<line number="208" hits="1"/>
-						<line number="209" hits="1"/>
-						<line number="210" hits="1"/>
-						<line number="211" hits="1"/>
-						<line number="212" hits="1"/>
-						<line number="213" hits="1"/>
-						<line number="214" hits="1"/>
-						<line number="215" hits="1"/>
-						<line number="217" hits="1"/>
-						<line number="218" hits="1"/>
-						<line number="222" hits="1"/>
-						<line number="223" hits="1"/>
-						<line number="228" hits="1"/>
-						<line number="233" hits="1"/>
-						<line number="234" hits="1"/>
-						<line number="235" hits="1"/>
-						<line number="238" hits="1"/>
-						<line number="241" hits="1"/>
-						<line number="242" hits="1"/>
-					</lines>
-				</class>
-				<class name="weather.py" filename="schemas/weather.py" complexity="0" line-rate="0.9592" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="8" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="14" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="20" hits="1"/>
-						<line number="21" hits="1"/>
-						<line number="22" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="25" hits="1"/>
-						<line number="26" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="30" hits="1"/>
-						<line number="31" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="34" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="36" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="40" hits="1"/>
-						<line number="43" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="48" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="51" hits="1"/>
-						<line number="52" hits="1"/>
-						<line number="53" hits="0"/>
-						<line number="57" hits="1"/>
-						<line number="62" hits="1"/>
-						<line number="63" hits="0"/>
-						<line number="67" hits="1"/>
-						<line number="70" hits="1"/>
-						<line number="71" hits="1"/>
-						<line number="72" hits="1"/>
-						<line number="73" hits="1"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="services" line-rate="0.8321" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="services/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="gagge_benchmark.py" filename="services/gagge_benchmark.py" complexity="0" line-rate="0.9333" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="20" hits="0"/>
-						<line number="23" hits="1"/>
-						<line number="34" hits="1"/>
-						<line number="42" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="77" hits="1"/>
-						<line number="81" hits="1"/>
-						<line number="84" hits="1"/>
-						<line number="88" hits="1"/>
-					</lines>
-				</class>
-				<class name="job_service.py" filename="services/job_service.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="15" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="34" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="49" hits="1"/>
-					</lines>
-				</class>
-				<class name="result_export.py" filename="services/result_export.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="15" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="42" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="65" hits="1"/>
-						<line number="68" hits="1"/>
-						<line number="71" hits="1"/>
-					</lines>
-				</class>
-				<class name="result_storage.py" filename="services/result_storage.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="15" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="47" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="55" hits="1"/>
-						<line number="56" hits="1"/>
-						<line number="60" hits="1"/>
-						<line number="65" hits="1"/>
-						<line number="67" hits="1"/>
-					</lines>
-				</class>
-				<class name="spectrum_parser.py" filename="services/spectrum_parser.py" complexity="0" line-rate="0.9839" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="14" hits="1"/>
-						<line number="15" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="18" hits="1"/>
-						<line number="19" hits="1"/>
-						<line number="22" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="36" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="43" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="54" hits="1"/>
-						<line number="55" hits="0"/>
-						<line number="57" hits="1"/>
-						<line number="62" hits="1"/>
-						<line number="68" hits="1"/>
-						<line number="75" hits="1"/>
-						<line number="84" hits="1"/>
-						<line number="93" hits="1"/>
-						<line number="94" hits="1"/>
-						<line number="98" hits="1"/>
-						<line number="99" hits="1"/>
-						<line number="103" hits="1"/>
-						<line number="105" hits="1"/>
-						<line number="109" hits="1"/>
-						<line number="110" hits="1"/>
-						<line number="113" hits="1"/>
-						<line number="116" hits="1"/>
-						<line number="121" hits="1"/>
-						<line number="125" hits="1"/>
-						<line number="126" hits="1"/>
-						<line number="130" hits="1"/>
-						<line number="131" hits="1"/>
-						<line number="135" hits="1"/>
-						<line number="136" hits="1"/>
-						<line number="140" hits="1"/>
-						<line number="141" hits="1"/>
-						<line number="145" hits="1"/>
-						<line number="152" hits="1"/>
-						<line number="153" hits="1"/>
-						<line number="157" hits="1"/>
-						<line number="158" hits="1"/>
-						<line number="162" hits="1"/>
-						<line number="167" hits="1"/>
-						<line number="172" hits="1"/>
-						<line number="173" hits="1"/>
-						<line number="177" hits="1"/>
-					</lines>
-				</class>
-				<class name="two_node.py" filename="services/two_node.py" complexity="0" line-rate="0.7315" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="14" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="27" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="31" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="34" hits="1"/>
-						<line number="35" hits="1"/>
-						<line number="36" hits="1"/>
-						<line number="37" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="42" hits="1"/>
-						<line number="43" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="50" hits="1"/>
-						<line number="56" hits="1"/>
-						<line number="63" hits="1"/>
-						<line number="64" hits="1"/>
-						<line number="68" hits="1"/>
-						<line number="69" hits="1"/>
-						<line number="70" hits="0"/>
-						<line number="72" hits="1"/>
-						<line number="75" hits="1"/>
-						<line number="77" hits="1"/>
-						<line number="82" hits="1"/>
-						<line number="83" hits="1"/>
-						<line number="86" hits="1"/>
-						<line number="92" hits="1"/>
-						<line number="98" hits="1"/>
-						<line number="99" hits="1"/>
-						<line number="100" hits="1"/>
-						<line number="102" hits="1"/>
-						<line number="103" hits="1"/>
-						<line number="105" hits="1"/>
-						<line number="114" hits="1"/>
-						<line number="123" hits="1"/>
-						<line number="129" hits="1"/>
-						<line number="134" hits="1"/>
-						<line number="136" hits="1"/>
-						<line number="143" hits="1"/>
-						<line number="149" hits="1"/>
-						<line number="155" hits="1"/>
-						<line number="159" hits="1"/>
-						<line number="166" hits="1"/>
-						<line number="176" hits="1"/>
-						<line number="183" hits="1"/>
-						<line number="186" hits="1"/>
-						<line number="188" hits="1"/>
-						<line number="193" hits="1"/>
-						<line number="201" hits="1"/>
-						<line number="205" hits="1"/>
-						<line number="210" hits="1"/>
-						<line number="212" hits="1"/>
-						<line number="216" hits="1"/>
-						<line number="223" hits="1"/>
-						<line number="229" hits="1"/>
-						<line number="234" hits="1"/>
-						<line number="244" hits="1"/>
-						<line number="260" hits="1"/>
-						<line number="262" hits="1"/>
-						<line number="267" hits="1"/>
-						<line number="275" hits="1"/>
-						<line number="284" hits="1"/>
-						<line number="286" hits="1"/>
-						<line number="291" hits="1"/>
-						<line number="298" hits="1"/>
-						<line number="311" hits="1"/>
-						<line number="316" hits="1"/>
-						<line number="322" hits="1"/>
-						<line number="328" hits="1"/>
-						<line number="334" hits="1"/>
-						<line number="340" hits="1"/>
-						<line number="370" hits="1"/>
-						<line number="377" hits="1"/>
-						<line number="379" hits="1"/>
-						<line number="385" hits="1"/>
-						<line number="386" hits="0"/>
-						<line number="391" hits="1"/>
-						<line number="396" hits="1"/>
-						<line number="400" hits="1"/>
-						<line number="401" hits="1"/>
-						<line number="403" hits="1"/>
-						<line number="411" hits="1"/>
-						<line number="417" hits="1"/>
-						<line number="425" hits="1"/>
-						<line number="428" hits="1"/>
-						<line number="432" hits="1"/>
-						<line number="434" hits="1"/>
-						<line number="445" hits="1"/>
-						<line number="446" hits="0"/>
-						<line number="450" hits="1"/>
-						<line number="455" hits="1"/>
-						<line number="460" hits="1"/>
-						<line number="473" hits="1"/>
-						<line number="475" hits="1"/>
-						<line number="476" hits="1"/>
-						<line number="477" hits="1"/>
-						<line number="479" hits="1"/>
-						<line number="487" hits="1"/>
-						<line number="521" hits="1"/>
-						<line number="525" hits="1"/>
-						<line number="530" hits="1"/>
-						<line number="540" hits="1"/>
-						<line number="547" hits="0"/>
-						<line number="551" hits="0"/>
-						<line number="553" hits="0"/>
-						<line number="559" hits="0"/>
-						<line number="560" hits="0"/>
-						<line number="565" hits="0"/>
-						<line number="570" hits="0"/>
-						<line number="574" hits="0"/>
-						<line number="578" hits="0"/>
-						<line number="579" hits="0"/>
-						<line number="581" hits="0"/>
-						<line number="589" hits="0"/>
-						<line number="595" hits="0"/>
-						<line number="603" hits="0"/>
-						<line number="608" hits="0"/>
-						<line number="619" hits="0"/>
-						<line number="620" hits="0"/>
-						<line number="625" hits="0"/>
-						<line number="626" hits="0"/>
-						<line number="628" hits="0"/>
-						<line number="631" hits="0"/>
-						<line number="634" hits="0"/>
-						<line number="638" hits="0"/>
-						<line number="642" hits="0"/>
-						<line number="650" hits="0"/>
-						<line number="659" hits="0"/>
-						<line number="696" hits="0"/>
-						<line number="700" hits="0"/>
-						<line number="704" hits="0"/>
-						<line number="709" hits="0"/>
-						<line number="716" hits="0"/>
-						<line number="723" hits="0"/>
-						<line number="728" hits="0"/>
-						<line number="734" hits="0"/>
-						<line number="774" hits="0"/>
-						<line number="778" hits="0"/>
-						<line number="783" hits="0"/>
-					</lines>
-				</class>
-				<class name="weather.py" filename="services/weather.py" complexity="0" line-rate="0.7033" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="14" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="25" hits="1"/>
-						<line number="29" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="42" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="57" hits="1"/>
-						<line number="61" hits="1"/>
-						<line number="63" hits="1"/>
-						<line number="64" hits="1"/>
-						<line number="68" hits="0"/>
-						<line number="71" hits="1"/>
-						<line number="75" hits="1"/>
-						<line number="80" hits="1"/>
-						<line number="81" hits="0"/>
-						<line number="88" hits="1"/>
-						<line number="93" hits="1"/>
-						<line number="108" hits="1"/>
-						<line number="111" hits="0"/>
-						<line number="117" hits="0"/>
-						<line number="121" hits="0"/>
-						<line number="124" hits="1"/>
-						<line number="127" hits="0"/>
-						<line number="128" hits="0"/>
-						<line number="133" hits="0"/>
-						<line number="134" hits="0"/>
-						<line number="143" hits="0"/>
-						<line number="146" hits="0"/>
-						<line number="151" hits="0"/>
-						<line number="152" hits="0"/>
-						<line number="153" hits="0"/>
-						<line number="154" hits="0"/>
-						<line number="158" hits="0"/>
-						<line number="159" hits="0"/>
-						<line number="161" hits="0"/>
-						<line number="166" hits="0"/>
-						<line number="168" hits="0"/>
-						<line number="176" hits="0"/>
-						<line number="179" hits="1"/>
-						<line number="184" hits="1"/>
-						<line number="186" hits="1"/>
-						<line number="187" hits="0"/>
-						<line number="191" hits="1"/>
-						<line number="192" hits="0"/>
-						<line number="196" hits="1"/>
-						<line number="199" hits="1"/>
-						<line number="204" hits="1"/>
-						<line number="205" hits="0"/>
-						<line number="209" hits="1"/>
-						<line number="212" hits="1"/>
-						<line number="216" hits="1"/>
-						<line number="218" hits="1"/>
-						<line number="219" hits="0"/>
-						<line number="223" hits="1"/>
-						<line number="224" hits="1"/>
-						<line number="226" hits="1"/>
-						<line number="227" hits="0"/>
-						<line number="231" hits="1"/>
-						<line number="236" hits="1"/>
-						<line number="241" hits="1"/>
-						<line number="246" hits="1"/>
-						<line number="251" hits="1"/>
-						<line number="256" hits="1"/>
-						<line number="261" hits="1"/>
-						<line number="267" hits="1"/>
-						<line number="268" hits="1"/>
-						<line number="270" hits="1"/>
-						<line number="273" hits="1"/>
-						<line number="277" hits="1"/>
-						<line number="330" hits="1"/>
-						<line number="333" hits="1"/>
-						<line number="338" hits="1"/>
-						<line number="343" hits="1"/>
-						<line number="347" hits="1"/>
-						<line number="350" hits="1"/>
-						<line number="351" hits="1"/>
-						<line number="353" hits="1"/>
-						<line number="359" hits="1"/>
-						<line number="363" hits="1"/>
-						<line number="368" hits="1"/>
-						<line number="374" hits="1"/>
-						<line number="375" hits="0"/>
-						<line number="379" hits="1"/>
-					</lines>
-				</class>
-				<class name="weather_interpolation.py" filename="services/weather_interpolation.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="5" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="8" hits="1"/>
-						<line number="11" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="14" hits="1"/>
-						<line number="15" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="19" hits="1"/>
-						<line number="20" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="26" hits="1"/>
-						<line number="36" hits="1"/>
-						<line number="68" hits="1"/>
-						<line number="73" hits="1"/>
-						<line number="81" hits="1"/>
-						<line number="85" hits="1"/>
-						<line number="90" hits="1"/>
-						<line number="95" hits="1"/>
-						<line number="100" hits="1"/>
-						<line number="110" hits="1"/>
-						<line number="117" hits="1"/>
-						<line number="129" hits="1"/>
-					</lines>
-				</class>
-				<class name="weather_simulation.py" filename="services/weather_simulation.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="9" hits="1"/>
-						<line number="12" hits="1"/>
-						<line number="17" hits="1"/>
-						<line number="23" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="40" hits="1"/>
-						<line number="45" hits="1"/>
-						<line number="55" hits="1"/>
-						<line number="60" hits="1"/>
-						<line number="74" hits="1"/>
-						<line number="79" hits="1"/>
-						<line number="93" hits="1"/>
-						<line number="98" hits="1"/>
-						<line number="103" hits="1"/>
-						<line number="108" hits="1"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-		<package name="worker" line-rate="0.5818" branch-rate="0" complexity="0">
-			<classes>
-				<class name="__init__.py" filename="worker/__init__.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines/>
-				</class>
-				<class name="celery_app.py" filename="worker/celery_app.py" complexity="0" line-rate="1" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="3" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="15" hits="1"/>
-					</lines>
-				</class>
-				<class name="tasks.py" filename="worker/tasks.py" complexity="0" line-rate="0.549" branch-rate="0">
-					<methods/>
-					<lines>
-						<line number="1" hits="1"/>
-						<line number="2" hits="1"/>
-						<line number="4" hits="1"/>
-						<line number="6" hits="1"/>
-						<line number="7" hits="1"/>
-						<line number="10" hits="1"/>
-						<line number="13" hits="1"/>
-						<line number="16" hits="1"/>
-						<line number="19" hits="1"/>
-						<line number="24" hits="1"/>
-						<line number="25" hits="1"/>
-						<line number="28" hits="1"/>
-						<line number="32" hits="1"/>
-						<line number="33" hits="1"/>
-						<line number="38" hits="1"/>
-						<line number="39" hits="1"/>
-						<line number="43" hits="1"/>
-						<line number="44" hits="1"/>
-						<line number="46" hits="1"/>
-						<line number="49" hits="1"/>
-						<line number="52" hits="1"/>
-						<line number="53" hits="1"/>
-						<line number="58" hits="1"/>
-						<line number="59" hits="1"/>
-						<line number="63" hits="1"/>
-						<line number="67" hits="1"/>
-						<line number="70" hits="1"/>
-						<line number="75" hits="1"/>
-						<line number="79" hits="0"/>
-						<line number="80" hits="0"/>
-						<line number="81" hits="0"/>
-						<line number="86" hits="0"/>
-						<line number="87" hits="0"/>
-						<line number="91" hits="0"/>
-						<line number="98" hits="0"/>
-						<line number="109" hits="0"/>
-						<line number="113" hits="0"/>
-						<line number="115" hits="0"/>
-						<line number="122" hits="0"/>
-						<line number="131" hits="0"/>
-						<line number="138" hits="0"/>
-						<line number="140" hits="0"/>
-						<line number="146" hits="0"/>
-						<line number="151" hits="0"/>
-						<line number="167" hits="0"/>
-						<line number="172" hits="0"/>
-						<line number="173" hits="0"/>
-						<line number="182" hits="0"/>
-						<line number="187" hits="0"/>
-						<line number="188" hits="0"/>
-						<line number="198" hits="0"/>
-					</lines>
-				</class>
-			</classes>
-		</package>
-	</packages>
-</coverage>
-
-```
-
 ### File: `backend/docs/acceptance/legacy-stage-3-two-node-prototype/energy-residual.txt`
 ```
 ============================= test session starts =============================
@@ -15769,6 +14438,291 @@ tests/test_worker_tasks.py::test_ensure_not_cancelled_rejects_missing_job PASSED
 
 ```
 
+### File: `backend/docs/acceptance/stage-5-solar-surface/golden-refresh.md`
+```
+# Stage 5 golden refresh (Dubai 2023-07-15 12:00, 2 h)
+
+Causes (all intentional, ADR 0005-0006):
+1. Absorbed solar is a source term in the clothing surface balance; the
+   0.35 skin fraction is gone. Expect less solar heat reaching the skin for
+   the control garment (dark, alpha = 0.6) at 5-6 m/s wind.
+2. Body-incident shortwave uses the ERA5 beam/diffuse split with f_p on DNI,
+   sky-diffuse and ground-reflected terms (albedo 0.2). At Dubai noon the
+   incident irradiance rises from ~225 to ~280 W/m^2 (per A_D).
+3. Registry key rename (effective_radiation_area_ratio -> _standing) and two
+   new constants change the fingerprint even where values are unchanged.
+
+| metric | before (3.0.0) | after (4.0.0) | delta |
+|---|---|---|---|
+| final_skin_temperature_improvement_c | 1.7815 | <fill> | |
+| final_core_temperature_improvement_c | 1.6117 | <fill> | |
+| average_skin_temperature_improvement_c | 1.0721 | <fill> | |
+
+model_parameter_set_sha256: 5e0cbe09... -> <fill>
+parameter_fingerprint: 40799058... -> <fill>
+Gagge benchmark (default fixture, 60 min): unchanged (solar = 0 in the benchmark).
+```
+
+### File: `backend/docs/acceptance/stage-5-solar-surface/pytest-all.txt`
+```
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend
+configfile: pyproject.toml
+testpaths: tests
+plugins: anyio-4.14.2, asyncio-1.4.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 243 items
+
+tests/core/test_numba_cache_integration.py::test_numba_writes_cache_files_to_configured_directory PASSED [  0%]
+tests/core/test_runtime.py::test_uses_configured_cache_directory PASSED  [  0%]
+tests/core/test_runtime.py::test_environment_variable_takes_precedence PASSED [  1%]
+tests/core/test_runtime.py::test_uses_cross_platform_temporary_default PASSED [  1%]
+tests/core/test_runtime.py::test_creates_missing_parent_directories PASSED [  2%]
+tests/test_api.py::test_health_endpoint PASSED                           [  2%]
+tests/test_api.py::test_simulation_endpoint PASSED                       [  2%]
+tests/test_api.py::test_invalid_material_is_rejected PASSED              [  3%]
+tests/test_api.py::test_identical_material_api_improvement_is_zero PASSED [  3%]
+tests/test_body.py::test_default_person_reproduces_gagge_lumped_value PASSED [  4%]
+tests/test_body.py::test_heavier_person_has_larger_capacity_per_area PASSED [  4%]
+tests/test_body.py::test_larger_surface_area_lowers_capacity_per_area PASSED [  4%]
+tests/test_cities.py::test_get_city_returns_supported_city PASSED        [  5%]
+tests/test_cities.py::test_get_city_normalizes_case_and_spaces PASSED    [  5%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[dubai] PASSED [  6%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[guangzhou] PASSED [  6%]
+tests/test_cities.py::test_all_configured_cities_can_be_loaded[lhasa] PASSED [  6%]
+tests/test_cities.py::test_get_city_rejects_unknown_city PASSED          [  7%]
+tests/test_cities.py::test_unknown_city_error_lists_supported_cities PASSED [  7%]
+tests/test_climate_adaptation.py::test_global_batch_month_range PASSED   [  8%]
+tests/test_climate_adaptation.py::test_global_batch_rejects_duplicate_cities PASSED [  8%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_dry-42.0-20.0-2.0-900.0] PASSED [  9%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[hot_humid-34.0-85.0-1.0-700.0] PASSED [  9%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[high_altitude_solar-24.0-25.0-2.5-1000.0] PASSED [  9%]
+tests/test_climate_scenarios.py::test_typical_climate_scenarios_run_successfully[night-30.0-60.0-0.5-0.0] PASSED [ 10%]
+tests/test_clothing.py::test_derived_evaporative_resistance_matches_formula PASSED [ 10%]
+tests/test_clothing.py::test_none_resistance_is_derived_and_flagged PASSED [ 11%]
+tests/test_clothing.py::test_explicit_resistance_overrides_derivation PASSED [ 11%]
+tests/test_clothing.py::test_higher_resistance_lowers_maximum_evaporation PASSED [ 11%]
+tests/test_clothing.py::test_explicit_derived_value_reproduces_none_result PASSED [ 12%]
+tests/test_clothing.py::test_impermeable_garment_ends_warmer PASSED      [ 12%]
+tests/test_clothing.py::test_infrared_transmittance_amplifies_longwave_exchange PASSED [ 13%]
+tests/test_clothing.py::test_area_factor_is_derived_and_flagged PASSED   [ 13%]
+tests/test_clothing.py::test_explicit_area_factor_overrides_derivation PASSED [ 13%]
+tests/test_clothing.py::test_clothing_surface_balance_is_consistent PASSED [ 14%]
+tests/test_clothing.py::test_nude_surface_temperature_equals_skin PASSED [ 14%]
+tests/test_clothing.py::test_emissivity_plus_transmittance_above_one_is_rejected PASSED [ 15%]
+tests/test_clothing.py::test_unknown_parameter_source_key_is_rejected PASSED [ 15%]
+tests/test_cors.py::test_allows_configured_origin PASSED                 [ 16%]
+tests/test_cors.py::test_allows_configured_preflight_request PASSED      [ 16%]
+tests/test_cors.py::test_rejects_unknown_preflight_origin PASSED         [ 16%]
+tests/test_cors.py::test_rejects_duplicate_cors_registration PASSED      [ 17%]
+tests/test_cors.py::test_main_application_registers_cors_once PASSED     [ 17%]
+tests/test_environment_model.py::test_defaults_reproduce_stage_1_formulas PASSED [ 18%]
+tests/test_environment_model.py::test_swinbank_clear_sky PASSED          [ 18%]
+tests/test_environment_model.py::test_wind_scaling_and_negative_inputs_are_clamped PASSED [ 18%]
+tests/test_environment_model.py::test_describe_mentions_every_active_rule PASSED [ 19%]
+tests/test_exposure_statistics.py::test_time_weighted_mean_matches_trapezoid PASSED [ 19%]
+tests/test_exposure_statistics.py::test_statistics_use_exposure_window_not_padded_points PASSED [ 20%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[1] PASSED [ 20%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[3] PASSED [ 20%]
+tests/test_exposure_statistics.py::test_statistics_are_invariant_to_padding[6] PASSED [ 21%]
+tests/test_exposure_statistics.py::test_half_hour_start_uses_interpolated_boundary PASSED [ 21%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_returns_finite_values PASSED [ 22%]
+tests/test_gagge_benchmark.py::test_gagge_output_is_in_broad_range PASSED [ 22%]
+tests/test_gagge_benchmark.py::test_gagge_benchmark_api PASSED           [ 23%]
+tests/test_gagge_benchmark.py::test_gagge_api_converts_service_error_to_500 PASSED [ 23%]
+tests/test_gagge_benchmark.py::test_benchmark_returns_aligned_transient_series PASSED [ 23%]
+tests/test_gagge_benchmark.py::test_default_case_is_within_stage_3_tolerances PASSED [ 24%]
+tests/test_gagge_benchmark.py::test_sitting_posture_runs_and_reports_seated_area_ratio PASSED [ 24%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[38.0-45.0-1.5-40.0-2.6-0.5] PASSED [ 25%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[30.0-30.0-0.3-60.0-1.2-0.6] PASSED [ 25%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[42.0-42.0-2.0-20.0-2.0-0.4] PASSED [ 25%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[34.0-36.0-1.0-85.0-1.8-0.5] PASSED [ 26%]
+tests/test_gagge_reference.py::test_port_matches_library_after_sixty_minutes[25.0-25.0-0.1-50.0-1.0-1.0] PASSED [ 26%]
+tests/test_gagge_reference.py::test_port_returns_one_point_per_minute_plus_initial_state PASSED [ 27%]
+tests/test_gagge_reference.py::test_heavier_body_warms_more_slowly PASSED [ 27%]
+tests/test_global_batch_geojson.py::test_geojson_structure PASSED        [ 27%]
+tests/test_global_batches_api.py::test_global_batch_records_material_version_links PASSED [ 28%]
+tests/test_golden_dubai_2h.py::test_dubai_two_hour_golden_case PASSED    [ 28%]
+tests/test_job_service.py::test_job_to_response_maps_job_fields PASSED   [ 29%]
+tests/test_job_service.py::test_job_to_detail_validates_saved_request PASSED [ 29%]
+tests/test_job_service.py::test_get_job_or_none_uses_session_get PASSED  [ 30%]
+tests/test_job_service.py::test_get_job_or_none_returns_none PASSED      [ 30%]
+tests/test_material_fields.py::test_manifest_covers_every_physical_field_in_order PASSED [ 30%]
+tests/test_material_fields.py::test_deprecated_field_is_still_accepted_in_provenance PASSED [ 31%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[clothing_insulation_clo] PASSED [ 31%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[evaporative_resistance_m2pa_w] PASSED [ 32%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[clothing_area_factor] PASSED [ 32%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[solar_reflectance] PASSED [ 32%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[solar_transmittance] PASSED [ 33%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[infrared_emissivity] PASSED [ 33%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[infrared_transmittance] PASSED [ 34%]
+tests/test_material_fields.py::test_manifest_bounds_match_validation[projected_solar_area_factor] PASSED [ 34%]
+tests/test_material_fields.py::test_nullable_fields_declare_their_derivation PASSED [ 34%]
+tests/test_material_resolution.py::test_input_without_version_id_is_returned_untouched PASSED [ 35%]
+tests/test_material_resolution.py::test_omitted_fields_are_hydrated_from_the_version PASSED [ 35%]
+tests/test_material_resolution.py::test_matching_explicit_values_are_accepted PASSED [ 36%]
+tests/test_material_resolution.py::test_conflicting_explicit_value_is_rejected PASSED [ 36%]
+tests/test_material_resolution.py::test_explicit_null_against_stored_value_is_a_conflict PASSED [ 37%]
+tests/test_material_resolution.py::test_unknown_version_raises PASSED    [ 37%]
+tests/test_material_resolution.py::test_legacy_version_outside_bounds_is_reported PASSED [ 37%]
+tests/test_material_resolution.py::test_display_name_is_truncated_to_input_limit PASSED [ 38%]
+tests/test_material_resolution.py::test_request_level_resolution_only_replaces_linked_materials PASSED [ 38%]
+tests/test_materials_api.py::test_material_library_round_trip PASSED     [ 39%]
+tests/test_materials_api.py::test_version_with_unknown_provenance_key_is_rejected_on_write PASSED [ 39%]
+tests/test_model_parameters.py::test_every_parameter_has_unit_and_reference PASSED [ 39%]
+tests/test_model_parameters.py::test_manifest_sha_is_stable_and_hex PASSED [ 40%]
+tests/test_model_parameters.py::test_unknown_parameter_raises PASSED     [ 40%]
+tests/test_model_parameters.py::test_model_parameter_endpoint PASSED     [ 41%]
+tests/test_model_parameters.py::test_default_assumptions_endpoint PASSED [ 41%]
+tests/test_model_parameters.py::test_model_metadata_endpoint PASSED      [ 41%]
+tests/test_model_parameters.py::test_single_parameter_endpoint PASSED    [ 42%]
+tests/test_model_parameters.py::test_material_fields_endpoint PASSED     [ 42%]
+tests/test_parameter_participation.py::test_every_material_field_participates[clothing_area_factor-1.4] PASSED [ 43%]
+tests/test_parameter_participation.py::test_every_material_field_participates[clothing_insulation_clo-0.9] PASSED [ 43%]
+tests/test_parameter_participation.py::test_every_material_field_participates[evaporative_resistance_m2pa_w-40.0] PASSED [ 44%]
+tests/test_parameter_participation.py::test_every_material_field_participates[infrared_emissivity-0.5] PASSED [ 44%]
+tests/test_parameter_participation.py::test_every_material_field_participates[infrared_transmittance-0.15] PASSED [ 44%]
+tests/test_parameter_participation.py::test_every_material_field_participates[projected_solar_area_factor-0.4] PASSED [ 45%]
+tests/test_parameter_participation.py::test_every_material_field_participates[solar_reflectance-0.7] PASSED [ 45%]
+tests/test_parameter_participation.py::test_every_material_field_participates[solar_transmittance-0.2] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_person_field_participates[body_mass_kg-95.0] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_person_field_participates[body_surface_area_m2-2.4] PASSED [ 46%]
+tests/test_parameter_participation.py::test_every_person_field_participates[initial_core_temperature_c-37.4] PASSED [ 47%]
+tests/test_parameter_participation.py::test_every_person_field_participates[initial_skin_temperature_c-31.0] PASSED [ 47%]
+tests/test_parameter_participation.py::test_every_person_field_participates[met-1.2] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_person_field_participates[position-sitting] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update0-perturbed_update0] PASSED [ 48%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update1-perturbed_update1] PASSED [ 49%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update2-perturbed_update2] PASSED [ 49%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update3-perturbed_update3] PASSED [ 50%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update4-perturbed_update4] PASSED [ 50%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update5-perturbed_update5] PASSED [ 51%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update6-perturbed_update6] PASSED [ 51%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update7-perturbed_update7] PASSED [ 51%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update8-perturbed_update8] PASSED [ 52%]
+tests/test_parameter_participation.py::test_every_environment_assumption_participates[baseline_update9-perturbed_update9] PASSED [ 52%]
+tests/test_parameter_participation.py::test_every_solar_environment_field_participates[baseline_update0-perturbed_update0] PASSED [ 53%]
+tests/test_parameter_participation.py::test_every_solar_environment_field_participates[baseline_update1-perturbed_update1] PASSED [ 53%]
+tests/test_parameter_participation.py::test_every_solar_environment_field_participates[baseline_update2-perturbed_update2] PASSED [ 53%]
+tests/test_parameter_participation.py::test_every_solar_environment_field_participates[baseline_update3-perturbed_update3] PASSED [ 54%]
+tests/test_physics.py::test_saturation_pressure_increases_with_temperature PASSED [ 54%]
+tests/test_physics.py::test_saturation_pressure_near_reference_value PASSED [ 55%]
+tests/test_physics.py::test_invalid_optical_sum_is_rejected PASSED       [ 55%]
+tests/test_physics.py::test_higher_reflectance_reduces_solar_absorption PASSED [ 55%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.0] PASSED       [ 56%]
+tests/test_physics.py::test_flux_calculation_is_finite[0.1] PASSED       [ 56%]
+tests/test_physics.py::test_flux_calculation_is_finite[1.0] PASSED       [ 57%]
+tests/test_physics.py::test_flux_calculation_is_finite[3.0] PASSED       [ 57%]
+tests/test_physics.py::test_flux_calculation_is_finite[8.0] PASSED       [ 58%]
+tests/test_result_export.py::test_missing_stage_3_diagnostics_export_as_blank_cells PASSED [ 58%]
+tests/test_result_export.py::test_stage_3_diagnostics_are_exported_when_present PASSED [ 58%]
+tests/test_result_export.py::test_result_csv_contains_expected_headers PASSED [ 59%]
+tests/test_result_export.py::test_result_csv_contains_control_and_rc_values PASSED [ 59%]
+tests/test_result_export.py::test_result_csv_with_empty_time_series_contains_only_headers PASSED [ 60%]
+tests/test_result_export.py::test_result_csv_rejects_different_time_series_lengths PASSED [ 60%]
+tests/test_result_export.py::test_result_json_serializes_model_dump_as_unicode PASSED [ 60%]
+tests/test_result_storage.py::test_save_simulation_result_creates_gzip_json_file PASSED [ 61%]
+tests/test_result_storage.py::test_save_simulation_result_creates_missing_directory PASSED [ 61%]
+tests/test_result_storage.py::test_save_simulation_result_removes_temporary_file PASSED [ 62%]
+tests/test_result_storage.py::test_save_simulation_result_preserves_unicode PASSED [ 62%]
+tests/test_result_storage.py::test_save_simulation_result_replaces_existing_file PASSED [ 62%]
+tests/test_result_storage.py::test_load_simulation_result_reads_and_validates_payload PASSED [ 63%]
+tests/test_result_storage.py::test_load_simulation_result_raises_for_missing_file PASSED [ 63%]
+tests/test_route_registration.py::test_method_and_path_pairs_are_unique PASSED [ 64%]
+tests/test_solar.py::test_without_split_ghi_is_beam_on_projected_area PASSED [ 64%]
+tests/test_solar.py::test_split_components_follow_ashrae_55_geometry PASSED [ 65%]
+tests/test_solar.py::test_partial_split_is_rejected PASSED               [ 65%]
+tests/test_solar.py::test_transmittance_routes_solar_to_skin PASSED      [ 65%]
+tests/test_solar.py::test_posture_selects_radiation_area_ratio PASSED    [ 66%]
+tests/test_spectrum_parser.py::test_parse_valid_spectrum_csv PASSED      [ 66%]
+tests/test_spectrum_parser.py::test_reject_value_above_one PASSED        [ 67%]
+tests/test_spectrum_parser.py::test_reject_unsorted_wavelengths PASSED   [ 67%]
+tests/test_spectrum_parser.py::test_parse_spectrum_returns_checksum PASSED [ 67%]
+tests/test_spectrum_parser.py::test_parse_normalizes_header_names PASSED [ 68%]
+tests/test_spectrum_parser.py::test_reject_empty_spectrum PASSED         [ 68%]
+tests/test_spectrum_parser.py::test_reject_non_utf8_spectrum PASSED      [ 69%]
+tests/test_spectrum_parser.py::test_reject_missing_wavelength_column PASSED [ 69%]
+tests/test_spectrum_parser.py::test_reject_missing_value_column PASSED   [ 69%]
+tests/test_spectrum_parser.py::test_reject_invalid_numeric_values[not-a-number,0.8] PASSED [ 70%]
+tests/test_spectrum_parser.py::test_reject_invalid_numeric_values[0.3,not-a-number] PASSED [ 70%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[nan,0.8-wavelength] PASSED [ 71%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[0.3,nan-spectrum value] PASSED [ 71%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[-0.3,0.8-positive] PASSED [ 72%]
+tests/test_spectrum_parser.py::test_reject_invalid_spectrum_ranges[0.3,-0.1-between 0 and 1] PASSED [ 72%]
+tests/test_spectrum_parser.py::test_reject_single_data_point PASSED      [ 72%]
+tests/test_spectrum_parser.py::test_reject_file_above_size_limit PASSED  [ 73%]
+tests/test_spectrum_parser.py::test_reject_too_many_points PASSED        [ 73%]
+tests/test_stage_4_2_export.py::test_export_contains_required_files PASSED [ 74%]
+tests/test_stage_4_2_exposure.py::test_all_mode_requires_all_thresholds PASSED [ 74%]
+tests/test_stage_4_2_exposure.py::test_any_mode_requires_one_threshold PASSED [ 74%]
+tests/test_stage_4_2_exposure.py::test_no_threshold_means_all_samples_eligible PASSED [ 75%]
+tests/test_stage_4_2_sampling.py::test_three_samples_cover_entire_month PASSED [ 75%]
+tests/test_stage_4_2_sampling.py::test_one_legacy_sample_uses_requested_day PASSED [ 76%]
+tests/test_stage_4_2_sampling.py::test_sample_count_cannot_exceed_month_days PASSED [ 76%]
+tests/test_stage_4_3_estimate.py::test_daily_batch_estimate PASSED       [ 76%]
+tests/test_stage_4_3_sampling.py::test_daily_stride_one_has_one_sample_per_day PASSED [ 77%]
+tests/test_stage_4_3_sampling.py::test_daily_stride_seven_covers_month PASSED [ 77%]
+tests/test_stage_4_3_sampling.py::test_leap_year_daily_plan_has_366_samples PASSED [ 78%]
+tests/test_stage_4_3_sampling.py::test_month_plan_returns_actual_dates PASSED [ 78%]
+tests/test_stage_4_3_weather_slice.py::test_slice_weather_includes_padding PASSED [ 79%]
+tests/test_stage_4_3_weather_slice.py::test_slice_fails_when_range_not_covered PASSED [ 79%]
+tests/test_stage_4_4_analytics.py::test_weighted_percentile PASSED       [ 79%]
+tests/test_stage_4_4_analytics.py::test_weighted_percentile_uses_weights PASSED [ 80%]
+tests/test_stage_4_4_analytics.py::test_detects_consecutive_heatwave PASSED [ 80%]
+tests/test_stage_4_4_analytics.py::test_non_consecutive_hot_days_are_not_heatwave PASSED [ 81%]
+tests/test_stage_4_4_checkpoint.py::test_retry_preserves_checkpoint_when_enabled PASSED [ 81%]
+tests/test_stage_4_4_checkpoint.py::test_monthly_checkpoint_round_trip PASSED [ 81%]
+tests/test_two_node.py::test_simulation_returns_expected_number_of_points PASSED [ 82%]
+tests/test_two_node.py::test_initial_temperatures_are_preserved PASSED   [ 82%]
+tests/test_two_node.py::test_all_temperatures_are_finite PASSED          [ 83%]
+tests/test_two_node.py::test_temperature_stays_in_broad_physiological_range PASSED [ 83%]
+tests/test_two_node.py::test_energy_balance_residual_is_small PASSED     [ 83%]
+tests/test_two_node.py::test_rc_material_reduces_skin_temperature PASSED [ 84%]
+tests/test_two_node.py::test_identical_materials_produce_identical_results PASSED [ 84%]
+tests/test_two_node.py::test_absorbed_solar_raises_clothing_surface_temperature PASSED [ 85%]
+tests/test_two_node.py::test_surface_re_emits_part_of_the_absorbed_solar PASSED [ 85%]
+tests/test_two_node.py::test_deprecated_absorbed_fraction_is_ignored PASSED [ 86%]
+tests/test_weather_api.py::test_weather_cities_endpoint PASSED           [ 86%]
+tests/test_weather_api.py::test_weather_history_endpoint PASSED          [ 86%]
+tests/test_weather_api.py::test_weather_history_rejects_unknown_city PASSED [ 87%]
+tests/test_weather_api.py::test_weather_history_converts_service_error_to_502 PASSED [ 87%]
+tests/test_weather_api.py::test_weather_history_validates_duration[0] PASSED [ 88%]
+tests/test_weather_api.py::test_weather_history_validates_duration[1441] PASSED [ 88%]
+tests/test_weather_interpolation.py::test_weather_interpolation_at_start PASSED [ 88%]
+tests/test_weather_interpolation.py::test_weather_interpolation_at_half_hour PASSED [ 89%]
+tests/test_weather_interpolation.py::test_environment_clamps_negative_wind_and_solar PASSED [ 89%]
+tests/test_weather_interpolation.py::test_mean_radiant_temperature_increase_is_capped PASSED [ 90%]
+tests/test_weather_interpolation.py::test_interpolation_outside_range_raises PASSED [ 90%]
+tests/test_weather_interpolation.py::test_interpolation_at_exact_boundaries_is_allowed PASSED [ 90%]
+tests/test_weather_interpolation.py::test_from_series_rejects_series_not_covering_requested_window PASSED [ 91%]
+tests/test_weather_quality.py::test_unsorted_input_is_sorted_and_noted PASSED [ 91%]
+tests/test_weather_quality.py::test_identical_duplicate_is_removed PASSED [ 92%]
+tests/test_weather_quality.py::test_conflicting_duplicate_is_rejected PASSED [ 92%]
+tests/test_weather_quality.py::test_naive_timestamp_is_rejected PASSED   [ 93%]
+tests/test_weather_quality.py::test_gap_is_reported_but_not_raised_by_normalize PASSED [ 93%]
+tests/test_weather_quality.py::test_window_with_gap_inside_is_rejected PASSED [ 93%]
+tests/test_weather_quality.py::test_window_outside_gap_is_accepted PASSED [ 94%]
+tests/test_weather_quality.py::test_missing_tail_is_rejected PASSED      [ 94%]
+tests/test_weather_quality.py::test_exact_boundaries_are_accepted PASSED [ 95%]
+tests/test_weather_service.py::test_historical_weather_with_mock PASSED  [ 95%]
+tests/test_weather_simulation.py::test_execute_weather_simulation PASSED [ 95%]
+tests/test_weather_simulation.py::test_execute_weather_simulation_without_callback PASSED [ 96%]
+tests/test_worker_tasks.py::test_update_job_updates_fields_and_commits PASSED [ 96%]
+tests/test_worker_tasks.py::test_update_job_rejects_missing_job PASSED   [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[queued] PASSED [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[running] PASSED [ 97%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[completed] PASSED [ 98%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_accepts_active_status[failed] PASSED [ 98%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_raises_for_cancelled_job[cancelling] PASSED [ 99%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_raises_for_cancelled_job[cancelled] PASSED [ 99%]
+tests/test_worker_tasks.py::test_ensure_not_cancelled_rejects_missing_job PASSED [100%]
+
+============================= 243 passed in 3.95s =============================
+
+```
+
 ### File: `backend/docs/decisions/0001-body-surface-area.md`
 ```
 # ADR 0001: body_surface_area_m2 is currently informational — RESOLVED (Stage 3)
@@ -15852,6 +14806,64 @@ Decision (Stage 4, PR-4):
 Not changed: physics, `MODEL_PARAMETER_SET_VERSION` (3.0.0), golden fixture.
 ```
 
+### File: `backend/docs/decisions/0005-solar-on-clothing-surface.md`
+```
+# ADR 0005: absorbed solar enters the clothing surface balance
+
+Context: since Stage 0 the solar radiation absorbed by the textile was
+deposited on the skin node scaled by `absorbed_solar_to_body_fraction` (0.35,
+`assumed`). ADR 0003 deferred moving it to the surface to Stage 4; Stage 4
+did not do it.
+
+Decision (Stage 5):
+- The surface balance gains a source term:
+  (T_sk - T_cl)/R_cl + S_abs = f_cl [h_c (T_cl - T_a) + (A_r/A_D) eps sigma (T_cl^4 - T_env^4)],
+  S_abs = alpha_sol * I_body per unit A_D. The residual stays strictly
+  decreasing and concave, so the Newton solver is unchanged.
+- Solar transmitted through the textile (tau_sol * I_body) is deposited on
+  the skin node (skin shortwave reflectance neglected; first-order).
+- `TimeSeriesPoint.absorbed_solar_w_m2` now means "solar entering the
+  clothing-body system" (= S_abs + S_trans). The skin storage equation keeps
+  its form, so the energy diagnostics are unchanged.
+- `absorbed_solar_to_body_fraction` is DEPRECATED: kept in MaterialInput,
+  MaterialVersionCreate and the DB column so stored requests and versions
+  keep loading; removed from MATERIAL_PHYSICAL_FIELD_ORDER, the field
+  manifest, the participation test and library-conflict verification.
+  Provenance keys naming it are still accepted.
+
+Consequence: the share of absorbed solar that reaches the skin is now an
+outcome (higher with low wind and dark textiles, lower with high wind), not a
+fixed 35 %. Removes one `assumed` model input.
+```
+
+### File: `backend/docs/decisions/0006-shortwave-geometry-and-posture.md`
+```
+# ADR 0006: beam/diffuse split for body-incident shortwave; posture
+
+Context: ERA5 supplies GHI, DNI, DHI. Stages 0-4 used GHI only and applied
+the projected area factor f_p (a beam quantity) to it, which is geometrically
+inconsistent. A_r/A_D was fixed at the standing value.
+
+Decision (Stage 5):
+- I_body = f_p * DNI + 0.5 f_eff F_sky DHI + 0.5 f_eff rho_g GHI
+  (ASHRAE 55-2020 Appendix C geometry; measured DHI instead of 0.2 I_dir;
+  sky view factor limits the sky-diffuse term; f_bes = 1).
+- Fallback without DNI/DHI: I_body = f_p * GHI (legacy). Recorded in
+  `assumptions_applied`. `EnvironmentInput` rejects a partial split.
+- `EnvironmentAssumptions.ground_albedo` (0.2, assumed) feeds the reflected term.
+- `PersonInput.position` in {standing, sitting} selects
+  `effective_radiation_area_ratio_{standing,sitting}` (0.73 / 0.70) for both
+  longwave exchange and the diffuse shortwave terms. The Gagge reference and
+  library receive the same posture.
+
+Not done (Stage 6): f_p as a function of solar altitude and posture
+(ASHRAE 55 Table C-1; requires solar position from lat/lon/time, which the
+weather series already carries); f_bes < 1 for partial shade; spectral
+weighting of rho_sol / eps_IR from uploaded spectra.
+
+MODEL_PARAMETER_SET_VERSION 3.0.0 -> 4.0.0; MODEL_VERSION 0.5.0 -> 0.6.0.
+```
+
 ### File: `backend/docs/environment-assumptions.md`
 ```
 # Environment assumptions
@@ -15869,9 +14881,10 @@ part of every weather-driven request and echoed in every response.
 | sky_temperature_method = swinbank | — | clear-sky T_sky = 0.0552·T_air[K]^1.5 (Swinbank 1963) | literature |
 | sky_view_factor | 0.5 | share of view occupied by sky | assumed; open site |
 | wind_speed_scaling_factor | 1.0 | 10 m → body height | assumed; 0.67 ≈ log profile to 1.1 m |
+| ground_albedo | 0.2 | reflected-diffuse shortwave term (ADR 0006) | assumed |
 
-What these do **not** represent: cloud-cover dependent sky emissivity,
-ground surface temperature, urban canyon geometry, direct/diffuse split
+What these do **not** represent: cloud-cover dependent sky emissivity, 
+ground surface temperature, urban canyon geometry, solar-altitude dependent f_p
 (the solar term uses GHI only).
 ```
 
@@ -15879,8 +14892,8 @@ ground surface temperature, urban canyon geometry, direct/diffuse split
 ```
 # Model parameters
 
-Parameter set version: `3.0.0`  
-SHA-256: `5e0cbe090c73d0c64f563d0eee0001d268a9d85a2d9aa0b3d17dd353caa8bcb3`
+Parameter set version: `4.0.0`  
+SHA-256: `cab48ac8b5c9a6f55dce17d397ac11ca463ae306cf58e811a7c953b3384967a6`
 
 Generated by `scripts/render_model_parameters_doc.py`. Do not edit by hand.
 
@@ -15894,7 +14907,9 @@ Generated by `scripts/render_model_parameters_doc.py`. Do not edit by hand.
 | `skin_mass_fraction` | 0.1 | - | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731 | Gagge lets alpha vary with skin blood flow (alpha = 0.0418 + 0.745/(SKBF + 0.585)). Kept constant here so the node heat capacities are state-independent. |
 | `natural_convection_minimum_coefficient` | 3.1 | W/(m^2 K) | literature | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort, Table 6 (seated, v < 0.2 m/s) |  |
 | `forced_convection_coefficient` | 8.3 | W/(m^2 K (m/s)^-0.5) | literature | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort, Table 6 (Mitchell 1974: 8.3 v^0.6) | Exponent simplified from 0.6 to 0.5 in this prototype. |
-| `effective_radiation_area_ratio` | 0.73 | - | literature | Fanger (1970) Thermal Comfort, McGraw-Hill; ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort (0.70 seated, 0.73 standing); ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node | Applied to the clothing surface emission and to skin emission transmitted through IR-transparent textiles. Posture is fixed at standing; a PersonInput.position field is Stage 4 work. |
+| `effective_radiation_area_ratio_standing` | 0.73 | - | literature | Fanger (1970) Thermal Comfort, McGraw-Hill; ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort (0.73 standing); ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node |  |
+| `effective_radiation_area_ratio_sitting` | 0.7 | - | literature | Fanger (1970) Thermal Comfort, McGraw-Hill; ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort (0.70 seated); ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node |  |
+| `diffuse_hemisphere_fraction` | 0.5 | - | standard | ASHRAE Standard 55-2020, Normative Appendix C (Arens et al. 2015): ERF = [0.5 f_eff f_svv (I_diff + I_TH R_floor) + f_p f_bes I_dir] alpha_SW / alpha_LW |  |
 | `clo_to_si` | 0.155 | m^2 K/(W clo) | standard | ISO 9920:2007 |  |
 | `clothing_area_factor_slope` | 0.15 | 1/clo | literature | Gagge, Fobelets & Berglund (1986). A standard predictive index of human response to the thermal environment. ASHRAE Trans. 92(2B):709-731; ASHRAE Standard 55-2020, Normative Appendix D (SET reference procedure); reference implementations: pythermalcomfort.two_nodes_gagge, comf::calc2Node | ASHRAE Fundamentals Ch. 9 quotes 1 + 0.3 clo (McCullough & Jones 1984). 0.15 is retained for parity with the reference model. |
 | `lewis_relation` | 16.5 | K/kPa | standard | ASHRAE Handbook - Fundamentals (2017), Chapter 9: Thermal Comfort |  |
@@ -15926,70 +14941,6 @@ Generated by `scripts/render_model_parameters_doc.py`. Do not edit by hand.
 | `exhaled_air_temperature` | 34 | C | standard | ISO 7730:2005, Annex D (Fanger 1970 respiratory heat loss) |  |
 | `fallback_sky_temperature_offset` | 15 | K | assumed | Project prototype value (radiative-cooling-platform, Stage 0-1) |  |
 | `swinbank_coefficient` | 0.0552 | K^-0.5 | literature | Swinbank (1963) Q. J. R. Meteorol. Soc. 89:339-348 |  |
-
-```
-
-### File: `backend/package-lock.json`
-```json
-{
-  "name": "backend",
-  "lockfileVersion": 3,
-  "requires": true,
-  "packages": {
-    "": {
-      "devDependencies": {
-        "@types/plotly.js": "^3.0.10",
-        "@types/react-plotly.js": "^2.6.4"
-      }
-    },
-    "node_modules/@types/plotly.js": {
-      "version": "3.0.10",
-      "resolved": "https://registry.npmjs.org/@types/plotly.js/-/plotly.js-3.0.10.tgz",
-      "integrity": "sha512-q+MgO4aajC2HrO7FllTYWzrpdfbTjboSMfjkz/aXKjg1v7HNo1zMEFfAW7quKfk6SL+bH74A5ThBEps/7hZxOA==",
-      "dev": true,
-      "license": "MIT"
-    },
-    "node_modules/@types/react": {
-      "version": "19.2.18",
-      "resolved": "https://registry.npmjs.org/@types/react/-/react-19.2.18.tgz",
-      "integrity": "sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "csstype": "^3.2.2"
-      }
-    },
-    "node_modules/@types/react-plotly.js": {
-      "version": "2.6.4",
-      "resolved": "https://registry.npmjs.org/@types/react-plotly.js/-/react-plotly.js-2.6.4.tgz",
-      "integrity": "sha512-AU6w1u3qEGM0NmBA69PaOgNc0KPFA/+qkH6Uu9EBTJ45/WYOUoXi9AF5O15PRM2klpHSiHAAs4WnlI+OZAFmUA==",
-      "dev": true,
-      "license": "MIT",
-      "dependencies": {
-        "@types/plotly.js": "*",
-        "@types/react": "*"
-      }
-    },
-    "node_modules/csstype": {
-      "version": "3.2.3",
-      "resolved": "https://registry.npmjs.org/csstype/-/csstype-3.2.3.tgz",
-      "integrity": "sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==",
-      "dev": true,
-      "license": "MIT"
-    }
-  }
-}
-
-```
-
-### File: `backend/package.json`
-```json
-{
-  "devDependencies": {
-    "@types/plotly.js": "^3.0.10",
-    "@types/react-plotly.js": "^2.6.4"
-  }
-}
 
 ```
 
@@ -16198,23 +15149,6 @@ async def main(fixture_dir: Path) -> None:
 
 if __name__ == "__main__":
     asyncio.run(main(Path(sys.argv[1])))
-```
-
-### File: `backend/scripts/export_openapi.py`
-```python
-"""Snapshot the OpenAPI contract. Usage: python scripts/export_openapi.py OUT.json"""
-
-import json
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from app.main import app  # noqa: E402
-
-Path(sys.argv[1]).write_text(
-    json.dumps(app.openapi(), indent=2, sort_keys=True), encoding="utf-8"
-)
 ```
 
 ### File: `backend/scripts/render_model_parameters_doc.py`
@@ -16679,72 +15613,73 @@ def test_creates_missing_parent_directories(
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 37.3154,
+      "core_temperature_c": 37.3371,
       "minute": 10.0,
-      "skin_temperature_c": 36.8813
+      "skin_temperature_c": 36.9878
     },
     {
-      "core_temperature_c": 37.7534,
+      "core_temperature_c": 37.8104,
       "minute": 20.0,
-      "skin_temperature_c": 37.194
+      "skin_temperature_c": 37.3227
     },
     {
-      "core_temperature_c": 38.1452,
+      "core_temperature_c": 38.2399,
       "minute": 30.0,
-      "skin_temperature_c": 37.5355
+      "skin_temperature_c": 37.6983
     },
     {
-      "core_temperature_c": 38.511,
+      "core_temperature_c": 38.6416,
       "minute": 40.0,
-      "skin_temperature_c": 37.8548
+      "skin_temperature_c": 38.05
     },
     {
-      "core_temperature_c": 38.8528,
+      "core_temperature_c": 39.0174,
       "minute": 50.0,
-      "skin_temperature_c": 38.1533
+      "skin_temperature_c": 38.3797
     },
     {
-      "core_temperature_c": 39.1722,
+      "core_temperature_c": 39.3695,
       "minute": 60.0,
-      "skin_temperature_c": 38.4329
+      "skin_temperature_c": 38.6892
     },
     {
-      "core_temperature_c": 39.4699,
+      "core_temperature_c": 39.6985,
       "minute": 70.0,
-      "skin_temperature_c": 38.6885
+      "skin_temperature_c": 38.9743
     },
     {
-      "core_temperature_c": 39.7453,
+      "core_temperature_c": 40.0044,
       "minute": 80.0,
-      "skin_temperature_c": 38.9242
+      "skin_temperature_c": 39.239
     },
     {
-      "core_temperature_c": 40.0003,
+      "core_temperature_c": 40.2891,
       "minute": 90.0,
-      "skin_temperature_c": 39.1425
+      "skin_temperature_c": 39.4856
     },
     {
-      "core_temperature_c": 40.2363,
+      "core_temperature_c": 40.5541,
       "minute": 100.0,
-      "skin_temperature_c": 39.3447
+      "skin_temperature_c": 39.7156
     },
     {
-      "core_temperature_c": 40.4549,
+      "core_temperature_c": 40.8011,
       "minute": 110.0,
-      "skin_temperature_c": 39.5322
+      "skin_temperature_c": 39.9305
     },
     {
-      "core_temperature_c": 40.6575,
+      "core_temperature_c": 41.0316,
       "minute": 120.0,
-      "skin_temperature_c": 39.7062
+      "skin_temperature_c": 40.1314
     }
   ],
   "duration_minutes": 120,
-  "model_version": "0.5.0",
-  "parameter_fingerprint": "407990587a76b25896954f71012bcf4cb47f0fa3fb3a91dee211dda08529b1a5",
+  "model_version": "0.6.0",
+  "parameter_fingerprint": "19ebfc734d292cc5e45d3606ddb5ac3f30d5f44aa21565a0ee61d3e5b64df428",
   "parameter_snapshot": {
     "environment_assumptions": {
       "fixed_sky_offset_k": 15.0,
+      "ground_albedo": 0.2,
       "mean_radiant_temperature_method": "air_plus_solar_linear",
       "sky_offset_base_k": 5.0,
       "sky_offset_humidity_range_k": 10.0,
@@ -16754,8 +15689,8 @@ def test_creates_missing_parent_directories(
       "solar_mrt_gain_k_per_w_m2": 0.012,
       "wind_speed_scaling_factor": 1.0
     },
-    "model_parameter_set_sha256": "5e0cbe090c73d0c64f563d0eee0001d268a9d85a2d9aa0b3d17dd353caa8bcb3",
-    "model_parameter_set_version": "3.0.0",
+    "model_parameter_set_sha256": "cab48ac8b5c9a6f55dce17d397ac11ca463ae306cf58e811a7c953b3384967a6",
+    "model_parameter_set_version": "4.0.0",
     "model_parameters": {
       "blood_heat_capacity_per_flow": 1.163,
       "body_specific_heat": 3490.0,
@@ -16764,7 +15699,9 @@ def test_creates_missing_parent_directories(
       "clothing_vapor_permeation_efficiency": 0.45,
       "core_setpoint_temperature": 36.8,
       "core_skin_conductance_basal": 5.28,
-      "effective_radiation_area_ratio": 0.73,
+      "diffuse_hemisphere_fraction": 0.5,
+      "effective_radiation_area_ratio_sitting": 0.7,
+      "effective_radiation_area_ratio_standing": 0.73,
       "exhaled_air_temperature": 34.0,
       "fallback_sky_temperature_offset": 15.0,
       "forced_convection_coefficient": 8.3,
@@ -16807,70 +15744,70 @@ def test_creates_missing_parent_directories(
       "skin_temperature_c": 33.7
     },
     {
-      "core_temperature_c": 37.2525,
+      "core_temperature_c": 37.2571,
       "minute": 10.0,
-      "skin_temperature_c": 36.5204
+      "skin_temperature_c": 36.5487
     },
     {
-      "core_temperature_c": 37.5858,
+      "core_temperature_c": 37.5956,
       "minute": 20.0,
-      "skin_temperature_c": 36.7421
+      "skin_temperature_c": 36.7592
     },
     {
-      "core_temperature_c": 37.7897,
+      "core_temperature_c": 37.8057,
       "minute": 30.0,
-      "skin_temperature_c": 36.8187
+      "skin_temperature_c": 36.8502
     },
     {
-      "core_temperature_c": 37.9672,
+      "core_temperature_c": 37.9913,
       "minute": 40.0,
-      "skin_temperature_c": 36.9749
+      "skin_temperature_c": 37.0136
     },
     {
-      "core_temperature_c": 38.134,
+      "core_temperature_c": 38.1657,
       "minute": 50.0,
-      "skin_temperature_c": 37.1226
+      "skin_temperature_c": 37.1679
     },
     {
-      "core_temperature_c": 38.2911,
+      "core_temperature_c": 38.3299,
       "minute": 60.0,
-      "skin_temperature_c": 37.2622
+      "skin_temperature_c": 37.3138
     },
     {
-      "core_temperature_c": 38.4386,
+      "core_temperature_c": 38.4842,
       "minute": 70.0,
-      "skin_temperature_c": 37.3911
+      "skin_temperature_c": 37.4487
     },
     {
-      "core_temperature_c": 38.5764,
+      "core_temperature_c": 38.6283,
       "minute": 80.0,
-      "skin_temperature_c": 37.5114
+      "skin_temperature_c": 37.5746
     },
     {
-      "core_temperature_c": 38.7053,
+      "core_temperature_c": 38.7631,
       "minute": 90.0,
-      "skin_temperature_c": 37.6242
+      "skin_temperature_c": 37.6928
     },
     {
-      "core_temperature_c": 38.826,
+      "core_temperature_c": 38.8895,
       "minute": 100.0,
-      "skin_temperature_c": 37.7304
+      "skin_temperature_c": 37.8041
     },
     {
-      "core_temperature_c": 38.9393,
+      "core_temperature_c": 39.0082,
       "minute": 110.0,
-      "skin_temperature_c": 37.8303
+      "skin_temperature_c": 37.909
     },
     {
-      "core_temperature_c": 39.0458,
+      "core_temperature_c": 39.1199,
       "minute": 120.0,
-      "skin_temperature_c": 37.9247
+      "skin_temperature_c": 38.0082
     }
   ],
   "summary": {
-    "average_skin_temperature_improvement_c": 1.0721,
-    "final_core_temperature_improvement_c": 1.6117,
-    "final_skin_temperature_improvement_c": 1.7815
+    "average_skin_temperature_improvement_c": 1.2703,
+    "final_core_temperature_improvement_c": 1.9117,
+    "final_skin_temperature_improvement_c": 2.1232
   },
   "weather": {
     "payload_sha256": "b568200999e8bc079896b86d451e3c82213682d90698ef1f846100fcc863f9d3",
@@ -17451,14 +16388,17 @@ def test_explicit_area_factor_overrides_derivation(control_material):
 
 @pytest.mark.unit
 def test_clothing_surface_balance_is_consistent(environment, person, control_material):
-    """Conduction through the textile equals what leaves its outer surface."""
+    """Conduction through the textile plus absorbed solar equals what leaves
+    the outer surface (ADR 0003 + ADR 0005)."""
     clothing = resolve_clothing(control_material)
     fluxes = calculate_fluxes(36.8, 33.7, environment, person, control_material, clothing)
 
     conduction = (33.7 - fluxes.clothing_surface_temperature_c) / clothing.dry_resistance_m2k_w
     surface_losses = fluxes.convection + fluxes.longwave_radiation - fluxes.longwave_transmitted
 
-    assert conduction == pytest.approx(surface_losses, abs=1e-3)
+    assert conduction + fluxes.solar_absorbed_by_textile == pytest.approx(
+        surface_losses, abs=1e-3
+    )
 
 @pytest.mark.unit
 def test_nude_surface_temperature_equals_skin(environment, person, control_material):
@@ -17961,6 +16901,19 @@ def test_default_case_is_within_stage_3_tolerances(environment, person, control_
     assert result.core_temperature.passed, result.core_temperature
     assert result.skin_temperature.passed, result.skin_temperature
     assert result.passed
+    
+@pytest.mark.benchmark
+def test_sitting_posture_runs_and_reports_seated_area_ratio(
+    environment, person, control_material
+):
+    result = run_gagge_benchmark(
+        GaggeBenchmarkRequest(
+            environment=environment,
+            person=person.model_copy(update={"position": "sitting"}),
+            material=control_material,
+        )
+    )
+    assert result.reference_port_parity.maximum_absolute_difference_c < 0.05
 ```
 
 ### File: `backend/tests/test_gagge_reference.py`
@@ -18065,6 +17018,73 @@ def test_geojson_structure():
         ["geometry"]["type"]
         == "Point"
     )
+```
+
+### File: `backend/tests/test_global_batches_api.py`
+```python
+"""Regression: material library links must be persisted for global batches."""
+
+from types import SimpleNamespace
+
+import pytest
+
+from app.api import global_batches as global_batches_api
+
+
+def fake_submit_city_tasks(*, city_results, queue_name):
+    return SimpleNamespace(
+        id="group-test",
+        results=[
+            SimpleNamespace(id=f"task-{result.city_id}") for result in city_results
+        ],
+    )
+
+
+@pytest.mark.integration
+def test_global_batch_records_material_version_links(
+    client, monkeypatch, person, control_material
+):
+    monkeypatch.setattr(
+        global_batches_api, "submit_city_tasks", fake_submit_city_tasks
+    )
+
+    created = client.post(
+        "/api/v1/materials",
+        json={
+            "name": "Batch Link Fabric",
+            "slug": "batch-link-fabric",
+            "initial_version": {
+                "clothing_insulation_clo": 0.4,
+                "solar_reflectance": 0.92,
+                "infrared_emissivity": 0.95,
+            },
+        },
+    )
+    assert created.status_code == 201, created.text
+    version_id = created.json()["versions"][0]["id"]
+
+    response = client.post(
+        "/api/v1/global-batches",
+        json={
+            "city_ids": ["dubai"],
+            "year": 2023,
+            "start_month": 7,
+            "end_month": 7,
+            "person": person.model_dump(mode="json"),
+            "control_material": control_material.model_dump(mode="json"),
+            "rc_material": {"name": "RC", "material_version_id": version_id},
+        },
+    )
+    assert response.status_code == 202, response.text
+
+    body = response.json()
+    assert body["rc_material_version_id"] == version_id
+    assert body["control_material_version_id"] is None
+    assert body["celery_group_id"] == "group-test"
+
+    detail = client.get(f"/api/v1/global-batches/{body['id']}").json()
+    assert detail["request"]["rc_material"]["solar_reflectance"] == pytest.approx(0.92)
+    assert detail["city_results"][0]["celery_task_id"] == "task-dubai"
 ```
 
 ### File: `backend/tests/test_golden_dubai_2h.py`
@@ -18303,9 +17323,15 @@ from app.services.material_fields import build_material_field_manifest
 def test_manifest_covers_every_physical_field_in_order():
     manifest = build_material_field_manifest()
     assert [f.name for f in manifest.fields] == list(MATERIAL_PHYSICAL_FIELD_ORDER)
-    assert manifest.parameter_set_version == "3.0.0"
-    assert "measured" in manifest.source_types
+    assert manifest.parameter_set_version == "4.0.0"
+    assert "absorbed_solar_to_body_fraction" not in [f.name for f in manifest.fields]
 
+@pytest.mark.unit
+def test_deprecated_field_is_still_accepted_in_provenance():
+    MaterialInput(
+        name="legacy",
+        parameter_sources={"absorbed_solar_to_body_fraction": {"source_type": "assumed"}},
+    )
 
 @pytest.mark.unit
 @pytest.mark.parametrize("name", MATERIAL_PHYSICAL_FIELD_ORDER)
@@ -18678,7 +17704,6 @@ MATERIAL_PERTURBATIONS = {
     "infrared_emissivity": 0.5,
     "infrared_transmittance": 0.15,
     "projected_solar_area_factor": 0.4,
-    "absorbed_solar_to_body_fraction": 0.6,
 }
 
 
@@ -18703,6 +17728,7 @@ PERSON_PERTURBATIONS = {
     "body_mass_kg": 95.0,                  # Stage 3
     "initial_core_temperature_c": 37.4,
     "initial_skin_temperature_c": 31.0,
+    "position": "sitting",  # Stage 5
 }
 
 
@@ -18736,6 +17762,18 @@ ASSUMPTION_PERTURBATIONS = [
     ({}, {"wind_speed_scaling_factor": 0.67}),
 ]
 
+SOLAR_SPLIT = {
+    "direct_normal_irradiance_w_m2": 700.0,
+    "diffuse_horizontal_irradiance_w_m2": 150.0,
+}
+
+# (baseline update, perturbed update) on the fixed EnvironmentInput.
+ENVIRONMENT_PERTURBATIONS = [
+    ({}, SOLAR_SPLIT),
+    (SOLAR_SPLIT, {**SOLAR_SPLIT, "direct_normal_irradiance_w_m2": 400.0}),
+    (SOLAR_SPLIT, {**SOLAR_SPLIT, "diffuse_horizontal_irradiance_w_m2": 350.0}),
+    (SOLAR_SPLIT, {**SOLAR_SPLIT, "ground_albedo": 0.6}),
+]
 
 @pytest.mark.unit
 @pytest.mark.parametrize(("baseline_update", "perturbed_update"), ASSUMPTION_PERTURBATIONS)
@@ -18753,6 +17791,22 @@ def test_every_environment_assumption_participates(
 
     assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, (
         f"EnvironmentAssumptions {perturbed_update} does not influence the result"
+    )
+    
+@pytest.mark.unit
+@pytest.mark.parametrize(("baseline_update", "perturbed_update"), ENVIRONMENT_PERTURBATIONS)
+def test_every_solar_environment_field_participates(
+    environment, person, control_material, baseline_update, perturbed_update
+):
+    baseline = simulate_material(
+        60, 1, environment.model_copy(update=baseline_update), person, control_material
+    )
+    perturbed = simulate_material(
+        60, 1, environment.model_copy(update=perturbed_update), person, control_material
+    )
+
+    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, (
+        f"EnvironmentInput {perturbed_update} does not influence the result"
     )
 ```
 
@@ -18902,7 +17956,7 @@ def make_point(
 @pytest.mark.unit
 def test_missing_stage_3_diagnostics_export_as_blank_cells():
     rows = list(csv.reader(io.StringIO(export_result_csv(make_export_result()))))
-    assert rows[1][13:] == [""] * 6
+    assert rows[1][13:] == [""] * 8
 
 @pytest.mark.unit
 def test_stage_3_diagnostics_are_exported_when_present():
@@ -18966,7 +18020,7 @@ def test_result_csv_contains_expected_headers():
 
     assert rows[0] == EXPECTED_HEADERS
     assert "control_clothing_surface_temperature_c" in rows[0]
-    assert len(rows[0]) == 1 + 2 * 9  # minute + 9 paired quantities
+    assert len(rows[0]) == 1 + 2 * 10  # minute + 10 paired quantities
 
 
 @pytest.mark.unit
@@ -19373,6 +18427,77 @@ def test_method_and_path_pairs_are_unique() -> None:
     assert not duplicates, (
         f"Duplicate route registrations were found: {duplicates}"
     )
+```
+
+### File: `backend/tests/test_solar.py`
+```python
+import pytest
+from pydantic import ValidationError
+
+from app.schemas.simulation import EnvironmentInput, MaterialInput
+from app.services.solar import solar_load
+from app.services.two_node import effective_radiation_area_ratio
+
+
+@pytest.mark.unit
+def test_without_split_ghi_is_beam_on_projected_area(control_material):
+    load = solar_load(
+        EnvironmentInput(solar_radiation_w_m2=800.0),
+        control_material,
+        effective_radiation_area_ratio("standing"),
+    )
+
+    assert load.split_available is False
+    assert load.incident_w_m2 == pytest.approx(0.25 * 800.0)
+    assert load.sky_diffuse_w_m2 == 0.0
+    assert load.ground_reflected_w_m2 == 0.0
+    # rho = 0.4, tau = 0 -> alpha = 0.6
+    assert load.absorbed_by_textile_w_m2 == pytest.approx(0.6 * 200.0)
+    assert load.transmitted_to_skin_w_m2 == 0.0
+
+
+@pytest.mark.unit
+def test_split_components_follow_ashrae_55_geometry(control_material):
+    environment = EnvironmentInput(
+        solar_radiation_w_m2=900.0,
+        direct_normal_irradiance_w_m2=700.0,
+        diffuse_horizontal_irradiance_w_m2=200.0,
+        sky_view_factor=0.5,
+        ground_albedo=0.2,
+    )
+
+    load = solar_load(environment, control_material, 0.73)
+
+    assert load.split_available is True
+    assert load.direct_w_m2 == pytest.approx(0.25 * 700.0)
+    assert load.sky_diffuse_w_m2 == pytest.approx(0.5 * 0.73 * 0.5 * 200.0)
+    assert load.ground_reflected_w_m2 == pytest.approx(0.5 * 0.73 * 0.2 * 900.0)
+    assert load.incident_w_m2 == pytest.approx(
+        load.direct_w_m2 + load.sky_diffuse_w_m2 + load.ground_reflected_w_m2
+    )
+
+
+@pytest.mark.unit
+def test_partial_split_is_rejected():
+    with pytest.raises(ValidationError, match="supplied together"):
+        EnvironmentInput(direct_normal_irradiance_w_m2=500.0)
+
+
+@pytest.mark.unit
+def test_transmittance_routes_solar_to_skin():
+    material = MaterialInput(name="sheer", solar_reflectance=0.5, solar_transmittance=0.3)
+
+    load = solar_load(EnvironmentInput(solar_radiation_w_m2=800.0), material, 0.73)
+
+    assert load.transmitted_to_skin_w_m2 == pytest.approx(0.3 * 200.0)
+    assert load.absorbed_by_textile_w_m2 == pytest.approx(0.2 * 200.0)
+    assert load.entering_system_w_m2 == pytest.approx(0.5 * 200.0)
+
+
+@pytest.mark.unit
+def test_posture_selects_radiation_area_ratio():
+    assert effective_radiation_area_ratio("standing") == pytest.approx(0.73)
+    assert effective_radiation_area_ratio("sitting") == pytest.approx(0.70)
 ```
 
 ### File: `backend/tests/test_spectrum_parser.py`
@@ -20537,7 +19662,7 @@ import math
 
 import pytest
 
-from app.services.two_node import simulate_material
+from app.services.two_node import simulate_material, calculate_fluxes
 
 
 @pytest.mark.unit
@@ -20714,6 +19839,53 @@ def test_identical_materials_produce_identical_results(
             second.final_skin_temperature_c,
             abs=1e-8,
         )
+    )
+    
+@pytest.mark.unit
+def test_absorbed_solar_raises_clothing_surface_temperature(
+    environment, person, control_material
+):
+    sunlit = calculate_fluxes(36.8, 33.7, environment, person, control_material)
+    shaded = calculate_fluxes(
+        36.8, 33.7,
+        environment.model_copy(update={"solar_radiation_w_m2": 0.0}),
+        person, control_material,
+    )
+
+    assert sunlit.clothing_surface_temperature_c > shaded.clothing_surface_temperature_c
+
+
+@pytest.mark.unit
+def test_surface_re_emits_part_of_the_absorbed_solar(
+    environment, person, control_material
+):
+    """ADR 0005: the extra surface losses caused by S_abs lie strictly between
+    0 and S_abs, so only a fraction of the absorbed solar reaches the skin."""
+    sunlit = calculate_fluxes(36.8, 33.7, environment, person, control_material)
+    shaded = calculate_fluxes(
+        36.8, 33.7,
+        environment.model_copy(update={"solar_radiation_w_m2": 0.0}),
+        person, control_material,
+    )
+
+    extra_surface_losses = (
+        sunlit.convection + sunlit.longwave_radiation
+    ) - (shaded.convection + shaded.longwave_radiation)
+
+    assert 0.0 < extra_surface_losses < sunlit.solar_absorbed_by_textile
+    assert sunlit.evaporation == pytest.approx(shaded.evaporation)
+
+
+@pytest.mark.unit
+def test_deprecated_absorbed_fraction_is_ignored(environment, person, control_material):
+    baseline = simulate_material(30, 1, environment, person, control_material)
+    altered = simulate_material(
+        30, 1, environment, person,
+        control_material.model_copy(update={"absorbed_solar_to_body_fraction": 0.9}),
+    )
+
+    assert altered.final_skin_temperature_c == pytest.approx(
+        baseline.final_skin_temperature_c, abs=1e-9
     )
 ```
 

@@ -155,23 +155,14 @@ def parse_spectrum_csv(
             )
 
     if len(points) < 2:
-        raise ValueError(
-            f"Row {row_number} spectrum file must contain at least two data points"
-        )
+        raise ValueError("Spectrum file must contain at least two data points")
 
-    wavelengths = [
-        point["wavelength_um"]
-        for point in points
-    ]
+    wavelengths = [point["wavelength_um"] for point in points]
 
-    for previous, current in zip(
-        wavelengths,
-        wavelengths[1:],
-        strict=False,
-    ):
+    for position, (previous, current) in enumerate(zip(wavelengths, wavelengths[1:]), start=3):
         if current <= previous:
             raise ValueError(
-                f"Row {row_number} wavelengths must be strictly increasing and unique"
+                f"Row {position}: wavelengths must be strictly increasing and unique"
             )
 
     return ParsedSpectrum(
