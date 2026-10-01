@@ -294,6 +294,17 @@
               "title": "Beneficial",
               "type": "boolean"
             },
+            "daily_maximum_air_temperature_c": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Daily Maximum Air Temperature C"
+            },
             "exposure_eligible": {
               "title": "Exposure Eligible",
               "type": "boolean"
@@ -303,6 +314,7 @@
               "type": "number"
             },
             "maximum_air_temperature_c": {
+              "description": "Maximum over the exposure window only",
               "title": "Maximum Air Temperature C",
               "type": "number"
             },
@@ -357,6 +369,17 @@
         },
         "EnergyDiagnostics": {
           "properties": {
+            "diagnostic_interval_seconds": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Diagnostic Interval Seconds"
+            },
             "energy_residual_j_m2": {
               "title": "Energy Residual J M2",
               "type": "number"
@@ -366,10 +389,12 @@
               "type": "number"
             },
             "maximum_core_step_c": {
+              "description": "Largest core temperature change between two consecutive audit-grid samples (NOT the solver's internal step).",
               "title": "Maximum Core Step C",
               "type": "number"
             },
             "maximum_skin_step_c": {
+              "description": "Largest skin temperature change between two consecutive audit-grid samples (NOT the solver's internal step).",
               "title": "Maximum Skin Step C",
               "type": "number"
             },
@@ -430,6 +455,17 @@
               "reference": "Stage 1 prototype",
               "source_type": "assumed",
               "title": "Mean Radiant Temperature Method",
+              "type": "string"
+            },
+            "radiation_time_convention": {
+              "default": "instantaneous_linear",
+              "enum": [
+                "instantaneous_linear",
+                "preceding_hour_mean_step"
+              ],
+              "reference": "Open-Meteo hourly parameter definition (preceding hour mean)",
+              "source_type": "assumed",
+              "title": "Radiation Time Convention",
               "type": "string"
             },
             "sky_offset_base_k": {
@@ -3782,6 +3818,18 @@
             "average_skin_temperature_improvement_c": {
               "title": "Average Skin Temperature Improvement C",
               "type": "number"
+            },
+            "averaging_method": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "How the average improvement was computed. 'time_weighted_trapezoid' = trapezoidal mean over the exposure window; None = legacy arithmetic mean over output points.",
+              "title": "Averaging Method"
             },
             "final_core_temperature_improvement_c": {
               "title": "Final Core Temperature Improvement C",
