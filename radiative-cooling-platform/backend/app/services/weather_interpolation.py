@@ -110,10 +110,7 @@ class WeatherInterpolator:
         start_time = weather.requested_start_time
 
         relative_seconds = np.asarray(
-            [
-                (point.timestamp - start_time).total_seconds()
-                for point in weather.points
-            ],
+            [point.timestamp.timestamp() - start_time.timestamp() for point in weather.points],
             dtype=float,
         )
 
@@ -143,8 +140,8 @@ class WeatherInterpolator:
 
         if check_requested_window:
             required_end = (
-                weather.requested_end_time - start_time
-            ).total_seconds()
+                weather.requested_end_time.timestamp() - start_time.timestamp()
+            )
 
             interpolator.ensure_covers(0.0, required_end)
 
@@ -178,33 +175,32 @@ class WeatherInterpolator:
             )
         )
 
-    def environment_at(
-        self,
-        elapsed_seconds: float,
-    ) -> EnvironmentInput:
-        """Interpolate the ERA5 variables and derive the model boundary
-        conditions according to ``self.assumptions``.
+    def _interpolate_radiation(self, values: np.ndarray, elapsed_seconds: float) -> float:
+        if self.assumptions.radiation_time_convention == "instantaneous_linear":
+            return self._interpolate(values, elapsed_seconds)
 
-        Stage 2: the mean radiant temperature, sky temperature, sky view
-        factor and wind scaling rules live in ``environment_model``; this
-        method only interpolates.
-        """
+        # preceding_hour_mean_step: value stamped at t_i is the mean over
+        # (t_{i-1}, t_i]. searchsorted(side="left") returns i for t in that
+        # half-open interval and 0 at the very first stamp.
+        index = int(np.searchsorted(self.relative_seconds, elapsed_seconds, side="left"))
+        index = min(max(index, 0), len(values) - 1)
+        return float(values[index])
+
+    def environment_at(self, elapsed_seconds: float) -> EnvironmentInput:
         self._check_bounds(elapsed_seconds)
 
         return derive_environment(
             air_temperature_c=self._interpolate(self.temperatures, elapsed_seconds),
             relative_humidity_percent=self._interpolate(self.humidities, elapsed_seconds),
             wind_speed_m_s=self._interpolate(self.wind_speeds, elapsed_seconds),
-            ghi_w_m2=self._interpolate(self.ghi_values, elapsed_seconds),
+            ghi_w_m2=self._interpolate_radiation(self.ghi_values, elapsed_seconds),
             direct_normal_irradiance_w_m2=(
-                None
-                if self.dni_values is None
-                else self._interpolate(self.dni_values, elapsed_seconds)
+                None if self.dni_values is None
+                else self._interpolate_radiation(self.dni_values, elapsed_seconds)
             ),
             diffuse_horizontal_irradiance_w_m2=(
-                None
-                if self.dhi_values is None
-                else self._interpolate(self.dhi_values, elapsed_seconds)
+                None if self.dhi_values is None
+                else self._interpolate_radiation(self.dhi_values, elapsed_seconds)
             ),
             assumptions=self.assumptions,
         )

@@ -68,13 +68,14 @@
     }
   ],
   "duration_minutes": 120,
-  "model_version": "0.6.0",
-  "parameter_fingerprint": "19ebfc734d292cc5e45d3606ddb5ac3f30d5f44aa21565a0ee61d3e5b64df428",
+  "model_version": "0.7.0",
+  "parameter_fingerprint": "10003d40edfe81c9756d66634a00474e428e1ce9856deb5e9de7dbb25b329874",
   "parameter_snapshot": {
     "environment_assumptions": {
       "fixed_sky_offset_k": 15.0,
       "ground_albedo": 0.2,
       "mean_radiant_temperature_method": "air_plus_solar_linear",
+      "radiation_time_convention": "instantaneous_linear",
       "sky_offset_base_k": 5.0,
       "sky_offset_humidity_range_k": 10.0,
       "sky_temperature_method": "humidity_offset",
@@ -199,7 +200,8 @@
     }
   ],
   "summary": {
-    "average_skin_temperature_improvement_c": 1.2703,
+    "average_skin_temperature_improvement_c": 1.2876,
+    "averaging_method": "time_weighted_trapezoid",
     "final_core_temperature_improvement_c": 1.9117,
     "final_skin_temperature_improvement_c": 2.1232
   },

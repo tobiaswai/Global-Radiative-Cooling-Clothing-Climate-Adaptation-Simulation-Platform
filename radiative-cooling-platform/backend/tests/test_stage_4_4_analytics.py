@@ -34,6 +34,9 @@ def make_sample(
         maximum_air_temperature_c=(
             maximum_temperature_c
         ),
+        daily_maximum_air_temperature_c=(
+            maximum_temperature_c
+        ),
         mean_solar_radiation_w_m2=500,
         maximum_solar_radiation_w_m2=800,
         exposure_eligible=True,

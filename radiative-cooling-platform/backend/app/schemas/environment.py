@@ -24,6 +24,10 @@ SkyTemperatureMethod = Literal[
     "swinbank",         # T_sky[K] = 0.0552 * T_air[K]^1.5 (clear sky)
 ]
 
+RadiationTimeConvention = Literal[
+    "instantaneous_linear",     # legacy: treat hourly means as instants, interpolate linearly
+    "preceding_hour_mean_step", # Open-Meteo definition: value = mean over (t-1h, t], piecewise constant
+]
 
 class EnvironmentAssumptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -92,6 +96,13 @@ class EnvironmentAssumptions(BaseModel):
         },
     )
 
+    radiation_time_convention: RadiationTimeConvention = Field(
+        default="instantaneous_linear",
+        json_schema_extra={
+            "source_type": "assumed",
+            "reference": "Open-Meteo hourly parameter definition (preceding hour mean)",
+        },
+    )
 
     def describe(self) -> list[str]:
         """Human-readable summary written into ``environment_model_note``."""
@@ -113,6 +124,18 @@ class EnvironmentAssumptions(BaseModel):
         else:
             sky = "T_sky[K] = 0.0552 * T_air[K]^1.5 (Swinbank 1963, clear sky)"
 
+        if self.radiation_time_convention == "preceding_hour_mean_step":
+            radiation = (
+                "GHI/DNI/DHI are treated as preceding-hour means held constant "
+                "over (t-1h, t] (energy-conserving)."
+            )
+        else:
+            radiation = (
+                "GHI/DNI/DHI hourly means are treated as instantaneous values at "
+                "the stamped hour and interpolated linearly (approximation; "
+                "shifts the solar profile by up to 30 min)."
+            )
+
         return [
             "Air temperature, relative humidity, 10 m wind speed and GHI are "
             "taken from ERA5 via Open-Meteo.",
@@ -124,4 +147,5 @@ class EnvironmentAssumptions(BaseModel):
             "ERA5; the body-incident shortwave follows ASHRAE 55 Appendix C "
             "geometry (ADR 0006).",
             f"Ground albedo = {self.ground_albedo}",
+            radiation,
         ]

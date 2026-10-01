@@ -13,6 +13,7 @@ from fastapi import (
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
+from app.services.scenario_summary import build_simulation_summary
 
 from app.core.cities import get_city
 from app.db.session import SessionLocal, get_db
@@ -118,20 +119,7 @@ def run_simulation(
         duration_minutes=request.duration_minutes,
         control=control_result,
         radiative_cooling=rc_result,
-        summary=SimulationSummary(
-            final_skin_temperature_improvement_c=round(
-                final_skin_improvement,
-                4,
-            ),
-            final_core_temperature_improvement_c=round(
-                final_core_improvement,
-                4,
-            ),
-            average_skin_temperature_improvement_c=round(
-                control_skin_average - rc_skin_average,
-                4,
-            ),
-        ),
+        summary=build_simulation_summary(control_result, rc_result),
         warning=(
             "These results are from a simplified transient prototype "
             "and have not yet been validated using thermal manikins, human "

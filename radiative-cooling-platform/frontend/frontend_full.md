@@ -29,9 +29,11 @@ frontend/src/components/charts/physiology-chart.tsx
 frontend/src/components/charts/temperature-chart.tsx
 frontend/src/components/charts/weather-chart.tsx
 frontend/src/components/forms/number-field.tsx
+frontend/src/components/forms/select-field.tsx
 frontend/src/components/global-adaptation-map.tsx
 frontend/src/components/layout/NavBar.tsx
 frontend/src/components/materials/provenance-editor.tsx
+frontend/src/components/simulation/environment-assumptions-fields.tsx
 frontend/src/components/simulation/environment-input-fields.tsx
 frontend/src/components/simulation/material-input-fields.tsx
 frontend/src/components/simulation/material-version-picker.tsx
@@ -40,8 +42,12 @@ frontend/src/components/simulation/model-quality-panel.tsx
 frontend/src/components/simulation/person-input-fields.tsx
 frontend/src/config/navigation.ts
 frontend/src/lib/api-client.ts
+frontend/src/lib/date-defaults.test.ts
 frontend/src/lib/date-defaults.ts
+frontend/src/lib/environment-assumptions.ts
+frontend/src/lib/format.test.ts
 frontend/src/lib/format.ts
+frontend/src/lib/time-series.test.ts
 frontend/src/lib/time-series.ts
 frontend/src/locales/en.ts
 frontend/src/types/benchmark.ts
@@ -71,12 +77,13 @@ frontend/public/window.svg
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "maplibre-gl": "^6.7.0",
-    "next": "16.2.12",
-    "plotly.js": "^3.7.0",
+    "next": "^16.3.7",
+    "plotly.js": "^4.1.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-plotly.js": "^4.1.0"
@@ -84,7 +91,7 @@ frontend/public/window.svg
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/geojson": "^7946.0.16",
-    "@types/node": "^20",
+    "@types/node": "^24.19.0",
     "@types/plotly.js": "^3.0.10",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -92,14 +99,16 @@ frontend/public/window.svg
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.2"
   },
   "allowScripts": {
     "maplibre-gl@6.7.0": true,
     "maplibre-gl@4.7.1": true,
     "sharp@0.34.5": true,
     "unrs-resolver@1.12.2": true,
-    "es5-ext@0.10.64": true
+    "es5-ext@0.10.64": true,
+    "esbuild@0.28.2": true
   }
 }
 
@@ -261,6 +270,9 @@ const initialRequest: GaggeBenchmarkRequest = {
     wind_speed_m_s: 0.5,
     solar_radiation_w_m2: 0,
     sky_view_factor: 0.5,
+    direct_normal_irradiance_w_m2: null, 
+    diffuse_horizontal_irradiance_w_m2: null, 
+    ground_albedo: 0.2
   },
 
   person: {
@@ -269,6 +281,7 @@ const initialRequest: GaggeBenchmarkRequest = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    position: "standing",
   },
 
   material: {
@@ -279,7 +292,6 @@ const initialRequest: GaggeBenchmarkRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 
   tolerances: {
@@ -2376,6 +2388,7 @@ import type {
   GlobalBatchEstimate,
   GlobalCity,
 } from "@/types/global-batch";
+import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
 
 type EstimateState = {
   requestKey: string;
@@ -2415,6 +2428,7 @@ const initialRequest: GlobalBatchCreate = {
   minimum_solar_radiation_w_m2: 300,
 
   exposure_match_mode: "all",
+  environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
 
   person: {
     met: 2,
@@ -2422,6 +2436,7 @@ const initialRequest: GlobalBatchCreate = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    position: "standing",
   },
 
   control_material: {
@@ -2432,7 +2447,6 @@ const initialRequest: GlobalBatchCreate = {
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 
   rc_material: {
@@ -2443,7 +2457,6 @@ const initialRequest: GlobalBatchCreate = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 };
 
@@ -3650,7 +3663,7 @@ function EstimateMetric({
         {label}
       </p>
 
-      <p className="mt-2 break-words font-semibold text-cyan-300">
+      <p className="mt-2 wrap-break-word font-semibold text-cyan-300">
         {value}
       </p>
     </div>
@@ -4297,7 +4310,6 @@ const initialMaterial: MaterialCreate = {
     infrared_emissivity: 0.95,
     infrared_transmittance: 0,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     areal_density_g_m2: 150,
     specific_heat_j_kgk: 1300,
     source_type: "manual",
@@ -4472,11 +4484,7 @@ export default function NewMaterialPage() {
                 value={material.initial_version.projected_solar_area_factor}
                 onChange={(value) => updateVersion("projected_solar_area_factor", value)}
               />
-              <NumberInput
-                label="Absorbed Solar to Body Fraction"
-                value={material.initial_version.absorbed_solar_to_body_fraction}
-                onChange={(value) => updateVersion("absorbed_solar_to_body_fraction", value)}
-              />
+
 
               <NumberInput
                 label="Solar Reflectance"
@@ -5420,6 +5428,9 @@ const initialRequest: SimulationRequest = {
     wind_speed_m_s: 1.5,
     solar_radiation_w_m2: 800,
     sky_view_factor: 0.5,
+    direct_normal_irradiance_w_m2: null, 
+    diffuse_horizontal_irradiance_w_m2: null, 
+    ground_albedo: 0.2
   },
 
   person: {
@@ -5428,6 +5439,7 @@ const initialRequest: SimulationRequest = {
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    position: "standing",
   },
 
   control_material: {
@@ -5438,7 +5450,6 @@ const initialRequest: SimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.8,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 
   rc_material: {
@@ -5449,7 +5460,6 @@ const initialRequest: SimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
   },
 };
 
@@ -5869,6 +5879,8 @@ import type {
 import { NumberField } from "@/components/forms/number-field";
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
 import { getDefaultSimulationDateTime } from "@/lib/date-defaults";
+import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 
 
 const initialRequest: WeatherSimulationRequest = {
@@ -5876,6 +5888,7 @@ const initialRequest: WeatherSimulationRequest = {
   start_time_local: getDefaultSimulationDateTime(), 
   duration_minutes: 120,
   output_interval_minutes: 1,
+  environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
 
   person: {
     met: 2.6,
@@ -5883,6 +5896,7 @@ const initialRequest: WeatherSimulationRequest = {
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
     body_mass_kg: 70,
+    position: "standing",
   },
 
   control_material: {
@@ -5892,7 +5906,6 @@ const initialRequest: WeatherSimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.8,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     clothing_area_factor: null,
   },
 
@@ -5903,7 +5916,6 @@ const initialRequest: WeatherSimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     clothing_area_factor: null,
   },
 };
@@ -6144,6 +6156,16 @@ export default function WeatherSimulationPage() {
             </div>
           </section>
 
+          <div className="mt-8">
+            <EnvironmentAssumptionsFields
+              value={request.environment_assumptions ?? DEFAULT_ENVIRONMENT_ASSUMPTIONS}
+              disabled={submitting}
+              onChange={(environment_assumptions) =>
+                setRequest((current) => ({ ...current, environment_assumptions }))
+              }
+            />
+          </div>
+
           <div className="mt-8 grid gap-6 lg:grid-cols-2">
             <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
               <h2 className="text-lg font-semibold">Control Clothing</h2>
@@ -6376,6 +6398,11 @@ export function HeatFluxChart({
   const points =
     result.radiative_cooling.time_series;
 
+  // 檢查時間序列的第一個點是否包含 solar_incident_w_m2 屬性
+  const hasOptionalSeries =
+    points.length > 0 &&
+    "solar_incident_w_m2" in points[0];
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
       <h2 className="mb-4 text-xl font-semibold">
@@ -6421,6 +6448,22 @@ export function HeatFluxChart({
             mode: "lines",
             name: "Absorbed Solar Radiation",
           },
+          ...(hasOptionalSeries
+            ? [
+                {
+                  x: points.map((point) => point.minute),
+                  y: points.map(
+                    (point) =>
+                      (point as { solar_incident_w_m2?: number })
+                        .solar_incident_w_m2 ?? 0,
+                  ),
+                  type: "scatter" as const,
+                  mode: "lines" as const,
+                  name: "Incident Solar (per A_D)",
+                  visible: "legendonly" as const,
+                },
+              ]
+            : []),
         ]}
         layout={{
           autosize: true,
@@ -6468,6 +6511,8 @@ export function HeatFluxChart({
     </div>
   );
 }
+
+
 ```
 
 ### File: `frontend/src/components/charts/physiology-chart.tsx`
@@ -7014,6 +7059,52 @@ export function OptionalNumberField({
           </span>
         )}
       </div>
+
+      {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
+    </label>
+  );
+}
+```
+
+### File: `frontend/src/components/forms/select-field.tsx`
+```tsx
+"use client";
+
+type Option<T extends string> = { value: T; label: string };
+
+type SelectFieldProps<T extends string> = {
+  label: string;
+  value: T;
+  options: Option<T>[];
+  hint?: string;
+  disabled?: boolean;
+  onChange: (value: T) => void;
+};
+
+export function SelectField<T extends string>({
+  label,
+  value,
+  options,
+  hint,
+  disabled = false,
+  onChange,
+}: SelectFieldProps<T>) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm text-slate-300">{label}</span>
+
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
 
       {hint && <span className="mt-1 block text-xs text-slate-500">{hint}</span>}
     </label>
@@ -7904,6 +7995,156 @@ export function ProvenanceEditor({
 }
 ```
 
+### File: `frontend/src/components/simulation/environment-assumptions-fields.tsx`
+```tsx
+"use client";
+
+import { NumberField } from "@/components/forms/number-field";
+import { SelectField } from "@/components/forms/select-field";
+import type { EnvironmentAssumptions } from "@/types/simulation";
+
+type Props = {
+  value: EnvironmentAssumptions;
+  disabled?: boolean;
+  onChange: (value: EnvironmentAssumptions) => void;
+};
+
+/**
+ * Rules that turn ERA5 variables into model boundary conditions (Stage 2,
+ * Stage 5 adds ground albedo). Every value is echoed back in the result.
+ */
+export function EnvironmentAssumptionsFields({ value, disabled = false, onChange }: Props) {
+  function update<K extends keyof EnvironmentAssumptions>(
+    key: K,
+    next: EnvironmentAssumptions[K],
+  ) {
+    onChange({ ...value, [key]: next });
+  }
+
+  const solarMrt = value.mean_radiant_temperature_method === "air_plus_solar_linear";
+  const humidityOffset = value.sky_temperature_method === "humidity_offset";
+  const fixedOffset = value.sky_temperature_method === "fixed_offset";
+
+  return (
+    <details className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+      <summary className="cursor-pointer text-lg font-semibold">
+        Environment assumptions
+      </summary>
+
+      <p className="mt-2 text-sm text-slate-400">
+        How ERA5 air temperature, humidity, wind and irradiance become mean
+        radiant temperature, sky temperature and body-height wind. Defaults
+        reproduce the Stage 1 estimates.
+      </p>
+
+      <div className="mt-4 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <SelectField
+          label="Mean radiant temperature"
+          value={value.mean_radiant_temperature_method}
+          disabled={disabled}
+          options={[
+            { value: "air_plus_solar_linear", label: "Air + linear solar gain" },
+            { value: "equal_to_air", label: "Equal to air (shaded)" },
+          ]}
+          onChange={(v) => update("mean_radiant_temperature_method", v)}
+        />
+
+        {solarMrt && (
+          <>
+            <NumberField
+              label="Solar MRT gain"
+              suffix="K/(W/m²)"
+              value={value.solar_mrt_gain_k_per_w_m2}
+              min={0} max={0.05} step={0.001}
+              disabled={disabled}
+              onChange={(v) => update("solar_mrt_gain_k_per_w_m2", v)}
+            />
+            <NumberField
+              label="Solar MRT cap"
+              suffix="K"
+              value={value.solar_mrt_gain_cap_k}
+              min={0} max={40} step={0.5}
+              disabled={disabled}
+              onChange={(v) => update("solar_mrt_gain_cap_k", v)}
+            />
+          </>
+        )}
+
+        <SelectField
+          label="Sky temperature"
+          value={value.sky_temperature_method}
+          disabled={disabled}
+          options={[
+            { value: "humidity_offset", label: "Humidity-dependent offset" },
+            { value: "fixed_offset", label: "Fixed offset" },
+            { value: "swinbank", label: "Swinbank clear sky" },
+          ]}
+          onChange={(v) => update("sky_temperature_method", v)}
+        />
+
+        {humidityOffset && (
+          <>
+            <NumberField
+              label="Sky offset at 100 % RH"
+              suffix="K"
+              value={value.sky_offset_base_k}
+              min={0} max={40} step={0.5}
+              disabled={disabled}
+              onChange={(v) => update("sky_offset_base_k", v)}
+            />
+            <NumberField
+              label="Extra offset at 0 % RH"
+              suffix="K"
+              value={value.sky_offset_humidity_range_k}
+              min={0} max={40} step={0.5}
+              disabled={disabled}
+              onChange={(v) => update("sky_offset_humidity_range_k", v)}
+            />
+          </>
+        )}
+
+        {fixedOffset && (
+          <NumberField
+            label="Fixed sky offset"
+            suffix="K"
+            value={value.fixed_sky_offset_k}
+            min={0} max={50} step={0.5}
+            disabled={disabled}
+            onChange={(v) => update("fixed_sky_offset_k", v)}
+          />
+        )}
+
+        <NumberField
+          label="Sky view factor"
+          value={value.sky_view_factor}
+          min={0} max={1} step={0.05}
+          disabled={disabled}
+          onChange={(v) => update("sky_view_factor", v)}
+        />
+
+        <NumberField
+          label="Ground albedo"
+          value={value.ground_albedo}
+          min={0} max={1} step={0.05}
+          disabled={disabled}
+          hint="Shortwave reflectance of the ground (Stage 5, ADR 0006)."
+          onChange={(v) => update("ground_albedo", v)}
+        />
+
+        <NumberField
+          label="Wind scaling (10 m → body)"
+          value={value.wind_speed_scaling_factor}
+          min={0.05} max={1.5} step={0.01}
+          disabled={disabled}
+          hint="0.67 ≈ logarithmic profile to 1.1 m over open terrain."
+          onChange={(v) => update("wind_speed_scaling_factor", v)}
+        />
+      </div>
+    </details>
+  );
+}
+```
+
 ### File: `frontend/src/components/simulation/environment-input-fields.tsx`
 ```tsx
 "use client";
@@ -7991,7 +8232,7 @@ export function EnvironmentInputFields({
       />
 
       <NumberField
-        label="Solar Radiation"
+        label="Global Horizontal Irradiance"
         suffix="W/m²"
         value={environment.solar_radiation_w_m2}
         min={0}
@@ -7999,6 +8240,35 @@ export function EnvironmentInputFields({
         step={10}
         disabled={disabled}
         onChange={(value) => update("solar_radiation_w_m2", value)}
+      />
+
+      <OptionalNumberField
+        label="Direct Normal Irradiance"
+        suffix="W/m²"
+        value={environment.direct_normal_irradiance_w_m2}
+        placeholder="Not split"
+        min={0} max={1500} step={10}
+        disabled={disabled}
+        hint="Supply DNI and DHI together; leave both empty to treat GHI as beam."
+        onChange={(value) => update("direct_normal_irradiance_w_m2", value)}
+      />
+
+      <OptionalNumberField
+        label="Diffuse Horizontal Irradiance"
+        suffix="W/m²"
+        value={environment.diffuse_horizontal_irradiance_w_m2}
+        placeholder="Not split"
+        min={0} max={1500} step={10}
+        disabled={disabled}
+        onChange={(value) => update("diffuse_horizontal_irradiance_w_m2", value)}
+      />
+
+      <NumberField
+        label="Ground Albedo"
+        value={environment.ground_albedo}
+        min={0} max={1} step={0.05}
+        disabled={disabled}
+        onChange={(value) => update("ground_albedo", value)}
       />
 
       <NumberField
@@ -8034,6 +8304,7 @@ type PhysicalKey = Exclude<
   | "parameter_sources"
   | "source_type"
   | "source_reference"
+  | "absorbed_solar_to_body_fraction"
 >;
 
 type MaterialInputFieldsProps = {
@@ -8170,15 +8441,6 @@ export function MaterialInputFields({
           min={0} max={1} step={0.01}
           disabled={disabled}
           onChange={(value) => updatePhysical("projected_solar_area_factor", value)}
-        />
-
-        <NumberField
-          label="Absorbed Solar to Body Fraction"
-          value={material.absorbed_solar_to_body_fraction}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
-          hint="Share of textile-absorbed solar heat reaching the skin (ADR 0003)."
-          onChange={(value) => updatePhysical("absorbed_solar_to_body_fraction", value)}
         />
       </div>
 
@@ -8486,6 +8748,13 @@ const resolvedRows: ResolvedRow[] = [
     render: (scenario) =>
       formatNumber(scenario.body?.skin_heat_capacity_j_m2k, 0, " J/(m²·K)"),
   },
+  {
+    label: "Posture / A_r/A_D",
+    render: (scenario) =>
+      scenario.body?.position
+        ? `${scenario.body.position} (${formatNumber(scenario.body.effective_radiation_area_ratio, 2)})`
+        : "—",
+  },
 ];
 
 export function ModelProvenancePanel({ result }: ModelProvenancePanelProps) {
@@ -8722,6 +8991,7 @@ export function ModelQualityPanel({
 "use client";
 
 import { NumberField } from "@/components/forms/number-field";
+import { SelectField } from "@/components/forms/select-field";
 import type { PersonInput } from "@/types/simulation";
 
 type PersonInputFieldsProps = {
@@ -8740,7 +9010,7 @@ export function PersonInputFields({
   }
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
       <NumberField
         label="Activity Level"
         suffix="MET"
@@ -8795,6 +9065,18 @@ export function PersonInputFields({
         step={0.1}
         disabled={disabled}
         onChange={(value) => update("initial_skin_temperature_c", value)}
+      />
+
+      <SelectField
+        label="Posture"
+        value={person.position}
+        disabled={disabled}
+        options={[
+          { value: "standing", label: "Standing (A_r/A_D = 0.73)" },
+          { value: "sitting", label: "Sitting (A_r/A_D = 0.70)" },
+        ]}
+        hint="Effective radiation area for longwave and diffuse solar (Stage 5)."
+        onChange={(value) => update("position", value)}
       />
     </div>
   );
@@ -9535,6 +9817,37 @@ export async function getMaterialVersions(
 
 ```
 
+### File: `frontend/src/lib/date-defaults.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import {
+  getDefaultSimulationDateTime,
+  getPreviousCompleteYear,
+} from "@/lib/date-defaults";
+
+describe("date defaults", () => {
+  it("uses the previous calendar year", () => {
+    expect(getPreviousCompleteYear(new Date("2026-03-01T00:00:00"))).toBe(2025);
+  });
+
+  it("builds a datetime-local string for 15 July 10:00", () => {
+    expect(getDefaultSimulationDateTime(new Date("2026-03-01T00:00:00"))).toBe(
+      "2025-07-15T10:00",
+    );
+  });
+
+  it("rejects invalid dates", () => {
+    expect(() => getPreviousCompleteYear(new Date("nope"))).toThrow();
+  });
+  it("matches the datetime-local value format exactly", () => {
+    expect(getDefaultSimulationDateTime(new Date("2026-03-01T00:00:00"))).toMatch(
+      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
+    );
+  });
+});
+```
+
 ### File: `frontend/src/lib/date-defaults.ts`
 ```typescript
 const DEFAULT_SIMULATION_MONTH = 7;
@@ -9546,9 +9859,7 @@ function padTwoDigits(value: number): string {
   return value.toString().padStart(2, "0");
 }
 
-export function getPreviousCompleteYear(
-  now: Date = new Date(),
-): number {
+export function getPreviousCompleteYear(now: Date = new Date()): number {
   if (Number.isNaN(now.getTime())) {
     throw new Error("A valid date is required.");
   }
@@ -9556,18 +9867,71 @@ export function getPreviousCompleteYear(
   return now.getFullYear() - 1;
 }
 
-export function getDefaultSimulationDateTime(
-  now: Date = new Date(),
-): string {
+/** `YYYY-MM-DDTHH:mm`, the value format of an `<input type="datetime-local">`. */
+export function getDefaultSimulationDateTime(now: Date = new Date()): string {
   const year = getPreviousCompleteYear(now);
 
-  return [
-    `${year}-${padTwoDigits(DEFAULT_SIMULATION_MONTH)}`,
-    `${padTwoDigits(DEFAULT_SIMULATION_DAY)}T`,
-    `${padTwoDigits(DEFAULT_SIMULATION_HOUR)}:`,
+  const date = [
+    String(year),
+    padTwoDigits(DEFAULT_SIMULATION_MONTH),
+    padTwoDigits(DEFAULT_SIMULATION_DAY),
+  ].join("-");
+
+  const time = [
+    padTwoDigits(DEFAULT_SIMULATION_HOUR),
     padTwoDigits(DEFAULT_SIMULATION_MINUTE),
-  ].join("");
+  ].join(":");
+
+  return `${date}T${time}`;
 }
+```
+
+### File: `frontend/src/lib/environment-assumptions.ts`
+```typescript
+import type { EnvironmentAssumptions } from "@/types/simulation";
+
+/** Mirrors the backend defaults (GET /api/v1/model/environment-assumptions/defaults). */
+export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
+  mean_radiant_temperature_method: "air_plus_solar_linear",
+  solar_mrt_gain_k_per_w_m2: 0.012,
+  solar_mrt_gain_cap_k: 15,
+  sky_temperature_method: "humidity_offset",
+  sky_offset_base_k: 5,
+  sky_offset_humidity_range_k: 10,
+  fixed_sky_offset_k: 15,
+  sky_view_factor: 0.5,
+  wind_speed_scaling_factor: 1,
+  ground_albedo: 0.2,
+};
+```
+
+### File: `frontend/src/lib/format.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { formatNumber, formatSignedNumber } from "@/lib/format";
+
+describe("formatNumber", () => {
+  it("renders an em dash for missing or non-finite values", () => {
+    expect(formatNumber(null)).toBe("—");
+    expect(formatNumber(undefined)).toBe("—");
+    expect(formatNumber(Number.NaN)).toBe("—");
+    expect(formatNumber(Number.POSITIVE_INFINITY)).toBe("—");
+  });
+
+  it("applies digits and unit", () => {
+    expect(formatNumber(1.23456, 3, " °C")).toBe("1.235 °C");
+    expect(formatNumber(2)).toBe("2.00");
+  });
+});
+
+describe("formatSignedNumber", () => {
+  it("prefixes positive values only", () => {
+    expect(formatSignedNumber(0.5, 1)).toBe("+0.5");
+    expect(formatSignedNumber(-0.5, 1)).toBe("-0.5");
+    expect(formatSignedNumber(0, 1)).toBe("0.0");
+  });
+});
 ```
 
 ### File: `frontend/src/lib/format.ts`
@@ -9599,6 +9963,55 @@ export function formatSignedNumber(
 }
 ```
 
+### File: `frontend/src/lib/time-series.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
+import type { TimeSeriesPoint } from "@/types/simulation";
+
+function point(overrides: Partial<TimeSeriesPoint> = {}): TimeSeriesPoint {
+  return {
+    minute: 0,
+    core_temperature_c: 36.8,
+    skin_temperature_c: 33.7,
+    convection_w_m2: 0,
+    longwave_radiation_w_m2: 0,
+    evaporation_w_m2: 0,
+    absorbed_solar_w_m2: 0,
+    core_to_skin_w_m2: 0,
+    ...overrides,
+  };
+}
+
+describe("hasOptionalSeries", () => {
+  it("is false when every value is absent or null", () => {
+    const points = [point(), point({ skin_wettedness: null })];
+    expect(hasOptionalSeries(points, "skin_wettedness")).toBe(false);
+  });
+
+  it("is true when at least one numeric value exists", () => {
+    const points = [point(), point({ skin_wettedness: 0.2 })];
+    expect(hasOptionalSeries(points, "skin_wettedness")).toBe(true);
+  });
+});
+
+describe("pluckOptionalSeries", () => {
+  it("maps missing and non-finite values to null", () => {
+    const points = [
+      point({ clothing_surface_temperature_c: 35.1 }),
+      point({ clothing_surface_temperature_c: null }),
+      point(),
+      point({ clothing_surface_temperature_c: Number.NaN }),
+    ];
+
+    expect(
+      pluckOptionalSeries(points, "clothing_surface_temperature_c"),
+    ).toEqual([35.1, null, null, null]);
+  });
+});
+```
+
 ### File: `frontend/src/lib/time-series.ts`
 ```typescript
 import type { TimeSeriesPoint } from "@/types/simulation";
@@ -9608,7 +10021,10 @@ export type OptionalSeriesKey =
   | "maximum_evaporation_w_m2"
   | "skin_wettedness"
   | "clothing_surface_temperature_c"
-  | "skin_blood_flow_kg_h_m2";
+  | "skin_blood_flow_kg_h_m2"
+  | "solar_incident_w_m2"
+  | "solar_absorbed_by_textile_w_m2"
+  | "solar_transmitted_w_m2";
 
 export function hasOptionalSeries(
   points: TimeSeriesPoint[],
@@ -9758,6 +10174,7 @@ export type GaggeBenchmarkResponse = {
 import type {
   MaterialInput,
   PersonInput,
+  EnvironmentAssumptions,
 } from "@/types/simulation";
 
 
@@ -9848,6 +10265,7 @@ export type GlobalBatchCreate = {
   person: PersonInput;
   control_material: MaterialInput;
   rc_material: MaterialInput;
+  environment_assumptions?: EnvironmentAssumptions;
 };
 
 
@@ -10072,6 +10490,8 @@ export type GlobalBatch = {
   updated_at: string;
   started_at: string | null;
   completed_at: string | null;
+  control_material_version_id?: string | null;
+  rc_material_version_id?: string | null;
 };
 
 
@@ -10252,7 +10672,7 @@ export type MaterialVersionInput = {
   infrared_emissivity: number;
   infrared_transmittance: number;
   projected_solar_area_factor: number;
-  absorbed_solar_to_body_fraction: number;
+  absorbed_solar_to_body_fraction?: number;
   areal_density_g_m2: number | null;
   specific_heat_j_kgk: number | null;
   source_type: string;
@@ -10364,25 +10784,47 @@ export type ParameterSource = {
 
 /** How the solver obtained a resolved clothing quantity. */
 export type ResolvedParameterSource = "material_input" | "derived_from_clo";
+export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
+export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
+
+export type EnvironmentAssumptions = {
+  mean_radiant_temperature_method: MeanRadiantTemperatureMethod;
+  solar_mrt_gain_k_per_w_m2: number;
+  solar_mrt_gain_cap_k: number;
+  sky_temperature_method: SkyTemperatureMethod;
+  sky_offset_base_k: number;
+  sky_offset_humidity_range_k: number;
+  fixed_sky_offset_k: number;
+  sky_view_factor: number;
+  wind_speed_scaling_factor: number;
+  ground_albedo: number;
+};
+
+export type BodyPosition = "standing" | "sitting";
 
 export type EnvironmentInput = {
   air_temperature_c: number;
   mean_radiant_temperature_c: number;
-  /** `null` lets the backend derive the sky temperature. */
   sky_temperature_c: number | null;
   relative_humidity_percent: number;
   wind_speed_m_s: number;
+  /** Global horizontal irradiance. */
   solar_radiation_w_m2: number;
   sky_view_factor: number;
+  /** Stage 5: supply both DNI and DHI or neither. */
+  direct_normal_irradiance_w_m2: number | null;
+  diffuse_horizontal_irradiance_w_m2: number | null;
+  ground_albedo: number;
 };
 
 export type PersonInput = {
   met: number;
-  /** Stage 3 (ADR 0001): drives core/skin heat capacities. Backend default 70 kg. */
   body_mass_kg: number;
   body_surface_area_m2: number;
   initial_core_temperature_c: number;
   initial_skin_temperature_c: number;
+  /** Stage 5 (ADR 0006). */
+  position: BodyPosition;
 };
 
 export type MaterialInput = {
@@ -10396,7 +10838,8 @@ export type MaterialInput = {
   infrared_emissivity: number;
   infrared_transmittance?: number;
   projected_solar_area_factor: number;
-  absorbed_solar_to_body_fraction: number;
+  /** @deprecated Stage 5, ignored by the backend. */ 
+  absorbed_solar_to_body_fraction?: number | null;
   material_version_id?: string | null;
   parameter_sources?: Record<string, ParameterSource> | null;
   source_type?: string | null;
@@ -10432,6 +10875,9 @@ export type TimeSeriesPoint = {
   clothing_surface_temperature_c?: number | null;
   /** Stage 3 */
   skin_blood_flow_kg_h_m2?: number | null;
+  solar_incident_w_m2?: number | null; 
+  solar_absorbed_by_textile_w_m2?: number | null; 
+  solar_transmitted_w_m2?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -10461,6 +10907,8 @@ export type BodyThermalSummary = {
   body_surface_area_m2: number;
   core_heat_capacity_j_m2k: number;
   skin_heat_capacity_j_m2k: number;
+  position?: BodyPosition | null;
+  effective_radiation_area_ratio?: number | null;
 };
 
 export type ScenarioResult = {
@@ -10549,11 +10997,13 @@ export type WeatherSimulationRequest = {
   person: PersonInput;
   control_material: MaterialInput;
   rc_material: MaterialInput;
+  environment_assumptions?: EnvironmentAssumptions;
 };
 
 export type WeatherSimulationResponse = SimulationResponse & {
   weather: WeatherTimeSeries;
   environment_model_note: string;
+  environment_assumptions?: EnvironmentAssumptions | null;
 };
 
 export type SimulationJobStatus =

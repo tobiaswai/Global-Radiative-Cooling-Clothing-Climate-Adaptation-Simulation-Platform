@@ -49,10 +49,14 @@ async def test_execute_weather_simulation(
     control_result = SimpleNamespace(
         time_series=[
             SimpleNamespace(
-                skin_temperature_c=35.0,
+            minute=0,
+            skin_temperature_c=35.0,
+            core_temperature_c=37.5,
             ),
             SimpleNamespace(
-                skin_temperature_c=36.0,
+            minute=60,
+            skin_temperature_c=36.0,
+            core_temperature_c=38.0,
             ),
         ],
         final_skin_temperature_c=36.0,
@@ -62,10 +66,14 @@ async def test_execute_weather_simulation(
     rc_result = SimpleNamespace(
         time_series=[
             SimpleNamespace(
-                skin_temperature_c=33.0,
+            minute=0,
+            skin_temperature_c=33.0,
+            core_temperature_c=37.0,
             ),
             SimpleNamespace(
-                skin_temperature_c=34.0,
+            minute=60,
+            skin_temperature_c=34.0,
+            core_temperature_c=37.5,
             ),
         ],
         final_skin_temperature_c=34.0,
@@ -240,7 +248,9 @@ async def test_execute_weather_simulation_without_callback(
     scenario = SimpleNamespace(
         time_series=[
             SimpleNamespace(
-                skin_temperature_c=34.0,
+            minute=0,
+            skin_temperature_c=34.0,
+            core_temperature_c=37.0,
             )
         ],
         final_skin_temperature_c=34.0,

@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from datetime import (
     date,
     datetime,
     timedelta,
     timezone,
 )
+from datetime import timezone as dt_timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -317,6 +319,31 @@ def safe_float(
 
     return float(value)
 
+logger = logging.getLogger(__name__)
+
+
+def to_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        raise ValueError("to_utc requires an aware datetime")
+    return value.astimezone(dt_timezone.utc)
+
+
+def payload_timezone(payload: dict, city: CityConfig):
+    """Fixed offset Open-Meteo applied when rendering local time strings.
+
+    Open-Meteo returns one utc_offset_seconds per response and renders every
+    hourly time string with it. Re-applying the same fixed offset is the exact
+    inverse; ZoneInfo(city.timezone) is not, because on a DST fall-back day it
+    maps two different instants to the same wall-clock string.
+    """
+    offset = payload.get("utc_offset_seconds")
+    if offset is None:
+        logger.warning(
+            "Open-Meteo payload lacks utc_offset_seconds; falling back to "
+            "ZoneInfo(%s). DST days may be mis-parsed.", city.timezone,
+        )
+        return ZoneInfo(city.timezone)
+    return dt_timezone(timedelta(seconds=int(offset)))
 
 def parse_weather_points(
     payload: dict,
@@ -373,15 +400,13 @@ def parse_weather_points(
         expected_length,
     )
 
-    city_timezone = ZoneInfo(city.timezone)
+    tz = payload_timezone(payload, city)
     points: list[WeatherPoint] = []
 
     for index, timestamp_text in enumerate(times):
         # Open-Meteo 在指定 timezone 時返回當地時間，
         # 字符串本身通常不附帶 UTC offset。
-        timestamp = datetime.fromisoformat(
-            timestamp_text
-        ).replace(tzinfo=city_timezone)
+        timestamp = datetime.fromisoformat(timestamp_text).replace(tzinfo=tz)
 
         points.append(
             WeatherPoint(
@@ -444,13 +469,11 @@ async def get_historical_weather(
     start_time_local: datetime,
     duration_minutes: int,
 ) -> WeatherTimeSeries:
-    start_time = normalize_local_datetime(
-        start_time_local,
-        city.timezone,
-    )
-
-    end_time = start_time + timedelta(
-        minutes=duration_minutes
+    start_time = normalize_local_datetime(start_time_local, city.timezone)
+    # Elapsed-time arithmetic must happen in UTC; adding a timedelta to a
+    # ZoneInfo datetime is wall-clock arithmetic and drifts across DST.
+    end_time = (to_utc(start_time) + timedelta(minutes=duration_minutes)).astimezone(
+        ZoneInfo(city.timezone)
     )
 
     return await get_historical_weather_range(
@@ -505,8 +528,11 @@ async def get_historical_weather_range(
 
     raw_points = parse_weather_points(payload, city)
 
-    cleaned_points, quality = normalize_timeline(raw_points)
-
+    cleaned_points, quality = normalize_timeline(
+        raw_points,
+        expected_step_seconds=DEFAULT_STEP_SECONDS,  # hourly data was requested; never infer
+    )
+    
     if require_window_coverage:
         ensure_window_covered(
             cleaned_points,
@@ -566,8 +592,10 @@ def slice_weather_time_series(
         weather.city.timezone,
     )
 
-    end_time = start_time + timedelta(minutes=duration_minutes)
-
+    end_time = (to_utc(start_time) + timedelta(minutes=duration_minutes)).astimezone(
+        ZoneInfo(weather.city.timezone)
+    )
+    
     step_seconds = (
         weather.source.quality.expected_step_seconds
         if weather.source.quality is not None

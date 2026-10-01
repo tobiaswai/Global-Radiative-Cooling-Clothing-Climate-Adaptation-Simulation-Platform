@@ -120,19 +120,12 @@ def detect_gaps(
     gaps: list[WeatherGap] = []
 
     for previous, current in zip(points, points[1:]):
-        delta = current.timestamp - previous.timestamp
+        delta_seconds = current.timestamp.timestamp() - previous.timestamp.timestamp()
 
-        if delta > tolerance:
-            missing_steps = int(round(delta / step)) - 1
-
-            gaps.append(
-                WeatherGap(
-                    start=previous.timestamp,
-                    end=current.timestamp,
-                    missing_steps=max(1, missing_steps),
-                )
-            )
-
+        if delta_seconds > step_seconds * (1.0 + STEP_TOLERANCE_FRACTION):
+            missing_steps = int(round(delta_seconds / step_seconds)) - 1
+            gaps.append(WeatherGap(start=previous.timestamp, end=current.timestamp,
+                                missing_steps=max(1, missing_steps)))
     return gaps
 
 
