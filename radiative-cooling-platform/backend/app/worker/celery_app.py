@@ -40,3 +40,10 @@ celery_app.conf.update(
         },
     },
 )
+
+celery_app.conf.beat_schedule = {
+    "reap-expired-leases": {
+        "task": "app.<tasks module>.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+    },
+}

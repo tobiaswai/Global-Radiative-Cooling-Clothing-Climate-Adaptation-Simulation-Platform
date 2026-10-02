@@ -15,6 +15,7 @@ from fastapi.responses import Response
 from sqlalchemy import (
     func,
     select,
+    update,
 )
 from sqlalchemy.orm import (
     Session,
@@ -51,8 +52,10 @@ from app.services.global_batch_export import (
 from app.services.global_batch_service import (
     batch_to_detail,
     batch_to_response,
+    reconcile_batch,
     refresh_batch_status,
 )
+from app.services.job_state import BatchStatus, CityStatus, assert_batch_transition
 from app.worker.celery_app import celery_app
 from app.worker.tasks import (
     run_global_city_analysis_task,
@@ -669,3 +672,25 @@ def retry_failed_cities(
         ) from error
 
     return batch_to_response(batch)
+
+@router.post("/{batch_id}/cancel", status_code=202)
+def cancel_batch(batch_id: str, db: Session = Depends(get_db)):
+    batch = db.get(GlobalBatchJob, batch_id)
+    if batch is None:
+        raise HTTPException(404)
+    if batch.status in (BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.CANCELLED):
+        return {"status": batch.status}          # 冪等：已終態直接回
+    assert_batch_transition(batch.status, BatchStatus.CANCELLING)
+    batch.status = BatchStatus.CANCELLING
+    batch.cancel_requested_at = func.now()
+    # 還在 queued、沒人持有租約的 city 直接標 cancelled
+    db.execute(
+        update(GlobalCityResult)
+        .where(GlobalCityResult.batch_id == batch_id,
+               GlobalCityResult.status == CityStatus.QUEUED,
+               GlobalCityResult.lease_owner.is_(None))
+        .values(status=CityStatus.CANCELLED)
+    )
+    db.commit()
+    reconcile_batch(db, batch_id)
+    return {"status": batch.status}
