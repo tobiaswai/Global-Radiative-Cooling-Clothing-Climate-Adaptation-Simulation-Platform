@@ -6,6 +6,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    Index,          # new
     Integer,
     String,
     Text,
@@ -139,6 +140,35 @@ class GlobalBatchJob(Base):
         index=True,
     )
 
+    # Stage 7. Job-level state machine + lease.
+    attempt: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
+    lease_owner: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+    )
+
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
 class GlobalCityResult(Base):
     __tablename__ = "global_city_results"
 
@@ -147,6 +177,11 @@ class GlobalCityResult(Base):
             "batch_id",
             "city_id",
             name="uq_global_batch_city",
+        ),
+        Index(
+            "ix_global_city_results_lease_reap",
+            "status",
+            "lease_expires_at",
         ),
     )
 
@@ -303,6 +338,22 @@ class GlobalCityResult(Base):
         nullable=True,
     )
 
+    lease_owner: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+    )
+
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    checkpoints: Mapped[list["GlobalCityCheckpoint"]] = relationship(
+        back_populates="city_result",
+        cascade="all, delete-orphan",
+        order_by="GlobalCityCheckpoint.month",
+    )
+
     skin_improvement_p50_c: Mapped[float | None] = mapped_column(
         Float,
         nullable=True,
@@ -383,4 +434,61 @@ class GlobalCityResult(Base):
 
     batch: Mapped["GlobalBatchJob"] = relationship(
         back_populates="city_results",
+    )
+    
+class GlobalCityCheckpoint(Base):
+    """Durable per-month checkpoint so a retried city task can resume
+    without re-reading a half-written monthly_json."""
+
+    __tablename__ = "global_city_checkpoints"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "city_result_id",
+            "month",
+            name="uq_global_city_checkpoint_month",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(
+        String(36),
+        primary_key=True,
+        default=lambda: str(uuid4()),
+    )
+
+    city_result_id: Mapped[str] = mapped_column(
+        ForeignKey(
+            "global_city_results.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+        index=True,
+    )
+
+    month: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    # retry_count of the city at the time this checkpoint was written
+    attempt: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
+
+    payload_json: Mapped[dict] = mapped_column(
+        JSONB,
+        nullable=False,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+    )
+
+    city_result: Mapped["GlobalCityResult"] = relationship(
+        back_populates="checkpoints",
     )
