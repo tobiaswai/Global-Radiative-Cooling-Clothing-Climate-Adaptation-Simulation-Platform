@@ -2,7 +2,10 @@ from datetime import (
     datetime,
     timezone,
 )
+import asyncio
+import json
 
+import anyio
 from celery import group
 from fastapi import (
     APIRouter,
@@ -10,12 +13,12 @@ from fastapi import (
     HTTPException,
     Query,
     status,
+    Request,
 )
-from fastapi.responses import Response
+from fastapi.responses import Response,StreamingResponse
 from sqlalchemy import (
     func,
     select,
-    update,
 )
 from sqlalchemy.orm import (
     Session,
@@ -26,7 +29,7 @@ from app.core.cities import (
     get_city,
     list_cities,
 )
-from app.db.session import get_db
+from app.db.session import get_db, SessionLocal
 from app.models.global_batch import (
     GlobalBatchJob,
     GlobalCityResult,
@@ -37,6 +40,8 @@ from app.schemas.global_batch import (
     GlobalBatchEstimateResponse,
     GlobalBatchListResponse,
     GlobalBatchResponse,
+    CityCheckpointListResponse, 
+    GlobalBatchProgressEvent
 )
 from app.services.annual_sampling import (
     estimate_sample_count,
@@ -52,18 +57,18 @@ from app.services.global_batch_export import (
 from app.services.global_batch_service import (
     batch_to_detail,
     batch_to_response,
-    reconcile_batch,
     refresh_batch_status,
+    batch_progress_event,
+    city_checkpoints_to_response,
+    load_checkpoint_months,
 )
-from app.services.job_state import BatchStatus, CityStatus, assert_batch_transition
-from app.worker.celery_app import celery_app
-from app.worker.tasks import (
-    run_global_city_analysis_task,
-)
-
 from app.services.material_resolution import (
     linked_material_version_ids,
     resolve_request_materials,
+)
+from app.worker.celery_app import celery_app
+from app.worker.tasks import (
+    run_global_city_analysis_task,
 )
 
 router = APIRouter(
@@ -345,27 +350,91 @@ def list_global_batches(
     )
 
 
-@router.get(
-    "/{batch_id}",
-    response_model=GlobalBatchDetail,
-)
-def get_global_batch(
-    batch_id: str,
-    session: Session = Depends(get_db),
-) -> GlobalBatchDetail:
-    batch = load_batch(
-        session,
-        batch_id,
-    )
-
+@router.get("/{batch_id}", response_model=GlobalBatchDetail)
+def get_global_batch(batch_id: str, session: Session = Depends(get_db)) -> GlobalBatchDetail:
+    batch = load_batch(session, batch_id)
     if batch is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Global batch not found",
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
+    return batch_to_detail(batch, checkpoint_months=load_checkpoint_months(session, batch.id))
+
+TERMINAL_BATCH_STATUSES = {"completed", "partial_completed", "failed", "cancelled"}
+
+
+@router.get(
+    "/{batch_id}/cities/{city_result_id}/checkpoints",
+    response_model=CityCheckpointListResponse,
+)
+def list_city_checkpoints(
+    batch_id: str,
+    city_result_id: str,
+    session: Session = Depends(get_db),
+) -> CityCheckpointListResponse:
+    batch = session.get(GlobalBatchJob, batch_id)
+    if batch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
+
+    city_result = session.scalar(
+        select(GlobalCityResult).where(
+            GlobalCityResult.id == city_result_id,
+            GlobalCityResult.batch_id == batch_id,
         )
+    )
+    if city_result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="City result not found")
 
-    return batch_to_detail(batch)
+    return city_checkpoints_to_response(session, batch=batch, city_result=city_result)
 
+
+def load_batch_progress_snapshot(batch_id: str) -> GlobalBatchProgressEvent | None:
+    with SessionLocal() as session:
+        batch = load_batch(session, batch_id)
+        if batch is None:
+            return None
+        return batch_progress_event(batch, load_checkpoint_months(session, batch_id))
+
+
+@router.get("/{batch_id}/events")
+async def global_batch_events(batch_id: str, request: Request) -> StreamingResponse:
+    """Server-sent progress. Emits ``progress`` when the lightweight snapshot
+    changes and a final ``terminal`` event; clients fetch the full detail
+    themselves when city counts change."""
+    initial = await anyio.to_thread.run_sync(load_batch_progress_snapshot, batch_id)
+    if initial is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
+
+    async def event_generator():
+        previous_payload: str | None = None
+
+        while True:
+            if await request.is_disconnected():
+                break
+
+            snapshot = await anyio.to_thread.run_sync(load_batch_progress_snapshot, batch_id)
+            if snapshot is None:
+                yield 'event: error\ndata: {"detail":"batch not found"}\n\n'
+                break
+
+            payload = json.dumps(snapshot.model_dump(mode="json"), ensure_ascii=False)
+
+            if payload != previous_payload:
+                yield f"event: progress\ndata: {payload}\n\n"
+                previous_payload = payload
+
+            if snapshot.batch.status in TERMINAL_BATCH_STATUSES:
+                yield f"event: terminal\ndata: {payload}\n\n"
+                break
+
+            await asyncio.sleep(2)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 @router.post(
     "/{batch_id}/cancel",
@@ -406,6 +475,7 @@ def cancel_global_batch(
     batch.stage = (
         "waiting_for_cooperative_cancel"
     )
+    batch.cancel_requested_at = batch.cancel_requested_at or now
 
     for result in batch.city_results:
         if result.status == "queued":
@@ -672,25 +742,3 @@ def retry_failed_cities(
         ) from error
 
     return batch_to_response(batch)
-
-@router.post("/{batch_id}/cancel", status_code=202)
-def cancel_batch(batch_id: str, db: Session = Depends(get_db)):
-    batch = db.get(GlobalBatchJob, batch_id)
-    if batch is None:
-        raise HTTPException(404)
-    if batch.status in (BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.CANCELLED):
-        return {"status": batch.status}          # 冪等：已終態直接回
-    assert_batch_transition(batch.status, BatchStatus.CANCELLING)
-    batch.status = BatchStatus.CANCELLING
-    batch.cancel_requested_at = func.now()
-    # 還在 queued、沒人持有租約的 city 直接標 cancelled
-    db.execute(
-        update(GlobalCityResult)
-        .where(GlobalCityResult.batch_id == batch_id,
-               GlobalCityResult.status == CityStatus.QUEUED,
-               GlobalCityResult.lease_owner.is_(None))
-        .values(status=CityStatus.CANCELLED)
-    )
-    db.commit()
-    reconcile_batch(db, batch_id)
-    return {"status": batch.status}

@@ -5,7 +5,7 @@ from datetime import (
 )
 
 from celery import Task
-from fastapi import logger
+import logging
 
 from app.core.time import utc_now
 from app.db.session import SessionLocal
@@ -64,6 +64,8 @@ from app.services.leases import (
     heartbeat_city_lease,
     release_city_lease,
 )
+
+logger = logging.getLogger(__name__)   # replaces: from fastapi import logger
 
 class JobCancelledError(Exception):
     pass
@@ -353,7 +355,9 @@ def run_global_city_analysis_task(
             )
             payloads: list[dict] = []
             if should_resume:
-                _, payloads = load_resume_state(session, city_result_id)
+                _, payloads = load_resume_state(
+                    session, city_result_id, start_month=request.start_month
+                )
                 if not payloads and city_result.monthly_json:
                     payloads = list(city_result.monthly_json)
 
@@ -635,7 +639,7 @@ def run_global_city_analysis_task(
             with SessionLocal() as session:
                 release_city_lease(session, city_result_id, owner)
 
-@celery_app.task
+@celery_app.task(name="global_batch.reap_expired_leases")
 def reap_expired_leases():
     with SessionLocal() as db:
         stale = db.execute(

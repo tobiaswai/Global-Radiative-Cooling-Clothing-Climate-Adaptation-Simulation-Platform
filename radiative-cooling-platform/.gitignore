@@ -54,3 +54,4 @@ Thumbs.db
 backend/coverage.xml
 backend/htmlcov/
 backend/.pytest_cache/
+backend/celerybeat-schedule*

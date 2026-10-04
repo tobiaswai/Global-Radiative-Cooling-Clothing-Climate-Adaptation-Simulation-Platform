@@ -24,7 +24,7 @@ app = FastAPI(
         "Backend API for simulating and evaluating radiative cooling "
         "clothing under global climate conditions."
     ),
-    version="0.3.0",
+    version="0.4.0",
 )
 
 add_cors_middleware(

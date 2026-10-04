@@ -9,6 +9,8 @@ from app.models.material import (
 )
 from app.models.simulation_job import SimulationJob
 
+from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult
+
 __all__ = [
     "GlobalBatchJob",
     "GlobalCityResult",
@@ -16,4 +18,5 @@ __all__ = [
     "MaterialSpectrum",
     "MaterialVersion",
     "SimulationJob",
+    "GlobalCityCheckpoint",
 ]

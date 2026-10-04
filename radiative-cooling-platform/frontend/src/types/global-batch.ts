@@ -181,6 +181,28 @@ export type HeatwaveEvent = {
   beneficial_day_count: number;
 };
 
+export type LeaseState = "none" | "live" | "expired";
+
+export type DataQualityInfo = {
+  weather_source: string;            // e.g. "open-meteo" | "cache" | "synthetic_fallback"
+  cached_sample_count: number;
+  fetched_sample_count: number;
+  skipped_sample_count: number;
+  coverage_ratio: number;            // 0–1
+  warnings: string[];
+  skipped_weighted_days?: number | null;
+  skip_reasons?: Record<string, number>;
+  monthly_weather_payload_sha256?: Record<string, string | null>;
+};
+
+export type MetricDefinition = {
+  label: string;
+  description: string;
+  display_name: string;
+  unit?: string | null;
+  formula?: string | null;
+  interpretation?: string | null;
+};
 
 export type GlobalCityResult = {
   id: string;
@@ -294,6 +316,14 @@ export type GlobalCityResult = {
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
+
+  // Stage 8
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  lease_state?: LeaseState;
+  checkpoint_months?: number[];
+  data_quality?: DataQualityInfo | null;
+  metric_definitions?: Record<string, MetricDefinition> | null;
 };
 
 
@@ -319,8 +349,57 @@ export type GlobalBatch = {
   completed_at: string | null;
   control_material_version_id?: string | null;
   rc_material_version_id?: string | null;
+
+  // Stage 8
+  attempt?: number;
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  last_heartbeat_at?: string | null;
+  cancel_requested_at?: string | null;
 };
 
+export type GlobalCityProgress = {
+  id: string;
+  city_id: string;
+  status: GlobalCityStatus;
+  stage: string;
+  progress: number;
+  retry_count: number;
+  completed_month_count: number;
+  last_checkpoint_month: number | null;
+  last_heartbeat_at: string | null;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
+  lease_state: LeaseState;
+  checkpoint_months: number[];
+  error_message: string | null;
+};
+
+
+export type GlobalBatchProgressEvent = {
+  batch: GlobalBatch;
+  cities: GlobalCityProgress[];
+};
+
+export type CityCheckpoint = {
+  id: string;
+  month: number;
+  attempt: number;
+  created_at: string;
+  payload_sha256: string;
+  sampled_day_count: number;
+  skipped_sample_count: number;
+};
+
+export type CityCheckpointList = {
+  batch_id: string;
+  city_result_id: string;
+  city_id: string;
+  start_month: number;
+  end_month: number;
+  items: CityCheckpoint[];
+  resume_from_month: number;
+};
 
 export type GlobalBatchDetail =
   GlobalBatch & {

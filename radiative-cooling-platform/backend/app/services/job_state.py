@@ -5,7 +5,8 @@ class BatchStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
     CANCELLING = "cancelling"
-    COMPLETED = "completed"      # ← 對齊 Step 1 盤點到的既有字串
+    COMPLETED = "completed"
+    PARTIAL_COMPLETED = "partial_completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
 
@@ -19,13 +20,27 @@ class CityStatus(StrEnum):
 
 
 BATCH_TRANSITIONS: dict[BatchStatus, frozenset[BatchStatus]] = {
-    BatchStatus.QUEUED:     frozenset({BatchStatus.RUNNING, BatchStatus.CANCELLING, BatchStatus.CANCELLED, BatchStatus.FAILED}),
-    BatchStatus.RUNNING:    frozenset({BatchStatus.COMPLETED, BatchStatus.FAILED, BatchStatus.CANCELLING}),
-    BatchStatus.CANCELLING: frozenset({BatchStatus.CANCELLED, BatchStatus.FAILED}),
-    BatchStatus.COMPLETED:  frozenset(),
-    BatchStatus.FAILED:     frozenset(),
-    BatchStatus.CANCELLED:  frozenset(),
+    BatchStatus.QUEUED: frozenset({
+        BatchStatus.RUNNING, BatchStatus.CANCELLING, BatchStatus.CANCELLED, BatchStatus.FAILED,
+    }),
+    BatchStatus.RUNNING: frozenset({
+        BatchStatus.COMPLETED, BatchStatus.PARTIAL_COMPLETED, BatchStatus.FAILED,
+        BatchStatus.CANCELLING, BatchStatus.CANCELLED,
+    }),
+    # Cancel requested while cities were already finishing: any terminal outcome is legal.
+    BatchStatus.CANCELLING: frozenset({
+        BatchStatus.CANCELLED, BatchStatus.PARTIAL_COMPLETED, BatchStatus.COMPLETED, BatchStatus.FAILED,
+    }),
+    # Retry (POST /retry-failed) re-opens a batch.
+    BatchStatus.FAILED: frozenset({BatchStatus.RUNNING}),
+    BatchStatus.PARTIAL_COMPLETED: frozenset({BatchStatus.RUNNING}),
+    BatchStatus.COMPLETED: frozenset(),
+    BatchStatus.CANCELLED: frozenset(),
 }
+
+TERMINAL_BATCH = frozenset({
+    BatchStatus.COMPLETED, BatchStatus.PARTIAL_COMPLETED, BatchStatus.FAILED, BatchStatus.CANCELLED,
+})
 
 CITY_TRANSITIONS: dict[CityStatus, frozenset[CityStatus]] = {
     CityStatus.QUEUED:    frozenset({CityStatus.RUNNING, CityStatus.CANCELLED}),
@@ -53,12 +68,16 @@ def assert_city_transition(current: str, target: str) -> None:
 
 
 def derive_batch_status(counts: dict[str, int], total: int, cancel_requested: bool) -> BatchStatus | None:
-    """所有 city 都 terminal 時回傳 batch 應收斂到的狀態，否則 None。"""
-    done = counts.get("completed", 0) + counts.get("failed", 0) + counts.get("cancelled", 0)
-    if done < total:
+    """Same rule as global_batch_service.refresh_batch_status; None while cities are pending."""
+    completed = counts.get("completed", 0)
+    failed = counts.get("failed", 0)
+    cancelled = counts.get("cancelled", 0)
+    if completed + failed + cancelled < total:
         return None
-    if cancel_requested or counts.get("cancelled", 0):
+    if cancelled == total:
         return BatchStatus.CANCELLED
-    if counts.get("failed", 0):
+    if completed == 0:
         return BatchStatus.FAILED
+    if failed or cancelled:
+        return BatchStatus.PARTIAL_COMPLETED
     return BatchStatus.COMPLETED

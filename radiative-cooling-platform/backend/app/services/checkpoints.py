@@ -16,21 +16,28 @@ def upsert_month_checkpoint(db, city_result_id: str, month: int, attempt: int, p
     )
 
 
-def load_resume_state(db: Session, city_result_id: str) -> tuple[int, list[dict]]:
-    """回傳 (下一個要跑的月份, 已完成月份的 payload 依月份排序)。"""
+def load_resume_state(
+    db: Session,
+    city_result_id: str,
+    *,
+    start_month: int = 1,
+) -> tuple[int, list[dict]]:
+    """Return (next month to run, payloads of the contiguous completed prefix).
+
+    Only the contiguous prefix starting at ``start_month`` is trusted. A hole
+    (e.g. months 7, 8, 10) resumes from the hole (9) and discards 10.
+    """
     rows = db.execute(
         select(GlobalCityCheckpoint.month, GlobalCityCheckpoint.payload_json)
         .where(GlobalCityCheckpoint.city_result_id == city_result_id)
         .order_by(GlobalCityCheckpoint.month)
     ).all()
-    if not rows:
-        return 1, []
-    months = [m for m, _ in rows]
-    # 只信任連續前綴，中間有洞就從洞開始
-    next_month = 1
-    for m in months:
-        if m == next_month:
+
+    next_month = start_month
+    for month, _ in rows:
+        if month == next_month:
             next_month += 1
-        else:
+        elif month > next_month:
             break
-    return next_month, [p for m, p in rows if m < next_month]
+
+    return next_month, [payload for month, payload in rows if start_month <= month < next_month]

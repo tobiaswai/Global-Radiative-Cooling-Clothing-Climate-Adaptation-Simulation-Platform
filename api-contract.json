@@ -173,6 +173,96 @@
           "title": "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
           "type": "object"
         },
+        "CityCheckpointListResponse": {
+          "properties": {
+            "batch_id": {
+              "title": "Batch Id",
+              "type": "string"
+            },
+            "city_id": {
+              "title": "City Id",
+              "type": "string"
+            },
+            "city_result_id": {
+              "title": "City Result Id",
+              "type": "string"
+            },
+            "end_month": {
+              "title": "End Month",
+              "type": "integer"
+            },
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/CityCheckpointResponse"
+              },
+              "title": "Items",
+              "type": "array"
+            },
+            "resume_from_month": {
+              "title": "Resume From Month",
+              "type": "integer"
+            },
+            "start_month": {
+              "title": "Start Month",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "batch_id",
+            "city_result_id",
+            "city_id",
+            "start_month",
+            "end_month",
+            "items",
+            "resume_from_month"
+          ],
+          "title": "CityCheckpointListResponse",
+          "type": "object"
+        },
+        "CityCheckpointResponse": {
+          "properties": {
+            "attempt": {
+              "title": "Attempt",
+              "type": "integer"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "month": {
+              "title": "Month",
+              "type": "integer"
+            },
+            "payload_sha256": {
+              "title": "Payload Sha256",
+              "type": "string"
+            },
+            "sampled_day_count": {
+              "title": "Sampled Day Count",
+              "type": "integer"
+            },
+            "skipped_sample_count": {
+              "title": "Skipped Sample Count",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "month",
+            "attempt",
+            "created_at",
+            "payload_sha256",
+            "sampled_day_count",
+            "skipped_sample_count"
+          ],
+          "title": "CityCheckpointResponse",
+          "type": "object"
+        },
         "CityResponse": {
           "properties": {
             "climate_type": {
@@ -1002,6 +1092,23 @@
         },
         "GlobalBatchDetail": {
           "properties": {
+            "attempt": {
+              "default": 0,
+              "title": "Attempt",
+              "type": "integer"
+            },
+            "cancel_requested_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cancel Requested At"
+            },
             "cancelled_city_count": {
               "title": "Cancelled City Count",
               "type": "integer"
@@ -1074,6 +1181,41 @@
             "id": {
               "title": "Id",
               "type": "string"
+            },
+            "last_heartbeat_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Heartbeat At"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
             },
             "progress": {
               "title": "Progress",
@@ -1271,6 +1413,23 @@
         },
         "GlobalBatchResponse": {
           "properties": {
+            "attempt": {
+              "default": 0,
+              "title": "Attempt",
+              "type": "integer"
+            },
+            "cancel_requested_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cancel Requested At"
+            },
             "cancelled_city_count": {
               "title": "Cancelled City Count",
               "type": "integer"
@@ -1336,6 +1495,41 @@
             "id": {
               "title": "Id",
               "type": "string"
+            },
+            "last_heartbeat_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Heartbeat At"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
             },
             "progress": {
               "title": "Progress",
@@ -1472,6 +1666,13 @@
                 }
               ],
               "title": "Celery Task Id"
+            },
+            "checkpoint_months": {
+              "items": {
+                "type": "integer"
+              },
+              "title": "Checkpoint Months",
+              "type": "array"
             },
             "city_id": {
               "title": "City Id",
@@ -1668,6 +1869,39 @@
             "latitude": {
               "title": "Latitude",
               "type": "number"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
+            },
+            "lease_state": {
+              "default": "none",
+              "enum": [
+                "none",
+                "live",
+                "expired"
+              ],
+              "title": "Lease State",
+              "type": "string"
             },
             "longest_heatwave_days": {
               "anyOf": [
@@ -1900,6 +2134,44 @@
             "beneficial_day_count"
           ],
           "title": "HeatwaveEvent",
+          "type": "object"
+        },
+        "LeaseSummary": {
+          "properties": {
+            "cancelling_batches": {
+              "title": "Cancelling Batches",
+              "type": "integer"
+            },
+            "expired_leases": {
+              "title": "Expired Leases",
+              "type": "integer"
+            },
+            "live_leases": {
+              "title": "Live Leases",
+              "type": "integer"
+            },
+            "queued_cities": {
+              "title": "Queued Cities",
+              "type": "integer"
+            },
+            "running_batches": {
+              "title": "Running Batches",
+              "type": "integer"
+            },
+            "running_cities": {
+              "title": "Running Cities",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "running_cities",
+            "queued_cities",
+            "live_leases",
+            "expired_leases",
+            "running_batches",
+            "cancelling_batches"
+          ],
+          "title": "LeaseSummary",
           "type": "object"
         },
         "MaterialCreate": {
@@ -3160,6 +3432,61 @@
             "month"
           ],
           "title": "MonthlyAdaptationResult",
+          "type": "object"
+        },
+        "OpsStatusResponse": {
+          "properties": {
+            "broker_reachable": {
+              "title": "Broker Reachable",
+              "type": "boolean"
+            },
+            "checked_at": {
+              "format": "date-time",
+              "title": "Checked At",
+              "type": "string"
+            },
+            "heartbeat_interval_seconds": {
+              "title": "Heartbeat Interval Seconds",
+              "type": "integer"
+            },
+            "lease_ttl_seconds": {
+              "title": "Lease Ttl Seconds",
+              "type": "integer"
+            },
+            "leases": {
+              "$ref": "#/components/schemas/LeaseSummary"
+            },
+            "reaper_interval_seconds": {
+              "title": "Reaper Interval Seconds",
+              "type": "integer"
+            },
+            "worker_count": {
+              "title": "Worker Count",
+              "type": "integer"
+            },
+            "workers": {
+              "items": {
+                "$ref": "#/components/schemas/WorkerStatus"
+              },
+              "title": "Workers",
+              "type": "array"
+            },
+            "worst_case_recovery_seconds": {
+              "title": "Worst Case Recovery Seconds",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "checked_at",
+            "broker_reachable",
+            "worker_count",
+            "leases",
+            "lease_ttl_seconds",
+            "heartbeat_interval_seconds",
+            "reaper_interval_seconds",
+            "worst_case_recovery_seconds"
+          ],
+          "title": "OpsStatusResponse",
           "type": "object"
         },
         "ParameterSource": {
@@ -4519,13 +4846,36 @@
           ],
           "title": "WeatherTimeSeries",
           "type": "object"
+        },
+        "WorkerStatus": {
+          "properties": {
+            "active_task_count": {
+              "title": "Active Task Count",
+              "type": "integer"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "reserved_task_count": {
+              "title": "Reserved Task Count",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "name",
+            "active_task_count",
+            "reserved_task_count"
+          ],
+          "title": "WorkerStatus",
+          "type": "object"
         }
       }
     },
     "info": {
       "description": "Backend API for simulating and evaluating radiative cooling clothing under global climate conditions.",
       "title": "Global Radiative Cooling Clothing Climate Adaptation API",
-      "version": "0.3.0"
+      "version": "0.4.0"
     },
     "openapi": "3.1.0",
     "paths": {
@@ -4773,7 +5123,7 @@
       },
       "/api/v1/global-batches/{batch_id}/cancel": {
         "post": {
-          "operationId": "cancel_batch_api_v1_global_batches__batch_id__cancel_post",
+          "operationId": "cancel_global_batch_api_v1_global_batches__batch_id__cancel_post",
           "parameters": [
             {
               "in": "path",
@@ -4786,7 +5136,101 @@
             }
           ],
           "responses": {
-            "202": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/GlobalBatchResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Cancel Global Batch",
+          "tags": [
+            "global-batches"
+          ]
+        }
+      },
+      "/api/v1/global-batches/{batch_id}/cities/{city_result_id}/checkpoints": {
+        "get": {
+          "operationId": "list_city_checkpoints_api_v1_global_batches__batch_id__cities__city_result_id__checkpoints_get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "batch_id",
+              "required": true,
+              "schema": {
+                "title": "Batch Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "path",
+              "name": "city_result_id",
+              "required": true,
+              "schema": {
+                "title": "City Result Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CityCheckpointListResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List City Checkpoints",
+          "tags": [
+            "global-batches"
+          ]
+        }
+      },
+      "/api/v1/global-batches/{batch_id}/events": {
+        "get": {
+          "description": "Server-sent progress. Emits ``progress`` when the lightweight snapshot\nchanges and a final ``terminal`` event; clients fetch the full detail\nthemselves when city counts change.",
+          "operationId": "global_batch_events_api_v1_global_batches__batch_id__events_get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "batch_id",
+              "required": true,
+              "schema": {
+                "title": "Batch Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
               "content": {
                 "application/json": {
                   "schema": {}
@@ -4805,7 +5249,7 @@
               "description": "Validation Error"
             }
           },
-          "summary": "Cancel Batch",
+          "summary": "Global Batch Events",
           "tags": [
             "global-batches"
           ]
@@ -5571,6 +6015,27 @@
           "summary": "Get Model Parameter",
           "tags": [
             "model"
+          ]
+        }
+      },
+      "/api/v1/ops/status": {
+        "get": {
+          "operationId": "ops_status_api_v1_ops_status_get",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/OpsStatusResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            }
+          },
+          "summary": "Ops Status",
+          "tags": [
+            "ops"
           ]
         }
       },

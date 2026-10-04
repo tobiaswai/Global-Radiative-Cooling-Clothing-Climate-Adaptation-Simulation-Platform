@@ -1,0 +1,11 @@
+{
+  "recorded_at": "2026-10-04T18:00:38.036151+08:00",
+  "crash_after_month": 4,
+  "full_run_seconds": 0.352,
+  "resumed_run_seconds": 0.219,
+  "months_restored": 4,
+  "months_computed": 8,
+  "weather_fetches_full": 12,
+  "weather_fetches_resumed": 8,
+  "resumed_equals_full": true
+}
