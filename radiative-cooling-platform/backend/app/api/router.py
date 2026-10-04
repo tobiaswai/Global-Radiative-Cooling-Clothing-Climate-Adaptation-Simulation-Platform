@@ -3,14 +3,7 @@
 
 from fastapi import APIRouter
 
-from app.api import (
-    benchmarks,
-    global_batches,
-    materials,
-    model,
-    simulations,
-    weather,
-)
+from app.api import benchmarks, global_batches, materials, model, ops, simulations, weather
 
 
 api_router = APIRouter()
@@ -22,5 +15,6 @@ for router in (
     materials.router,
     global_batches.router,
     model.router,
+    ops.router,
 ):
     api_router.include_router(router)

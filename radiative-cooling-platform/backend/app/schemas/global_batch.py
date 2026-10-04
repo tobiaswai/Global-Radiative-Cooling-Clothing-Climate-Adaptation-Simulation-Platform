@@ -48,6 +48,7 @@ ExecutionProfile = Literal[
     "large",
 ]
 
+LeaseState = Literal["none", "live", "expired"]
 
 class GlobalBatchCreate(BaseModel):
     name: str = Field(
@@ -334,6 +335,13 @@ class GlobalCityResultResponse(BaseModel):
     started_at: datetime | None
     completed_at: datetime | None
 
+    # Stage 8. Lease visibility; derived server-side so clients never compare clocks.
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    lease_state: LeaseState = "none"
+    # Months with a durable checkpoint row (source of truth for resume).
+    checkpoint_months: list[int] = Field(default_factory=list)
+
 
 class GlobalBatchResponse(BaseModel):
     id: str
@@ -359,6 +367,12 @@ class GlobalBatchResponse(BaseModel):
     control_material_version_id: str | None = None
     rc_material_version_id: str | None = None
 
+    # Stage 8. Batch-level Stage 7 state.
+    attempt: int = 0
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    cancel_requested_at: datetime | None = None
 class GlobalBatchDetail(GlobalBatchResponse):
     request: GlobalBatchCreate
     city_results: list[GlobalCityResultResponse]
@@ -386,3 +400,47 @@ class GlobalBatchEstimateResponse(BaseModel):
 
     checkpoint_count_per_city: int
     heatwave_analysis_available: bool
+    
+class GlobalCityProgress(BaseModel):
+    """Lightweight per-city row streamed over SSE; never carries monthly payloads."""
+
+    id: str
+    city_id: str
+    status: GlobalCityStatus
+    stage: str
+    progress: int
+    retry_count: int
+    completed_month_count: int
+    last_checkpoint_month: int | None
+    last_heartbeat_at: datetime | None
+    lease_owner: str | None
+    lease_expires_at: datetime | None
+    lease_state: LeaseState
+    checkpoint_months: list[int]
+    error_message: str | None
+
+
+class GlobalBatchProgressEvent(BaseModel):
+    batch: GlobalBatchResponse
+    cities: list[GlobalCityProgress]
+
+
+class CityCheckpointResponse(BaseModel):
+    id: str
+    month: int
+    attempt: int
+    created_at: datetime
+    payload_sha256: str
+    sampled_day_count: int
+    skipped_sample_count: int
+
+
+class CityCheckpointListResponse(BaseModel):
+    batch_id: str
+    city_result_id: str
+    city_id: str
+    start_month: int
+    end_month: int
+    items: list[CityCheckpointResponse]
+    # First month a resumed worker would compute; == end_month + 1 when complete.
+    resume_from_month: int

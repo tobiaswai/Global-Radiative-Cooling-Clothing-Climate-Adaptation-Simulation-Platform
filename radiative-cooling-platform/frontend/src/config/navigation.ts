@@ -8,4 +8,5 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/materials", label: "Materials" },
   { href: "/global-analysis", label: "Global Analysis" },
   { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
+  { href: "/ops", label: "Operations" },
 ];

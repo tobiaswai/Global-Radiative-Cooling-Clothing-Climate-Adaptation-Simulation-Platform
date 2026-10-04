@@ -9,7 +9,12 @@ import type {
   GlobalBatchDetail,
   GlobalBatchEstimate,
   GlobalCity,
+  CityCheckpointList, 
+  GlobalBatchListResponse,
 } from "@/types/global-batch";
+
+import type { OpsStatus } from "@/types/ops";
+
 import type {
   Material, MaterialCreate, MaterialListResponse,
   MaterialVersionListResponse,
@@ -710,4 +715,51 @@ export async function getMaterialVersions(
   }
 
   return response.json() as Promise<MaterialVersionListResponse>;
+}
+
+export function getGlobalBatchEventsUrl(batchId: string): string {
+  return `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}/events`;
+}
+
+export async function listGlobalBatches(
+  limit = 20,
+  offset = 0,
+): Promise<GlobalBatchListResponse> {
+  const parameters = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const response = await fetch(`${API_BASE_URL}/api/v1/global-batches?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load global batches"));
+  }
+
+  return response.json() as Promise<GlobalBatchListResponse>;
+}
+
+export async function getGlobalBatchCityCheckpoints(
+  batchId: string,
+  cityResultId: string,
+): Promise<CityCheckpointList> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}` +
+      `/cities/${encodeURIComponent(cityResultId)}/checkpoints`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load city checkpoints"));
+  }
+
+  return response.json() as Promise<CityCheckpointList>;
+}
+
+export async function getOpsStatus(): Promise<OpsStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/ops/status`, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load operations status"));
+  }
+
+  return response.json() as Promise<OpsStatus>;
 }

@@ -43,7 +43,9 @@ celery_app.conf.update(
 
 celery_app.conf.beat_schedule = {
     "reap-expired-leases": {
-        "task": "app.<tasks module>.reap_expired_leases",
+        # Must match the explicit task name below; a wrong name is silently dropped.
+        "task": "global_batch.reap_expired_leases",
         "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
     },
 }

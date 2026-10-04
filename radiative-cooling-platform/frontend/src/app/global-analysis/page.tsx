@@ -7,7 +7,7 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
-
+import Link from "next/link";
 import {
   createGlobalBatch,
   estimateGlobalBatch,
@@ -380,7 +380,9 @@ export default function GlobalAnalysisPage() {
           <h1 className="mt-2 text-3xl font-bold">
             Global Climate Adaptation Analysis
           </h1>
-
+          <Link href="/global-analysis/batches" className="mt-4 inline-block text-sm text-cyan-300 hover:underline">
+            View previous batches →
+          </Link>
           <p className="mt-3 max-w-4xl leading-7 text-slate-400">
             Run representative-day or daily
             radiative-cooling analyses across
