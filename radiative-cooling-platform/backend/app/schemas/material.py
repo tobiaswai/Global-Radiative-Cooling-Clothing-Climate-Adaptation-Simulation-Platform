@@ -10,8 +10,10 @@ from pydantic import (
     ConfigDict,
     Field,
     model_validator,
+    field_validator,
 )
 
+_NON_NULLABLE_UPDATE_FIELDS = frozenset({"name", "is_archived"})
 
 MaterialMode = Literal[
     "ordinary",
@@ -138,15 +140,39 @@ class MaterialCreate(BaseModel):
 
 
 class MaterialUpdate(BaseModel):
-    name: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=200,
-    )
+    """PATCH /materials/{id}: metadata only.
 
+    * Omitted keys are left unchanged; ``description``/``institution`` may be
+      cleared with null or "".
+    * ``slug`` is immutable (it is the stable identifier); physical values live
+      in immutable versions -> POST /materials/{id}/versions.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
-    institution: str | None = None
+    institution: str | None = Field(default=None, max_length=255)
     is_archived: bool | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("description", "institution", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value):
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def _reject_null_for_required(self) -> "MaterialUpdate":
+        for field in self.model_fields_set & _NON_NULLABLE_UPDATE_FIELDS:
+            if getattr(self, field) is None:
+                raise ValueError(f"'{field}' cannot be null")
+        return self
 
 
 class SpectrumSummary(BaseModel):

@@ -47,6 +47,7 @@ frontend/src/components/simulation/material-version-picker.tsx
 frontend/src/components/simulation/model-provenance-panel.tsx
 frontend/src/components/simulation/model-quality-panel.tsx
 frontend/src/components/simulation/person-input-fields.tsx
+frontend/src/components/simulation/weather-quality-panel.tsx
 frontend/src/config/navigation.ts
 frontend/src/lib/api-client.ts
 frontend/src/lib/checkpoint-cells.test.ts
@@ -63,6 +64,7 @@ frontend/src/lib/relative-time.ts
 frontend/src/lib/time-series.test.ts
 frontend/src/lib/time-series.ts
 frontend/src/lib/use-global-batch.ts
+frontend/src/lib/use-simulation-job.ts
 frontend/src/locales/en.ts
 frontend/src/types/benchmark.ts
 frontend/src/types/global-batch.ts
@@ -1335,7 +1337,12 @@ function CityDetailPanel({
 
       <DataQualityPanel result={result} />
 
-      <HeatwaveResults events={result.heatwave_events ?? []} available={heatwaveAvailable} />
+      <HeatwaveResults
+        events={result.heatwave_events ?? []}
+        available={result.heatwave_analysis_available ?? heatwaveAvailable}
+        unavailableReason={result.heatwave_unavailable_reason ?? null}
+        basis={result.heatwave_temperature_basis ?? null}
+      />
     </section>
   );
 }
@@ -1397,6 +1404,9 @@ function MonthlyResultsTable({
 
                 <th className="px-4 py-3">
                   Weighted Days
+                </th>
+                <th className="px-4 py-3">
+                  Skipped
                 </th>
               </tr>
             </thead>
@@ -1475,6 +1485,9 @@ function MonthlyResultsTable({
                         month.total_weighted_days
                       }
                     </td>
+                    <td className="px-4 py-3">
+                      {month.skipped_weighted_days ?? 0}
+                    </td>
                   </tr>
                 ),
               )}
@@ -1490,26 +1503,30 @@ function MonthlyResultsTable({
 function HeatwaveResults({
   events,
   available,
+  unavailableReason,
+  basis,
 }: {
   events: HeatwaveEvent[];
   available: boolean;
+  unavailableReason: string | null;
+  basis: string | null;
 }) {
   return (
     <div className="mt-8">
-      <h3 className="text-lg font-semibold">
-        Heatwave Events
-      </h3>
+      <h3 className="text-lg font-semibold">Heatwave Events</h3>
+      {basis && (
+        <p className="mt-1 text-xs text-slate-500">
+          Temperature basis: <span className="font-mono">{basis}</span>
+        </p>
+      )}
 
       {!available ? (
         <p className="mt-3 text-sm text-amber-300">
-          Heatwave analysis is unavailable for
-          this sampling configuration.
+          Heatwave analysis is unavailable for this result
+          {unavailableReason ? `: ${unavailableReason}` : "."}
         </p>
       ) : events.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">
-          No qualifying heatwave event was
-          detected.
-        </p>
+        <p className="mt-3 text-sm text-slate-500">No qualifying heatwave event was detected.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
           <table className="min-w-[65rem] w-full text-left text-sm">
@@ -2075,6 +2092,8 @@ import {
 } from "@/lib/api-client";
 
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 
 import type {
   AnalysisResolution,
@@ -2128,7 +2147,7 @@ const initialRequest: GlobalBatchCreate = {
 
   person: {
     met: 2,
-    body_mass_kg: 70,            // ← 加這行
+    body_mass_kg: 70,
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
@@ -2138,7 +2157,7 @@ const initialRequest: GlobalBatchCreate = {
   control_material: {
     name: "Conventional clothing",
     clothing_insulation_clo: 0.5,
-    clothing_area_factor: null,  // ← 加這行
+    clothing_area_factor: null,
     solar_reflectance: 0.3,
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
@@ -2148,7 +2167,7 @@ const initialRequest: GlobalBatchCreate = {
   rc_material: {
     name: "Radiative cooling clothing",
     clothing_insulation_clo: 0.4,
-    clothing_area_factor: null,  // ← 加這行
+    clothing_area_factor: null,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
@@ -2432,25 +2451,30 @@ export default function GlobalAnalysisPage() {
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl px-6 py-8">
-        <header>
-          <p className="text-sm font-medium text-cyan-400">
-          <Link href="/global-analysis/batches" className="mt-4 inline-block text-sm text-cyan-300 hover:underline">
-            View previous batches→
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-cyan-400">
+              Global Analysis
+            </p>
+            <h1 className="mt-2 text-3xl font-bold">
+              Global Climate Adaptation Analysis
+            </h1>
+            <p className="mt-3 max-w-4xl leading-7 text-slate-400">
+              Run representative-day or daily
+              radiative-cooling analyses across
+              multiple cities. Long-running jobs
+              support monthly checkpoints,
+              cooperative cancellation, queue
+              selection, percentile analytics, and
+              heatwave event analysis.
+            </p>
+          </div>
+          <Link
+            href="/global-analysis/batches"
+            className="text-sm text-cyan-300 hover:underline"
+          >
+            View previous batches →
           </Link>
-            Global Analysis
-          </p>
-          <h1 className="mt-2 text-3xl font-bold">
-            Global Climate Adaptation Analysis
-          </h1>
-          <p className="mt-3 max-w-4xl leading-7 text-slate-400">
-            Run representative-day or daily
-            radiative-cooling analyses across
-            multiple cities. Long-running jobs
-            support monthly checkpoints,
-            cooperative cancellation, queue
-            selection, percentile analytics, and
-            heatwave event analysis.
-          </p>
         </header>
 
         {error && (
@@ -2870,37 +2894,94 @@ export default function GlobalAnalysisPage() {
             )}
         </section>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-              <h2 className="text-lg font-semibold">Control Clothing</h2>
-              <div className="mt-4">
-                <MaterialInputFields
-                  material={request.control_material}
-                  showName
-                  enableLibrary
-                  disabled={submitting}
-                  onChange={(control_material) =>
-                    setRequest((current) => ({ ...current, control_material }))
-                  }
-                />
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
-              <div className="mt-4">
-                <MaterialInputFields
-                  material={request.rc_material}
-                  showName
-                  enableLibrary
-                  disabled={submitting}
-                  onChange={(rc_material) =>
-                    setRequest((current) => ({ ...current, rc_material }))
-                  }
-                />
-              </div>
-            </section>
+        {/* Person */}
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">
+            Person
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Applied to every sampled day in every
+            city. Body mass sets the core and skin
+            heat capacities.
+          </p>
+          <div className="mt-4">
+            <PersonInputFields
+              person={request.person}
+              disabled={submitting}
+              onChange={(person) =>
+                setRequest((current) => ({
+                  ...current,
+                  person,
+                }))
+              }
+            />
           </div>
+        </section>
+
+        {/* Environment Assumptions */}
+        <div className="mt-6">
+          <EnvironmentAssumptionsFields
+            value={
+              request.environment_assumptions ??
+              DEFAULT_ENVIRONMENT_ASSUMPTIONS
+            }
+            disabled={submitting}
+            onChange={(
+              environment_assumptions,
+            ) =>
+              setRequest((current) => ({
+                ...current,
+                environment_assumptions,
+              }))
+            }
+          />
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              Control Clothing
+            </h2>
+            <div className="mt-4">
+              <MaterialInputFields
+                material={
+                  request.control_material
+                }
+                showName
+                enableLibrary
+                disabled={submitting}
+                onChange={(
+                  control_material,
+                ) =>
+                  setRequest((current) => ({
+                    ...current,
+                    control_material,
+                  }))
+                }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              Radiative Cooling Clothing
+            </h2>
+            <div className="mt-4">
+              <MaterialInputFields
+                material={request.rc_material}
+                showName
+                enableLibrary
+                disabled={submitting}
+                onChange={(rc_material) =>
+                  setRequest((current) => ({
+                    ...current,
+                    rc_material,
+                  }))
+                }
+              />
+            </div>
+          </section>
+        </div>
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -3029,89 +3110,95 @@ export default function GlobalAnalysisPage() {
           <h2 className="text-xl font-semibold">
             Workload Estimate
           </h2>
-            {!canEstimate ? (
-              <p className="mt-4 text-slate-400">
-                {request.city_ids.length === 0
-                  ? "Select at least one city to calculate the workload."
-                  : "Start month must be less than or equal to end month."}
-              </p>
-            ) : estimating ? (
-              <p className="mt-4 text-slate-400">
-                Calculating workload...
-              </p>
-            ) : estimate ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <EstimateMetric
-                  label="Cities"
-                  value={String(estimate.city_count)}
-                />
+          {!canEstimate ? (
+            <p className="mt-4 text-slate-400">
+              {request.city_ids.length === 0
+                ? "Select at least one city to calculate the workload."
+                : "Start month must be less than or equal to end month."}
+            </p>
+          ) : estimating ? (
+            <p className="mt-4 text-slate-400">
+              Calculating workload...
+            </p>
+          ) : estimate ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <EstimateMetric
+                label="Cities"
+                value={String(
+                  estimate.city_count,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Samples per City"
-                  value={String(
-                    estimate.samples_per_city,
-                  )}
-                />
+              <EstimateMetric
+                label="Samples per City"
+                value={String(
+                  estimate.samples_per_city,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Total Samples"
-                  value={String(
-                    estimate.total_samples,
-                  )}
-                />
+              <EstimateMetric
+                label="Total Samples"
+                value={String(
+                  estimate.total_samples,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Thermal Simulations"
-                  value={String(
-                    estimate.thermal_simulation_count,
-                  )}
-                />
+              <EstimateMetric
+                label="Thermal Simulations"
+                value={String(
+                  estimate.thermal_simulation_count,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Weather Requests"
-                  value={String(
-                    estimate.estimated_weather_requests,
-                  )}
-                />
+              <EstimateMetric
+                label="Weather Requests"
+                value={String(
+                  estimate.estimated_weather_requests,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Resolved Profile"
-                  value={formatLabel(
-                    estimate.resolved_execution_profile,
-                  )}
-                />
+              <EstimateMetric
+                label="Resolved Profile"
+                value={formatLabel(
+                  estimate.resolved_execution_profile,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Celery Queue"
-                  value={estimate.resolved_queue}
-                />
+              <EstimateMetric
+                label="Celery Queue"
+                value={
+                  estimate.resolved_queue
+                }
+              />
 
-                <EstimateMetric
-                  label="Monthly Checkpoints"
-                  value={
-                    `${estimate.checkpoint_count_per_city}` +
-                    " per city"
-                  }
-                />
+              <EstimateMetric
+                label="Monthly Checkpoints"
+                value={
+                  `${estimate.checkpoint_count_per_city}` +
+                  " per city"
+                }
+              />
 
-                <EstimateMetric
-                  label="Heatwave Analysis"
-                  value={
-                    estimate.heatwave_analysis_available
-                      ? "Available"
-                      : "Unavailable"
-                  }
-                />
-              </div>
-            ) : estimateState?.status === "error" ? (
-              <p className="mt-4 text-amber-300">
-                Unable to calculate the workload estimate.
-              </p>
-            ) : (
-              <p className="mt-4 text-slate-400">
-                Preparing workload estimate...
-              </p>
-            )}
+              <EstimateMetric
+                label="Heatwave Analysis"
+                value={
+                  estimate.heatwave_analysis_available
+                    ? "Available"
+                    : "Unavailable"
+                }
+              />
+            </div>
+          ) : estimateState?.status ===
+            "error" ? (
+            <p className="mt-4 text-amber-300">
+              Unable to calculate the workload
+              estimate.
+            </p>
+          ) : (
+            <p className="mt-4 text-slate-400">
+              Preparing workload estimate...
+            </p>
+          )}
         </section>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
@@ -3154,6 +3241,10 @@ function validateRequest(
     return "Select at least one city.";
   }
 
+  if (request.city_ids.length > 100) {
+    return "A batch supports at most 100 cities.";
+  }
+
   if (
     request.start_month >
     request.end_month
@@ -3172,6 +3263,28 @@ function validateRequest(
       "Output interval cannot exceed " +
       "the simulation duration."
     );
+  }
+
+  if (
+    request.local_start_hour * 60 +
+      request.duration_minutes >
+    48 * 60
+  ) {
+    return "The exposure window must end within the following day.";
+  }
+
+  if (
+    request.person.initial_skin_temperature_c >
+    request.person.initial_core_temperature_c
+  ) {
+    return "Initial skin temperature should not exceed initial core temperature.";
+  }
+
+  if (
+    request.enable_heatwave_analysis &&
+    request.heatwave_minimum_consecutive_days < 2
+  ) {
+    return "A heatwave needs at least two consecutive days.";
   }
 
   return null;
@@ -4746,7 +4859,7 @@ function Pair({ label, value }: { label: string; value: string }) {
 import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  redirect("/simulations");
+  redirect("/simulations/new");
 }
 ```
 
@@ -4754,488 +4867,183 @@ export default function HomePage() {
 ```tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
 import { PhysiologyChart } from "@/components/charts/physiology-chart";
 import { TemperatureChart } from "@/components/charts/temperature-chart";
 import { WeatherChart } from "@/components/charts/weather-chart";
+import { LeaseBadge } from "@/components/global/lease-badge";
 import { ModelProvenancePanel } from "@/components/simulation/model-provenance-panel";
 import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
-import {
-  cancelSimulationJob,
-  getSimulationEventsUrl,
-  getSimulationExportUrl,
-  getSimulationJob,
-  getSimulationResult,
-} from "@/lib/api-client";
-import type {
-  SimulationJob,
-  WeatherSimulationResponse,
-} from "@/types/simulation";
-
-const terminalStatuses =
-  new Set<SimulationJob["status"]>([
-    "completed",
-    "failed",
-    "cancelled",
-  ]);
-
+import { WeatherQualityPanel } from "@/components/simulation/weather-quality-panel";
+import { getSimulationExportUrl } from "@/lib/api-client";
+import { isTerminalJobStatus, useSimulationJob } from "@/lib/use-simulation-job";
 
 const stageLabels: Record<string, string> = {
   queued: "Waiting for computing resources",
+  retry_scheduled: "Re-queued after a worker failure",
   initializing: "Initializing model",
-  downloading_weather:
-    "Downloading historical weather data",
-  running_control_simulation:
-    "Running control simulation",
-  running_radiative_cooling_simulation:
-    "Running radiative cooling simulation",
-  generating_summary:
-    "Generating summary",
-  saving_result:
-    "Saving result",
+  downloading_weather: "Downloading historical weather data",
+  running_control_simulation: "Running control simulation",
+  running_radiative_cooling_simulation: "Running radiative cooling simulation",
+  generating_summary: "Generating summary",
+  saving_result: "Saving result",
   completed: "Simulation completed",
   failed: "Simulation failed",
   cancelling: "Cancelling simulation",
-  waiting_for_cooperative_cancel:
-    "Waiting for cooperative cancel",
+  waiting_for_cooperative_cancel: "Waiting for cooperative cancel",
   cancelled: "Cancelled",
 };
 
-
 export default function SimulationJobPage() {
-  const parameters =
-    useParams<{ jobId: string }>();
-
-  const jobId = parameters.jobId;
-
-  const [job, setJob] =
-    useState<SimulationJob | null>(null);
-
-  const [result, setResult] =
-    useState<WeatherSimulationResponse | null>(
-      null,
-    );
-
-  const [error, setError] =
-    useState("");
-
-  const [cancelling, setCancelling] =
-    useState(false);
-
-
-  useEffect(() => {
-    let ignore = false;
-
-    function handleJobUpdate(
-      nextJob: SimulationJob,
-    ) {
-      if (ignore) {
-        return;
-      }
-
-      setJob((currentJob) => {
-        if (!currentJob) {
-          return nextJob;
-        }
-
-        return {
-          ...currentJob,
-          ...nextJob,
-        };
-      });
-    }
-
-    function handleRequestError(
-      caughtError: unknown,
-    ) {
-      if (ignore) {
-        return;
-      }
-
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to load simulation job",
-      );
-    }
-
-    getSimulationJob(jobId)
-      .then(handleJobUpdate)
-      .catch(handleRequestError);
-
-    const eventSource = new EventSource(
-      getSimulationEventsUrl(jobId),
-    );
-
-    eventSource.addEventListener(
-      "progress",
-      (event) => {
-        try {
-          const nextJob = JSON.parse(
-            (event as MessageEvent<string>).data,
-          ) as SimulationJob;
-
-          handleJobUpdate(nextJob);
-        } catch {
-          if (!ignore) {
-            setError("Failed to parse job progress data");
-          }
-        }
-      },
-    );
-
-    eventSource.addEventListener(
-      "terminal",
-      (event) => {
-        try {
-          const nextJob = JSON.parse(
-            (event as MessageEvent<string>).data,
-          ) as SimulationJob;
-
-          handleJobUpdate(nextJob);
-        } catch {
-          if (!ignore) {
-            setError("Failed to parse job terminal state");
-          }
-        } finally {
-          eventSource.close();
-        }
-      },
-    );
-
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
-
-    const pollingTimer = window.setInterval(
-      () => {
-        getSimulationJob(jobId)
-          .then(handleJobUpdate)
-          .catch(handleRequestError);
-      },
-      5000,
-    );
-
-    return () => {
-      ignore = true;
-      window.clearInterval(pollingTimer);
-      eventSource.close();
-    };
-  }, [jobId]);
-
-
-  useEffect(() => {
-    if (
-      job?.status !== "completed"
-      || result !== null
-    ) {
-      return;
-    }
-
-    let ignore = false;
-
-    getSimulationResult(jobId)
-      .then((nextResult) => {
-        if (!ignore) {
-          setResult(nextResult);
-        }
-      })
-      .catch((caughtError: unknown) => {
-        if (!ignore) {
-          setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Failed to load simulation result",
-          );
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [job?.status, jobId, result]);
-
+  const { jobId } = useParams<{ jobId: string }>();
+  const { job, result, error, resultError, transport, cancel, retryResult } = useSimulationJob(jobId);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   async function handleCancel() {
-    if (cancelling) {
-      return;
-    }
-
+    if (cancelling) return;
     setCancelling(true);
-    setError("");
-
+    setCancelError("");
     try {
-      const updatedJob =
-        await cancelSimulationJob(jobId);
-
-      setJob((currentJob) => {
-        if (!currentJob) {
-          return updatedJob;
-        }
-
-        return {
-          ...currentJob,
-          ...updatedJob,
-        };
-      });
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to cancel simulation job",
-      );
+      await cancel();
+    } catch (caught) {
+      setCancelError(caught instanceof Error ? caught.message : "Failed to cancel simulation job");
     } finally {
       setCancelling(false);
     }
   }
-  
+
   if (!job) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
         <div className="mx-auto max-w-4xl">
           {error ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-red-900 bg-red-950 p-5 text-red-300"
-            >
-              {error}
-            </div>
+            <div role="alert" className="rounded-xl border border-red-900 bg-red-950 p-5 text-red-300">{error}</div>
           ) : (
-            <p className="text-slate-400">
-              Loading simulation job…
-            </p>
+            <p className="text-slate-400">Loading simulation job…</p>
           )}
         </div>
       </main>
     );
   }
 
-  const isTerminal =
-    terminalStatuses.has(job.status);
-
-  const progress = Math.min(
-    100,
-    Math.max(0, job.progress),
-  );
-
+  const isTerminal = isTerminalJobStatus(job.status);
+  const progress = Math.min(100, Math.max(0, job.progress));
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <header>
-          <p className="text-sm font-medium text-cyan-400">
-            Simulation Job
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            Simulation Job
-          </h1>
-
-          <p className="mt-2 break-all text-sm text-slate-400">
-            {job.id}
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-cyan-400">Simulation Job</p>
+            <h1 className="mt-2 text-3xl font-bold">Simulation Job</h1>
+            <p className="mt-2 break-all text-sm text-slate-400">{job.id}</p>
+          </div>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+            Updates via {transport === "sse" ? "server-sent events" : transport === "polling" ? "polling" : "—"}
+          </span>
         </header>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-slate-400">
-                Current Stage
-              </p>
-
-              <p className="mt-1 text-xl font-semibold">
-                {stageLabels[job.stage]
-                  ?? job.stage}
-              </p>
+              <p className="text-sm text-slate-400">Current Stage</p>
+              <p className="mt-1 text-xl font-semibold">{stageLabels[job.stage] ?? job.stage}</p>
             </div>
 
-            {!isTerminal && (
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="rounded-lg border border-red-800 px-4 py-2 text-red-300 transition hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {cancelling
-                  ? "Cancelling…"
-                  : "Cancel Job"}
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              <LeaseBadge
+                leaseState={job.lease_state}
+                leaseOwner={job.lease_owner}
+                lastHeartbeatAt={job.last_heartbeat_at}
+                leaseExpiresAt={job.lease_expires_at}
+              />
+              {!isTerminal && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancelling || job.status === "cancelling"}
+                  className="rounded-lg border border-red-800 px-4 py-2 text-red-300 transition hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {job.status === "cancelling" ? "Cancel requested…" : cancelling ? "Cancelling…" : "Cancel Job"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-800">
-            <div
-              className="h-full bg-cyan-400 transition-all duration-500"
-              style={{
-                width: `${progress}%`,
-              }}
-            />
+            <div className="h-full bg-cyan-400 transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
-
           <div className="mt-2 flex justify-between text-sm text-slate-400">
-            <span>{job.status}</span>
+            <span>{job.status}{(job.attempt ?? 0) > 1 ? ` · attempt ${job.attempt}` : ""}</span>
             <span>{progress}%</span>
           </div>
 
           <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <dt className="text-slate-500">
-                City
-              </dt>
-              <dd className="mt-1">
-                {job.city_id}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-slate-500">
-                Created At
-              </dt>
-              <dd className="mt-1">
-                {new Date(
-                  job.created_at,
-                ).toLocaleString()}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-slate-500">
-                Started At
-              </dt>
-              <dd className="mt-1">
-                {job.started_at
-                  ? new Date(
-                      job.started_at,
-                    ).toLocaleString()
-                  : "Not started"}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-slate-500">
-                Completed At
-              </dt>
-              <dd className="mt-1">
-                {job.completed_at
-                  ? new Date(
-                      job.completed_at,
-                    ).toLocaleString()
-                  : "Not completed"}
-              </dd>
-            </div>
+            <Field label="City" value={job.city_id} />
+            <Field label="Created At" value={new Date(job.created_at).toLocaleString()} />
+            <Field label="Started At" value={job.started_at ? new Date(job.started_at).toLocaleString() : "Not started"} />
+            <Field label="Completed At" value={job.completed_at ? new Date(job.completed_at).toLocaleString() : "Not completed"} />
           </dl>
+
           {(job.control_material_version_id || job.rc_material_version_id) && (
             <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-slate-500">Control material version</dt>
-                <dd className="mt-1 font-mono text-xs text-slate-300">
-                  {job.control_material_version_id ?? "manual values"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">RC material version</dt>
-                <dd className="mt-1 font-mono text-xs text-slate-300">
-                  {job.rc_material_version_id ?? "manual values"}
-                </dd>
-              </div>
+              <Field label="Control material version" value={job.control_material_version_id ?? "manual values"} mono />
+              <Field label="RC material version" value={job.rc_material_version_id ?? "manual values"} mono />
             </dl>
           )}
-          {job.error_message && (
-            <div className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-              {job.error_message}
-            </div>
-          )}
 
-          {error && (
-            <div
-              role="alert"
-              className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300"
-            >
-              {error}
-            </div>
-          )}
+          {job.error_message && <Alert>{job.error_message}</Alert>}
+          {error && <Alert>{error}</Alert>}
+          {cancelError && <Alert>{cancelError}</Alert>}
         </section>
 
-        {job.status === "completed"
-          && !result && (
-            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
-              Loading complete simulation results…
-            </section>
-          )}
+        {job.status === "completed" && !result && (
+          <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            {resultError ? (
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <p className="text-red-300">{resultError}</p>
+                <button
+                  type="button"
+                  onClick={() => void retryResult()}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+                >
+                  Retry loading result
+                </button>
+              </div>
+            ) : (
+              <p className="text-slate-400">Loading complete simulation results…</p>
+            )}
+          </section>
+        )}
 
         {result && (
           <section className="mt-10 space-y-8">
             <div className="grid gap-4 md:grid-cols-3">
-              <SummaryCard
-                label="final skin temperature improvement"
-                value={
-                  result.summary
-                    .final_skin_temperature_improvement_c
-                }
-              />
-
-              <SummaryCard
-                label="average skin temperature improvement"
-                value={
-                  result.summary
-                    .average_skin_temperature_improvement_c
-                }
-              />
-
-              <SummaryCard
-                label="final core temperature improvement"
-                value={
-                  result.summary
-                    .final_core_temperature_improvement_c
-                }
-              />
+              <SummaryCard label="final skin temperature improvement" value={result.summary.final_skin_temperature_improvement_c} />
+              <SummaryCard label="average skin temperature improvement" value={result.summary.average_skin_temperature_improvement_c} hint={result.summary.averaging_method ?? undefined} />
+              <SummaryCard label="final core temperature improvement" value={result.summary.final_core_temperature_improvement_c} />
             </div>
 
             <div className="rounded-xl border border-amber-800 bg-amber-950/50 p-4 text-amber-200">
               <p>{result.warning}</p>
-
-              <p className="mt-2 text-sm">
-                {result.environment_model_note}
-              </p>
+              <p className="mt-2 text-sm">{result.environment_model_note}</p>
             </div>
 
-            <WeatherChart
-              weather={result.weather}
-            />
-
-            <TemperatureChart
-              result={result}
-            />
-
-            <HeatFluxChart
-              result={result}
-            />
+            <WeatherChart weather={result.weather} />
+            <WeatherQualityPanel weather={result.weather} />
+            <TemperatureChart result={result} />
+            <HeatFluxChart result={result} />
             <PhysiologyChart result={result} />
             <ModelQualityPanel result={result} />
             <ModelProvenancePanel result={result} />
-            <div className="flex flex-wrap gap-3">
-              <a
-                href={getSimulationExportUrl(
-                  jobId,
-                  "csv",
-                )}
-                className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950"
-              >
-                Export CSV
-              </a>
 
-              <a
-                href={getSimulationExportUrl(
-                  jobId,
-                  "json",
-                )}
-                className="rounded-lg border border-slate-700 px-5 py-2"
-              >
-                Export JSON
-              </a>
+            <div className="flex flex-wrap gap-3">
+              <a href={getSimulationExportUrl(jobId, "csv")} className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950">Export CSV</a>
+              <a href={getSimulationExportUrl(jobId, "json")} className="rounded-lg border border-slate-700 px-5 py-2">Export JSON</a>
             </div>
           </section>
         )}
@@ -5244,32 +5052,32 @@ export default function SimulationJobPage() {
   );
 }
 
-
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-2 text-3xl font-bold text-cyan-300">
-        {value.toFixed(3)}
-
-        <span className="ml-1 text-base font-normal">
-          °C
-        </span>
-      </p>
-    </article>
+    <div>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className={`mt-1 ${mono ? "font-mono text-xs text-slate-300" : ""}`}>{value}</dd>
+    </div>
   );
 }
 
+function Alert({ children }: { children: React.ReactNode }) {
+  return (
+    <div role="alert" className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{children}</div>
+  );
+}
 
+function SummaryCard({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-cyan-300">
+        {value.toFixed(3)}<span className="ml-1 text-base font-normal">°C</span>
+      </p>
+      {hint && <p className="mt-1 font-mono text-xs text-slate-500">{hint}</p>}
+    </article>
+  );
+}
 ```
 
 ### File: `frontend/src/app/simulations/new/page.tsx`
@@ -7820,6 +7628,7 @@ export function CityCheckpointList({ batchId, cityResultId, version }: Props) {
                 <th className="px-4 py-3">Skipped</th>
                 <th className="px-4 py-3">Written</th>
                 <th className="px-4 py-3">Payload SHA-256</th>
+                <th className="px-4 py-3">Provenance</th>
               </tr>
             </thead>
             <tbody>
@@ -7836,6 +7645,20 @@ export function CityCheckpointList({ batchId, cityResultId, version }: Props) {
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-400" title={item.payload_sha256}>
                     {item.payload_sha256.slice(0, 16)}…
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.provenance_matches_batch ? (
+                      <span className="rounded-full border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-xs text-emerald-300">
+                        {item.model_version}
+                      </span>
+                    ) : (
+                      <span
+                        title={item.mismatch_reason ?? undefined}
+                        className="rounded-full border border-amber-800 bg-amber-950 px-2 py-0.5 text-xs text-amber-300"
+                      >
+                        {item.model_version ?? "legacy"} · not resumable
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -8027,7 +7850,7 @@ export function NavBar() {
     <header className="border-b border-slate-800 bg-slate-950">
       <nav className="mx-auto flex min-h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
-          href="/simulations"
+          href="/simulations/new"
           className="font-semibold text-white"
           onClick={() => setIsMobileMenuOpen(false)}
         >
@@ -8400,6 +8223,19 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
           disabled={disabled}
           hint="Shortwave reflectance of the ground (Stage 5, ADR 0006)."
           onChange={(v) => update("ground_albedo", v)}
+        />
+
+        {/* ★ 新增：Hourly irradiance convention（放在 Ground albedo 之後） */}
+        <SelectField
+          label="Hourly irradiance convention"
+          value={value.radiation_time_convention}
+          disabled={disabled}
+          options={[
+            { value: "preceding_hour_mean_step", label: "Preceding-hour mean (energy-conserving)" },
+            { value: "instantaneous_linear", label: "Instantaneous, linear (legacy approximation)" },
+          ]}
+          hint="Open-Meteo stamps each hourly value as the mean over the preceding hour. The linear option shifts the solar profile by up to 30 min."
+          onChange={(v) => update("radiation_time_convention", v)}
         />
 
         <NumberField
@@ -9349,6 +9185,66 @@ export function PersonInputFields({
         hint="Effective radiation area for longwave and diffuse solar (Stage 5)."
         onChange={(value) => update("position", value)}
       />
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/simulation/weather-quality-panel.tsx`
+```tsx
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { WeatherTimeSeries } from "@/types/simulation";
+
+export function WeatherQualityPanel({ weather }: { weather: WeatherTimeSeries }) {
+  const quality = weather.source.quality ?? null;
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Weather Data Quality</h2>
+      <p className="mt-2 text-sm text-slate-400">
+        Provenance and timeline audit of the ERA5 series that drove this run.
+      </p>
+
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <Item label="Payload SHA-256">
+          <span className="font-mono" title={weather.source.payload_sha256 ?? undefined}>
+            {weather.source.payload_sha256 ? `${weather.source.payload_sha256.slice(0, 16)}…` : "—"}
+          </span>
+        </Item>
+        <Item label="Cache">{weather.source.from_cache ? "Local cache" : "Downloaded"}</Item>
+        <Item label="Downloaded">{formatRelativeTime(weather.source.downloaded_at)}</Item>
+        <Item label="Points in window">{weather.points.length}</Item>
+      </dl>
+
+      {quality ? (
+        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <Item label="Expected step">{quality.expected_step_seconds} s</Item>
+          <Item label="Sorted on arrival">{quality.was_sorted ? "Yes" : "No (sorted)"}</Item>
+          <Item label="Duplicates removed">{quality.duplicates_removed}</Item>
+          <Item label="Gaps">
+            <span className={quality.gaps.length ? "text-amber-300" : ""}>{quality.gaps.length}</span>
+          </Item>
+        </dl>
+      ) : (
+        <p className="mt-5 text-sm text-slate-500">
+          No quality report was stored with this result (recorded before Stage 1 PR-1).
+        </p>
+      )}
+
+      {quality && quality.notes.length > 0 && (
+        <ul className="mt-4 list-inside list-disc space-y-1 text-xs text-slate-400">
+          {quality.notes.map((note) => <li key={note}>{note}</li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Item({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="mt-1 text-slate-200">{children}</dd>
     </div>
   );
 }
@@ -10314,6 +10210,7 @@ export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
   sky_view_factor: 0.5,
   wind_speed_scaling_factor: 1,
   ground_albedo: 0.2,
+  radiation_time_convention: "instantaneous_linear",
 };
 ```
 
@@ -10818,6 +10715,174 @@ export function useGlobalBatch(batchId: string) {
 }
 ```
 
+### File: `frontend/src/lib/use-simulation-job.ts`
+```typescript
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import {
+  cancelSimulationJob,
+  getSimulationEventsUrl,
+  getSimulationJob,
+  getSimulationResult,
+} from "@/lib/api-client";
+import type { SimulationJob, WeatherSimulationResponse } from "@/types/simulation";
+
+export type JobTransport = "sse" | "polling" | "idle";
+
+const TERMINAL = new Set<SimulationJob["status"]>(["completed", "failed", "cancelled"]);
+const POLL_MS = 3000;
+const POLL_ON_ERROR_MS = 5000;
+
+export function isTerminalJobStatus(status: string): boolean {
+  return TERMINAL.has(status as SimulationJob["status"]);
+}
+
+/** Same reliability pattern as useGlobalBatch: load, stream, fall back to
+ *  polling, stop at a terminal status, ignore stale snapshots. */
+export function useSimulationJob(jobId: string) {
+  const [job, setJob] = useState<SimulationJob | null>(null);
+  const [result, setResult] = useState<WeatherSimulationResponse | null>(null);
+  const [error, setError] = useState("");
+  const [resultError, setResultError] = useState("");
+  const [transport, setTransport] = useState<JobTransport>("idle");
+  const [revision, setRevision] = useState(0);
+  const updatedAtRef = useRef<number>(0);
+
+  const applyJob = useCallback((next: SimulationJob) => {
+    const stamp = new Date(next.updated_at).getTime();
+    // SSE and polling race; never let an older snapshot overwrite a newer one.
+    if (Number.isFinite(stamp) && stamp < updatedAtRef.current) return;
+    if (Number.isFinite(stamp)) updatedAtRef.current = stamp;
+    setJob((current) => (current ? { ...current, ...next } : next));
+  }, []);
+
+  const loadResult = useCallback(async () => {
+    setResultError("");
+    try {
+      setResult(await getSimulationResult(jobId));
+    } catch (caught) {
+      setResultError(caught instanceof Error ? caught.message : "Failed to load simulation result");
+    }
+  }, [jobId]);
+
+  const refresh = useCallback(async () => {
+    const detail = await getSimulationJob(jobId);
+    applyJob(detail);
+    return detail;
+  }, [jobId, applyJob]);
+
+  const cancel = useCallback(async () => {
+    const updated = await cancelSimulationJob(jobId);
+    applyJob(updated);
+  }, [jobId, applyJob]);
+
+  const resubscribe = useCallback(() => setRevision((r) => r + 1), []);
+
+  useEffect(() => {
+    let disposed = false;
+    let pollTimer: number | null = null;
+    let eventSource: EventSource | null = null;
+
+    async function load(): Promise<SimulationJob | null> {
+      try {
+        const detail = await getSimulationJob(jobId);
+        if (!disposed) {
+          applyJob(detail);
+          setError("");
+        }
+        return detail;
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Failed to load simulation job");
+        return null;
+      }
+    }
+
+    function startPolling() {
+      setTransport("polling");
+      async function tick() {
+        const detail = await load();
+        if (disposed) return;
+        if (detail && isTerminalJobStatus(detail.status)) {
+          setTransport("idle");
+          return;
+        }
+        pollTimer = window.setTimeout(tick, detail ? POLL_MS : POLL_ON_ERROR_MS);
+      }
+      pollTimer = window.setTimeout(tick, POLL_MS);
+    }
+
+    function startStream() {
+      if (typeof EventSource === "undefined") return startPolling();
+      try {
+        eventSource = new EventSource(getSimulationEventsUrl(jobId));
+      } catch {
+        return startPolling();
+      }
+      setTransport("sse");
+
+      const onProgress = (event: Event) => {
+        if (disposed) return;
+        try {
+          applyJob(JSON.parse((event as MessageEvent<string>).data) as SimulationJob);
+        } catch {
+          setError("Failed to parse job progress data");
+        }
+      };
+
+      eventSource.addEventListener("progress", onProgress);
+      eventSource.addEventListener("terminal", (event) => {
+        onProgress(event);
+        eventSource?.close();
+        eventSource = null;
+        if (!disposed) setTransport("idle");
+      });
+      eventSource.onerror = () => {
+        eventSource?.close();
+        eventSource = null;
+        if (!disposed) startPolling();
+      };
+    }
+
+    void load().then((detail) => {
+      if (disposed) return;
+      if (!detail) return startPolling();
+      if (isTerminalJobStatus(detail.status)) return setTransport("idle");
+      startStream();
+    });
+
+    return () => {
+      disposed = true;
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      eventSource?.close();
+    };
+  }, [jobId, revision, applyJob]);
+
+    useEffect(() => {
+    if (job?.status !== "completed" || result !== null || resultError !== "") return;
+
+    let cancelled = false;
+    (async () => {
+        try {
+        const data = await getSimulationResult(jobId);
+        if (!cancelled) setResult(data);
+        } catch (caught) {
+        if (!cancelled) {
+            setResultError(caught instanceof Error ? caught.message : "Failed to load simulation result");
+        }
+        }
+    })();
+
+    return () => {
+        cancelled = true;
+    };
+    }, [job?.status, result, resultError, jobId]);
+
+  return { job, result, error, resultError, transport, refresh, cancel, resubscribe, retryResult: loadResult };
+}
+```
+
 ### File: `frontend/src/locales/en.ts`
 ```typescript
 export const en = {
@@ -11075,7 +11140,8 @@ export type MonthlyAdaptationResult = {
   beneficial_weighted_days: number;
 
   exposure_coverage_percent: number;
-
+  skipped_weighted_days?: number;
+  
   climate_adaptation_rate_percent:
     | number
     | null;
@@ -11130,15 +11196,17 @@ export type HeatwaveEvent = {
 export type LeaseState = "none" | "live" | "expired";
 
 export type DataQualityInfo = {
-  weather_source: string;            // e.g. "open-meteo" | "cache" | "synthetic_fallback"
-  cached_sample_count: number;
-  fetched_sample_count: number;
   skipped_sample_count: number;
-  coverage_ratio: number;            // 0–1
-  warnings: string[];
-  skipped_weighted_days?: number | null;
-  skip_reasons?: Record<string, number>;
-  monthly_weather_payload_sha256?: Record<string, string | null>;
+  skipped_weighted_days: number;
+  skip_reasons: Record<string, number>;
+  monthly_weather_payload_sha256: Record<string, string | null>;
+  /** Stage 9 */
+  checkpoints_discarded?: Array<{ month: number; reason: string }>;
+  checkpoint_provenance?: {
+    model_version: string;
+    parameter_fingerprint: string;
+    request_sha256: string;
+  };
 };
 
 export type MetricDefinition = {
@@ -11270,6 +11338,11 @@ export type GlobalCityResult = {
   checkpoint_months?: number[];
   data_quality?: DataQualityInfo | null;
   metric_definitions?: Record<string, MetricDefinition> | null;
+
+  // Stage 9
+  heatwave_analysis_available?: boolean | null;
+  heatwave_unavailable_reason?: string | null;
+  heatwave_temperature_basis?: string | null;
 };
 
 
@@ -11335,6 +11408,10 @@ export type CityCheckpoint = {
   payload_sha256: string;
   sampled_day_count: number;
   skipped_sample_count: number;
+  model_version?: string | null;
+  parameter_fingerprint?: string | null;
+  provenance_matches_batch?: boolean;
+  mismatch_reason?: string | null;
 };
 
 export type CityCheckpointList = {
@@ -11669,6 +11746,10 @@ export type ResolvedParameterSource = "material_input" | "derived_from_clo";
 export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
 export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
 
+export type RadiationTimeConvention =
+  | "instantaneous_linear"
+  | "preceding_hour_mean_step";
+
 export type EnvironmentAssumptions = {
   mean_radiant_temperature_method: MeanRadiantTemperatureMethod;
   solar_mrt_gain_k_per_w_m2: number;
@@ -11680,6 +11761,20 @@ export type EnvironmentAssumptions = {
   sky_view_factor: number;
   wind_speed_scaling_factor: number;
   ground_albedo: number;
+  radiation_time_convention: RadiationTimeConvention;
+};
+
+export type WeatherGap = { start: string; end: string; missing_steps: number };
+
+export type WeatherQualityReport = {
+  expected_step_seconds: number;
+  point_count: number;
+  first_timestamp: string | null;
+  last_timestamp: string | null;
+  was_sorted: boolean;
+  duplicates_removed: number;
+  gaps: WeatherGap[];
+  notes: string[];
 };
 
 export type BodyPosition = "standing" | "sitting";
@@ -11816,6 +11911,7 @@ export type SimulationSummary = {
   final_skin_temperature_improvement_c: number;
   final_core_temperature_improvement_c: number;
   average_skin_temperature_improvement_c: number;
+  averaging_method?: string | null;
 };
 
 export type SimulationResponse = {
@@ -11868,8 +11964,12 @@ export type WeatherTimeSeries = {
     downloaded_at: string;
     from_cache: boolean;
     attribution: string;
+    payload_sha256?: string | null;
+    quality?: WeatherQualityReport | null;
   };
 };
+
+export type LeaseState = "none" | "live" | "expired";
 
 export type WeatherSimulationRequest = {
   city_id: string;
@@ -11911,6 +12011,11 @@ export type SimulationJob = {
   completed_at: string | null;
   control_material_version_id?: string | null;
   rc_material_version_id?: string | null;
+  attempt?: number;
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  last_heartbeat_at?: string | null;
+  lease_state?: LeaseState;
 };
 
 export type SimulationJobDetail = SimulationJob & {

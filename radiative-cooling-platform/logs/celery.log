@@ -1,10 +1,10 @@
  
  -------------- celery@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
--- ******* ---- Windows-11-10.0.26200-SP0 2026-11-05 13:38:36
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-09 11:19:39
 - *** --- * --- 
 - ** ---------- [config]
-- ** ---------- .> app:         radiative_cooling_worker:0x1d0aa6ed400
+- ** ---------- .> app:         radiative_cooling_worker:0x25111c878f0
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -18,80 +18,44 @@
 [tasks]
   . global_batch.reap_expired_leases
   . global_batch.run_city
+  . simulation.reap_expired_leases
   . simulation.run_weather
 
-[2026-11-05 13:38:36,471: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2026-11-05 13:38:36,476: INFO/MainProcess] mingle: searching for neighbors
-[2026-11-05 13:38:37,504: INFO/MainProcess] mingle: all alone
-[2026-11-05 13:38:37,579: INFO/MainProcess] celery@p2104180 ready.
-[2026-11-05 19:29:15,065: INFO/MainProcess] Task simulation.run_weather[6ae9c695-7683-408c-8591-3ccf5d45b825] received
-[2026-11-05 19:29:18,013: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=23.1291&longitude=113.2644&elevation=21.0&start_date=2026-03-15&end_date=2026-03-15&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance&timezone=Asia%2FShanghai&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
-[2026-11-05 19:29:18,213: INFO/MainProcess] Task simulation.run_weather[6ae9c695-7683-408c-8591-3ccf5d45b825] succeeded in 3.1409999999996217s: {'job_id': '55bc69b1-c16a-4b7a-9d71-eae275f23d0c', 'status': 'completed'}
-[2026-11-05 19:30:24,680: INFO/MainProcess] Task global_batch.run_city[f62df1cd-f3b3-4f97-9e11-0fd6d5e66f9e] received
-[2026-11-05 19:30:28,897: INFO/MainProcess] Task global_batch.run_city[f62df1cd-f3b3-4f97-9e11-0fd6d5e66f9e] succeeded in 4.21900000000096s: {'batch_id': '49e8cfea-8899-460b-a704-4f50815072e7', 'city_result_id': '7bdbd823-427e-4ae7-8ea7-f3468ae72233', 'status': 'completed'}
-[2026-11-05 19:30:28,911: INFO/MainProcess] Task global_batch.run_city[8a82390b-a552-4493-9d74-14d2dc8f1108] received
-[2026-11-05 19:30:32,773: INFO/MainProcess] Task global_batch.run_city[8a82390b-a552-4493-9d74-14d2dc8f1108] succeeded in 3.8590000000003783s: {'batch_id': '49e8cfea-8899-460b-a704-4f50815072e7', 'city_result_id': 'e09b5730-6ad3-487a-b1f3-993411b0983a', 'status': 'completed'}
-[2026-11-05 19:30:32,773: INFO/MainProcess] Task global_batch.run_city[28999d81-95ac-4621-9b93-82ee02d58d46] received
-[2026-11-05 19:30:36,073: INFO/MainProcess] Task global_batch.run_city[28999d81-95ac-4621-9b93-82ee02d58d46] succeeded in 3.2969999999986612s: {'batch_id': '49e8cfea-8899-460b-a704-4f50815072e7', 'city_result_id': 'd061762e-8660-439e-aa0f-c6c9902c379d', 'status': 'completed'}
-[2026-11-06 08:53:55,984: WARNING/MainProcess] consumer: Connection to broker lost. Trying to re-establish the connection...
-Traceback (most recent call last):
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\connection.py", line 650, in read_response
-    response = self._parser.read_response(disable_decoding=disable_decoding)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 15, in read_response
-    result = self._read_response(disable_decoding=disable_decoding)
-             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\_parsers\resp2.py", line 25, in _read_response
-    raw = self._buffer.readline()
-          ^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 115, in readline
-    self._read_from_socket()
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\_parsers\socket.py", line 65, in _read_from_socket
-    data = self._sock.recv(socket_read_size)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-ConnectionResetError: [WinError 10054] 遠端主機已強制關閉一個現存的連線。
-
-During handling of the above exception, another exception occurred:
-
-Traceback (most recent call last):
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\celery\worker\consumer\consumer.py", line 346, in start
-    blueprint.start(self)
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\celery\bootsteps.py", line 116, in start
-    step.start(parent)
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\celery\worker\consumer\consumer.py", line 788, in start
-    c.loop(*c.loop_args())
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\celery\worker\loops.py", line 168, in synloop
-    _loop_cycle()
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\celery\worker\loops.py", line 157, in _loop_cycle
-    connection.drain_events(timeout=2.0)
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\kombu\connection.py", line 343, in drain_events
-    return self.transport.drain_events(self.connection, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\kombu\transport\virtual\base.py", line 997, in drain_events
-    get(self._deliver, timeout=timeout)
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\kombu\transport\redis.py", line 601, in get
-    ret = self.handle_event(fileno, event)
-          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\kombu\transport\redis.py", line 583, in handle_event
-    return self.on_readable(fileno), self
-           ^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\kombu\transport\redis.py", line 579, in on_readable
-    chan.handlers[type]()
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\kombu\transport\redis.py", line 982, in _brpop_read
-    dest__item = self.client.parse_response(self.client.connection,
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\client.py", line 651, in parse_response
-    response = connection.read_response()
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\redis\connection.py", line 658, in read_response
-    raise ConnectionError(f"Error while reading from {host_error} : {e.args}")
-redis.exceptions.ConnectionError: Error while reading from localhost:6379 : (10054, '遠端主機已強制關閉一個現存的連線。', None, 10054, None)
-[2026-11-06 08:54:00,362: WARNING/MainProcess] C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\backend\.venv\Lib\site-packages\celery\worker\consumer\consumer.py:397: CPendingDeprecationWarning: 
-In Celery 5.1 we introduced an optional breaking change which
-on connection loss cancels all currently executed tasks with late acknowledgement enabled.
-These tasks cannot be acknowledged as the connection is gone, and the tasks are automatically redelivered
-back to the queue. You can enable this behavior using the worker_cancel_long_running_tasks_on_connection_loss
-setting. In Celery 5.1 it is set to False by default. The setting will be set to True by default in Celery 6.0.
-
-  warnings.warn(CANCEL_TASKS_BY_DEFAULT, CPendingDeprecationWarning)
-
+[2026-11-09 11:19:39,768: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-09 11:19:39,775: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-09 11:19:40,833: INFO/MainProcess] mingle: all alone
+[2026-11-09 11:19:40,864: INFO/MainProcess] celery@p2104180 ready.
+[2026-11-09 11:36:40,863: INFO/MainProcess] Task simulation.run_weather[ca1f8aa4-1ec8-471e-8d84-25b2c9b8996f] received
+[2026-11-09 11:36:41,214: INFO/MainProcess] Task simulation.run_weather[ca1f8aa4-1ec8-471e-8d84-25b2c9b8996f] succeeded in 0.3440000000009604s: {'job_id': '333373d0-7885-4bd9-8b25-4da038a0d41b', 'status': 'completed'}
+[2026-11-09 11:38:29,314: INFO/MainProcess] Task global_batch.run_city[a3387948-0ac9-43b9-864e-25b80d30430d] received
+[2026-11-09 11:38:34,037: INFO/MainProcess] Task global_batch.run_city[a3387948-0ac9-43b9-864e-25b80d30430d] succeeded in 4.718999999999141s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'f0c6ce78-eef9-4cd1-8d45-0b1e86f758fd', 'status': 'completed'}
+[2026-11-09 11:38:34,040: INFO/MainProcess] Task global_batch.run_city[edabd17f-b3d7-48fb-97c0-68a7f6ba5ea4] received
+[2026-11-09 11:38:38,402: INFO/MainProcess] Task global_batch.run_city[edabd17f-b3d7-48fb-97c0-68a7f6ba5ea4] succeeded in 4.375s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '57593d3b-3946-40c9-8bb8-b25401a25f97', 'status': 'completed'}
+[2026-11-09 11:38:38,404: INFO/MainProcess] Task global_batch.run_city[1bdf843f-04d1-43dc-a368-20aca3f51eeb] received
+[2026-11-09 11:38:42,571: INFO/MainProcess] Task global_batch.run_city[1bdf843f-04d1-43dc-a368-20aca3f51eeb] succeeded in 4.156000000000859s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '4f22d272-0d5e-42b9-8937-a85dc20204fd', 'status': 'completed'}
+[2026-11-09 11:38:42,573: INFO/MainProcess] Task global_batch.run_city[75832ed0-6259-41ab-a17f-1d652c50b6d8] received
+[2026-11-09 11:38:46,803: INFO/MainProcess] Task global_batch.run_city[75832ed0-6259-41ab-a17f-1d652c50b6d8] succeeded in 4.234999999998763s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'a59b2fc0-0db1-4cab-afbf-01d0c5e3a93f', 'status': 'completed'}
+[2026-11-09 11:38:46,805: INFO/MainProcess] Task global_batch.run_city[040e4e97-f487-438e-bbdc-82948d23d88f] received
+[2026-11-09 11:38:51,174: INFO/MainProcess] Task global_batch.run_city[040e4e97-f487-438e-bbdc-82948d23d88f] succeeded in 4.375s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'c72b4911-bcdf-4a09-ba95-ab61af3a9f19', 'status': 'completed'}
+[2026-11-09 11:38:51,177: INFO/MainProcess] Task global_batch.run_city[5a83f73d-f730-4001-afa2-45eee8efeb09] received
+[2026-11-09 11:38:55,481: INFO/MainProcess] Task global_batch.run_city[5a83f73d-f730-4001-afa2-45eee8efeb09] succeeded in 4.311999999999898s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'bafdd67e-1291-417f-a51a-d9623c882687', 'status': 'completed'}
+[2026-11-09 11:38:55,483: INFO/MainProcess] Task global_batch.run_city[c2e88889-8b8a-4f44-973c-8ef9688282fc] received
+[2026-11-09 11:38:59,793: INFO/MainProcess] Task global_batch.run_city[c2e88889-8b8a-4f44-973c-8ef9688282fc] succeeded in 4.313000000000102s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'e043d530-7620-4968-ba2a-cad92021e6ad', 'status': 'completed'}
+[2026-11-09 11:38:59,796: INFO/MainProcess] Task global_batch.run_city[597bc985-4d40-43f8-90b8-35930ccfcb87] received
+[2026-11-09 11:39:04,090: INFO/MainProcess] Task global_batch.run_city[597bc985-4d40-43f8-90b8-35930ccfcb87] succeeded in 4.29700000000048s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '6a6accdb-98d3-4ab9-8dcb-0a87c45a8c4b', 'status': 'completed'}
+[2026-11-09 11:39:04,093: INFO/MainProcess] Task global_batch.run_city[b46c0862-0ec9-427e-b381-045c764a2147] received
+[2026-11-09 11:39:08,413: INFO/MainProcess] Task global_batch.run_city[b46c0862-0ec9-427e-b381-045c764a2147] succeeded in 4.311999999999898s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'cb5ffb05-394f-41aa-86d8-6cf011534913', 'status': 'completed'}
+[2026-11-09 11:39:08,415: INFO/MainProcess] Task global_batch.run_city[48697887-cd4a-448f-8439-564543a092c4] received
+[2026-11-09 11:39:12,615: INFO/MainProcess] Task global_batch.run_city[48697887-cd4a-448f-8439-564543a092c4] succeeded in 4.20299999999952s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '022722a5-445d-4646-aeac-0d7937170f19', 'status': 'completed'}
+[2026-11-09 11:39:12,617: INFO/MainProcess] Task global_batch.run_city[c3701768-ac9e-4213-a477-4be1fedfcd91] received
+[2026-11-09 11:39:17,055: INFO/MainProcess] Task global_batch.run_city[c3701768-ac9e-4213-a477-4be1fedfcd91] succeeded in 4.438000000000102s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '71756eef-df32-4ac4-80fa-66b21824b713', 'status': 'completed'}
+[2026-11-09 11:39:17,059: INFO/MainProcess] Task global_batch.run_city[591e4e19-a8e3-42bf-8f61-26856a773c24] received
+[2026-11-09 11:39:21,443: INFO/MainProcess] Task global_batch.run_city[591e4e19-a8e3-42bf-8f61-26856a773c24] succeeded in 4.375s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '5db0fe97-c321-499c-ac11-7cc082ec7a03', 'status': 'completed'}
+[2026-11-09 11:39:21,447: INFO/MainProcess] Task global_batch.run_city[c2ab2a19-4d03-43e4-9008-1884beafc3bd] received
+[2026-11-09 11:39:25,809: INFO/MainProcess] Task global_batch.run_city[c2ab2a19-4d03-43e4-9008-1884beafc3bd] succeeded in 4.375s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': 'd59d00b5-3f18-4ecf-9dff-3a8ad5dbfd72', 'status': 'completed'}
+[2026-11-09 11:39:25,811: INFO/MainProcess] Task global_batch.run_city[47b35e08-6444-4981-a445-2eb9b94afb2d] received
+[2026-11-09 11:39:30,005: INFO/MainProcess] Task global_batch.run_city[47b35e08-6444-4981-a445-2eb9b94afb2d] succeeded in 4.188000000000102s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '583d756c-d3c3-4355-ab28-ad23314dc409', 'status': 'completed'}
+[2026-11-09 11:39:30,008: INFO/MainProcess] Task global_batch.run_city[863d8821-98bd-46f0-a1a4-95f0dde77bc5] received
+[2026-11-09 11:39:34,277: INFO/MainProcess] Task global_batch.run_city[863d8821-98bd-46f0-a1a4-95f0dde77bc5] succeeded in 4.264999999999418s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '3dff475f-2cd5-45b0-b058-4ce3d29c4039', 'status': 'completed'}
+[2026-11-09 11:39:34,279: INFO/MainProcess] Task global_batch.run_city[329b5eaa-8a8e-4495-883d-03313281f79f] received
+[2026-11-09 11:39:38,499: INFO/MainProcess] Task global_batch.run_city[329b5eaa-8a8e-4495-883d-03313281f79f] succeeded in 4.21900000000096s: {'batch_id': '39a4c4b6-7a2e-4f36-9d93-88ced4983da9', 'city_result_id': '71cb3f07-77f8-4f91-bc90-935377ac29f0', 'status': 'completed'}

@@ -1,24 +1,19 @@
 from typing import Annotated
 
 from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
+    APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status,
 )
-from sqlalchemy import (
-    func,
-    select,
-)
+
+from sqlalchemy import delete, func, or_, select
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (
     Session,
     selectinload,
 )
+
+from app.models.global_batch import GlobalBatchJob
+from app.models.simulation_job import SimulationJob
 
 from app.db.session import get_db
 from app.models.material import (
@@ -297,44 +292,84 @@ def get_material(
     )
 
 
-@router.patch(
-    "/{material_id}",
-    response_model=MaterialResponse,
-)
+@router.patch("/{material_id}", response_model=MaterialResponse)
 def update_material(
     material_id: str,
     request: MaterialUpdate,
     session: Session = Depends(get_db),
 ) -> MaterialResponse:
-    material = load_material(
-        session,
-        material_id,
-    )
-
+    material = session.get(Material, material_id)
     if material is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Material not found",
-        )
+        raise HTTPException(status_code=404, detail="Material not found")
 
-    update_data = request.model_dump(
-        exclude_unset=True
-    )
-
-    for field, value in update_data.items():
+    for field, value in request.model_dump(exclude_unset=True).items():
         setattr(material, field, value)
 
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise HTTPException(
+            status_code=409, detail="Material update conflicts with existing data"
+        ) from error
+
+    return MaterialResponse.model_validate(load_material(session, material_id))
+
+def count_material_references(session: Session, material_id: str) -> dict[str, int]:
+    """Jobs and batches whose control or RC garment used any version of this material."""
+    version_ids = select(MaterialVersion.id).where(MaterialVersion.material_id == material_id)
+
+    def count(model) -> int:
+        return session.scalar(
+            select(func.count()).select_from(model).where(
+                or_(
+                    model.control_material_version_id.in_(version_ids),
+                    model.rc_material_version_id.in_(version_ids),
+                )
+            )
+        ) or 0
+
+    return {
+        "simulation_job_count": count(SimulationJob),
+        "global_batch_count": count(GlobalBatchJob),
+    }
+
+
+@router.delete(
+    "/{material_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_material(material_id: str, session: Session = Depends(get_db)) -> Response:
+    """Hard delete, only when no simulation references any of its versions.
+
+    The job FKs are ON DELETE SET NULL, so deleting a referenced material would
+    silently detach provenance. Referenced materials must be archived instead.
+    """
+    if session.get(Material, material_id) is None:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    references = count_material_references(session, material_id)
+    if references["simulation_job_count"] or references["global_batch_count"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "MATERIAL_IN_USE",
+                "message": (
+                    f"Versions of this material are referenced by "
+                    f"{references['simulation_job_count']} simulation job(s) and "
+                    f"{references['global_batch_count']} global batch(es). "
+                    "Archive it instead: archived materials are hidden from lists "
+                    "and pickers but keep their provenance."
+                ),
+                **references,
+            },
+        )
+
+    # Versions and spectra go with it via ON DELETE CASCADE.
+    session.execute(delete(Material).where(Material.id == material_id))
     session.commit()
-
-    updated = load_material(
-        session,
-        material_id,
-    )
-
-    return MaterialResponse.model_validate(
-        updated
-    )
-
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post(
     "/{material_id}/versions",

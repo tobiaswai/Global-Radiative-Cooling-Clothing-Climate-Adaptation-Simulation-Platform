@@ -3,9 +3,9 @@
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import {ProvenanceEditor} from "@/components/materials/provenance-editor";
-import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
 import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
+import { MaterialVersionFields } from "@/components/materials/material-version-fields";
 
 
 const initialMaterial: MaterialCreate = {
@@ -157,116 +157,11 @@ export default function NewMaterialPage() {
             <h2 className="text-xl font-semibold">
               Initial Physical Parameters
             </h2>
-
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <NumberInput
-                label="Clothing Insulation (clo)"
-                value={
-                  material.initial_version
-                    .clothing_insulation_clo
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "clothing_insulation_clo",
-                    value,
-                  )
-                }
-              />
-
-              <OptionalNumberField
-                label="Clothing Area Factor (f_cl)"
-                value={material.initial_version.clothing_area_factor}
-                placeholder="Derived from clo"
-                min={1}
-                max={2}
-                step={0.01}
-                hint="Leave empty to let the backend derive f_cl from clo."
-                onChange={(value) => updateVersion("clothing_area_factor", value)}
-              />
-
-              <OptionalNumberField
-                label="Evaporative Resistance (Re,cl)"
-                suffix="m²·Pa/W"
-                value={material.initial_version.evaporative_resistance_m2pa_w}
-                placeholder="Derived from clo"
-                min={0} max={1000} step={0.5}
-                onChange={(value) => updateVersion("evaporative_resistance_m2pa_w", value)}
-              />
-              <NumberInput
-                label="Projected Solar Area Factor"
-                value={material.initial_version.projected_solar_area_factor}
-                onChange={(value) => updateVersion("projected_solar_area_factor", value)}
-              />
-
-
-              <NumberInput
-                label="Solar Reflectance"
-                value={
-                  material.initial_version
-                    .solar_reflectance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_reflectance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Solar Transmittance"
-                value={
-                  material.initial_version
-                    .solar_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Emissivity"
-                value={
-                  material.initial_version
-                    .infrared_emissivity
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_emissivity",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Transmittance"
-                value={
-                  material.initial_version
-                    .infrared_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Areal Density (g/m²)"
-                value={
-                  material.initial_version
-                    .areal_density_g_m2 ?? 0
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "areal_density_g_m2",
-                    value,
-                  )
-                }
+            <div className="mt-5">
+              <MaterialVersionFields
+                value={material.initial_version}
+                disabled={loading}
+                onChange={updateVersion}
               />
             </div>
           </section>
@@ -329,38 +224,6 @@ function TextInput({
         value={value}
         onChange={(event) =>
           onChange(event.target.value)
-        }
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-      />
-    </label>
-  );
-}
-
-
-function NumberInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm text-slate-300">
-        {label}
-      </span>
-
-      <input
-        type="number"
-        min={0}
-        step={0.01}
-        value={value}
-        onChange={(event) =>
-          onChange(
-            Number(event.target.value),
-          )
         }
         className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
       />

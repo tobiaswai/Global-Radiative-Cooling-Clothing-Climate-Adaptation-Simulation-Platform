@@ -17,6 +17,7 @@ backend/alembic/versions/b83aed15c819_add_material_version_and_spectrum_tables.p
 backend/alembic/versions/c7d2e9f4a1b8_stage3_material_version_clothing_area_factor.py
 backend/alembic/versions/df85b07c9163_add_stage_4_4_checkpoint_and_analytics_.py
 backend/alembic/versions/e4ee64441802_add_stage_4_2_exposure_and_retry_fields.py
+backend/alembic/versions/f0a1b2c3d4e5_stage9_job_leases_and_checkpoint_provenance.py
 backend/app/__init__.py
 backend/app/api/__init__.py
 backend/app/api/benchmarks.py
@@ -100,6 +101,7 @@ backend/docs/acceptance/stage-5-solar-surface/pytest-all.txt
 backend/docs/acceptance/stage-6-consistency/golden-refresh.md
 backend/docs/acceptance/stage-8-observability/README.md
 backend/docs/acceptance/stage-8-observability/resume-benchmark.json
+backend/docs/acceptance/stage-9-reliability/drills.md
 backend/docs/decisions/0001-body-surface-area.md
 backend/docs/decisions/0002-gagge-controllers.md
 backend/docs/decisions/0003-clothing-surface-balance.md
@@ -161,6 +163,7 @@ backend/tests/test_stage_4_4_analytics.py
 backend/tests/test_stage_4_4_checkpoint.py
 backend/tests/test_stage_8_observability.py
 backend/tests/test_stage_8_resume_benchmark.py
+backend/tests/test_stage_9_leases_and_provenance.py
 backend/tests/test_two_node.py
 backend/tests/test_weather_api.py
 backend/tests/test_weather_interpolation.py
@@ -1131,6 +1134,56 @@ def downgrade() -> None:
 
 ```
 
+### File: `backend/alembic/versions/f0a1b2c3d4e5_stage9_job_leases_and_checkpoint_provenance.py`
+```python
+"""stage9 job leases and checkpoint provenance
+
+Revision ID: f0a1b2c3d4e5
+Revises: 165a424d6ba1
+Create Date: 2026-11-06 10:00:00.000000
+
+* simulation_jobs gains the same lease columns as global_city_results so the
+  single-job worker path has the same redelivery / crash guarantees.
+* global_city_checkpoints records which model version, parameter fingerprint
+  and request hash produced each row. A resumed worker only trusts rows whose
+  provenance matches the current batch; legacy rows (NULL) are recomputed.
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+
+
+revision: str = "f0a1b2c3d4e5"
+down_revision: Union[str, Sequence[str], None] = "165a424d6ba1"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.add_column("simulation_jobs", sa.Column("attempt", sa.Integer(), server_default="0", nullable=False))
+    op.add_column("simulation_jobs", sa.Column("lease_owner", sa.String(length=100), nullable=True))
+    op.add_column("simulation_jobs", sa.Column("lease_expires_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column("simulation_jobs", sa.Column("last_heartbeat_at", sa.DateTime(timezone=True), nullable=True))
+    op.create_index("ix_simulation_jobs_lease_reap", "simulation_jobs", ["status", "lease_expires_at"])
+
+    op.add_column("global_city_checkpoints", sa.Column("model_version", sa.String(length=20), nullable=True))
+    op.add_column("global_city_checkpoints", sa.Column("parameter_fingerprint", sa.String(length=64), nullable=True))
+    op.add_column("global_city_checkpoints", sa.Column("request_sha256", sa.String(length=64), nullable=True))
+
+
+def downgrade() -> None:
+    op.drop_column("global_city_checkpoints", "request_sha256")
+    op.drop_column("global_city_checkpoints", "parameter_fingerprint")
+    op.drop_column("global_city_checkpoints", "model_version")
+
+    op.drop_index("ix_simulation_jobs_lease_reap", table_name="simulation_jobs")
+    op.drop_column("simulation_jobs", "last_heartbeat_at")
+    op.drop_column("simulation_jobs", "lease_expires_at")
+    op.drop_column("simulation_jobs", "lease_owner")
+    op.drop_column("simulation_jobs", "attempt")
+```
+
 ### File: `backend/app/__init__.py`
 ```python
 
@@ -1226,6 +1279,7 @@ from fastapi import (
 )
 from fastapi.responses import Response,StreamingResponse
 from sqlalchemy import (
+    delete,
     func,
     select,
 )
@@ -1241,8 +1295,18 @@ from app.core.cities import (
 from app.db.session import get_db, SessionLocal
 from app.models.global_batch import (
     GlobalBatchJob,
+    GlobalCityCheckpoint,
     GlobalCityResult,
 )
+from app.services.job_state import (
+    CityStatus,
+    assert_batch_transition,
+    assert_city_transition,
+    BatchStatus,
+)
+
+from app.services.leases import db_now
+
 from app.schemas.global_batch import (
     GlobalBatchCreate,
     GlobalBatchDetail,
@@ -1564,7 +1628,20 @@ def get_global_batch(batch_id: str, session: Session = Depends(get_db)) -> Globa
     batch = load_batch(session, batch_id)
     if batch is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
-    return batch_to_detail(batch, checkpoint_months=load_checkpoint_months(session, batch.id))
+    return batch_to_detail(
+        batch,
+        checkpoint_months=load_checkpoint_months(session, batch.id),
+        now=db_now(session),
+    )
+
+PROGRESS_COLUMNS = (
+    GlobalCityResult.id, GlobalCityResult.batch_id, GlobalCityResult.city_id,
+    GlobalCityResult.status, GlobalCityResult.stage, GlobalCityResult.progress,
+    GlobalCityResult.retry_count, GlobalCityResult.completed_month_count,
+    GlobalCityResult.last_checkpoint_month, GlobalCityResult.last_heartbeat_at,
+    GlobalCityResult.lease_owner, GlobalCityResult.lease_expires_at,
+    GlobalCityResult.error_message,
+)
 
 TERMINAL_BATCH_STATUSES = {"completed", "partial_completed", "failed", "cancelled"}
 
@@ -1596,10 +1673,14 @@ def list_city_checkpoints(
 
 def load_batch_progress_snapshot(batch_id: str) -> GlobalBatchProgressEvent | None:
     with SessionLocal() as session:
-        batch = load_batch(session, batch_id)
+        batch = session.scalar(
+            select(GlobalBatchJob)
+            .options(selectinload(GlobalBatchJob.city_results).load_only(*PROGRESS_COLUMNS))
+            .where(GlobalBatchJob.id == batch_id)
+        )
         if batch is None:
             return None
-        return batch_progress_event(batch, load_checkpoint_months(session, batch_id))
+        return batch_progress_event(batch, load_checkpoint_months(session, batch_id), now=db_now(session))
 
 
 @router.get("/{batch_id}/events")
@@ -1831,11 +1912,14 @@ def retry_failed_cities(
     now = utc_now()
 
     for result in failed_results:
-        checkpoint_available = bool(
-            result.monthly_json
-        )
+        assert_city_transition(result.status, CityStatus.QUEUED)
 
-        result.status = "queued"
+        has_checkpoints = session.scalar(
+            select(func.count()).select_from(GlobalCityCheckpoint)
+            .where(GlobalCityCheckpoint.city_result_id == result.id)
+        ) or 0
+
+        result.status = CityStatus.QUEUED
         result.stage = "queued_for_retry"
         result.progress = 0
         result.retry_count += 1
@@ -1843,44 +1927,38 @@ def retry_failed_cities(
         result.error_message = None
         result.completed_at = None
         result.last_heartbeat_at = None
+        result.lease_owner = None
+        result.lease_expires_at = None
 
-        result.climate_adaptation_rate_percent = None
-        result.exposure_coverage_percent = None
-
-        result.annual_average_skin_improvement_c = None
-        result.annual_average_core_improvement_c = None
-        result.maximum_skin_improvement_c = None
-        result.effective_cooling_hours = None
-
-        result.sampled_day_count = None
-        result.eligible_sample_count = None
-        result.evaluated_weighted_days = None
-        result.beneficial_weighted_days = None
-
-        result.skin_improvement_p50_c = None
-        result.skin_improvement_p90_c = None
-        result.skin_improvement_p95_c = None
-
-        result.core_improvement_p50_c = None
-        result.core_improvement_p90_c = None
-        result.core_improvement_p95_c = None
-
-        result.heatwave_event_count = None
-        result.longest_heatwave_days = None
-        result.analytics_json = None
+        for column in (
+            "climate_adaptation_rate_percent", "exposure_coverage_percent",
+            "annual_average_skin_improvement_c", "annual_average_core_improvement_c",
+            "maximum_skin_improvement_c", "effective_cooling_hours",
+            "sampled_day_count", "eligible_sample_count",
+            "evaluated_weighted_days", "beneficial_weighted_days",
+            "skin_improvement_p50_c", "skin_improvement_p90_c", "skin_improvement_p95_c",
+            "core_improvement_p50_c", "core_improvement_p90_c", "core_improvement_p95_c",
+            "heatwave_event_count", "longest_heatwave_days", "analytics_json",
+        ):
+            setattr(result, column, None)
 
         if request.resume_from_checkpoint:
-            result.resumed_from_checkpoint = (
-                checkpoint_available
-            )
+            # Hint only; the worker decides after checking provenance.
+            result.resumed_from_checkpoint = bool(result.monthly_json) or has_checkpoints > 0
         else:
+            # The user asked for a clean recomputation: remove the durable rows
+            # so the worker cannot resume from them.
+            session.execute(
+                delete(GlobalCityCheckpoint).where(GlobalCityCheckpoint.city_result_id == result.id)
+            )
             result.monthly_json = None
             result.completed_month_count = 0
             result.last_checkpoint_month = None
             result.resumed_from_checkpoint = False
             result.started_at = None
 
-    batch.status = "running"
+    assert_batch_transition(batch.status, BatchStatus.RUNNING)
+    batch.status = BatchStatus.RUNNING
     batch.stage = "retrying_failed_cities"
 
     already_processed_count = (
@@ -2734,6 +2812,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from app.services.scenario_summary import build_simulation_summary
+from app.services.leases import db_now
 
 from app.core.cities import get_city
 from app.db.session import SessionLocal, get_db
@@ -2970,12 +3049,10 @@ def list_simulation_jobs(
         .offset(offset)
         .limit(limit)
     ).all()
+    now = db_now(session)
 
     return SimulationJobListResponse(
-        items=[
-            job_to_response(job)
-            for job in jobs
-        ],
+        items=[job_to_response(job, now=now) for job in jobs],
         total=total,
         limit=limit,
         offset=offset,
@@ -3000,7 +3077,7 @@ def get_simulation_job(
             detail="Unable to find simulation job",
         )
 
-    return job_to_detail(job)
+    return job_to_detail(job, now=db_now(session))
 
 @router.get(
     "/jobs/{job_id}/result",
@@ -4549,6 +4626,11 @@ class GlobalCityCheckpoint(Base):
     city_result: Mapped["GlobalCityResult"] = relationship(
         back_populates="checkpoints",
     )
+    # Stage 9. Provenance of the computation that produced this row.
+    # NULL on rows written before Stage 9; such rows are never resumed from.
+    model_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    parameter_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    request_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 ```
 
 ### File: `backend/app/models/material.py`
@@ -4883,6 +4965,7 @@ from sqlalchemy import (
     String,
     Text,
     func,
+    Index,
     ForeignKey,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -4896,7 +4979,10 @@ from app.db.base import Base
 
 class SimulationJob(Base):
     __tablename__ = "simulation_jobs"
-
+    __table_args__ = (
+        Index("ix_simulation_jobs_lease_reap", "status", "lease_expires_at"),
+    )
+    
     id: Mapped[str] = mapped_column(
         String(36),
         primary_key=True,
@@ -5003,6 +5089,12 @@ class SimulationJob(Base):
         nullable=True,
         index=True,
     )
+    
+    # Stage 9. Same lease contract as GlobalCityResult.
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    lease_owner: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 ```
 
 ### File: `backend/app/schemas/__init__.py`
@@ -5511,6 +5603,11 @@ class GlobalCityResultResponse(BaseModel):
     # Months with a durable checkpoint row (source of truth for resume).
     checkpoint_months: list[int] = Field(default_factory=list)
 
+    # Stage 9. Why heatwave analysis is or is not available for THIS result
+    # (configuration or data), so the UI never guesses from the request alone.
+    heatwave_analysis_available: bool | None = None
+    heatwave_unavailable_reason: str | None = None
+    heatwave_temperature_basis: str | None = None
 
 class GlobalBatchResponse(BaseModel):
     id: str
@@ -5602,7 +5699,11 @@ class CityCheckpointResponse(BaseModel):
     payload_sha256: str
     sampled_day_count: int
     skipped_sample_count: int
-
+    # Stage 9
+    model_version: str | None = None
+    parameter_fingerprint: str | None = None
+    provenance_matches_batch: bool = False
+    mismatch_reason: str | None = None
 
 class CityCheckpointListResponse(BaseModel):
     batch_id: str
@@ -5636,6 +5737,8 @@ JobStatus = Literal[
     "failed",
 ]
 
+LeaseState = Literal["none", "live", "expired"]
+
 
 class SimulationJobResponse(BaseModel):
     id: str
@@ -5655,7 +5758,13 @@ class SimulationJobResponse(BaseModel):
     # Stage 4. Set when the request referenced material library versions.
     control_material_version_id: str | None = None
     rc_material_version_id: str | None = None
-
+    # Stage 9
+    attempt: int = 0
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    lease_state: LeaseState = "none"
+    
 class SimulationJobDetail(
     SimulationJobResponse
 ):
@@ -6899,49 +7008,166 @@ def body_heat_capacities(person: PersonInput) -> BodyHeatCapacities:
 
 ### File: `backend/app/services/checkpoints.py`
 ```python
-from sqlalchemy import select, update
+"""Durable monthly checkpoints with provenance (Stage 9).
+
+A checkpoint row is only trusted when it was produced by the same model
+version, the same parameter fingerprint and the same physics-relevant request
+as the batch being resumed. Anything else is reported in ``discarded`` and
+recomputed. Rows written before Stage 9 carry NULL provenance and are never
+resumed from.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass, field
+
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.models.global_batch import GlobalCityResult, GlobalCityCheckpoint
+from app.models.global_batch import GlobalCityCheckpoint, GlobalCityResult
+from app.schemas.global_batch import GlobalBatchCreate
+from app.services.reproducibility import canonical_json, parameter_fingerprint
+from app.services.two_node import MODEL_VERSION
 
 
-def upsert_month_checkpoint(db, city_result_id: str, month: int, attempt: int, payload: dict) -> None:
-    db.execute(
-        pg_insert(GlobalCityCheckpoint)
-        .values(city_result_id=city_result_id, month=month, attempt=attempt, payload_json=payload)
-        .on_conflict_do_update(
-            constraint="uq_global_city_checkpoint_month",
-            set_={"payload_json": payload, "attempt": attempt},
+# Fields that do not change the per-city physics and must not invalidate a
+# checkpoint when a batch is retried.
+REQUEST_HASH_EXCLUDED_FIELDS = frozenset(
+    {"name", "city_ids", "execution_profile", "resume_from_checkpoint"}
+)
+
+
+def request_sha256(request: GlobalBatchCreate) -> str:
+    payload = request.model_dump(mode="json", exclude=set(REQUEST_HASH_EXCLUDED_FIELDS))
+    return hashlib.sha256(canonical_json(payload).encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class CheckpointProvenance:
+    model_version: str
+    parameter_fingerprint: str
+    request_sha256: str
+
+    @classmethod
+    def for_request(cls, request: GlobalBatchCreate) -> "CheckpointProvenance":
+        return cls(
+            model_version=MODEL_VERSION,
+            parameter_fingerprint=parameter_fingerprint(request.environment_assumptions),
+            request_sha256=request_sha256(request),
+        )
+
+    def mismatch_reason(self, row: GlobalCityCheckpoint) -> str | None:
+        if row.model_version is None or row.parameter_fingerprint is None or row.request_sha256 is None:
+            return "legacy checkpoint without provenance (written before Stage 9)"
+        if row.model_version != self.model_version:
+            return f"model_version {row.model_version} != {self.model_version}"
+        if row.parameter_fingerprint != self.parameter_fingerprint:
+            return "parameter_fingerprint differs"
+        if row.request_sha256 != self.request_sha256:
+            return "request parameters differ"
+        return None
+
+
+@dataclass
+class ResumeState:
+    next_month: int
+    payloads: list[dict] = field(default_factory=list)
+    discarded: list[dict] = field(default_factory=list)  # {"month": int, "reason": str}
+
+
+def upsert_month_checkpoint(
+    session: Session,
+    *,
+    city_result_id: str,
+    owner: str,
+    month: int,
+    attempt: int,
+    payload: dict,
+    provenance: CheckpointProvenance,
+) -> bool:
+    """Stage the checkpoint row in the current transaction.
+
+    Returns False (and stages nothing) when ``owner`` does not hold the city
+    lease. The caller must commit via ``heartbeat_city_lease`` in the same
+    session so that row and heartbeat land (or roll back) together.
+    """
+    owns = session.scalar(
+        select(GlobalCityResult.id).where(
+            GlobalCityResult.id == city_result_id,
+            GlobalCityResult.lease_owner == owner,
         )
     )
+    if owns is None:
+        return False
+
+    values = {
+        "city_result_id": city_result_id,
+        "month": month,
+        "attempt": attempt,
+        "payload_json": payload,
+        "model_version": provenance.model_version,
+        "parameter_fingerprint": provenance.parameter_fingerprint,
+        "request_sha256": provenance.request_sha256,
+    }
+    session.execute(
+        pg_insert(GlobalCityCheckpoint)
+        .values(**values)
+        .on_conflict_do_update(
+            constraint="uq_global_city_checkpoint_month",
+            set_={k: v for k, v in values.items() if k not in ("city_result_id", "month")},
+        )
+    )
+    return True
 
 
 def load_resume_state(
-    db: Session,
+    session: Session,
     city_result_id: str,
     *,
-    start_month: int = 1,
-) -> tuple[int, list[dict]]:
-    """Return (next month to run, payloads of the contiguous completed prefix).
+    start_month: int,
+    provenance: CheckpointProvenance,
+) -> ResumeState:
+    """Trusted contiguous prefix of checkpoints starting at ``start_month``.
 
-    Only the contiguous prefix starting at ``start_month`` is trusted. A hole
-    (e.g. months 7, 8, 10) resumes from the hole (9) and discards 10.
+    The prefix ends at the first hole or provenance mismatch. Every row after
+    that is discarded; each one reports its *own* reason (provenance first,
+    then contiguity) so the operator sees why a month was recomputed instead
+    of a cascade of "hole" messages.
     """
-    rows = db.execute(
-        select(GlobalCityCheckpoint.month, GlobalCityCheckpoint.payload_json)
+    rows = session.scalars(
+        select(GlobalCityCheckpoint)
         .where(GlobalCityCheckpoint.city_result_id == city_result_id)
         .order_by(GlobalCityCheckpoint.month)
     ).all()
 
-    next_month = start_month
-    for month, _ in rows:
-        if month == next_month:
-            next_month += 1
-        elif month > next_month:
-            break
+    state = ResumeState(next_month=start_month)
+    prefix_open = True
 
-    return next_month, [payload for month, payload in rows if start_month <= month < next_month]
+    for row in rows:
+        if row.month < start_month:
+            state.discarded.append({"month": row.month, "reason": "outside requested range"})
+            continue
+
+        reason = provenance.mismatch_reason(row)
+        if reason is not None:
+            state.discarded.append({"month": row.month, "reason": reason})
+            prefix_open = False
+            continue
+
+        if not prefix_open or row.month > state.next_month:
+            state.discarded.append({
+                "month": row.month,
+                "reason": f"not contiguous with the resumable prefix (resume restarts at month {state.next_month})",
+            })
+            prefix_open = False
+            continue
+
+        state.payloads.append(row.payload_json)
+        state.next_month += 1
+
+    return state
 ```
 
 ### File: `backend/app/services/climate_adaptation.py`
@@ -9598,9 +9824,11 @@ def build_sample_results_csv(
                         ),
                         sample.get(
                             (
-                                "maximum_air_"
-                                "temperature_c"
+                                "maximum_air_temperature_c"
                             )
+                        ),
+                        sample.get(
+                            "daily_maximum_air_temperature_c"
                         ),
                         sample.get(
                             (
@@ -9929,6 +10157,11 @@ def build_city_result_json(
             "monthly_json",
             [],
         ) or [],
+        "data_quality": analytics.get("data_quality", {}),
+        "metric_definitions": analytics.get("metric_definitions", {}),
+        "heatwave_unavailable_reason": analytics.get("heatwave_unavailable_reason"),
+        "lease_owner": get_attribute(result, "lease_owner"),
+        "lease_expires_at": get_attribute(result, "lease_expires_at"),
         "error_message": get_attribute(
             result,
             "error_message",
@@ -10216,11 +10449,12 @@ from app.schemas.global_batch import (
     GlobalBatchResponse,
     GlobalCityProgress,
     GlobalCityResultResponse,
+    GlobalBatchCreate,
     LeaseState,
 )
-from app.services.checkpoints import load_resume_state
-
-from app.services.job_state import assert_batch_transition, derive_batch_status
+from app.services.checkpoints import CheckpointProvenance, load_resume_state
+from app.services.leases import db_now, derive_lease_state  # noqa: F401 (re-exported)
+from app.services.job_state import assert_batch_transition, derive_batch_status  # keep
 
 from collections import defaultdict
 import hashlib
@@ -10354,6 +10588,9 @@ def city_result_to_response(
         completed_at=result.completed_at,
         data_quality=analytics.get("data_quality"),
         metric_definitions=analytics.get("metric_definitions"),
+        heatwave_analysis_available=analytics.get("heatwave_analysis_available"),
+        heatwave_unavailable_reason=analytics.get("heatwave_unavailable_reason"),
+        heatwave_temperature_basis=analytics.get("heatwave_temperature_basis"),
         # Stage 8
         lease_owner=getattr(result, "lease_owner", None),
         lease_expires_at=getattr(result, "lease_expires_at", None),
@@ -10402,8 +10639,9 @@ def batch_to_detail(
     batch: GlobalBatchJob,
     *,
     checkpoint_months: dict[str, list[int]] | None = None,
+    now: datetime | None = None,
 ) -> GlobalBatchDetail:
-    now = utc_now()
+    now = now or utc_now()
     months = checkpoint_months or {}
     return GlobalBatchDetail(
         **batch_to_response(batch).model_dump(),
@@ -10417,8 +10655,9 @@ def batch_to_detail(
 def batch_progress_event(
     batch: GlobalBatchJob,
     checkpoint_months: dict[str, list[int]] | None = None,
+    now: datetime | None = None,
 ) -> GlobalBatchProgressEvent:
-    now = utc_now()
+    now = now or utc_now()
     months = checkpoint_months or {}
     return GlobalBatchProgressEvent(
         batch=batch_to_response(batch),
@@ -10453,14 +10692,10 @@ def _payload_sha256(payload: dict) -> str:
 
 
 def city_checkpoints_to_response(
-    session: Session,
-    *,
-    batch: GlobalBatchJob,
-    city_result: GlobalCityResult,
+    session: Session, *, batch: GlobalBatchJob, city_result: GlobalCityResult,
 ) -> CityCheckpointListResponse:
-    request = batch.request_json or {}
-    start_month = int(request.get("start_month", 1))
-    end_month = int(request.get("end_month", 12))
+    request = GlobalBatchCreate.model_validate(batch.request_json)
+    provenance = CheckpointProvenance.for_request(request)
 
     rows = session.scalars(
         select(GlobalCityCheckpoint)
@@ -10468,17 +10703,17 @@ def city_checkpoints_to_response(
         .order_by(GlobalCityCheckpoint.month)
     ).all()
 
-    resume_from_month, _ = load_resume_state(
-        session, city_result.id, start_month=start_month
+    resume = load_resume_state(
+        session, city_result.id, start_month=request.start_month, provenance=provenance
     )
 
     return CityCheckpointListResponse(
         batch_id=batch.id,
         city_result_id=city_result.id,
         city_id=city_result.city_id,
-        start_month=start_month,
-        end_month=end_month,
-        resume_from_month=resume_from_month,
+        start_month=request.start_month,
+        end_month=request.end_month,
+        resume_from_month=resume.next_month,
         items=[
             CityCheckpointResponse(
                 id=row.id,
@@ -10488,6 +10723,10 @@ def city_checkpoints_to_response(
                 payload_sha256=_payload_sha256(row.payload_json),
                 sampled_day_count=int((row.payload_json or {}).get("sampled_day_count", 0)),
                 skipped_sample_count=len((row.payload_json or {}).get("skipped_samples", [])),
+                model_version=row.model_version,
+                parameter_fingerprint=row.parameter_fingerprint,
+                provenance_matches_batch=provenance.mismatch_reason(row) is None,
+                mismatch_reason=provenance.mismatch_reason(row),
             )
             for row in rows
         ],
@@ -10666,6 +10905,8 @@ def reconcile_batch(db: Session, batch_id: str) -> None:
     batch.cancelled_city_count = counts.get("cancelled", 0)
     done = sum(counts.get(s, 0) for s in ("completed", "failed", "cancelled"))
     batch.progress = int(100 * done / max(batch.total_city_count, 1))
+    """Kept for callers; refresh_batch_status is the single implementation."""
+    refresh_batch_status(db, batch_id)
 
     target = derive_batch_status(counts, batch.total_city_count, batch.cancel_requested_at is not None)
     if target and batch.status != target:
@@ -10678,6 +10919,8 @@ def reconcile_batch(db: Session, batch_id: str) -> None:
 ### File: `backend/app/services/job_service.py`
 ```python
 from sqlalchemy.orm import Session
+from datetime import datetime
+from app.services.leases import derive_lease_state
 
 from app.models.simulation_job import (
     SimulationJob,
@@ -10691,9 +10934,8 @@ from app.schemas.simulation import (
 )
 
 
-def job_to_response(
-    job: SimulationJob,
-) -> SimulationJobResponse:
+
+def job_to_response(job: SimulationJob, *, now: datetime | None = None) -> SimulationJobResponse:
     return SimulationJobResponse(
         id=job.id,
         celery_task_id=job.celery_task_id,
@@ -10709,17 +10951,20 @@ def job_to_response(
         completed_at=job.completed_at,
         control_material_version_id=getattr(job, "control_material_version_id", None),
         rc_material_version_id=getattr(job, "rc_material_version_id", None),
+        attempt=getattr(job, "attempt", 0) or 0,
+        lease_owner=getattr(job, "lease_owner", None),
+        lease_expires_at=getattr(job, "lease_expires_at", None),
+        last_heartbeat_at=getattr(job, "last_heartbeat_at", None),
+        lease_state=derive_lease_state(
+            getattr(job, "lease_owner", None), getattr(job, "lease_expires_at", None), now
+        ),
     )
 
 
-def job_to_detail(
-    job: SimulationJob,
-) -> SimulationJobDetail:
+def job_to_detail(job: SimulationJob, *, now: datetime | None = None) -> SimulationJobDetail:
     return SimulationJobDetail(
-        **job_to_response(job).model_dump(),
-        request=WeatherSimulationRequest.model_validate(
-            job.request_json
-        ),
+        **job_to_response(job, now=now).model_dump(),
+        request=WeatherSimulationRequest.model_validate(job.request_json),
     )
 
 
@@ -10735,6 +10980,12 @@ def get_job_or_none(
 
 ### File: `backend/app/services/job_state.py`
 ```python
+"""Status enums and legal transitions for batches, cities and single jobs.
+
+Every status write in the worker and the API goes through ``assert_*``;
+an illegal transition is a programming error, not a runtime condition.
+"""
+
 from enum import StrEnum
 
 
@@ -10756,6 +11007,15 @@ class CityStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+class JobStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    CANCELLING = "cancelling"
+    CANCELLED = "cancelled"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
 BATCH_TRANSITIONS: dict[BatchStatus, frozenset[BatchStatus]] = {
     BatchStatus.QUEUED: frozenset({
         BatchStatus.RUNNING, BatchStatus.CANCELLING, BatchStatus.CANCELLED, BatchStatus.FAILED,
@@ -10764,11 +11024,10 @@ BATCH_TRANSITIONS: dict[BatchStatus, frozenset[BatchStatus]] = {
         BatchStatus.COMPLETED, BatchStatus.PARTIAL_COMPLETED, BatchStatus.FAILED,
         BatchStatus.CANCELLING, BatchStatus.CANCELLED,
     }),
-    # Cancel requested while cities were already finishing: any terminal outcome is legal.
     BatchStatus.CANCELLING: frozenset({
         BatchStatus.CANCELLED, BatchStatus.PARTIAL_COMPLETED, BatchStatus.COMPLETED, BatchStatus.FAILED,
     }),
-    # Retry (POST /retry-failed) re-opens a batch.
+    # POST /retry-failed re-opens a batch.
     BatchStatus.FAILED: frozenset({BatchStatus.RUNNING}),
     BatchStatus.PARTIAL_COMPLETED: frozenset({BatchStatus.RUNNING}),
     BatchStatus.COMPLETED: frozenset(),
@@ -10780,14 +11039,33 @@ TERMINAL_BATCH = frozenset({
 })
 
 CITY_TRANSITIONS: dict[CityStatus, frozenset[CityStatus]] = {
-    CityStatus.QUEUED:    frozenset({CityStatus.RUNNING, CityStatus.CANCELLED}),
-    CityStatus.RUNNING:   frozenset({CityStatus.COMPLETED, CityStatus.FAILED, CityStatus.CANCELLED, CityStatus.QUEUED}),  # QUEUED = lease 過期重排
+    CityStatus.QUEUED: frozenset({CityStatus.RUNNING, CityStatus.CANCELLED}),
+    # RUNNING -> QUEUED: lease expired (reaper) or retryable failure.
+    CityStatus.RUNNING: frozenset({
+        CityStatus.COMPLETED, CityStatus.FAILED, CityStatus.CANCELLED, CityStatus.QUEUED,
+    }),
     CityStatus.COMPLETED: frozenset(),
-    CityStatus.FAILED:    frozenset(),
+    # FAILED -> QUEUED: explicit POST /retry-failed (Stage 9; was missing).
+    CityStatus.FAILED: frozenset({CityStatus.QUEUED}),
     CityStatus.CANCELLED: frozenset(),
 }
 
 TERMINAL_CITY = frozenset({CityStatus.COMPLETED, CityStatus.FAILED, CityStatus.CANCELLED})
+
+JOB_TRANSITIONS: dict[JobStatus, frozenset[JobStatus]] = {
+    JobStatus.QUEUED: frozenset({JobStatus.RUNNING, JobStatus.CANCELLED, JobStatus.FAILED}),
+    # RUNNING -> QUEUED: lease expired, re-queued by the reaper.
+    JobStatus.RUNNING: frozenset({
+        JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLING, JobStatus.CANCELLED, JobStatus.QUEUED,
+    }),
+    # Cancel requested while the worker was finishing: any terminal outcome is legal.
+    JobStatus.CANCELLING: frozenset({JobStatus.CANCELLED, JobStatus.COMPLETED, JobStatus.FAILED}),
+    JobStatus.COMPLETED: frozenset(),
+    JobStatus.FAILED: frozenset(),
+    JobStatus.CANCELLED: frozenset(),
+}
+
+TERMINAL_JOB = frozenset({JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED})
 
 
 class IllegalTransition(Exception):
@@ -10804,17 +11082,31 @@ def assert_city_transition(current: str, target: str) -> None:
         raise IllegalTransition(f"city {current} -> {target}")
 
 
-def derive_batch_status(counts: dict[str, int], total: int, cancel_requested: bool) -> BatchStatus | None:
-    """Same rule as global_batch_service.refresh_batch_status; None while cities are pending."""
+def assert_job_transition(current: str, target: str) -> None:
+    if JobStatus(target) not in JOB_TRANSITIONS[JobStatus(current)]:
+        raise IllegalTransition(f"job {current} -> {target}")
+
+
+def derive_batch_status(
+    counts: dict[str, int],
+    total: int,
+    cancel_requested: bool = False,
+) -> BatchStatus | None:
+    """Same rule as global_batch_service.refresh_batch_status.
+
+    Returns None while any city is still pending. ``cancel_requested`` makes
+    a batch that produced nothing report CANCELLED rather than FAILED.
+    """
     completed = counts.get("completed", 0)
     failed = counts.get("failed", 0)
     cancelled = counts.get("cancelled", 0)
+
     if completed + failed + cancelled < total:
         return None
     if cancelled == total:
         return BatchStatus.CANCELLED
     if completed == 0:
-        return BatchStatus.FAILED
+        return BatchStatus.CANCELLED if cancel_requested else BatchStatus.FAILED
     if failed or cancelled:
         return BatchStatus.PARTIAL_COMPLETED
     return BatchStatus.COMPLETED
@@ -10822,67 +11114,155 @@ def derive_batch_status(counts: dict[str, int], total: int, cancel_requested: bo
 
 ### File: `backend/app/services/leases.py`
 ```python
-from datetime import timedelta
-from sqlalchemy import update, func, or_
+"""Row-level leases for GlobalCityResult (Stage 7) and SimulationJob (Stage 9).
+
+Contract
+--------
+* ``acquire_*`` is one atomic UPDATE ... RETURNING. A caller that gets False
+  must exit without writing anything: another worker owns the row, or the row
+  is terminal.
+* ``heartbeat_*`` is the only way a worker writes to its row. It is guarded by
+  ``lease_owner == owner``; when the guard fails the whole transaction is
+  rolled back (so anything staged in the same session, e.g. a checkpoint
+  upsert, is discarded too) and False is returned.
+* All time comparisons use the database clock (``func.now()``) so that the
+  API, the workers and the reaper agree regardless of host clock drift.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from typing import Any
+
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
-from app.core.time import utc_now
 
 from app.core.config import settings
+from app.core.time import utc_now
 from app.models.global_batch import GlobalCityResult
-from app.services.job_state import CityStatus
+from app.models.simulation_job import SimulationJob
+from app.services.job_state import CityStatus, JobStatus
 
 
-def acquire_city_lease(db: Session, city_result_id: str, owner: str) -> bool:
-    ttl = timedelta(seconds=settings.CITY_LEASE_TTL_SECONDS)
+LeaseState = str  # "none" | "live" | "expired"
+
+
+def db_now(session: Session) -> datetime:
+    """Database clock; the reference for every lease comparison."""
+    return session.scalar(select(func.now()))
+
+
+def derive_lease_state(
+    owner: str | None,
+    expires_at: datetime | None,
+    now: datetime | None = None,
+) -> LeaseState:
+    if owner is None or expires_at is None:
+        return "none"
+    now = now or utc_now()
+    return "live" if expires_at > now else "expired"
+
+
+def _ttl() -> timedelta:
+    return timedelta(seconds=settings.CITY_LEASE_TTL_SECONDS)
+
+
+def _acquire(
+    session: Session,
+    model: Any,
+    row_id: str,
+    owner: str,
+    active_statuses: tuple[str, ...],
+    running_status: str,
+) -> bool:
     stmt = (
-        update(GlobalCityResult)
+        update(model)
         .where(
-            GlobalCityResult.id == city_result_id,
-            GlobalCityResult.status.in_([CityStatus.QUEUED, CityStatus.RUNNING]),
+            model.id == row_id,
+            model.status.in_(active_statuses),
             or_(
-                GlobalCityResult.lease_owner.is_(None),
-                GlobalCityResult.lease_expires_at < func.now(),
-                GlobalCityResult.lease_owner == owner,     # 同一 owner 重入
+                model.lease_owner.is_(None),
+                model.lease_expires_at < func.now(),
+                model.lease_owner == owner,  # re-entrant for the same owner
             ),
         )
         .values(
             lease_owner=owner,
-            lease_expires_at=func.now() + ttl,
+            lease_expires_at=func.now() + _ttl(),
             last_heartbeat_at=func.now(),
-            status=CityStatus.RUNNING,
-            started_at=func.coalesce(GlobalCityResult.started_at, func.now()),
+            status=running_status,
+            started_at=func.coalesce(model.started_at, func.now()),
         )
-        .returning(GlobalCityResult.id)
+        .returning(model.id)
     )
-    got = db.execute(stmt).scalar_one_or_none()
-    db.commit()
+    got = session.execute(stmt).scalar_one_or_none()
+    session.commit()
     return got is not None
 
 
-def heartbeat_city_lease(session, city_result_id, owner, **values) -> bool:
-    now = utc_now()
-    payload = {
-        "last_heartbeat_at": now,
-        "lease_expires_at": now + timedelta(seconds=settings.CITY_LEASE_TTL_SECONDS),
+def _heartbeat(session: Session, model: Any, row_id: str, owner: str, values: dict[str, Any]) -> bool:
+    payload: dict[str, Any] = {
+        "last_heartbeat_at": func.now(),
+        "lease_expires_at": func.now() + _ttl(),
     }
-    payload.update(values)          # 呼叫方的值優先
+    payload.update(values)  # caller values win
+
     result = session.execute(
-        update(GlobalCityResult)
-        .where(GlobalCityResult.id == city_result_id,
-               GlobalCityResult.lease_owner == owner)
+        update(model)
+        .where(model.id == row_id, model.lease_owner == owner)
         .values(**payload)
     )
-    session.commit()
-    return result.rowcount == 1
+
+    if result.rowcount == 1:
+        session.commit()
+        return True
+
+    # Lease lost: discard everything staged in this transaction.
+    session.rollback()
+    return False
 
 
-def release_city_lease(db: Session, city_result_id: str, owner: str) -> None:
-    db.execute(
-        update(GlobalCityResult)
-        .where(GlobalCityResult.id == city_result_id, GlobalCityResult.lease_owner == owner)
+def _release(session: Session, model: Any, row_id: str, owner: str) -> None:
+    session.execute(
+        update(model)
+        .where(model.id == row_id, model.lease_owner == owner)
         .values(lease_owner=None, lease_expires_at=None)
     )
-    db.commit()
+    session.commit()
+
+
+# --- cities -----------------------------------------------------------------
+
+def acquire_city_lease(session: Session, city_result_id: str, owner: str) -> bool:
+    return _acquire(
+        session, GlobalCityResult, city_result_id, owner,
+        (CityStatus.QUEUED, CityStatus.RUNNING), CityStatus.RUNNING,
+    )
+
+
+def heartbeat_city_lease(session: Session, city_result_id: str, owner: str, **values: Any) -> bool:
+    return _heartbeat(session, GlobalCityResult, city_result_id, owner, values)
+
+
+def release_city_lease(session: Session, city_result_id: str, owner: str) -> None:
+    _release(session, GlobalCityResult, city_result_id, owner)
+
+
+# --- single simulation jobs -------------------------------------------------
+
+def acquire_job_lease(session: Session, job_id: str, owner: str) -> bool:
+    return _acquire(
+        session, SimulationJob, job_id, owner,
+        (JobStatus.QUEUED, JobStatus.RUNNING), JobStatus.RUNNING,
+    )
+
+
+def heartbeat_job_lease(session: Session, job_id: str, owner: str, **values: Any) -> bool:
+    return _heartbeat(session, SimulationJob, job_id, owner, values)
+
+
+def release_job_lease(session: Session, job_id: str, owner: str) -> None:
+    _release(session, SimulationJob, job_id, owner)
 ```
 
 ### File: `backend/app/services/material_fields.py`
@@ -12998,6 +13378,8 @@ from uuid import uuid4
 
 from redis.asyncio import Redis
 
+from redis.exceptions import RedisError  # add near the redis import
+
 from app.core.config import settings
 
 from app.services.weather_quality import (
@@ -13223,28 +13605,15 @@ async def request_open_meteo(
 
         return payload, False
 
-    except (
-        ConnectionError,
-        TimeoutError,
-    ):
-        # Redis failure must not make weather
-        # simulation completely unavailable.
-        cached_payload = read_cached_payload(
-            cache_path
-        )
-
+    except (RedisError, OSError):
+        # Redis is unreachable or timed out. redis-py raises RedisError
+        # subclasses (NOT the builtin ConnectionError); OSError covers socket
+        # level failures. Weather must stay available without the lock.
+        cached_payload = read_cached_payload(cache_path)
         if cached_payload is not None:
             return cached_payload, True
-
-        payload = await download_open_meteo_payload(
-            params
-        )
-
-        write_cached_payload_atomic(
-            cache_path,
-            payload,
-        )
-
+        payload = await download_open_meteo_payload(params)
+        write_cached_payload_atomic(cache_path, payload)
         return payload, False
 
     finally:
@@ -14347,90 +14716,111 @@ celery_app.conf.beat_schedule = {
         "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
         "options": {"queue": "default"},
     },
+    "reap-expired-city-leases": {
+        "task": "global_batch.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
+    "reap-expired-job-leases": {
+        "task": "simulation.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
 }
+
 ```
 
 ### File: `backend/app/worker/tasks.py`
 ```python
+"""Celery tasks (Stage 9).
+
+Both task families share one reliability contract:
+
+* a row-level lease is acquired atomically before any work; a redelivered
+  message that cannot acquire it exits silently (idempotent);
+* every write is guarded by ``lease_owner == owner`` and rolled back when the
+  guard fails; after ``LeaseLostError`` nothing is written;
+* cancellation is cooperative and checked at every heartbeat;
+* status changes go through ``job_state``;
+* re-queued work keeps its original Celery queue.
+"""
+
+from __future__ import annotations
+
 import asyncio
-from datetime import (
-    datetime,
-    timezone,
-)
-
-from celery import Task
 import logging
-
-from app.core.time import utc_now
-from app.db.session import SessionLocal
-from app.models.global_batch import (
-    GlobalBatchJob,
-    GlobalCityResult,
-)
-from app.models.simulation_job import (
-    SimulationJob,
-)
-from app.schemas.global_batch import (
-    GlobalBatchCreate,
-    MonthlyAdaptationResult,
-)
-from app.schemas.simulation import (
-    WeatherSimulationRequest,
-)
-from app.services.annual_sampling import (
-    estimate_sample_count,
-)
-from app.services.climate_adaptation import (
-    analyze_city_climate_adaptation,
-)
-from app.services.global_batch_service import (
-    reconcile_batch,
-    refresh_batch_status,
-)
-from app.services.result_storage import (
-    save_simulation_result,
-)
-from app.services.weather_simulation import (
-    execute_weather_simulation,
-)
-from app.worker.celery_app import (
-    celery_app,
-)
 import os
 import socket
 import time
 
+from celery import Task
 from sqlalchemy import func, select, update
 
 from app.core.config import settings
+from app.core.time import utc_now
+from app.db.session import SessionLocal
+from app.models.global_batch import GlobalBatchJob, GlobalCityResult
+from app.models.simulation_job import SimulationJob
+from app.schemas.global_batch import GlobalBatchCreate, MonthlyAdaptationResult
+from app.schemas.simulation import WeatherSimulationRequest
+from app.services.annual_sampling import estimate_sample_count
 from app.services.checkpoints import (
+    CheckpointProvenance,
     load_resume_state,
     upsert_month_checkpoint,
 )
+from app.services.climate_adaptation import analyze_city_climate_adaptation
+from app.services.execution_profile import resolve_queue_name
+from app.services.global_batch_service import refresh_batch_status
 from app.services.job_state import (
     BatchStatus,
     CityStatus,
+    JobStatus,
     assert_batch_transition,
     assert_city_transition,
+    assert_job_transition,
 )
 from app.services.leases import (
     acquire_city_lease,
+    acquire_job_lease,
     heartbeat_city_lease,
+    heartbeat_job_lease,
     release_city_lease,
+    release_job_lease,
 )
+from app.services.result_storage import save_simulation_result
+from app.services.weather_simulation import execute_weather_simulation
+from app.worker.celery_app import celery_app
 
-logger = logging.getLogger(__name__)   # replaces: from fastapi import logger
+
+logger = logging.getLogger(__name__)
+
+SINGLE_JOB_QUEUE = "default"
+
 
 class JobCancelledError(Exception):
     pass
 
+
 class GlobalBatchCancelledError(Exception):
     pass
 
-def update_job(
-    job_id: str,
-    **values: object,
-) -> None:
+
+class LeaseLostError(Exception):
+    """The lease was reaped or taken by another worker. Do not write anything."""
+
+
+def _owner_id(task: Task) -> str:
+    return f"{socket.gethostname()}:{os.getpid()}:{task.request.id}"
+
+
+# ---------------------------------------------------------------------------
+# Single simulation job helpers (kept for tests and ad-hoc tooling)
+# ---------------------------------------------------------------------------
+
+def update_job(job_id: str, **values: object) -> None:
+    """Unconditional update. Not used by the task itself any more; the task
+    writes through ``heartbeat_job_lease`` so writes are owner-guarded."""
     with SessionLocal() as session:
         job = session.get(SimulationJob, job_id)
         if job is None:
@@ -14445,215 +14835,203 @@ def ensure_not_cancelled(job_id: str) -> None:
         job = session.get(SimulationJob, job_id)
         if job is None:
             raise RuntimeError(f"Simulation task not found:{job_id}")
-        if job.status in {"cancelling", "cancelled"}:
+        if job.status in {JobStatus.CANCELLING, JobStatus.CANCELLED}:
             raise JobCancelledError()
+
+
+def _finish_job_as_owner(session, job_id: str, owner: str, target: JobStatus, **values: object) -> bool:
+    current = session.scalar(
+        select(SimulationJob.status).where(
+            SimulationJob.id == job_id, SimulationJob.lease_owner == owner
+        )
+    )
+    if current is None:
+        return False
+    assert_job_transition(current, target)
+    return heartbeat_job_lease(
+        session, job_id, owner,
+        status=target, stage=target, completed_at=func.now(), **values,
+    )
+
 
 @celery_app.task(
     bind=True,
     name="simulation.run_weather",
     acks_late=True,
+    reject_on_worker_lost=True,
 )
-def run_weather_simulation_task(
-    self: Task,
-    job_id: str,
-) -> dict:
+def run_weather_simulation_task(self: Task, job_id: str) -> dict:
+    owner = _owner_id(self)
+    lease_lost = False
+
+    with SessionLocal() as session:
+        if not acquire_job_lease(session, job_id, owner):
+            return {"job_id": job_id, "status": "skipped", "reason": "lease_not_acquired"}
+
     try:
         with SessionLocal() as session:
-            job = session.get(
-                SimulationJob,
-                job_id,
-            )
-
+            job = session.get(SimulationJob, job_id)
             if job is None:
-                raise RuntimeError(
-                    f"Simulation task not found:{job_id}"
-                )
+                raise RuntimeError(f"Simulation task not found:{job_id}")
+            request = WeatherSimulationRequest.model_validate(job.request_json)
 
-            request = WeatherSimulationRequest.model_validate(
-                job.request_json
+            ok = heartbeat_job_lease(
+                session, job_id, owner,
+                stage="initializing", progress=2, error_message=None,
+                attempt=SimulationJob.attempt + 1,
             )
+        if not ok:
+            lease_lost = True
+            raise LeaseLostError()
 
-        update_job(
-            job_id,
-            status="running",
-            stage="initializing",
-            progress=2,
-            started_at=utc_now(),
-            error_message=None,
-        )
-
-        def report(
-            progress: int,
-            stage: str,
-        ) -> None:
+        def report(progress: int, stage: str) -> None:
+            nonlocal lease_lost
             ensure_not_cancelled(job_id)
-
-            update_job(
-                job_id,
-                status="running",
-                stage=stage,
-                progress=progress,
-            )
 
             self.update_state(
                 state="PROGRESS",
-                meta={
-                    "job_id": job_id,
-                    "progress": progress,
-                    "stage": stage,
-                },
+                meta={"job_id": job_id, "progress": progress, "stage": stage},
             )
+            with SessionLocal() as session:
+                beat_ok = heartbeat_job_lease(session, job_id, owner, stage=stage, progress=progress)
+            if not beat_ok:
+                lease_lost = True
+                raise LeaseLostError()
 
-        result = asyncio.run(
-            execute_weather_simulation(
-                request=request,
-                progress_callback=report,
+        result = asyncio.run(execute_weather_simulation(request=request, progress_callback=report))
+
+        report(95, "saving_result")
+        result_path = save_simulation_result(job_id=job_id, result=result)
+
+        with SessionLocal() as session:
+            ensure_not_cancelled(job_id)
+            ok = _finish_job_as_owner(
+                session, job_id, owner, JobStatus.COMPLETED,
+                progress=100,
+                summary_json=result.summary.model_dump(mode="json"),
+                result_path=str(result_path),
+                error_message=None,
             )
-        )
+        if not ok:
+            lease_lost = True
+            raise LeaseLostError()
 
-        ensure_not_cancelled(job_id)
+        return {"job_id": job_id, "status": "completed"}
 
-        update_job(
-            job_id,
-            stage="saving_result",
-            progress=95,
-        )
-
-        result_path = save_simulation_result(
-            job_id=job_id,
-            result=result,
-        )
-
-        update_job(
-            job_id,
-            status="completed",
-            stage="completed",
-            progress=100,
-            summary_json=result.summary.model_dump(
-                mode="json"
-            ),
-            result_path=str(result_path),
-            completed_at=utc_now(),
-        )
-
-        return {
-            "job_id": job_id,
-            "status": "completed",
-        }
+    except LeaseLostError:
+        return {"job_id": job_id, "status": "lease_lost"}
 
     except JobCancelledError:
-        update_job(
-            job_id,
-            status="cancelled",
-            stage="cancelled",
-            completed_at=utc_now(),
-        )
-
-        return {
-            "job_id": job_id,
-            "status": "cancelled",
-        }
+        with SessionLocal() as session:
+            _finish_job_as_owner(session, job_id, owner, JobStatus.CANCELLED)
+        return {"job_id": job_id, "status": "cancelled"}
 
     except Exception as error:
-        
-        update_job(
-            job_id,
-            status="failed",
-            stage="failed",
-            error_message=str(error)[:4000],
-            completed_at=utc_now(),
-        )
+        logger.exception("simulation job %s failed", job_id)
+        with SessionLocal() as session:
+            _finish_job_as_owner(
+                session, job_id, owner, JobStatus.FAILED,
+                error_message=str(error)[:4000],
+            )
         raise
-class LeaseLostError(Exception):
-    """租約被 reaper 收回或被別的 worker 接手。收到後不得再寫任何 DB。"""
+
+    finally:
+        if not lease_lost:
+            with SessionLocal() as session:
+                release_job_lease(session, job_id, owner)
 
 
-def _owner_id(task: Task) -> str:
-    return f"{socket.gethostname()}:{os.getpid()}:{task.request.id}"
+@celery_app.task(name="simulation.reap_expired_leases")
+def reap_expired_job_leases() -> dict:
+    """Re-queue (or fail) single jobs whose worker died without releasing."""
+    requeued: list[str] = []
+    failed: list[str] = []
 
+    with SessionLocal() as session:
+        stale = session.scalars(
+            select(SimulationJob)
+            .where(
+                SimulationJob.status.in_([JobStatus.RUNNING, JobStatus.CANCELLING]),
+                SimulationJob.lease_expires_at < func.now(),
+            )
+            .with_for_update(skip_locked=True)
+        ).all()
+
+        for job in stale:
+            if job.status == JobStatus.CANCELLING:
+                assert_job_transition(job.status, JobStatus.CANCELLED)
+                job.status = JobStatus.CANCELLED
+                job.stage = "cancelled"
+                job.completed_at = utc_now()
+            elif job.attempt < settings.CITY_MAX_RETRIES:
+                assert_job_transition(job.status, JobStatus.QUEUED)
+                job.status = JobStatus.QUEUED
+                job.stage = "retry_scheduled"
+                requeued.append(job.id)
+            else:
+                assert_job_transition(job.status, JobStatus.FAILED)
+                job.status = JobStatus.FAILED
+                job.stage = "failed"
+                job.error_message = f"lease expired after {job.attempt} attempt(s)"
+                job.completed_at = utc_now()
+                failed.append(job.id)
+            job.lease_owner = None
+            job.lease_expires_at = None
+
+        session.commit()
+
+    for job_id in requeued:
+        run_weather_simulation_task.apply_async(args=[job_id], queue=SINGLE_JOB_QUEUE)
+
+    return {"requeued": requeued, "failed": failed}
+
+
+# ---------------------------------------------------------------------------
+# Global batch city task
+# ---------------------------------------------------------------------------
 
 def _batch_cancel_requested(session, batch_id: str) -> bool:
     row = session.execute(
-        select(
-            GlobalBatchJob.status,
-            GlobalBatchJob.cancel_requested_at,
-        ).where(GlobalBatchJob.id == batch_id)
+        select(GlobalBatchJob.status, GlobalBatchJob.cancel_requested_at)
+        .where(GlobalBatchJob.id == batch_id)
     ).one_or_none()
-
     if row is None:
         raise RuntimeError(f"Global batch not found: {batch_id}")
-
     status, cancel_requested_at = row
-    return (
-        cancel_requested_at is not None
-        or status in {BatchStatus.CANCELLING, BatchStatus.CANCELLED}
-    )
+    return cancel_requested_at is not None or status in {BatchStatus.CANCELLING, BatchStatus.CANCELLED}
 
 
-def _finish_city_as_owner(
-    session,
-    city_result_id: str,
-    owner: str,
-    target: CityStatus,
-    **values: object,
-) -> bool:
-    """running -> terminal 的寫入，只有租約持有者能成功。"""
+def _finish_city_as_owner(session, city_result_id: str, owner: str, target: CityStatus, **values: object) -> bool:
     assert_city_transition(CityStatus.RUNNING, target)
-    now = utc_now()
     return heartbeat_city_lease(
-        session,
-        city_result_id,
-        owner,
-        status=target,
-        stage=target,
-        completed_at=now,
-        **values,
+        session, city_result_id, owner,
+        status=target, stage=target, completed_at=func.now(), **values,
     )
 
 
-def _fail_or_requeue_city(
-    session,
-    city_result_id: str,
-    owner: str,
-    error: Exception,
-) -> bool:
-    """回傳 True 代表已改回 queued、需要重新投遞；False 代表已終態 failed。"""
-    retry_count = session.execute(
+def _fail_or_requeue_city(session, city_result_id: str, owner: str, error: Exception) -> bool:
+    """True -> set back to queued and must be re-submitted; False -> terminal failed."""
+    retry_count = session.scalar(
         select(GlobalCityResult.retry_count).where(
-            GlobalCityResult.id == city_result_id,
-            GlobalCityResult.lease_owner == owner,
+            GlobalCityResult.id == city_result_id, GlobalCityResult.lease_owner == owner
         )
-    ).scalar_one_or_none()
-
+    )
     if retry_count is None:
-        return False  # 租約早已不是我們的，什麼都不做
+        return False  # not ours any more
 
     message = str(error)[:4000]
 
     if retry_count < settings.CITY_MAX_RETRIES:
         assert_city_transition(CityStatus.RUNNING, CityStatus.QUEUED)
-        result = session.execute(
-            update(GlobalCityResult)
-            .where(GlobalCityResult.id == city_result_id,
-                GlobalCityResult.lease_owner == owner)
-            .values(
-                status=CityStatus.QUEUED,
-                stage="retry_scheduled",
-                error_message=message,
-                retry_count=GlobalCityResult.retry_count + 1,
-                last_heartbeat_at=utc_now(),
-            )
+        return heartbeat_city_lease(
+            session, city_result_id, owner,
+            status=CityStatus.QUEUED,
+            stage="retry_scheduled",
+            error_message=message,
+            retry_count=GlobalCityResult.retry_count + 1,
         )
-        session.commit()
-        return result.rowcount == 1
 
-    _finish_city_as_owner(
-        session,
-        city_result_id,
-        owner,
-        CityStatus.FAILED,
-        error_message=message,
-    )
+    _finish_city_as_owner(session, city_result_id, owner, CityStatus.FAILED, error_message=message)
     return False
 
 
@@ -14663,74 +15041,46 @@ def _fail_or_requeue_city(
     acks_late=True,
     reject_on_worker_lost=True,
 )
-def run_global_city_analysis_task(
-    self: Task,
-    city_result_id: str,
-) -> dict:
+def run_global_city_analysis_task(self: Task, city_result_id: str) -> dict:
     owner = _owner_id(self)
     batch_id: str | None = None
+    queue_name = "global_standard"
     lease_lost = False
 
-    # ---- 1. 原子性取租約；拿不到就靜默退出（冪等） ----
     with SessionLocal() as session:
         if not acquire_city_lease(session, city_result_id, owner):
-            return {
-                "city_result_id": city_result_id,
-                "status": "skipped",
-                "reason": "lease_not_acquired",
-            }
+            return {"city_result_id": city_result_id, "status": "skipped", "reason": "lease_not_acquired"}
 
     try:
-        # ---- 2. 讀 context + 續跑狀態 ----
         with SessionLocal() as session:
             city_result = session.get(GlobalCityResult, city_result_id)
             if city_result is None:
-                raise RuntimeError(
-                    f"Global city result not found: {city_result_id}"
-                )
-
+                raise RuntimeError(f"Global city result not found: {city_result_id}")
             batch = session.get(GlobalBatchJob, city_result.batch_id)
             if batch is None:
-                raise RuntimeError(
-                    f"Global batch not found: {city_result.batch_id}"
-                )
+                raise RuntimeError(f"Global batch not found: {city_result.batch_id}")
 
             batch_id = batch.id
             request = GlobalBatchCreate.model_validate(batch.request_json)
+            queue_name = resolve_queue_name(request)
             city_id = city_result.city_id
+            provenance = CheckpointProvenance.for_request(request)
 
             if _batch_cancel_requested(session, batch_id):
                 raise GlobalBatchCancelledError()
 
-            # 續跑來源優先順序：checkpoint 表 > 舊 monthly_json（相容舊資料）
-            # reaper 重排（retry_count > 0）一律續跑，不看 request 的旗標
-            should_resume = (
-                request.resume_from_checkpoint or city_result.retry_count > 0
+            # The API decides whether checkpoints exist (it deletes them when
+            # the user opts out of resuming); the worker always trusts the
+            # provenance-checked contiguous prefix that remains.
+            resume = load_resume_state(
+                session, city_result_id,
+                start_month=request.start_month, provenance=provenance,
             )
-            payloads: list[dict] = []
-            if should_resume:
-                _, payloads = load_resume_state(
-                    session, city_result_id, start_month=request.start_month
-                )
-                if not payloads and city_result.monthly_json:
-                    payloads = list(city_result.monthly_json)
-
             initial_monthly_results = [
-                MonthlyAdaptationResult.model_validate(item)
-                for item in payloads
+                MonthlyAdaptationResult.model_validate(item) for item in resume.payloads
             ]
+            checkpoints_discarded = list(resume.discarded)
 
-            # 補 checkpoint 表（舊資料第一次續跑時把 monthly_json 回填進去）
-            for item in payloads:
-                upsert_month_checkpoint(
-                    session,
-                    city_result_id,
-                    month=item["month"],
-                    attempt=city_result.retry_count,
-                    payload=item,
-                )
-
-            # status/started_at/lease 已由 acquire_city_lease 寫好，這裡只補其餘欄位
             city_result.stage = "initializing"
             city_result.progress = 1
             city_result.completed_at = None
@@ -14751,41 +15101,23 @@ def run_global_city_analysis_task(
         last_beat = time.monotonic()
         last_stage: str | None = None
 
-        # ---- 3. callbacks：心跳 + 取消檢查 + checkpoint ----
         def report(progress: int, stage: str) -> None:
             nonlocal last_beat, last_stage, lease_lost
-
             progress = max(0, min(progress, 100))
             self.update_state(
                 state="PROGRESS",
                 meta={
-                    "batch_id": batch_id,
-                    "city_result_id": city_result_id,
-                    "city_id": city_id,
-                    "progress": progress,
-                    "stage": stage,
+                    "batch_id": batch_id, "city_result_id": city_result_id,
+                    "city_id": city_id, "progress": progress, "stage": stage,
                 },
             )
-
-            # 節流：沒到心跳週期且 stage 沒變就不打 DB
-            if (
-                time.monotonic() - last_beat < heartbeat_interval
-                and stage == last_stage
-            ):
+            if time.monotonic() - last_beat < heartbeat_interval and stage == last_stage:
                 return
 
             with SessionLocal() as session:
                 if _batch_cancel_requested(session, batch_id):
                     raise GlobalBatchCancelledError()
-
-                ok = heartbeat_city_lease(
-                    session,
-                    city_result_id,
-                    owner,
-                    stage=stage,
-                    progress=progress,
-                )
-
+                ok = heartbeat_city_lease(session, city_result_id, owner, stage=stage, progress=progress)
             if not ok:
                 lease_lost = True
                 raise LeaseLostError()
@@ -14800,18 +15132,11 @@ def run_global_city_analysis_task(
         ) -> None:
             nonlocal last_beat, lease_lost
 
-            checkpoint_progress = max(
-                1,
-                min(92, round(completed_sample_count / total_sample_count * 92)),
-            )
+            checkpoint_progress = max(1, min(92, round(completed_sample_count / total_sample_count * 92)))
             stage = f"checkpoint_saved_{request.year}-{completed_month:02d}"
 
             month_payload = next(
-                (
-                    m.model_dump(mode="json")
-                    for m in monthly_results
-                    if m.month == completed_month
-                ),
+                (m.model_dump(mode="json") for m in monthly_results if m.month == completed_month),
                 monthly_results[-1].model_dump(mode="json"),
             )
             all_payloads = [m.model_dump(mode="json") for m in monthly_results]
@@ -14820,55 +15145,45 @@ def run_global_city_analysis_task(
                 if _batch_cancel_requested(session, batch_id):
                     raise GlobalBatchCancelledError()
 
-                retry_count = session.execute(
-                    select(GlobalCityResult.retry_count).where(
-                        GlobalCityResult.id == city_result_id
+                retry_count = session.scalar(
+                    select(GlobalCityResult.retry_count).where(GlobalCityResult.id == city_result_id)
+                )
+
+                # (a) checkpoint row staged, owner-guarded ...
+                staged = upsert_month_checkpoint(
+                    session,
+                    city_result_id=city_result_id, owner=owner,
+                    month=completed_month, attempt=retry_count or 0,
+                    payload=month_payload, provenance=provenance,
+                )
+                if not staged:
+                    session.rollback()
+                    ok = False
+                else:
+                    # (b) ... and committed together with the heartbeat; a lost
+                    # lease rolls (a) back as well.
+                    ok = heartbeat_city_lease(
+                        session, city_result_id, owner,
+                        monthly_json=all_payloads,
+                        completed_month_count=len(monthly_results),
+                        last_checkpoint_month=completed_month,
+                        stage=stage,
+                        progress=func.greatest(GlobalCityResult.progress, checkpoint_progress),
                     )
-                ).scalar_one()
-
-                # (a) durable checkpoint：真相來源
-                upsert_month_checkpoint(
-                    session,
-                    city_result_id,
-                    month=completed_month,
-                    attempt=retry_count,
-                    payload=month_payload,
-                )
-
-                # (b) city 衍生欄位 + 心跳，同一 transaction、租約保護
-                ok = heartbeat_city_lease(
-                    session,
-                    city_result_id,
-                    owner,
-                    monthly_json=all_payloads,
-                    completed_month_count=len(monthly_results),
-                    last_checkpoint_month=completed_month,
-                    stage=stage,
-                    progress=func.greatest(
-                        GlobalCityResult.progress, checkpoint_progress
-                    ),
-                )
-                # heartbeat_city_lease 內部 commit，(a)(b) 一起落地
 
             if not ok:
                 lease_lost = True
                 raise LeaseLostError()
 
             last_beat = time.monotonic()
-
             self.update_state(
                 state="PROGRESS",
                 meta={
-                    "batch_id": batch_id,
-                    "city_result_id": city_result_id,
-                    "city_id": city_id,
-                    "progress": checkpoint_progress,
-                    "stage": stage,
-                    "completed_month": completed_month,
+                    "batch_id": batch_id, "city_result_id": city_result_id, "city_id": city_id,
+                    "progress": checkpoint_progress, "stage": stage, "completed_month": completed_month,
                 },
             )
 
-        # ---- 4. 跑分析 ----
         analysis = asyncio.run(
             analyze_city_climate_adaptation(
                 city_id=city_id,
@@ -14879,21 +15194,23 @@ def run_global_city_analysis_task(
             )
         )
 
-        # ---- 5. 完成寫入（租約保護） ----
         monthly_json = analysis["monthly_results"]
-        last_month = (
-            max(item["month"] for item in monthly_json) if monthly_json else None
-        )
+        last_month = max(item["month"] for item in monthly_json) if monthly_json else None
+
+        data_quality = dict(analysis.get("data_quality", {}))
+        data_quality["checkpoints_discarded"] = checkpoints_discarded
+        data_quality["checkpoint_provenance"] = {
+            "model_version": provenance.model_version,
+            "parameter_fingerprint": provenance.parameter_fingerprint,
+            "request_sha256": provenance.request_sha256,
+        }
 
         with SessionLocal() as session:
             if _batch_cancel_requested(session, batch_id):
                 raise GlobalBatchCancelledError()
 
             ok = _finish_city_as_owner(
-                session,
-                city_result_id,
-                owner,
-                CityStatus.COMPLETED,
+                session, city_result_id, owner, CityStatus.COMPLETED,
                 progress=100,
                 error_message=None,
                 climate_adaptation_rate_percent=analysis["climate_adaptation_rate_percent"],
@@ -14919,72 +15236,48 @@ def run_global_city_analysis_task(
                     "heatwave_unavailable_reason": analysis.get("heatwave_unavailable_reason"),
                     "heatwave_temperature_basis": analysis.get("heatwave_temperature_basis"),
                     "heatwave_events": analysis.get("heatwave_events", []),
-                    "data_quality": analysis.get("data_quality", {}),
+                    "data_quality": data_quality,
                     "metric_definitions": analysis.get("metric_definitions", {}),
                 },
                 monthly_json=monthly_json,
                 completed_month_count=analysis["completed_month_count"],
                 last_checkpoint_month=last_month,
             )
-
             if not ok:
                 lease_lost = True
                 raise LeaseLostError()
 
             refresh_batch_status(session, batch_id)
 
-        return {
-            "batch_id": batch_id,
-            "city_result_id": city_result_id,
-            "status": "completed",
-        }
+        return {"batch_id": batch_id, "city_result_id": city_result_id, "status": "completed"}
 
     except LeaseLostError:
-        # 租約已被收回：別人在跑或 reaper 已處理。絕對不要再寫 DB。
-        return {
-            "batch_id": batch_id,
-            "city_result_id": city_result_id,
-            "status": "lease_lost",
-        }
+        return {"batch_id": batch_id, "city_result_id": city_result_id, "status": "lease_lost"}
 
     except GlobalBatchCancelledError:
         if batch_id is not None:
             with SessionLocal() as session:
-                _finish_city_as_owner(
-                    session,
-                    city_result_id,
-                    owner,
-                    CityStatus.CANCELLED,
-                    progress=100,
-                )
+                _finish_city_as_owner(session, city_result_id, owner, CityStatus.CANCELLED, progress=100)
                 refresh_batch_status(session, batch_id)
-
-        return {
-            "batch_id": batch_id,
-            "city_result_id": city_result_id,
-            "status": "cancelled",
-        }
+        return {"batch_id": batch_id, "city_result_id": city_result_id, "status": "cancelled"}
 
     except Exception as error:
         logger.exception("city %s failed", city_result_id)
         requeue = False
         if batch_id is not None:
             with SessionLocal() as session:
-                requeue = _fail_or_requeue_city(
-                    session, city_result_id, owner, error
-                )
+                requeue = _fail_or_requeue_city(session, city_result_id, owner, error)
                 refresh_batch_status(session, batch_id)
 
         if requeue:
             run_global_city_analysis_task.apply_async(
                 args=[city_result_id],
                 countdown=settings.CITY_HEARTBEAT_SECONDS,
+                queue=queue_name,  # keep the original queue
             )
             return {
-                "batch_id": batch_id,
-                "city_result_id": city_result_id,
-                "status": "requeued",
-                "error": str(error)[:500],
+                "batch_id": batch_id, "city_result_id": city_result_id,
+                "status": "requeued", "error": str(error)[:500],
             }
         raise
 
@@ -14993,36 +15286,57 @@ def run_global_city_analysis_task(
             with SessionLocal() as session:
                 release_city_lease(session, city_result_id, owner)
 
-@celery_app.task(name="global_batch.reap_expired_leases")
-def reap_expired_leases():
-    with SessionLocal() as db:
-        stale = db.execute(
-            select(GlobalCityResult)
-            .where(GlobalCityResult.status == CityStatus.RUNNING,
-                   GlobalCityResult.lease_expires_at < func.now())
-            .with_for_update(skip_locked=True)
-        ).scalars().all()
 
-        touched_batches = set()
+@celery_app.task(name="global_batch.reap_expired_leases")
+def reap_expired_leases() -> dict:
+    requeued: list[tuple[str, str]] = []  # (city_result_id, queue)
+    touched_batches: set[str] = set()
+
+    with SessionLocal() as db:
+        stale = db.scalars(
+            select(GlobalCityResult)
+            .where(
+                GlobalCityResult.status == CityStatus.RUNNING,
+                GlobalCityResult.lease_expires_at < func.now(),
+            )
+            .with_for_update(skip_locked=True)
+        ).all()
+
+        queue_by_batch: dict[str, str] = {}
+
         for city in stale:
+            if city.batch_id not in queue_by_batch:
+                batch = db.get(GlobalBatchJob, city.batch_id)
+                queue_by_batch[city.batch_id] = resolve_queue_name(
+                    GlobalBatchCreate.model_validate(batch.request_json)
+                )
+
             if city.retry_count < settings.CITY_MAX_RETRIES:
                 assert_city_transition(city.status, CityStatus.QUEUED)
                 city.status = CityStatus.QUEUED
+                city.stage = "lease_expired_requeued"
                 city.retry_count += 1
-                city.lease_owner = None
-                city.lease_expires_at = None
-                db.commit()
-                run_global_city_analysis_task.delay(city.id)                 # 重新投遞
+                requeued.append((city.id, queue_by_batch[city.batch_id]))
             else:
                 assert_city_transition(city.status, CityStatus.FAILED)
                 city.status = CityStatus.FAILED
+                city.stage = "failed"
                 city.error_message = f"lease expired after {city.retry_count} retries"
-                city.lease_owner = None
-                db.commit()
+                city.completed_at = utc_now()
+
+            city.lease_owner = None
+            city.lease_expires_at = None
             touched_batches.add(city.batch_id)
 
-        for bid in touched_batches:
-            reconcile_batch(db, bid)
+        db.commit()
+
+        for batch_id in touched_batches:
+            refresh_batch_status(db, batch_id)
+
+    for city_result_id, queue in requeued:
+        run_global_city_analysis_task.apply_async(args=[city_result_id], queue=queue)
+
+    return {"requeued": [c for c, _ in requeued], "batches": sorted(touched_batches)}
 ```
 
 ### File: `backend/celerybeat-schedule.bak`
@@ -15995,6 +16309,27 @@ entry (no weather is fetched for them). The checkpoint row's own
 }
 ```
 
+### File: `backend/docs/acceptance/stage-9-reliability/drills.md`
+```
+# Stage 9 reliability drills
+
+Each drill is run against docker-compose with one API, one Celery worker on
+`default,global_standard,global_large`, and beat. Record the raw command and
+the observed values; a drill without a recorded value is not accepted.
+
+| # | Drill | Expected | Observed (fill) |
+|---|---|---|---|
+| 1 | Submit a single job, `kill -9` the worker mid-run | within TTL + reaper interval (180 + 60 s) `/simulations/jobs/{id}` shows `lease_state: expired` then `queued`, then `running` with a new `lease_owner`; `attempt` == 2 | |
+| 2 | Redeliver a completed job message (`celery call simulation.run_weather --args '["<id>"]'`) | task returns `{"status": "skipped", "reason": "lease_not_acquired"}`; row untouched | |
+| 3 | Cancel a running single job | status `cancelling` -> `cancelled` within one heartbeat; no result file written | |
+| 4 | 12-month, 3-city batch, `kill -9` the worker after month 4 | city shows `Lease expired` -> `Lease live` (new owner) with the `Resumed` tag; `/checkpoints` has `resume_from_month: 5`; all rows `provenance_matches_batch: true` | |
+| 5 | Bump `MODEL_VERSION` locally, retry the batch from drill 4 | `/checkpoints` shows every row `not resumable`; `data_quality.checkpoints_discarded` lists 12 months; result recomputed from month 1 | |
+| 6 | Retry with `resume_from_checkpoint: false` | checkpoint rows deleted before the worker starts; `resumed_from_checkpoint: false` | |
+| 7 | Block `/events` at the reverse proxy | both pages switch to "Updates via polling" and stop polling at terminal status | |
+| 8 | Stop Redis | `/ops/status` -> `broker_reachable: false`; `/simulations/run-weather` still 200 from cache | |
+| 9 | `global_large` batch, force one city failure | re-queued task appears on `global_large`, not `global_standard` (`celery -A app.worker.celery_app inspect reserved`) | |
+```
+
 ### File: `backend/docs/decisions/0001-body-surface-area.md`
 ```
 # ADR 0001: body_surface_area_m2 is currently informational — RESOLVED (Stage 3)
@@ -16472,9 +16807,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
-from app.core.config import get_settings
+from app.core.config import get_settings, settings
 from app.core.runtime import configure_runtime
 
 from datetime import datetime, timedelta
@@ -16519,33 +16854,42 @@ from app.schemas.simulation import (
     SimulationRequest,
 )
 
+@pytest.fixture(scope="session")
+def engine():
+    """One engine for the whole run; disposed so no psycopg connection is
+    left for the garbage collector (that is the ResourceWarning pytest was
+    reporting as an unraisable exception at shutdown)."""
+    engine = create_engine(settings.database_url, pool_pre_ping=True)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 @pytest.fixture
-def db_session():
-    engine = create_engine(
-        settings.database_url,
-        pool_pre_ping=True,
-    )
+def db_session(engine):
+    """Each test runs inside one outer transaction that is always rolled back.
 
+    ``join_transaction_mode="create_savepoint"`` is essential: service code
+    (leases._heartbeat) calls ``session.rollback()`` when a lease is lost.
+    With the SQLAlchemy 2.0 default (``conservative_savepoint``) that would
+    roll back the *outer* transaction and wipe every row the test seeded;
+    with savepoints it only undoes the work staged since the last commit.
+    """
     connection = engine.connect()
     transaction = connection.begin()
-
-    TestingSessionLocal = sessionmaker(
+    session = Session(
         bind=connection,
         autoflush=False,
         expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
     )
-
-    session = TestingSessionLocal()
-
     try:
         yield session
     finally:
         session.close()
-        transaction.rollback()
+        if transaction.is_active:
+            transaction.rollback()
         connection.close()
-        engine.dispose()
-
 
 @pytest.fixture
 def client(db_session):
@@ -21130,17 +21474,12 @@ import pytest
 
 from app.api import ops as ops_api
 from app.core.time import utc_now
-from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult  
-from app.schemas.global_batch import GlobalBatchCreate,MaterialInput,PersonInput
+from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult
+from app.schemas.global_batch import GlobalBatchCreate, MaterialInput, PersonInput
 from app.schemas.ops import WorkerStatus
-from app.services.checkpoints import load_resume_state
+from app.services.checkpoints import CheckpointProvenance, load_resume_state
 from app.services.global_batch_service import batch_progress_event, derive_lease_state
 from app.services.job_state import BatchStatus, derive_batch_status
-from app.schemas.simulation import (
-    MaterialInput,
-    PersonInput,
-)
-
 
 
 # --------------------------------------------------------------------------
@@ -21153,13 +21492,13 @@ def make_request_json(city_id: str, *, start_month: int = 7, end_month: int = 12
         year=2023,
         start_month=start_month,
         end_month=end_month,
+        local_start_hour=12,  # belongs on the request, not PersonInput
         duration_minutes=120,
         output_interval_minutes=10,
         minimum_skin_improvement_c=0.2,
         person=PersonInput(
             met=2.0,
             body_surface_area_m2=1.8,
-            local_start_hour=12,
             initial_core_temperature_c=36.8,
             initial_skin_temperature_c=33.7,
         ),
@@ -21181,6 +21520,7 @@ def make_request_json(city_id: str, *, start_month: int = 7, end_month: int = 12
         ),
     )
     return request.model_dump(mode="json")
+
 
 @pytest.mark.unit
 def test_lease_state_is_derived_server_side():
@@ -21231,9 +21571,12 @@ def test_derive_batch_status_matches_refresh_rules():
 # --------------------------------------------------------------------------
 
 def seed_batch(session, *, start_month=7, end_month=12, checkpoint_months=(7, 8, 10)):
+    request_json = make_request_json("dubai", start_month=start_month, end_month=end_month)
+    provenance = CheckpointProvenance.for_request(GlobalBatchCreate.model_validate(request_json))
+
     batch = GlobalBatchJob(
         id=str(uuid4()), status="running", stage="analyzing_cities", progress=10,
-        total_city_count=1, attempt=1, request_json=make_request_json("dubai"),
+        total_city_count=1, attempt=1, request_json=request_json,
     )
     session.add(batch)
     session.flush()
@@ -21252,24 +21595,27 @@ def seed_batch(session, *, start_month=7, end_month=12, checkpoint_months=(7, 8,
         session.add(GlobalCityCheckpoint(
             city_result_id=city.id, month=month, attempt=0,
             payload_json={"month": month, "sampled_day_count": 3, "skipped_samples": [], "samples": []},
+            model_version=provenance.model_version,
+            parameter_fingerprint=provenance.parameter_fingerprint,
+            request_sha256=provenance.request_sha256,
         ))
     session.commit()
-    return batch, city
+    return batch, city, provenance
 
 
 @pytest.mark.integration
 def test_resume_prefix_respects_start_month(db_session):
-    _, city = seed_batch(db_session, start_month=7, checkpoint_months=(7, 8, 10))
+    _, city, provenance = seed_batch(db_session, start_month=7, checkpoint_months=(7, 8, 10))
 
-    next_month, payloads = load_resume_state(db_session, city.id, start_month=7)
+    state = load_resume_state(db_session, city.id, start_month=7, provenance=provenance)
 
-    assert next_month == 9                       # hole at 9 -> resume there, discard 10
-    assert [p["month"] for p in payloads] == [7, 8]
+    assert state.next_month == 9  # hole at 9 -> resume there, discard 10
+    assert [p["month"] for p in state.payloads] == [7, 8]
 
 
 @pytest.mark.integration
 def test_detail_and_checkpoint_endpoints_expose_stage_7_state(client, db_session):
-    batch, city = seed_batch(db_session)
+    batch, city, _ = seed_batch(db_session)
 
     detail = client.get(f"/api/v1/global-batches/{batch.id}").json()
     row = detail["city_results"][0]
@@ -21572,6 +21918,219 @@ async def test_resume_recomputes_only_missing_months_and_matches_uninterrupted(
             ),
             encoding="utf-8",
         )
+```
+
+### File: `backend/tests/test_stage_9_leases_and_provenance.py`
+```python
+"""Stage 9: single-job leases, owner-guarded checkpoint writes, provenance."""
+
+from datetime import datetime, timedelta
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import select
+
+from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult
+from app.models.simulation_job import SimulationJob
+from app.schemas.global_batch import GlobalBatchCreate
+from app.services.checkpoints import CheckpointProvenance, load_resume_state, upsert_month_checkpoint
+from app.services.job_state import IllegalTransition, assert_city_transition, assert_job_transition
+from app.services.leases import (
+    acquire_city_lease,
+    acquire_job_lease,
+    heartbeat_city_lease,
+    heartbeat_job_lease,
+)
+from tests.test_stage_8_observability import make_request_json
+
+
+# --- unit ---------------------------------------------------------------
+
+@pytest.mark.unit
+def test_job_transitions():
+    assert_job_transition("queued", "running")
+    assert_job_transition("running", "queued")      # reaper
+    assert_job_transition("cancelling", "completed")
+    for current in ("completed", "failed", "cancelled"):
+        with pytest.raises(IllegalTransition):
+            assert_job_transition(current, "running")
+
+
+@pytest.mark.unit
+def test_failed_city_may_be_retried():
+    assert_city_transition("failed", "queued")
+    with pytest.raises(IllegalTransition):
+        assert_city_transition("completed", "queued")
+
+
+@pytest.mark.unit
+def test_request_hash_ignores_non_physics_fields():
+    base = GlobalBatchCreate.model_validate(make_request_json("dubai"))
+    renamed = base.model_copy(update={"name": "other", "resume_from_checkpoint": False, "execution_profile": "large"})
+    changed = base.model_copy(update={"duration_minutes": 60})
+
+    assert CheckpointProvenance.for_request(base) == CheckpointProvenance.for_request(renamed)
+    assert CheckpointProvenance.for_request(base) != CheckpointProvenance.for_request(changed)
+
+
+# --- integration ----------------------------------------------------------
+
+def seed_job(session, **overrides) -> SimulationJob:
+    values = {
+        "id": str(uuid4()), "city_id": "dubai", "status": "queued",
+        "stage": "queued", "progress": 0, "request_json": {},
+    }
+    values.update(overrides)
+    job = SimulationJob(**values)
+    session.add(job)
+    session.commit()
+    return job
+
+
+@pytest.mark.integration
+def test_job_lease_is_exclusive_and_terminal_rows_cannot_be_acquired(db_session):
+    job = seed_job(db_session)
+
+    assert acquire_job_lease(db_session, job.id, "worker-a") is True
+    assert acquire_job_lease(db_session, job.id, "worker-b") is False   # live lease
+    assert acquire_job_lease(db_session, job.id, "worker-a") is True    # re-entrant
+
+    db_session.refresh(job)
+    assert job.status == "running"
+
+    done = seed_job(db_session, status="completed")
+    assert acquire_job_lease(db_session, done.id, "worker-a") is False  # never resurrect
+
+
+@pytest.mark.integration
+def test_job_heartbeat_by_non_owner_is_rejected_and_rolled_back(db_session):
+    job = seed_job(db_session)
+    acquire_job_lease(db_session, job.id, "worker-a")
+
+    assert heartbeat_job_lease(db_session, job.id, "worker-b", progress=50) is False
+    db_session.refresh(job)
+    assert job.progress == 0
+    assert job.lease_owner == "worker-a"
+
+
+def seed_city(session, *, start_month=7, end_month=12):
+    batch = GlobalBatchJob(
+        id=str(uuid4()), status="running", stage="analyzing_cities", progress=0,
+        total_city_count=1, request_json=make_request_json("dubai", start_month=start_month, end_month=end_month),
+    )
+    session.add(batch)
+    session.flush()
+    city = GlobalCityResult(
+        id=str(uuid4()), batch_id=batch.id, city_id="dubai", city_name="Dubai",
+        country="United Arab Emirates", latitude=25.2, longitude=55.27,
+        status="queued", stage="queued", progress=0,
+    )
+    session.add(city)
+    session.commit()
+    return batch, city
+
+
+@pytest.mark.integration
+def test_checkpoint_write_requires_lease_and_rolls_back_with_lost_heartbeat(db_session):
+    batch, city = seed_city(db_session)
+    city_id = city.id
+    request = GlobalBatchCreate.model_validate(batch.request_json)
+    provenance = CheckpointProvenance.for_request(request)
+    payload = {"month": 7, "sampled_day_count": 1, "skipped_samples": [], "samples": []}
+
+    # No lease at all: nothing staged.
+    assert upsert_month_checkpoint(
+        db_session, city_result_id=city_id, owner="ghost", month=7, attempt=0,
+        payload=payload, provenance=provenance,
+    ) is False
+
+    acquire_city_lease(db_session, city_id, "worker-a")
+
+    # Staged by the owner but the heartbeat is attempted by someone else:
+    # the rollback must discard the staged row.
+    assert upsert_month_checkpoint(
+        db_session, city_result_id=city_id, owner="worker-a", month=7, attempt=0,
+        payload=payload, provenance=provenance,
+    ) is True
+    assert heartbeat_city_lease(db_session, city_id, "worker-b", last_checkpoint_month=7) is False
+    assert db_session.scalar(select(GlobalCityCheckpoint).where(GlobalCityCheckpoint.city_result_id == city_id)) is None
+
+    # Owner path: row and heartbeat land together.
+    assert upsert_month_checkpoint(
+        db_session, city_result_id=city_id, owner="worker-a", month=7, attempt=0,
+        payload=payload, provenance=provenance,
+    ) is True
+    assert heartbeat_city_lease(db_session, city_id, "worker-a", last_checkpoint_month=7) is True
+    row = db_session.scalar(select(GlobalCityCheckpoint).where(GlobalCityCheckpoint.city_result_id == city_id))
+    assert row.model_version == provenance.model_version
+    assert row.parameter_fingerprint == provenance.parameter_fingerprint
+
+
+@pytest.mark.integration
+def test_resume_discards_rows_with_foreign_provenance(db_session):
+    batch, city = seed_city(db_session)
+    request = GlobalBatchCreate.model_validate(batch.request_json)
+    good = CheckpointProvenance.for_request(request)
+
+    def add(month, **override):
+        db_session.add(GlobalCityCheckpoint(
+            city_result_id=city.id, month=month, attempt=0,
+            payload_json={"month": month, "sampled_day_count": 1, "skipped_samples": [], "samples": []},
+            model_version=override.get("model_version", good.model_version),
+            parameter_fingerprint=override.get("parameter_fingerprint", good.parameter_fingerprint),
+            request_sha256=override.get("request_sha256", good.request_sha256),
+        ))
+
+    add(7)
+    add(8)
+    add(9, model_version="0.0.1")   # written by an older model
+    add(10)                          # valid, but behind the mismatch
+    add(11, model_version=None, parameter_fingerprint=None, request_sha256=None)  # legacy
+    db_session.commit()
+
+    state = load_resume_state(db_session, city.id, start_month=7, provenance=good)
+
+    assert state.next_month == 9
+    assert [p["month"] for p in state.payloads] == [7, 8]
+    assert [d["month"] for d in state.discarded] == [9, 10, 11]
+    assert "model_version" in state.discarded[0]["reason"]
+    assert "not contiguous" in state.discarded[1]["reason"]
+    assert "legacy" in state.discarded[2]["reason"]
+
+
+@pytest.mark.integration
+def test_retry_without_resume_deletes_checkpoint_rows(client, db_session):
+    batch, city = seed_city(db_session)
+    request = GlobalBatchCreate.model_validate(batch.request_json)
+    provenance = CheckpointProvenance.for_request(request)
+    db_session.add(GlobalCityCheckpoint(
+        city_result_id=city.id, month=7, attempt=0,
+        payload_json={"month": 7, "sampled_day_count": 1, "skipped_samples": [], "samples": []},
+        model_version=provenance.model_version,
+        parameter_fingerprint=provenance.parameter_fingerprint,
+        request_sha256=provenance.request_sha256,
+    ))
+    batch.status = "failed"
+    batch.request_json = {**batch.request_json, "resume_from_checkpoint": False}
+    city.status = "failed"
+    db_session.commit()
+
+    from app.api import global_batches as api
+    from types import SimpleNamespace
+    api_submit = lambda *, city_results, queue_name: SimpleNamespace(  # noqa: E731
+        id="g", results=[SimpleNamespace(id=f"t-{r.city_id}") for r in city_results]
+    )
+    original = api.submit_city_tasks
+    api.submit_city_tasks = api_submit
+    try:
+        response = client.post(f"/api/v1/global-batches/{batch.id}/retry-failed")
+    finally:
+        api.submit_city_tasks = original
+
+    assert response.status_code == 202, response.text
+    db_session.expire_all()
+    assert db_session.scalar(select(GlobalCityCheckpoint).where(GlobalCityCheckpoint.city_result_id == city.id)) is None
+    assert db_session.get(GlobalCityResult, city.id).status == "queued"
 ```
 
 ### File: `backend/tests/test_two_node.py`
