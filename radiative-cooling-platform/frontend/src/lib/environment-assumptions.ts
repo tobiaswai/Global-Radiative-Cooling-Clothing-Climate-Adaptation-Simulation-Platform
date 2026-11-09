@@ -12,4 +12,5 @@ export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
   sky_view_factor: 0.5,
   wind_speed_scaling_factor: 1,
   ground_albedo: 0.2,
+  radiation_time_convention: "instantaneous_linear",
 };

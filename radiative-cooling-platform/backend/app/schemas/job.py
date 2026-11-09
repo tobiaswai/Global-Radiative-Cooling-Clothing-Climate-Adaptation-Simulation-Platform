@@ -17,6 +17,8 @@ JobStatus = Literal[
     "failed",
 ]
 
+LeaseState = Literal["none", "live", "expired"]
+
 
 class SimulationJobResponse(BaseModel):
     id: str
@@ -36,7 +38,13 @@ class SimulationJobResponse(BaseModel):
     # Stage 4. Set when the request referenced material library versions.
     control_material_version_id: str | None = None
     rc_material_version_id: str | None = None
-
+    # Stage 9
+    attempt: int = 0
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    lease_state: LeaseState = "none"
+    
 class SimulationJobDetail(
     SimulationJobResponse
 ):

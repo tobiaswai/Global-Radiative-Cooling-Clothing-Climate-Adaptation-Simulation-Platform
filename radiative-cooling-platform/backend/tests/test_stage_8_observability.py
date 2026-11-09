@@ -6,17 +6,12 @@ import pytest
 
 from app.api import ops as ops_api
 from app.core.time import utc_now
-from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult  
-from app.schemas.global_batch import GlobalBatchCreate,MaterialInput,PersonInput
+from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult
+from app.schemas.global_batch import GlobalBatchCreate, MaterialInput, PersonInput
 from app.schemas.ops import WorkerStatus
-from app.services.checkpoints import load_resume_state
+from app.services.checkpoints import CheckpointProvenance, load_resume_state
 from app.services.global_batch_service import batch_progress_event, derive_lease_state
 from app.services.job_state import BatchStatus, derive_batch_status
-from app.schemas.simulation import (
-    MaterialInput,
-    PersonInput,
-)
-
 
 
 # --------------------------------------------------------------------------
@@ -29,13 +24,13 @@ def make_request_json(city_id: str, *, start_month: int = 7, end_month: int = 12
         year=2023,
         start_month=start_month,
         end_month=end_month,
+        local_start_hour=12,  # belongs on the request, not PersonInput
         duration_minutes=120,
         output_interval_minutes=10,
         minimum_skin_improvement_c=0.2,
         person=PersonInput(
             met=2.0,
             body_surface_area_m2=1.8,
-            local_start_hour=12,
             initial_core_temperature_c=36.8,
             initial_skin_temperature_c=33.7,
         ),
@@ -57,6 +52,7 @@ def make_request_json(city_id: str, *, start_month: int = 7, end_month: int = 12
         ),
     )
     return request.model_dump(mode="json")
+
 
 @pytest.mark.unit
 def test_lease_state_is_derived_server_side():
@@ -107,9 +103,12 @@ def test_derive_batch_status_matches_refresh_rules():
 # --------------------------------------------------------------------------
 
 def seed_batch(session, *, start_month=7, end_month=12, checkpoint_months=(7, 8, 10)):
+    request_json = make_request_json("dubai", start_month=start_month, end_month=end_month)
+    provenance = CheckpointProvenance.for_request(GlobalBatchCreate.model_validate(request_json))
+
     batch = GlobalBatchJob(
         id=str(uuid4()), status="running", stage="analyzing_cities", progress=10,
-        total_city_count=1, attempt=1, request_json=make_request_json("dubai"),
+        total_city_count=1, attempt=1, request_json=request_json,
     )
     session.add(batch)
     session.flush()
@@ -128,24 +127,27 @@ def seed_batch(session, *, start_month=7, end_month=12, checkpoint_months=(7, 8,
         session.add(GlobalCityCheckpoint(
             city_result_id=city.id, month=month, attempt=0,
             payload_json={"month": month, "sampled_day_count": 3, "skipped_samples": [], "samples": []},
+            model_version=provenance.model_version,
+            parameter_fingerprint=provenance.parameter_fingerprint,
+            request_sha256=provenance.request_sha256,
         ))
     session.commit()
-    return batch, city
+    return batch, city, provenance
 
 
 @pytest.mark.integration
 def test_resume_prefix_respects_start_month(db_session):
-    _, city = seed_batch(db_session, start_month=7, checkpoint_months=(7, 8, 10))
+    _, city, provenance = seed_batch(db_session, start_month=7, checkpoint_months=(7, 8, 10))
 
-    next_month, payloads = load_resume_state(db_session, city.id, start_month=7)
+    state = load_resume_state(db_session, city.id, start_month=7, provenance=provenance)
 
-    assert next_month == 9                       # hole at 9 -> resume there, discard 10
-    assert [p["month"] for p in payloads] == [7, 8]
+    assert state.next_month == 9  # hole at 9 -> resume there, discard 10
+    assert [p["month"] for p in state.payloads] == [7, 8]
 
 
 @pytest.mark.integration
 def test_detail_and_checkpoint_endpoints_expose_stage_7_state(client, db_session):
-    batch, city = seed_batch(db_session)
+    batch, city, _ = seed_batch(db_session)
 
     detail = client.get(f"/api/v1/global-batches/{batch.id}").json()
     row = detail["city_results"][0]

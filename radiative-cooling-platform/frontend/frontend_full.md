@@ -12,12 +12,14 @@ frontend/README.md
 frontend/.env.example
 frontend/src/app/benchmarks/gagge/page.tsx
 frontend/src/app/global-analysis/[batchId]/page.tsx
+frontend/src/app/global-analysis/batches/page.tsx
 frontend/src/app/global-analysis/page.tsx
 frontend/src/app/globals.css
 frontend/src/app/layout.tsx
 frontend/src/app/materials/[materialId]/page.tsx
 frontend/src/app/materials/new/page.tsx
 frontend/src/app/materials/page.tsx
+frontend/src/app/ops/page.tsx
 frontend/src/app/page.tsx
 frontend/src/app/simulations/[jobId]/page.tsx
 frontend/src/app/simulations/new/page.tsx
@@ -31,6 +33,11 @@ frontend/src/components/charts/weather-chart.tsx
 frontend/src/components/forms/number-field.tsx
 frontend/src/components/forms/select-field.tsx
 frontend/src/components/global-adaptation-map.tsx
+frontend/src/components/global/batch-reliability-panel.tsx
+frontend/src/components/global/checkpoint-timeline.tsx
+frontend/src/components/global/city-checkpoint-list.tsx
+frontend/src/components/global/data-quality-panel.tsx
+frontend/src/components/global/lease-badge.tsx
 frontend/src/components/layout/NavBar.tsx
 frontend/src/components/materials/provenance-editor.tsx
 frontend/src/components/simulation/environment-assumptions-fields.tsx
@@ -42,17 +49,25 @@ frontend/src/components/simulation/model-quality-panel.tsx
 frontend/src/components/simulation/person-input-fields.tsx
 frontend/src/config/navigation.ts
 frontend/src/lib/api-client.ts
+frontend/src/lib/checkpoint-cells.test.ts
+frontend/src/lib/checkpoint-cells.ts
 frontend/src/lib/date-defaults.test.ts
 frontend/src/lib/date-defaults.ts
 frontend/src/lib/environment-assumptions.ts
 frontend/src/lib/format.test.ts
 frontend/src/lib/format.ts
+frontend/src/lib/global-batch-progress.test.ts
+frontend/src/lib/global-batch-progress.ts
+frontend/src/lib/relative-time.test.ts
+frontend/src/lib/relative-time.ts
 frontend/src/lib/time-series.test.ts
 frontend/src/lib/time-series.ts
+frontend/src/lib/use-global-batch.ts
 frontend/src/locales/en.ts
 frontend/src/types/benchmark.ts
 frontend/src/types/global-batch.ts
 frontend/src/types/material.ts
+frontend/src/types/ops.ts
 frontend/src/types/simulation.ts
 
 # public/ (names only)
@@ -801,29 +816,27 @@ function PortParityPanel({ result }: { result: GaggeBenchmarkResponse }) {
 ### File: `frontend/src/app/global-analysis/[batchId]/page.tsx`
 ```tsx
 "use client";
+
 import Link from "next/link";
-
 import dynamic from "next/dynamic";
-
 import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
+import { BatchReliabilityPanel } from "@/components/global/batch-reliability-panel";
+import { CheckpointTimeline } from "@/components/global/checkpoint-timeline";
+import { CityCheckpointList } from "@/components/global/city-checkpoint-list";
+import { DataQualityPanel } from "@/components/global/data-quality-panel";
+import { LeaseBadge } from "@/components/global/lease-badge";
 import {
   cancelGlobalBatch,
-  getGlobalBatch,
   getGlobalBatchExportUrl,
   getGlobalBatchGeoJson,
   retryFailedGlobalBatchCities,
 } from "@/lib/api-client";
-
+import { isTerminalBatchStatus } from "@/lib/global-batch-progress";
+import { useGlobalBatch } from "@/lib/use-global-batch";
 import type {
   GeoJsonFeatureCollection,
-  GlobalBatchDetail,
   GlobalCityResult,
   HeatwaveEvent,
 } from "@/types/global-batch";
@@ -845,298 +858,89 @@ const GlobalAdaptationMap = dynamic(
   },
 );
 
-
-const terminalStatuses =
-  new Set<string>([
-    "completed",
-    "partial_completed",
-    "failed",
-    "cancelled",
-  ]);
-
-
 export default function GlobalBatchPage() {
-  const parameters = useParams<{
-    batchId: string;
-  }>();
+  const parameters = useParams<{ batchId: string }>();
+  const batchId = parameters.batchId;
 
-  const [
-    batch,
-    setBatch,
-  ] = useState<GlobalBatchDetail | null>(
-    null,
-  );
+  const { batch, error, setError, transport, refresh, resubscribe } = useGlobalBatch(batchId);
 
-  const [
-    geoJson,
-    setGeoJson,
-  ] =
-    useState<GeoJsonFeatureCollection | null>(
-      null,
-    );
+  const [geoJson, setGeoJson] = useState<GeoJsonFeatureCollection | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  const [
-    selectedCityId,
-    setSelectedCityId,
-  ] = useState<string | null>(null);
+  const completedCityCount = batch?.completed_city_count ?? 0;
 
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    pollingRevision,
-    setPollingRevision,
-  ] = useState(0);
-
-  const [
-    isCancelling,
-    setIsCancelling,
-  ] = useState(false);
-
-  const [
-    isRetrying,
-    setIsRetrying,
-  ] = useState(false);
-
+  // Synchronise with the GeoJSON endpoint. Re-runs only when a city completes
+  // (keyed on the count, not on every heartbeat). The only setState here is in
+  // the fetch callback, i.e. after the external system answered.
   useEffect(() => {
-    let disposed = false;
-    let timer: number | null = null;
-
-    async function load() {
-      try {
-        const response =
-          await getGlobalBatch(
-            parameters.batchId,
-          );
-
-        if (disposed) {
-          return;
-        }
-
-        setBatch(response);
-        setError("");
-
-        if (
-          response.completed_city_count > 0
-        ) {
-          try {
-            const mapData =
-              await getGlobalBatchGeoJson(
-                parameters.batchId,
-              );
-
-            if (!disposed) {
-              setGeoJson(mapData);
-            }
-          } catch (mapError) {
-            if (!disposed) {
-              setError(
-                getErrorMessage(
-                  mapError,
-                  "Unable to load global map data.",
-                ),
-              );
-            }
-          }
-        } else {
-          setGeoJson(null);
-        }
-
-        if (
-          !terminalStatuses.has(
-            response.status,
-          )
-        ) {
-          timer = window.setTimeout(
-            load,
-            3000,
-          );
-        }
-      } catch (caughtError) {
-        if (disposed) {
-          return;
-        }
-
-        setError(
-          getErrorMessage(
-            caughtError,
-            "Unable to load the global analysis.",
-          ),
-        );
-
-        timer = window.setTimeout(
-          load,
-          5000,
-        );
-      }
+    if (completedCityCount === 0) {
+      return;
     }
 
-    void load();
+    let disposed = false;
+
+    getGlobalBatchGeoJson(batchId)
+      .then((data) => {
+        if (!disposed) setGeoJson(data);
+      })
+      .catch((caught: unknown) => {
+        if (!disposed) setError(getErrorMessage(caught, "Unable to load global map data."));
+      });
 
     return () => {
       disposed = true;
-
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
     };
-  }, [
-    parameters.batchId,
-    pollingRevision,
-  ]);
+  }, [batchId, completedCityCount, setError]);
 
-  const selectedCity = useMemo(() => {
-    if (!batch || !selectedCityId) {
-      return null;
-    }
+  const mapData = completedCityCount > 0 ? geoJson : null;
 
-    return (
-      batch.city_results.find(
-        (result) =>
-          result.id === selectedCityId,
-      ) ?? null
-    );
-  }, [
-    batch,
-    selectedCityId,
-  ]);
+  const selectedCity = useMemo(
+    () => batch?.city_results.find((result) => result.id === selectedCityId) ?? null,
+    [batch, selectedCityId],
+  );
 
   const completedResults = useMemo(
-    () =>
-      batch?.city_results.filter(
-        (result) =>
-          result.status === "completed",
-      ) ?? [],
+    () => batch?.city_results.filter((result) => result.status === "completed") ?? [],
     [batch],
   );
 
   const aggregateMetrics = useMemo(
     () => ({
-      meanExposureCoverage:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .exposure_coverage_percent,
-          ),
-        ),
-
-      meanAdaptationRate:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .climate_adaptation_rate_percent,
-          ),
-        ),
-
-      meanSkinCooling:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .annual_average_skin_improvement_c,
-          ),
-        ),
-
-      meanSkinP90:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .skin_improvement_p90_c,
-          ),
-        ),
-
-      totalHeatwaveEvents:
-        completedResults.reduce(
-          (total, result) =>
-            total +
-            (result.heatwave_event_count ??
-              0),
-          0,
-        ),
+      meanExposureCoverage: calculateMean(completedResults.map((r) => r.exposure_coverage_percent)),
+      meanAdaptationRate: calculateMean(completedResults.map((r) => r.climate_adaptation_rate_percent)),
+      meanSkinCooling: calculateMean(completedResults.map((r) => r.annual_average_skin_improvement_c)),
+      meanSkinP90: calculateMean(completedResults.map((r) => r.skin_improvement_p90_c)),
+      totalHeatwaveEvents: completedResults.reduce((t, r) => t + (r.heatwave_event_count ?? 0), 0),
     }),
     [completedResults],
   );
 
-  async function refreshBatch() {
-    const updated =
-      await getGlobalBatch(
-        parameters.batchId,
-      );
-
-    setBatch(updated);
-
-    if (
-      updated.completed_city_count > 0
-    ) {
-      const mapData =
-        await getGlobalBatchGeoJson(
-          parameters.batchId,
-        );
-
-      setGeoJson(mapData);
-    } else {
-      setGeoJson(null);
-    }
-
-    return updated;
-  }
-
   async function cancelBatch() {
-    if (isCancelling) {
-      return;
-    }
-
+    if (isCancelling) return;
     try {
       setIsCancelling(true);
       setError("");
-
-      await cancelGlobalBatch(
-        parameters.batchId,
-      );
-
-      await refreshBatch();
-    } catch (caughtError) {
-      setError(
-        getErrorMessage(
-          caughtError,
-          "Unable to cancel the analysis batch.",
-        ),
-      );
+      await cancelGlobalBatch(batchId);
+      await refresh();
+    } catch (caught) {
+      setError(getErrorMessage(caught, "Unable to cancel the analysis batch."));
     } finally {
       setIsCancelling(false);
     }
   }
 
   async function retryFailedCities() {
-    if (isRetrying) {
-      return;
-    }
-
+    if (isRetrying) return;
     try {
       setIsRetrying(true);
       setError("");
-
-      await retryFailedGlobalBatchCities(
-        parameters.batchId,
-      );
-
-      await refreshBatch();
-
-      setPollingRevision(
-        (current) => current + 1,
-      );
-    } catch (caughtError) {
-      setError(
-        getErrorMessage(
-          caughtError,
-          "Unable to retry failed cities.",
-        ),
-      );
+      await retryFailedGlobalBatchCities(batchId);
+      await refresh();
+      resubscribe(); // batch left its terminal state; reopen the stream
+    } catch (caught) {
+      setError(getErrorMessage(caught, "Unable to retry failed cities."));
     } finally {
       setIsRetrying(false);
     }
@@ -1147,115 +951,70 @@ export default function GlobalBatchPage() {
       <main className="min-h-screen bg-slate-950 p-10 text-white">
         <div className="mx-auto max-w-7xl">
           {error ? (
-            <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-              {error}
-            </div>
+            <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
           ) : (
-            <p className="text-slate-400">
-              Loading global analysis...
-            </p>
+            <p className="text-slate-400">Loading global analysis...</p>
           )}
         </div>
       </main>
     );
   }
 
-  const isTerminal =
-    terminalStatuses.has(batch.status);
-
+  const isTerminal = isTerminalBatchStatus(batch.status);
   const canRetry =
     isTerminal &&
     batch.failed_city_count > 0 &&
-    (
-      batch.status ===
-        "partial_completed" ||
-      batch.status === "failed"
-    );
+    (batch.status === "partial_completed" || batch.status === "failed");
 
-  const analysisResolution =
-    batch.request.analysis_resolution ??
-    "representative";
-
-  const analysisResolutionLabel =
-    analysisResolution === "daily"
-      ? "Daily"
-      : "Representative Days";
-
+  const analysisResolution = batch.request.analysis_resolution ?? "representative";
+  const analysisResolutionLabel = analysisResolution === "daily" ? "Daily" : "Representative Days";
   const samplingLabel =
     analysisResolution === "daily"
-      ? `Every ${
-          batch.request.daily_stride_days ??
-          1
-        } day(s)`
-      : `${
-          batch.request
-            .sample_days_per_month ?? 1
-        } day(s) per month`;
-
+      ? `Every ${batch.request.daily_stride_days ?? 1} day(s)`
+      : `${batch.request.sample_days_per_month ?? 1} day(s) per month`;
   const heatwaveAvailable =
-    batch.request
-      .enable_heatwave_analysis &&
+    batch.request.enable_heatwave_analysis &&
     analysisResolution === "daily" &&
-    (
-      batch.request.daily_stride_days ??
-      1
-    ) === 1;
+    (batch.request.daily_stride_days ?? 1) === 1;
+
+  const startMonth = batch.request.start_month ?? 1;
+  const endMonth = batch.request.end_month ?? 12;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-[95rem] px-6 py-10">
         <nav className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-          <Link href="/global-analysis" className="hover:text-slate-100">
-            Global Analysis
-          </Link>
+          <Link href="/global-analysis" className="hover:text-slate-100">Global Analysis</Link>
+          <span>/</span>
+          <Link href="/global-analysis/batches" className="hover:text-slate-100">Batches</Link>
           <span>/</span>
           <span className="text-slate-200">Batch Result</span>
         </nav>
+
         <header className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <p className="text-sm font-medium text-cyan-400">
-              Global Analysis
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold">
-              {batch.request.name}
-            </h1>
-
+            <p className="text-sm font-medium text-cyan-400">Global Analysis</p>
+            <h1 className="mt-2 text-3xl font-bold">{batch.request.name}</h1>
             <p className="mt-3 text-sm text-slate-400">
-              Batch ID:{" "}
-              <span className="font-mono text-slate-300">
-                {batch.id}
-              </span>
+              Batch ID: <span className="font-mono text-slate-300">{batch.id}</span>
             </p>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Created{" "}
-              {formatDateTime(
-                batch.created_at,
-              )}
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Created {formatDateTime(batch.created_at)}</p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             {canRetry && (
               <button
                 type="button"
-                onClick={
-                  retryFailedCities
-                }
+                onClick={retryFailedCities}
                 disabled={isRetrying}
                 className="rounded-lg border border-amber-700 px-5 py-2 text-amber-300 transition-colors hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isRetrying
-                  ? "Submitting Retry..."
-                  : "Retry Failed Cities"}
+                {isRetrying ? "Submitting Retry..." : "Retry Failed Cities"}
               </button>
             )}
 
             <a
-              href={getGlobalBatchExportUrl(
-                batch.id,
-              )}
+              href={getGlobalBatchExportUrl(batch.id)}
               className="rounded-lg border border-cyan-700 px-5 py-2 text-cyan-300 transition-colors hover:bg-cyan-950"
             >
               Download Export
@@ -1265,261 +1024,114 @@ export default function GlobalBatchPage() {
               <button
                 type="button"
                 onClick={cancelBatch}
-                disabled={isCancelling}
+                disabled={isCancelling || Boolean(batch.cancel_requested_at)}
                 className="rounded-lg border border-red-800 px-5 py-2 text-red-300 transition-colors hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isCancelling
-                  ? "Cancelling..."
-                  : "Cancel Batch"}
+                {batch.cancel_requested_at
+                  ? "Cancel requested – finishing current month"
+                  : isCancelling
+                    ? "Cancelling..."
+                    : "Cancel Batch"}
               </button>
             )}
           </div>
         </header>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-          <Metric
-            label="Status"
-            value={formatLabel(
-              batch.status,
-            )}
-          />
-
-          <Metric
-            label="Overall Progress"
-            value={`${batch.progress}%`}
-          />
-
-          <Metric
-            label="Completed Cities"
-            value={
-              `${batch.completed_city_count}` +
-              ` / ${batch.total_city_count}`
-            }
-          />
-
-          <Metric
-            label="Failed Cities"
-            value={String(
-              batch.failed_city_count,
-            )}
-          />
-
-          <Metric
-            label="Cancelled Cities"
-            value={String(
-              batch.cancelled_city_count,
-            )}
-          />
-
-          <Metric
-            label="Resolution"
-            value={
-              analysisResolutionLabel
-            }
-          />
-
-          <Metric
-            label="Sampling"
-            value={samplingLabel}
-          />
-
-          <Metric
-            label="Execution Profile"
-            value={formatLabel(
-              batch.request
-                .execution_profile ??
-                "auto",
-            )}
-          />
+          <Metric label="Status" value={formatLabel(batch.status)} />
+          <Metric label="Overall Progress" value={`${batch.progress}%`} />
+          <Metric label="Completed Cities" value={`${batch.completed_city_count} / ${batch.total_city_count}`} />
+          <Metric label="Failed Cities" value={String(batch.failed_city_count)} />
+          <Metric label="Cancelled Cities" value={String(batch.cancelled_city_count)} />
+          <Metric label="Resolution" value={analysisResolutionLabel} />
+          <Metric label="Sampling" value={samplingLabel} />
+          <Metric label="Execution Profile" value={formatLabel(batch.request.execution_profile ?? "auto")} />
         </section>
 
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-800">
           <div
             className="h-full bg-cyan-400 transition-all duration-500"
-            style={{
-              width: `${
-                clampProgress(
-                  batch.progress,
-                )
-              }%`,
-            }}
+            style={{ width: `${clampProgress(batch.progress)}%` }}
           />
         </div>
 
+        <BatchReliabilityPanel batch={batch} transport={transport} />
+
         <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Metric
-            label="Mean Exposure Coverage"
-            value={formatNumber(
-              aggregateMetrics
-                .meanExposureCoverage,
-              "%",
-            )}
-          />
-
-          <Metric
-            label="Mean Adaptation Rate"
-            value={formatNumber(
-              aggregateMetrics
-                .meanAdaptationRate,
-              "%",
-            )}
-          />
-
-          <Metric
-            label="Mean Skin Cooling"
-            value={formatNumber(
-              aggregateMetrics
-                .meanSkinCooling,
-              " °C",
-            )}
-          />
-
-          <Metric
-            label="Mean P90 Skin Cooling"
-            value={formatNumber(
-              aggregateMetrics
-                .meanSkinP90,
-              " °C",
-            )}
-          />
-
+          <Metric label="Mean Exposure Coverage" value={formatNumber(aggregateMetrics.meanExposureCoverage, "%")} />
+          <Metric label="Mean Adaptation Rate" value={formatNumber(aggregateMetrics.meanAdaptationRate, "%")} />
+          <Metric label="Mean Skin Cooling" value={formatNumber(aggregateMetrics.meanSkinCooling, " °C")} />
+          <Metric label="Mean P90 Skin Cooling" value={formatNumber(aggregateMetrics.meanSkinP90, " °C")} />
           <Metric
             label="Detected Heatwaves"
-            value={
-              heatwaveAvailable
-                ? String(
-                    aggregateMetrics
-                      .totalHeatwaveEvents,
-                  )
-                : "Unavailable"
-            }
+            value={heatwaveAvailable ? String(aggregateMetrics.totalHeatwaveEvents) : "Unavailable"}
           />
         </section>
 
         {batch.error_message && (
           <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-            <p className="font-semibold">
-              Batch Error
-            </p>
-
-            <p className="mt-2 text-sm">
-              {batch.error_message}
-            </p>
+            <p className="font-semibold">Batch Error</p>
+            <p className="mt-2 text-sm">{batch.error_message}</p>
           </div>
         )}
 
         {error && (
-          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-            {error}
-          </div>
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
         )}
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
           <div className="mb-5">
-            <h2 className="text-xl font-semibold">
-              Global Adaptation Map
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-400">
-              Completed cities are colored by
-              climate adaptation rate.
-            </p>
+            <h2 className="text-xl font-semibold">Global Adaptation Map</h2>
+            <p className="mt-2 text-sm text-slate-400">Completed cities are colored by climate adaptation rate.</p>
           </div>
 
-          {geoJson &&
-          geoJson.features.length > 0 ? (
-            <GlobalAdaptationMap
-              data={geoJson}
-            />
+          {mapData && mapData.features.length > 0 ? (
+            <GlobalAdaptationMap data={mapData} />
           ) : (
             <div className="flex h-80 items-center justify-center rounded-xl bg-slate-950 text-slate-500">
-              Map data will appear after at
-              least one city completes.
+              Map data will appear after at least one city completes.
             </div>
           )}
         </section>
 
         <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-5">
-            <h2 className="text-xl font-semibold">
-              City Results
-            </h2>
-
+            <h2 className="text-xl font-semibold">City Results</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Select a city to inspect monthly,
-              percentile, checkpoint, and
-              heatwave results.
+              Select a city to inspect monthly, percentile, checkpoint, data-quality and heatwave results.
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[90rem] w-full text-left text-sm">
+            <table className="min-w-[100rem] w-full text-left text-sm">
               <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-4">
-                    City
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Status
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Checkpoint
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Exposure
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Adaptation
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Mean Skin
-                  </th>
-
-                  <th className="px-4 py-4">
-                    P90 Skin
-                  </th>
-
-                  <th className="px-4 py-4">
-                    P95 Skin
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Heatwaves
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Samples
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Heartbeat
-                  </th>
+                  <th className="px-4 py-4">City</th>
+                  <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4">Lease</th>
+                  <th className="px-4 py-4">Checkpoints</th>
+                  <th className="px-4 py-4">Attempts</th>
+                  <th className="px-4 py-4">Exposure</th>
+                  <th className="px-4 py-4">Adaptation</th>
+                  <th className="px-4 py-4">Mean Skin</th>
+                  <th className="px-4 py-4">P90 Skin</th>
+                  <th className="px-4 py-4">P95 Skin</th>
+                  <th className="px-4 py-4">Heatwaves</th>
+                  <th className="px-4 py-4">Samples</th>
                 </tr>
               </thead>
 
               <tbody>
-                {batch.city_results.map(
-                  (result) => (
-                    <CityResultRow
-                      key={result.id}
-                      result={result}
-                      selected={
-                        selectedCityId ===
-                        result.id
-                      }
-                      onSelect={() =>
-                        setSelectedCityId(
-                          result.id,
-                        )
-                      }
-                    />
-                  ),
-                )}
+                {batch.city_results.map((result) => (
+                  <CityResultRow
+                    key={result.id}
+                    result={result}
+                    startMonth={startMonth}
+                    endMonth={endMonth}
+                    selected={selectedCityId === result.id}
+                    onSelect={() => setSelectedCityId(result.id)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -1527,13 +1139,12 @@ export default function GlobalBatchPage() {
 
         {selectedCity && (
           <CityDetailPanel
+            batchId={batch.id}
             result={selectedCity}
-            heatwaveAvailable={
-              heatwaveAvailable
-            }
-            onClose={() =>
-              setSelectedCityId(null)
-            }
+            startMonth={startMonth}
+            endMonth={endMonth}
+            heatwaveAvailable={heatwaveAvailable}
+            onClose={() => setSelectedCityId(null)}
           />
         )}
       </div>
@@ -1541,68 +1152,64 @@ export default function GlobalBatchPage() {
   );
 }
 
-
 function CityResultRow({
   result,
+  startMonth,
+  endMonth,
   selected,
   onSelect,
 }: {
   result: GlobalCityResult;
+  startMonth: number;
+  endMonth: number;
   selected: boolean;
   onSelect: () => void;
 }) {
+  const checkpointMonths = result.checkpoint_months ?? [];
+
   return (
     <tr
       className={[
         "cursor-pointer border-t border-slate-800 align-top transition",
-        selected
-          ? "bg-cyan-950/50"
-          : "hover:bg-slate-800/50",
+        selected ? "bg-cyan-950/50" : "hover:bg-slate-800/50",
       ].join(" ")}
       onClick={onSelect}
     >
       <td className="px-4 py-4">
-        <p className="font-medium">
-          {result.city_name}
-        </p>
-
-        <p className="text-xs text-slate-500">
-          {result.country}
-        </p>
-
+        <p className="font-medium">{result.city_name}</p>
+        <p className="text-xs text-slate-500">{result.country}</p>
         {result.error_message && (
-          <p className="mt-2 max-w-xs text-xs leading-5 text-red-400">
-            {result.error_message}
-          </p>
+          <p className="mt-2 max-w-xs text-xs leading-5 text-red-400">{result.error_message}</p>
         )}
       </td>
 
       <td className="px-4 py-4">
-        <StatusBadge
-          status={result.status}
-        />
-
-        <p className="mt-2 text-xs text-slate-500">
-          {result.progress}%
-        </p>
-
-        <p className="mt-1 max-w-44 break-words text-xs text-slate-600">
-          {formatLabel(result.stage)}
-        </p>
+        <StatusBadge status={result.status} />
+        <p className="mt-2 text-xs text-slate-500">{result.progress}%</p>
+        <p className="mt-1 max-w-44 break-words text-xs text-slate-600">{formatLabel(result.stage)}</p>
       </td>
 
       <td className="px-4 py-4">
-        <p>
-          {result.completed_month_count}{" "}
-          month(s)
-        </p>
+        <LeaseBadge
+          leaseState={result.lease_state}
+          leaseOwner={result.lease_owner}
+          lastHeartbeatAt={result.last_heartbeat_at}
+          leaseExpiresAt={result.lease_expires_at}
+        />
+      </td>
 
-        <p className="mt-1 text-xs text-slate-500">
-          Last month:{" "}
-          {result.last_checkpoint_month ??
-            "—"}
+      <td className="px-4 py-4">
+        <CheckpointTimeline
+          startMonth={startMonth}
+          endMonth={endMonth}
+          checkpointMonths={checkpointMonths}
+          status={result.status}
+          compact
+        />
+        <p className="mt-2 text-xs text-slate-500">
+          {result.completed_month_count} / {endMonth - startMonth + 1} month(s)
+          {result.last_checkpoint_month ? ` · last ${result.last_checkpoint_month}` : ""}
         </p>
-
         {result.resumed_from_checkpoint && (
           <span className="mt-2 inline-flex rounded-full border border-violet-800 bg-violet-950 px-2 py-1 text-xs text-violet-300">
             Resumed
@@ -1611,104 +1218,60 @@ function CityResultRow({
       </td>
 
       <td className="px-4 py-4">
-        {formatNumber(
-          result.exposure_coverage_percent,
-          "%",
+        <p className={result.retry_count > 0 ? "text-amber-300" : ""}>{result.retry_count + 1}</p>
+        {result.retry_count > 0 && (
+          <p className="mt-1 text-xs text-slate-500">{result.retry_count} retr{result.retry_count === 1 ? "y" : "ies"}</p>
         )}
+      </td>
 
-        {result.evaluated_weighted_days !==
-          null && (
-          <p className="mt-1 text-xs text-slate-500">
-            {
-              result.evaluated_weighted_days
-            }{" "}
-            weighted days
-          </p>
+      <td className="px-4 py-4">
+        {formatNumber(result.exposure_coverage_percent, "%")}
+        {result.evaluated_weighted_days !== null && (
+          <p className="mt-1 text-xs text-slate-500">{result.evaluated_weighted_days} weighted days</p>
         )}
       </td>
 
       <td className="px-4 py-4 text-cyan-300">
-        {result
-          .climate_adaptation_rate_percent ===
-        null ? (
-          <span className="text-slate-500">
-            No qualifying exposure
-          </span>
+        {result.climate_adaptation_rate_percent === null ? (
+          <span className="text-slate-500">No qualifying exposure</span>
         ) : (
-          formatNumber(
-            result
-              .climate_adaptation_rate_percent,
-            "%",
-          )
+          formatNumber(result.climate_adaptation_rate_percent, "%")
         )}
       </td>
 
-      <td className="px-4 py-4">
-        {formatNumber(
-          result
-            .annual_average_skin_improvement_c,
-          " °C",
-        )}
-      </td>
+      <td className="px-4 py-4">{formatNumber(result.annual_average_skin_improvement_c, " °C")}</td>
+      <td className="px-4 py-4">{formatNumber(result.skin_improvement_p90_c, " °C")}</td>
+      <td className="px-4 py-4">{formatNumber(result.skin_improvement_p95_c, " °C")}</td>
 
       <td className="px-4 py-4">
-        {formatNumber(
-          result.skin_improvement_p90_c,
-          " °C",
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        {formatNumber(
-          result.skin_improvement_p95_c,
-          " °C",
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        {result.heatwave_event_count ??
-          "—"}
-
-        {result.longest_heatwave_days !==
-          null && (
-          <p className="mt-1 text-xs text-slate-500">
-            Longest:{" "}
-            {result.longest_heatwave_days}{" "}
-            days
-          </p>
+        {result.heatwave_event_count ?? "—"}
+        {result.longest_heatwave_days !== null && (
+          <p className="mt-1 text-xs text-slate-500">Longest: {result.longest_heatwave_days} days</p>
         )}
       </td>
 
       <td className="px-4 py-4">
         {result.sampled_day_count ?? "—"}
-
-        {result.eligible_sample_count !==
-          null && (
-          <p className="mt-1 text-xs text-slate-500">
-            {
-              result.eligible_sample_count
-            }{" "}
-            eligible
-          </p>
-        )}
-      </td>
-
-      <td className="px-4 py-4 text-xs text-slate-400">
-        {formatDateTime(
-          result.last_heartbeat_at,
+        {result.eligible_sample_count !== null && (
+          <p className="mt-1 text-xs text-slate-500">{result.eligible_sample_count} eligible</p>
         )}
       </td>
     </tr>
   );
 }
 
-
 function CityDetailPanel({
+  batchId,
   result,
+  startMonth,
+  endMonth,
   heatwaveAvailable,
   onClose,
 }: {
+  batchId: string;
   result: GlobalCityResult;
+  startMonth: number;
+  endMonth: number;
   heatwaveAvailable: boolean;
   onClose: () => void;
 }) {
@@ -1716,111 +1279,66 @@ function CityDetailPanel({
     <section className="mt-8 rounded-2xl border border-cyan-900 bg-slate-900 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-cyan-400">
-            City Analytics
-          </p>
-
+          <p className="text-sm font-medium text-cyan-400">City Analytics</p>
           <h2 className="mt-1 text-2xl font-semibold">
-            {result.city_name},{" "}
-            {result.country}
+            {result.city_name}, {result.country}
           </h2>
-
           <p className="mt-2 text-sm text-slate-500">
-            {result.latitude.toFixed(4)},{" "}
-            {result.longitude.toFixed(4)}
+            {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
-        >
-          Close
-        </button>
+        <div className="flex flex-col items-end gap-3">
+          <LeaseBadge
+            leaseState={result.lease_state}
+            leaseOwner={result.lease_owner}
+            lastHeartbeatAt={result.last_heartbeat_at}
+            leaseExpiresAt={result.lease_expires_at}
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <CheckpointTimeline
+          startMonth={startMonth}
+          endMonth={endMonth}
+          checkpointMonths={result.checkpoint_months ?? []}
+          status={result.status}
+        />
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Metric
-          label="Skin Cooling P50"
-          value={formatNumber(
-            result.skin_improvement_p50_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Skin Cooling P90"
-          value={formatNumber(
-            result.skin_improvement_p90_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Skin Cooling P95"
-          value={formatNumber(
-            result.skin_improvement_p95_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Maximum Skin Cooling"
-          value={formatNumber(
-            result
-              .maximum_skin_improvement_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Core Cooling P50"
-          value={formatNumber(
-            result.core_improvement_p50_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Core Cooling P90"
-          value={formatNumber(
-            result.core_improvement_p90_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Core Cooling P95"
-          value={formatNumber(
-            result.core_improvement_p95_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Effective Cooling"
-          value={formatNumber(
-            result.effective_cooling_hours,
-            " hours",
-          )}
-        />
+        <Metric label="Skin Cooling P50" value={formatNumber(result.skin_improvement_p50_c, " °C")} />
+        <Metric label="Skin Cooling P90" value={formatNumber(result.skin_improvement_p90_c, " °C")} />
+        <Metric label="Skin Cooling P95" value={formatNumber(result.skin_improvement_p95_c, " °C")} />
+        <Metric label="Maximum Skin Cooling" value={formatNumber(result.maximum_skin_improvement_c, " °C")} />
+        <Metric label="Core Cooling P50" value={formatNumber(result.core_improvement_p50_c, " °C")} />
+        <Metric label="Core Cooling P90" value={formatNumber(result.core_improvement_p90_c, " °C")} />
+        <Metric label="Core Cooling P95" value={formatNumber(result.core_improvement_p95_c, " °C")} />
+        <Metric label="Effective Cooling" value={formatNumber(result.effective_cooling_hours, " hours")} />
       </div>
 
-      <MonthlyResultsTable
-        result={result}
+      <MonthlyResultsTable result={result} />
+
+      <CityCheckpointList
+        batchId={batchId}
+        cityResultId={result.id}
+        version={result.completed_month_count}
       />
 
-      <HeatwaveResults
-        events={
-          result.heatwave_events ?? []
-        }
-        available={heatwaveAvailable}
-      />
+      <DataQualityPanel result={result} />
+
+      <HeatwaveResults events={result.heatwave_events ?? []} available={heatwaveAvailable} />
     </section>
   );
 }
-
 
 function MonthlyResultsTable({
   result,
@@ -2360,6 +1878,184 @@ function getErrorMessage(
 }
 ```
 
+### File: `frontend/src/app/global-analysis/batches/page.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { listGlobalBatches } from "@/lib/api-client";
+import { isTerminalBatchStatus } from "@/lib/global-batch-progress";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { GlobalBatch } from "@/types/global-batch";
+
+const PAGE_SIZE = 20;
+const REFRESH_MS = 10000;
+
+export default function GlobalBatchListPage() {
+  const [items, setItems] = useState<GlobalBatch[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+    let timer: number | null = null;
+
+    async function load() {
+      try {
+        const response = await listGlobalBatches(PAGE_SIZE, offset);
+        if (disposed) return;
+        setItems(response.items);
+        setTotal(response.total);
+        setError("");
+        // Keep refreshing while anything on this page is still running.
+        if (response.items.some((batch) => !isTerminalBatchStatus(batch.status))) {
+          timer = window.setTimeout(load, REFRESH_MS);
+        }
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load batches.");
+      } finally {
+        if (!disposed) setLoading(false);
+      }
+    }
+
+    void load();
+
+    return () => {
+      disposed = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [offset]);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-cyan-400">Global Analysis</p>
+            <h1 className="mt-2 text-3xl font-bold">Analysis Batches</h1>
+          </div>
+          <Link
+            href="/global-analysis"
+            className="rounded-lg bg-cyan-400 px-5 py-2.5 font-semibold text-slate-950"
+          >
+            New Batch
+          </Link>
+        </header>
+
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
+        )}
+
+        <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-4">Batch</th>
+                <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4">Progress</th>
+                <th className="px-5 py-4">Cities</th>
+                <th className="px-5 py-4">Attempt</th>
+                <th className="px-5 py-4">Created</th>
+                <th className="px-5 py-4">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((batch) => (
+                <tr key={batch.id} className="border-t border-slate-800 bg-slate-950">
+                  <td className="px-5 py-4">
+                    <Link
+                      href={`/global-analysis/${batch.id}`}
+                      className="font-mono text-cyan-300 hover:underline"
+                    >
+                      {batch.id.slice(0, 8)}
+                    </Link>
+                    {batch.cancel_requested_at && (
+                      <p className="mt-1 text-xs text-amber-300">cancel requested</p>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass(batch.status)}`}>
+                      {batch.status.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-800">
+                      <div className="h-full bg-cyan-400" style={{ width: `${batch.progress}%` }} />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{batch.progress}%</p>
+                  </td>
+                  <td className="px-5 py-4 text-slate-300">
+                    {batch.completed_city_count} / {batch.total_city_count}
+                    {batch.failed_city_count > 0 && (
+                      <span className="ml-2 text-red-300">{batch.failed_city_count} failed</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">{batch.attempt ?? 0}</td>
+                  <td className="px-5 py-4 text-slate-400">{formatRelativeTime(batch.created_at)}</td>
+                  <td className="px-5 py-4 text-slate-400">{formatRelativeTime(batch.updated_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {loading && <div className="p-10 text-center text-slate-400">Loading…</div>}
+          {!loading && items.length === 0 && (
+            <div className="p-10 text-center text-slate-400">No batches yet.</div>
+          )}
+        </section>
+
+        <div className="mt-6 flex items-center justify-between text-sm text-slate-400">
+          <span>
+            {total === 0 ? "0" : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)}`} of {total}
+          </span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              className="rounded-lg border border-slate-700 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={offset + PAGE_SIZE >= total}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+              className="rounded-lg border border-slate-700 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function statusClass(status: string): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-950 text-emerald-300";
+    case "partial_completed":
+      return "bg-amber-950 text-amber-300";
+    case "running":
+      return "bg-cyan-950 text-cyan-300";
+    case "cancelling":
+      return "bg-amber-950 text-amber-300";
+    case "failed":
+      return "bg-red-950 text-red-300";
+    case "cancelled":
+      return "bg-slate-800 text-slate-300";
+    default:
+      return "bg-slate-800 text-slate-300";
+  }
+}
+```
+
 ### File: `frontend/src/app/global-analysis/page.tsx`
 ```tsx
 "use client";
@@ -2371,7 +2067,7 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
-
+import Link from "next/link";
 import {
   createGlobalBatch,
   estimateGlobalBatch,
@@ -2735,16 +2431,17 @@ export default function GlobalAnalysisPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
+      <div className="mx-auto max-w-7xl px-6 py-8">
         <header>
           <p className="text-sm font-medium text-cyan-400">
+          <Link href="/global-analysis/batches" className="mt-4 inline-block text-sm text-cyan-300 hover:underline">
+            View previous batches→
+          </Link>
             Global Analysis
           </p>
-
           <h1 className="mt-2 text-3xl font-bold">
             Global Climate Adaptation Analysis
           </h1>
-
           <p className="mt-3 max-w-4xl leading-7 text-slate-400">
             Run representative-day or daily
             radiative-cooling analyses across
@@ -4862,6 +4559,184 @@ export default function MaterialsPage() {
         </section>
       </div>
     </main>
+  );
+}
+```
+
+### File: `frontend/src/app/ops/page.tsx`
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { getOpsStatus } from "@/lib/api-client";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { OpsStatus } from "@/types/ops";
+
+const REFRESH_MS = 10000;
+
+export default function OperationsPage() {
+  const [status, setStatus] = useState<OpsStatus | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function load() {
+      try {
+        const response = await getOpsStatus();
+        if (!disposed) {
+          setStatus(response);
+          setError("");
+        }
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load status.");
+      }
+    }
+
+    void load();
+    const timer = window.setInterval(load, REFRESH_MS);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-6xl px-6 py-10">
+        <header>
+          <p className="text-sm text-cyan-400">Operations</p>
+          <h1 className="mt-2 text-3xl font-bold">Pipeline Health</h1>
+          <p className="mt-3 max-w-3xl text-slate-400">
+            Celery workers, lease state and recovery bounds for the global analysis pipeline.
+            Refreshes every {REFRESH_MS / 1000} seconds.
+          </p>
+        </header>
+
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
+        )}
+
+        {!status ? (
+          <p className="mt-8 text-slate-400">Loading…</p>
+        ) : (
+          <>
+            <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card
+                label="Broker"
+                value={status.broker_reachable ? "Reachable" : "Unreachable"}
+                tone={status.broker_reachable ? "emerald" : "red"}
+              />
+              <Card
+                label="Workers"
+                value={String(status.worker_count)}
+                tone={status.worker_count > 0 ? "emerald" : "red"}
+              />
+              <Card
+                label="Expired leases"
+                value={String(status.leases.expired_leases)}
+                tone={status.leases.expired_leases > 0 ? "red" : "slate"}
+              />
+              <Card label="Live leases" value={String(status.leases.live_leases)} tone="cyan" />
+              <Card label="Running cities" value={String(status.leases.running_cities)} />
+              <Card label="Queued cities" value={String(status.leases.queued_cities)} />
+              <Card label="Running batches" value={String(status.leases.running_batches)} />
+              <Card
+                label="Cancelling batches"
+                value={String(status.leases.cancelling_batches)}
+                tone={status.leases.cancelling_batches > 0 ? "amber" : "slate"}
+              />
+            </section>
+
+            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <h2 className="text-xl font-semibold">Recovery Bounds</h2>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <Pair label="Lease TTL" value={`${status.lease_ttl_seconds} s`} />
+                <Pair label="Heartbeat interval" value={`${status.heartbeat_interval_seconds} s`} />
+                <Pair label="Reaper interval" value={`${status.reaper_interval_seconds} s`} />
+                <Pair
+                  label="Worst-case recovery after kill -9"
+                  value={`${status.worst_case_recovery_seconds} s`}
+                />
+              </dl>
+              <p className="mt-4 text-xs text-slate-500">
+                A city whose worker dies is re-queued no later than lease TTL + reaper interval
+                after its last heartbeat, and resumes from its last durable monthly checkpoint.
+              </p>
+            </section>
+
+            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-xl font-semibold">Workers</h2>
+                <span className="text-xs text-slate-500">checked {formatRelativeTime(status.checked_at)}</span>
+              </div>
+
+              {status.workers.length === 0 ? (
+                <p className="mt-4 text-sm text-red-300">
+                  No worker answered the ping. Jobs will stay queued; expired leases will not be reaped
+                  until a worker consuming the <span className="font-mono">default</span> queue is up.
+                </p>
+              ) : (
+                <table className="mt-4 w-full text-left text-sm">
+                  <thead className="border-b border-slate-700 text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2">Worker</th>
+                      <th className="px-3 py-2">Active</th>
+                      <th className="px-3 py-2">Reserved</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {status.workers.map((worker) => (
+                      <tr key={worker.name} className="border-b border-slate-800">
+                        <td className="px-3 py-2 font-mono text-slate-200">{worker.name}</td>
+                        <td className="px-3 py-2">{worker.active_task_count}</td>
+                        <td className="px-3 py-2">{worker.reserved_task_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function Card({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: string;
+  tone?: "slate" | "emerald" | "cyan" | "amber" | "red";
+}) {
+  const color = {
+    slate: "text-slate-100",
+    emerald: "text-emerald-300",
+    cyan: "text-cyan-300",
+    amber: "text-amber-300",
+    red: "text-red-300",
+  }[tone];
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function Pair({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="mt-1 font-mono text-slate-200">{value}</dd>
+    </div>
   );
 }
 ```
@@ -7734,6 +7609,402 @@ function escapeHtml(
 }
 ```
 
+### File: `frontend/src/components/global/batch-reliability-panel.tsx`
+```tsx
+"use client";
+
+import { LeaseBadge } from "@/components/global/lease-badge";
+import type { BatchTransport } from "@/lib/use-global-batch";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { GlobalBatchDetail } from "@/types/global-batch";
+
+type Props = {
+  batch: GlobalBatchDetail;
+  transport: BatchTransport;
+};
+
+export function BatchReliabilityPanel({ batch, transport }: Props) {
+  const cities = batch.city_results;
+  const live = cities.filter((c) => c.lease_state === "live").length;
+  const expired = cities.filter((c) => c.lease_state === "expired").length;
+  const resumed = cities.filter((c) => c.resumed_from_checkpoint).length;
+  const retries = cities.reduce((sum, c) => sum + (c.retry_count ?? 0), 0);
+  const checkpoints = cities.reduce((sum, c) => sum + (c.checkpoint_months?.length ?? 0), 0);
+
+  return (
+    <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Reliability</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Worker leases, heartbeats and durable monthly checkpoints (Stage 7).
+          </p>
+        </div>
+
+        <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+          Updates via {transport === "sse" ? "server-sent events" : transport === "polling" ? "polling" : "—"}
+        </span>
+      </div>
+
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <Item label="Batch attempt" value={String(batch.attempt ?? 0)} />
+        <Item label="Live leases" value={String(live)} tone={live > 0 ? "cyan" : undefined} />
+        <Item label="Expired leases" value={String(expired)} tone={expired > 0 ? "red" : undefined} />
+        <Item label="Cities resumed" value={String(resumed)} />
+        <Item label="City retries" value={String(retries)} tone={retries > 0 ? "amber" : undefined} />
+        <Item label="Checkpoints stored" value={String(checkpoints)} />
+        <Item
+          label="Cancel requested"
+          value={batch.cancel_requested_at ? formatRelativeTime(batch.cancel_requested_at) : "No"}
+          tone={batch.cancel_requested_at ? "amber" : undefined}
+        />
+      </dl>
+
+      {expired > 0 && (
+        <p className="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
+          {expired} city lease(s) have expired. The lease reaper re-queues them within one
+          reaper interval; if this persists, check <a href="/ops" className="underline">Operations</a>.
+        </p>
+      )}
+
+      {batch.lease_owner && (
+        <div className="mt-4">
+          <LeaseBadge
+            leaseState={batch.lease_expires_at && new Date(batch.lease_expires_at) > new Date() ? "live" : "expired"}
+            leaseOwner={batch.lease_owner}
+            lastHeartbeatAt={batch.last_heartbeat_at}
+            leaseExpiresAt={batch.lease_expires_at}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Item({ label, value, tone }: { label: string; value: string; tone?: "cyan" | "amber" | "red" }) {
+  const color =
+    tone === "red" ? "text-red-300" : tone === "amber" ? "text-amber-300" : tone === "cyan" ? "text-cyan-300" : "text-slate-100";
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className={`mt-2 text-lg font-semibold ${color}`}>{value}</dd>
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/checkpoint-timeline.tsx`
+```tsx
+"use client";
+
+import { buildCheckpointCells, type CheckpointCellState } from "@/lib/checkpoint-cells";
+
+type Props = {
+  startMonth: number;
+  endMonth: number;
+  checkpointMonths: readonly number[];
+  status: string;
+  compact?: boolean;
+};
+
+const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+const cellStyles: Record<CheckpointCellState, string> = {
+  checkpointed: "bg-emerald-500 text-slate-950",
+  running: "bg-cyan-400 text-slate-950 animate-pulse",
+  pending: "bg-slate-800 text-slate-500",
+  outside: "bg-transparent text-slate-700 border border-dashed border-slate-800",
+};
+
+const cellTitles: Record<CheckpointCellState, string> = {
+  checkpointed: "Checkpoint saved",
+  running: "In progress",
+  pending: "Not started",
+  outside: "Outside requested range",
+};
+
+export function CheckpointTimeline({
+  startMonth,
+  endMonth,
+  checkpointMonths,
+  status,
+  compact = false,
+}: Props) {
+  const cells = buildCheckpointCells(startMonth, endMonth, checkpointMonths, status);
+  const size = compact ? "h-4 w-4 text-[10px]" : "h-7 w-7 text-xs";
+
+  return (
+    <div
+      className="flex gap-0.5"
+      role="img"
+      aria-label={`${checkpointMonths.length} of ${endMonth - startMonth + 1} months checkpointed`}
+    >
+      {cells.map((cell) => (
+        <span
+          key={cell.month}
+          title={`${cell.month}: ${cellTitles[cell.state]}`}
+          className={`flex items-center justify-center rounded ${size} ${cellStyles[cell.state]}`}
+        >
+          {compact ? "" : MONTHS[cell.month - 1]}
+        </span>
+      ))}
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/city-checkpoint-list.tsx`
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { getGlobalBatchCityCheckpoints } from "@/lib/api-client";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { CityCheckpointList } from "@/types/global-batch";
+
+type Props = {
+  batchId: string;
+  cityResultId: string;
+  /** Re-fetch when this changes (e.g. completed_month_count). */
+  version: number;
+};
+
+export function CityCheckpointList({ batchId, cityResultId, version }: Props) {
+  const [data, setData] = useState<CityCheckpointList | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+    getGlobalBatchCityCheckpoints(batchId, cityResultId)
+      .then((response) => {
+        if (!disposed) {
+          setData(response);
+          setError("");
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load checkpoints");
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [batchId, cityResultId, version]);
+
+  if (error) return <p className="mt-3 text-sm text-red-300">{error}</p>;
+  if (!data) return <p className="mt-3 text-sm text-slate-500">Loading checkpoints…</p>;
+
+  const complete = data.resume_from_month > data.end_month;
+
+  return (
+    <div className="mt-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h3 className="text-lg font-semibold">Durable Checkpoints</h3>
+        <p className="text-sm text-slate-400">
+          {complete
+            ? "All requested months checkpointed."
+            : `A resumed worker would start at month ${data.resume_from_month}.`}
+        </p>
+      </div>
+
+      {data.items.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">No checkpoint has been written yet.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+          <table className="w-full min-w-[40rem] text-left text-sm">
+            <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Month</th>
+                <th className="px-4 py-3">Attempt</th>
+                <th className="px-4 py-3">Samples</th>
+                <th className="px-4 py-3">Skipped</th>
+                <th className="px-4 py-3">Written</th>
+                <th className="px-4 py-3">Payload SHA-256</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item) => (
+                <tr key={item.id} className="border-t border-slate-800">
+                  <td className="px-4 py-3 font-medium">{item.month}</td>
+                  <td className="px-4 py-3">{item.attempt}</td>
+                  <td className="px-4 py-3">{item.sampled_day_count}</td>
+                  <td className={`px-4 py-3 ${item.skipped_sample_count ? "text-amber-300" : ""}`}>
+                    {item.skipped_sample_count}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400" title={new Date(item.created_at).toLocaleString()}>
+                    {formatRelativeTime(item.created_at)}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-400" title={item.payload_sha256}>
+                    {item.payload_sha256.slice(0, 16)}…
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/data-quality-panel.tsx`
+```tsx
+"use client";
+
+import type { GlobalCityResult } from "@/types/global-batch";
+
+export function DataQualityPanel({ result }: { result: GlobalCityResult }) {
+  const quality = result.data_quality ?? null;
+  const definitions = result.metric_definitions ?? {};
+
+  if (!quality) {
+    return (
+      <p className="text-sm text-slate-500">
+        Data-quality metadata is not available for this result.
+      </p>
+    );
+  }
+
+  const reasons = Object.entries(quality?.skip_reasons ?? {});
+  const hashes = Object.entries(quality?.monthly_weather_payload_sha256 ?? {});
+
+  return (
+    <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      {quality && (
+        <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+          <h3 className="text-lg font-semibold">Data Quality</h3>
+
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-slate-500">Skipped samples</dt>
+              <dd className={quality.skipped_sample_count ? "text-amber-300" : "text-slate-200"}>
+                {quality.skipped_sample_count ?? 0}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Skipped weighted days</dt>
+              <dd className="text-slate-200">{quality.skipped_weighted_days ?? 0}</dd>
+            </div>
+          </dl>
+
+          {reasons.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs text-slate-400">
+              {reasons.map(([code, count]) => (
+                <li key={code}>
+                  <span className="font-mono text-amber-300">{code}</span> × {count}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {hashes.length > 0 && (
+            <details className="mt-3 text-xs text-slate-500">
+              <summary className="cursor-pointer">Weather payload SHA-256 per month ({hashes.length})</summary>
+              <ul className="mt-2 space-y-1 font-mono">
+                {hashes.map(([month, digest]) => (
+                  <li key={month}>
+                    {month}: {digest ? `${digest.slice(0, 16)}…` : "— (restored from checkpoint)"}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+      )}
+
+      {Object.keys(definitions).length > 0 && (
+        <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+          <h3 className="text-lg font-semibold">Metric Definitions</h3>
+          <dl className="mt-3 space-y-3 text-sm">
+            {Object.entries(definitions).map(([key, definition]) => (
+              <div key={key}>
+                <dt className="font-mono text-cyan-300">{key}</dt>
+                <dd className="mt-1 text-slate-300">{definition.display_name}</dd>
+                {definition.formula && (
+                  <dd className="mt-1 font-mono text-xs text-slate-400">{definition.formula}</dd>
+                )}
+                {definition.interpretation && (
+                  <dd className="mt-1 text-xs leading-5 text-slate-500">{definition.interpretation}</dd>
+                )}
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/lease-badge.tsx`
+```tsx
+"use client";
+
+import { formatRelativeTime, heartbeatHealth, shortOwner } from "@/lib/relative-time";
+import type { LeaseState } from "@/types/global-batch";
+
+type Props = {
+  leaseState: LeaseState | undefined;
+  leaseOwner: string | null | undefined;
+  lastHeartbeatAt: string | null | undefined;
+  leaseExpiresAt?: string | null;
+  heartbeatIntervalSeconds?: number;
+};
+
+const DEFAULT_HEARTBEAT_SECONDS = 30; // mirrors settings.CITY_HEARTBEAT_SECONDS
+
+const styles: Record<string, string> = {
+  healthy: "border-emerald-800 bg-emerald-950 text-emerald-300",
+  stale: "border-amber-800 bg-amber-950 text-amber-300",
+  expired: "border-red-800 bg-red-950 text-red-300",
+  none: "border-slate-700 bg-slate-900 text-slate-400",
+};
+
+const labels: Record<string, string> = {
+  healthy: "Lease live",
+  stale: "Heartbeat stale",
+  expired: "Lease expired",
+  none: "No lease",
+};
+
+export function LeaseBadge({
+  leaseState,
+  leaseOwner,
+  lastHeartbeatAt,
+  leaseExpiresAt,
+  heartbeatIntervalSeconds = DEFAULT_HEARTBEAT_SECONDS,
+}: Props) {
+  const health = heartbeatHealth(leaseState, lastHeartbeatAt, heartbeatIntervalSeconds);
+
+  const title = [
+    leaseOwner ? `Owner: ${leaseOwner}` : null,
+    lastHeartbeatAt ? `Heartbeat: ${new Date(lastHeartbeatAt).toLocaleString()}` : null,
+    leaseExpiresAt ? `Expires: ${new Date(leaseExpiresAt).toLocaleString()}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return (
+    <div className="space-y-1" title={title}>
+      <span
+        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${styles[health]}`}
+      >
+        {labels[health]}
+      </span>
+
+      {health !== "none" && (
+        <p className="text-xs text-slate-500">
+          <span className="font-mono">{shortOwner(leaseOwner)}</span>
+          {" · "}
+          {formatRelativeTime(lastHeartbeatAt)}
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/layout/NavBar.tsx`
 ```tsx
 "use client";
@@ -9095,8 +9366,8 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/materials", label: "Materials" },
   { href: "/global-analysis", label: "Global Analysis" },
   { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
+  { href: "/ops", label: "Operations" },
 ];
-
 ```
 
 ### File: `frontend/src/lib/api-client.ts`
@@ -9112,7 +9383,12 @@ import type {
   GlobalBatchDetail,
   GlobalBatchEstimate,
   GlobalCity,
+  CityCheckpointList, 
+  GlobalBatchListResponse,
 } from "@/types/global-batch";
+
+import type { OpsStatus } from "@/types/ops";
+
 import type {
   Material, MaterialCreate, MaterialListResponse,
   MaterialVersionListResponse,
@@ -9815,6 +10091,142 @@ export async function getMaterialVersions(
   return response.json() as Promise<MaterialVersionListResponse>;
 }
 
+export function getGlobalBatchEventsUrl(batchId: string): string {
+  return `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}/events`;
+}
+
+export async function listGlobalBatches(
+  limit = 20,
+  offset = 0,
+): Promise<GlobalBatchListResponse> {
+  const parameters = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const response = await fetch(`${API_BASE_URL}/api/v1/global-batches?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load global batches"));
+  }
+
+  return response.json() as Promise<GlobalBatchListResponse>;
+}
+
+export async function getGlobalBatchCityCheckpoints(
+  batchId: string,
+  cityResultId: string,
+): Promise<CityCheckpointList> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}` +
+      `/cities/${encodeURIComponent(cityResultId)}/checkpoints`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load city checkpoints"));
+  }
+
+  return response.json() as Promise<CityCheckpointList>;
+}
+
+export async function getOpsStatus(): Promise<OpsStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/ops/status`, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load operations status"));
+  }
+
+  return response.json() as Promise<OpsStatus>;
+}
+```
+
+### File: `frontend/src/lib/checkpoint-cells.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { buildCheckpointCells, monthsFromCheckpoint } from "@/lib/checkpoint-cells";
+
+describe("buildCheckpointCells", () => {
+  it("marks outside, checkpointed, running and pending months", () => {
+    const cells = buildCheckpointCells(7, 12, [7, 8], "running");
+    const states = cells.map((c) => c.state);
+
+    expect(states.slice(0, 6)).toEqual(Array(6).fill("outside"));
+    expect(states[6]).toBe("checkpointed");
+    expect(states[7]).toBe("checkpointed");
+    expect(states[8]).toBe("running");
+    expect(states.slice(9)).toEqual(["pending", "pending", "pending"]);
+  });
+
+  it("never shows a running cell for a non-running city", () => {
+    const cells = buildCheckpointCells(1, 12, [1, 2, 3], "failed");
+    expect(cells.filter((c) => c.state === "running")).toHaveLength(0);
+    expect(cells.filter((c) => c.state === "pending")).toHaveLength(9);
+  });
+
+  it("always returns twelve cells", () => {
+    expect(buildCheckpointCells(3, 3, [], "queued")).toHaveLength(12);
+  });
+});
+
+describe("monthsFromCheckpoint", () => {
+  it("splits restored and computed months", () => {
+    expect(monthsFromCheckpoint([1, 2, 3], true, 12)).toEqual({ restored: 3, computed: 9 });
+    expect(monthsFromCheckpoint([1, 2, 3], false, 12)).toEqual({ restored: 0, computed: 12 });
+  });
+});
+```
+
+### File: `frontend/src/lib/checkpoint-cells.ts`
+```typescript
+import type { GlobalCityStatus } from "@/types/global-batch";
+
+export type CheckpointCellState = "outside" | "checkpointed" | "running" | "pending";
+
+export type CheckpointCell = {
+  month: number;
+  state: CheckpointCellState;
+};
+
+/**
+ * Twelve cells, one per calendar month. Months outside [startMonth, endMonth]
+ * are "outside"; months with a durable checkpoint are "checkpointed"; for a
+ * running city the first missing month is "running"; the rest are "pending".
+ */
+export function buildCheckpointCells(
+  startMonth: number,
+  endMonth: number,
+  checkpointMonths: readonly number[],
+  status: GlobalCityStatus | string,
+): CheckpointCell[] {
+  const done = new Set(checkpointMonths);
+  let runningAssigned = false;
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+
+    if (month < startMonth || month > endMonth) {
+      return { month, state: "outside" as const };
+    }
+    if (done.has(month)) {
+      return { month, state: "checkpointed" as const };
+    }
+    if (status === "running" && !runningAssigned) {
+      runningAssigned = true;
+      return { month, state: "running" as const };
+    }
+    return { month, state: "pending" as const };
+  });
+}
+
+export function monthsFromCheckpoint(
+  checkpointMonths: readonly number[],
+  resumedFromCheckpoint: boolean,
+  completedMonthCount: number,
+): { restored: number; computed: number } {
+  if (!resumedFromCheckpoint) return { restored: 0, computed: completedMonthCount };
+  const restored = Math.min(checkpointMonths.length, completedMonthCount);
+  return { restored, computed: Math.max(0, completedMonthCount - restored) };
+}
 ```
 
 ### File: `frontend/src/lib/date-defaults.test.ts`
@@ -9963,6 +10375,215 @@ export function formatSignedNumber(
 }
 ```
 
+### File: `frontend/src/lib/global-batch-progress.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { mergeBatchProgress, progressRequiresDetailReload } from "@/lib/global-batch-progress";
+import type { GlobalBatchDetail, GlobalBatchProgressEvent } from "@/types/global-batch";
+
+const detail = {
+  id: "b1",
+  status: "running",
+  progress: 10,
+  completed_city_count: 0,
+  failed_city_count: 0,
+  cancelled_city_count: 0,
+  request: { name: "x" },
+  city_results: [
+    { id: "c1", status: "running", progress: 10, monthly_results: [{ month: 1 }], checkpoint_months: [1] },
+    { id: "c2", status: "queued", progress: 0, monthly_results: null, checkpoint_months: [] },
+  ],
+} as unknown as GlobalBatchDetail;
+
+const event = {
+  batch: { id: "b1", status: "running", progress: 35, completed_city_count: 0, failed_city_count: 0, cancelled_city_count: 0 },
+  cities: [
+    { id: "c1", status: "running", progress: 70, checkpoint_months: [1, 2, 3], lease_state: "live" },
+  ],
+} as unknown as GlobalBatchProgressEvent;
+
+describe("mergeBatchProgress", () => {
+  it("overlays progress without discarding heavy fields", () => {
+    const merged = mergeBatchProgress(detail, event);
+
+    expect(merged.progress).toBe(35);
+    expect(merged.request).toEqual({ name: "x" });
+    expect(merged.city_results[0].progress).toBe(70);
+    expect(merged.city_results[0].checkpoint_months).toEqual([1, 2, 3]);
+    expect(merged.city_results[0].monthly_results).toEqual([{ month: 1 }]);
+    expect(merged.city_results[1]).toBe(detail.city_results[1]);
+  });
+});
+
+describe("progressRequiresDetailReload", () => {
+  it("reloads when a city reaches a terminal state or the batch finishes", () => {
+    expect(progressRequiresDetailReload(null, event)).toBe(true);
+    expect(progressRequiresDetailReload(detail, event)).toBe(false);
+
+    const oneDone = { ...event, batch: { ...event.batch, completed_city_count: 1 } };
+    expect(progressRequiresDetailReload(detail, oneDone)).toBe(true);
+
+    const finished = { ...event, batch: { ...event.batch, status: "completed" as const} };
+    expect(progressRequiresDetailReload(detail, finished)).toBe(true);
+  });
+});
+```
+
+### File: `frontend/src/lib/global-batch-progress.ts`
+```typescript
+import type {
+  GlobalBatchDetail,
+  GlobalBatchProgressEvent,
+} from "@/types/global-batch";
+
+export const TERMINAL_BATCH_STATUSES = new Set<string>([
+  "completed",
+  "partial_completed",
+  "failed",
+  "cancelled",
+]);
+
+export function isTerminalBatchStatus(status: string): boolean {
+  return TERMINAL_BATCH_STATUSES.has(status);
+}
+
+/** Overlay a lightweight SSE snapshot onto the full detail without touching
+ *  monthly results or analytics (those arrive via a detail reload). */
+export function mergeBatchProgress(
+  detail: GlobalBatchDetail,
+  event: GlobalBatchProgressEvent,
+): GlobalBatchDetail {
+  const byId = new Map(event.cities.map((city) => [city.id, city]));
+
+  return {
+    ...detail,
+    ...event.batch,
+    request: detail.request,
+    city_results: detail.city_results.map((city) => {
+      const progress = byId.get(city.id);
+      return progress ? { ...city, ...progress } : city;
+    }),
+  };
+}
+
+/** A full reload is needed when heavy fields (analytics, monthly results)
+ *  may have changed: a city reached a terminal state or the batch did. */
+export function progressRequiresDetailReload(
+  previous: GlobalBatchDetail | null,
+  event: GlobalBatchProgressEvent,
+): boolean {
+  if (!previous) return true;
+
+  const processedBefore =
+    previous.completed_city_count + previous.failed_city_count + previous.cancelled_city_count;
+  const processedNow =
+    event.batch.completed_city_count +
+    event.batch.failed_city_count +
+    event.batch.cancelled_city_count;
+
+  return processedNow !== processedBefore || isTerminalBatchStatus(event.batch.status);
+}
+```
+
+### File: `frontend/src/lib/relative-time.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { formatRelativeTime, heartbeatHealth, shortOwner } from "@/lib/relative-time";
+
+const NOW = new Date("2026-01-01T12:00:00Z");
+
+describe("formatRelativeTime", () => {
+  it("handles missing and invalid input", () => {
+    expect(formatRelativeTime(null, NOW)).toBe("—");
+    expect(formatRelativeTime("nope", NOW)).toBe("nope");
+  });
+
+  it("scales units", () => {
+    expect(formatRelativeTime("2026-01-01T11:59:50Z", NOW)).toBe("just now");
+    expect(formatRelativeTime("2026-01-01T11:58:00Z", NOW)).toBe("2 min ago");
+    expect(formatRelativeTime("2026-01-01T09:00:00Z", NOW)).toBe("3 h ago");
+    expect(formatRelativeTime("2025-12-29T12:00:00Z", NOW)).toBe("3 d ago");
+    expect(formatRelativeTime("2026-01-01T12:05:00Z", NOW)).toBe("in 5 min");
+  });
+});
+
+describe("heartbeatHealth", () => {
+  it("is none without a lease and expired when the server says so", () => {
+    expect(heartbeatHealth("none", "2026-01-01T11:59:59Z", 30, NOW)).toBe("none");
+    expect(heartbeatHealth(undefined, null, 30, NOW)).toBe("none");
+    expect(heartbeatHealth("expired", "2026-01-01T11:59:59Z", 30, NOW)).toBe("expired");
+  });
+
+  it("flags a live lease whose heartbeat is older than two intervals", () => {
+    expect(heartbeatHealth("live", "2026-01-01T11:59:40Z", 30, NOW)).toBe("healthy");
+    expect(heartbeatHealth("live", "2026-01-01T11:58:00Z", 30, NOW)).toBe("stale");
+    expect(heartbeatHealth("live", null, 30, NOW)).toBe("stale");
+  });
+});
+
+describe("shortOwner", () => {
+  it("compacts host:pid:task", () => {
+    expect(shortOwner("worker-a:4242:0f1e2d3c4b5a")).toBe("worker-a · 0f1e2d");
+    expect(shortOwner("single")).toBe("single");
+    expect(shortOwner(null)).toBe("—");
+  });
+});
+```
+
+### File: `frontend/src/lib/relative-time.ts`
+```typescript
+import type { LeaseState } from "@/types/global-batch";
+
+/** "just now", "3 min ago", "2 h ago", "5 d ago". Future values say "in …". */
+export function formatRelativeTime(value: string | null | undefined, now = new Date()): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+  const abs = Math.abs(seconds);
+  const suffix = seconds < 0 ? (text: string) => `in ${text}` : (text: string) => `${text} ago`;
+
+  if (abs < 45) return seconds < 0 ? "in a few seconds" : "just now";
+  if (abs < 90) return suffix("1 min");
+  if (abs < 3600) return suffix(`${Math.round(abs / 60)} min`);
+  if (abs < 86400) return suffix(`${Math.round(abs / 3600)} h`);
+  return suffix(`${Math.round(abs / 86400)} d`);
+}
+
+export type HeartbeatHealth = "none" | "healthy" | "stale" | "expired";
+
+/**
+ * Combines the server-derived lease state with the heartbeat age so the UI
+ * can warn before the lease actually expires.
+ */
+export function heartbeatHealth(
+  leaseState: LeaseState | undefined,
+  lastHeartbeatAt: string | null | undefined,
+  heartbeatIntervalSeconds: number,
+  now = new Date(),
+): HeartbeatHealth {
+  if (!leaseState || leaseState === "none") return "none";
+  if (leaseState === "expired") return "expired";
+  if (!lastHeartbeatAt) return "stale";
+
+  const age = (now.getTime() - new Date(lastHeartbeatAt).getTime()) / 1000;
+  return age > heartbeatIntervalSeconds * 2 ? "stale" : "healthy";
+}
+
+/** "host:pid:task-id" -> "host · 1a2b3c" for compact display. */
+export function shortOwner(owner: string | null | undefined): string {
+  if (!owner) return "—";
+  const parts = owner.split(":");
+  const host = parts[0] ?? owner;
+  const tail = parts.at(-1) ?? "";
+  return tail && tail !== host ? `${host} · ${tail.slice(0, 6)}` : host;
+}
+```
+
 ### File: `frontend/src/lib/time-series.test.ts`
 ```typescript
 import { describe, expect, it } from "vitest";
@@ -10042,6 +10663,158 @@ export function pluckOptionalSeries(
 
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   });
+}
+```
+
+### File: `frontend/src/lib/use-global-batch.ts`
+```typescript
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { getGlobalBatch, getGlobalBatchEventsUrl } from "@/lib/api-client";
+import {
+  isTerminalBatchStatus,
+  mergeBatchProgress,
+  progressRequiresDetailReload,
+} from "@/lib/global-batch-progress";
+import type { GlobalBatchDetail, GlobalBatchProgressEvent } from "@/types/global-batch";
+
+export type BatchTransport = "sse" | "polling" | "idle";
+
+const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_ON_ERROR_MS = 5000;
+
+export function useGlobalBatch(batchId: string) {
+  const [batch, setBatch] = useState<GlobalBatchDetail | null>(null);
+  const [error, setError] = useState("");
+  const [transport, setTransport] = useState<BatchTransport>("idle");
+  const [revision, setRevision] = useState(0);
+  const batchRef = useRef<GlobalBatchDetail | null>(null);
+
+  useEffect(() => {
+    batchRef.current = batch;
+  }, [batch]);
+
+  const refresh = useCallback(async () => {
+    const detail = await getGlobalBatch(batchId);
+    setBatch(detail);
+    setError("");
+    return detail;
+  }, [batchId]);
+
+  /** Restart the subscription (after retry, for example). */
+  const resubscribe = useCallback(() => setRevision((current) => current + 1), []);
+
+  useEffect(() => {
+    let disposed = false;
+    let pollTimer: number | null = null;
+    let eventSource: EventSource | null = null;
+
+    function message(caught: unknown, fallback: string) {
+      return caught instanceof Error ? caught.message : fallback;
+    }
+
+    async function loadDetail(): Promise<GlobalBatchDetail | null> {
+      try {
+        const detail = await getGlobalBatch(batchId);
+        if (!disposed) {
+          setBatch(detail);
+          setError("");
+        }
+        return detail;
+      } catch (caught) {
+        if (!disposed) setError(message(caught, "Unable to load the global analysis."));
+        return null;
+      }
+    }
+
+    function stopPolling() {
+      if (pollTimer !== null) {
+        window.clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    function startPolling() {
+      setTransport("polling");
+
+      async function tick() {
+        const detail = await loadDetail();
+        if (disposed) return;
+        if (detail && isTerminalBatchStatus(detail.status)) {
+          setTransport("idle");
+          return;
+        }
+        pollTimer = window.setTimeout(tick, detail ? POLL_INTERVAL_MS : POLL_INTERVAL_ON_ERROR_MS);
+      }
+
+      pollTimer = window.setTimeout(tick, POLL_INTERVAL_MS);
+    }
+
+    function startStream() {
+      if (typeof EventSource === "undefined") {
+        startPolling();
+        return;
+      }
+
+      try {
+        eventSource = new EventSource(getGlobalBatchEventsUrl(batchId));
+      } catch {
+        startPolling();
+        return;
+      }
+
+      setTransport("sse");
+
+      eventSource.addEventListener("progress", (event) => {
+        if (disposed) return;
+        try {
+          const parsed = JSON.parse((event as MessageEvent<string>).data) as GlobalBatchProgressEvent;
+          const needsReload = progressRequiresDetailReload(batchRef.current, parsed);
+          setBatch((current) => (current ? mergeBatchProgress(current, parsed) : current));
+          if (needsReload) void loadDetail();
+        } catch {
+          setError("Failed to parse batch progress data.");
+        }
+      });
+
+      eventSource.addEventListener("terminal", () => {
+        eventSource?.close();
+        eventSource = null;
+        void loadDetail().then(() => {
+          if (!disposed) setTransport("idle");
+        });
+      });
+
+      eventSource.onerror = () => {
+        // Proxy without SSE support, network blip, or server restart: fall back.
+        eventSource?.close();
+        eventSource = null;
+        if (!disposed) startPolling();
+      };
+    }
+
+    void loadDetail().then((detail) => {
+      if (disposed || !detail) {
+        if (!disposed) startPolling();
+        return;
+      }
+      if (isTerminalBatchStatus(detail.status)) {
+        setTransport("idle");
+        return;
+      }
+      startStream();
+    });
+
+    return () => {
+      disposed = true;
+      stopPolling();
+      eventSource?.close();
+    };
+  }, [batchId, revision]);
+
+  return { batch, error, setError, transport, refresh, resubscribe };
 }
 ```
 
@@ -10354,6 +11127,28 @@ export type HeatwaveEvent = {
   beneficial_day_count: number;
 };
 
+export type LeaseState = "none" | "live" | "expired";
+
+export type DataQualityInfo = {
+  weather_source: string;            // e.g. "open-meteo" | "cache" | "synthetic_fallback"
+  cached_sample_count: number;
+  fetched_sample_count: number;
+  skipped_sample_count: number;
+  coverage_ratio: number;            // 0–1
+  warnings: string[];
+  skipped_weighted_days?: number | null;
+  skip_reasons?: Record<string, number>;
+  monthly_weather_payload_sha256?: Record<string, string | null>;
+};
+
+export type MetricDefinition = {
+  label: string;
+  description: string;
+  display_name: string;
+  unit?: string | null;
+  formula?: string | null;
+  interpretation?: string | null;
+};
 
 export type GlobalCityResult = {
   id: string;
@@ -10467,6 +11262,14 @@ export type GlobalCityResult = {
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
+
+  // Stage 8
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  lease_state?: LeaseState;
+  checkpoint_months?: number[];
+  data_quality?: DataQualityInfo | null;
+  metric_definitions?: Record<string, MetricDefinition> | null;
 };
 
 
@@ -10492,8 +11295,57 @@ export type GlobalBatch = {
   completed_at: string | null;
   control_material_version_id?: string | null;
   rc_material_version_id?: string | null;
+
+  // Stage 8
+  attempt?: number;
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  last_heartbeat_at?: string | null;
+  cancel_requested_at?: string | null;
 };
 
+export type GlobalCityProgress = {
+  id: string;
+  city_id: string;
+  status: GlobalCityStatus;
+  stage: string;
+  progress: number;
+  retry_count: number;
+  completed_month_count: number;
+  last_checkpoint_month: number | null;
+  last_heartbeat_at: string | null;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
+  lease_state: LeaseState;
+  checkpoint_months: number[];
+  error_message: string | null;
+};
+
+
+export type GlobalBatchProgressEvent = {
+  batch: GlobalBatch;
+  cities: GlobalCityProgress[];
+};
+
+export type CityCheckpoint = {
+  id: string;
+  month: number;
+  attempt: number;
+  created_at: string;
+  payload_sha256: string;
+  sampled_day_count: number;
+  skipped_sample_count: number;
+};
+
+export type CityCheckpointList = {
+  batch_id: string;
+  city_result_id: string;
+  city_id: string;
+  start_month: number;
+  end_month: number;
+  items: CityCheckpoint[];
+  resume_from_month: number;
+};
 
 export type GlobalBatchDetail =
   GlobalBatch & {
@@ -10762,6 +11614,36 @@ export type MaterialVersionListResponse = {
   total: number;
   limit: number;
   offset: number;
+};
+```
+
+### File: `frontend/src/types/ops.ts`
+```typescript
+export type WorkerStatus = {
+  name: string;
+  active_task_count: number;
+  reserved_task_count: number;
+};
+
+export type LeaseSummary = {
+  running_cities: number;
+  queued_cities: number;
+  live_leases: number;
+  expired_leases: number;
+  running_batches: number;
+  cancelling_batches: number;
+};
+
+export type OpsStatus = {
+  checked_at: string;
+  broker_reachable: boolean;
+  worker_count: number;
+  workers: WorkerStatus[];
+  leases: LeaseSummary;
+  lease_ttl_seconds: number;
+  heartbeat_interval_seconds: number;
+  reaper_interval_seconds: number;
+  worst_case_recovery_seconds: number;
 };
 ```
 

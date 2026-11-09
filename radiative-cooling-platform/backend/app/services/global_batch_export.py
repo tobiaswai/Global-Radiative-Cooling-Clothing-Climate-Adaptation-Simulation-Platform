@@ -748,9 +748,11 @@ def build_sample_results_csv(
                         ),
                         sample.get(
                             (
-                                "maximum_air_"
-                                "temperature_c"
+                                "maximum_air_temperature_c"
                             )
+                        ),
+                        sample.get(
+                            "daily_maximum_air_temperature_c"
                         ),
                         sample.get(
                             (
@@ -1079,6 +1081,11 @@ def build_city_result_json(
             "monthly_json",
             [],
         ) or [],
+        "data_quality": analytics.get("data_quality", {}),
+        "metric_definitions": analytics.get("metric_definitions", {}),
+        "heatwave_unavailable_reason": analytics.get("heatwave_unavailable_reason"),
+        "lease_owner": get_attribute(result, "lease_owner"),
+        "lease_expires_at": get_attribute(result, "lease_expires_at"),
         "error_message": get_attribute(
             result,
             "error_message",

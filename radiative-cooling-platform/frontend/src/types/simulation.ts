@@ -18,6 +18,10 @@ export type ResolvedParameterSource = "material_input" | "derived_from_clo";
 export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
 export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
 
+export type RadiationTimeConvention =
+  | "instantaneous_linear"
+  | "preceding_hour_mean_step";
+
 export type EnvironmentAssumptions = {
   mean_radiant_temperature_method: MeanRadiantTemperatureMethod;
   solar_mrt_gain_k_per_w_m2: number;
@@ -29,6 +33,20 @@ export type EnvironmentAssumptions = {
   sky_view_factor: number;
   wind_speed_scaling_factor: number;
   ground_albedo: number;
+  radiation_time_convention: RadiationTimeConvention;
+};
+
+export type WeatherGap = { start: string; end: string; missing_steps: number };
+
+export type WeatherQualityReport = {
+  expected_step_seconds: number;
+  point_count: number;
+  first_timestamp: string | null;
+  last_timestamp: string | null;
+  was_sorted: boolean;
+  duplicates_removed: number;
+  gaps: WeatherGap[];
+  notes: string[];
 };
 
 export type BodyPosition = "standing" | "sitting";
@@ -165,6 +183,7 @@ export type SimulationSummary = {
   final_skin_temperature_improvement_c: number;
   final_core_temperature_improvement_c: number;
   average_skin_temperature_improvement_c: number;
+  averaging_method?: string | null;
 };
 
 export type SimulationResponse = {
@@ -217,8 +236,12 @@ export type WeatherTimeSeries = {
     downloaded_at: string;
     from_cache: boolean;
     attribution: string;
+    payload_sha256?: string | null;
+    quality?: WeatherQualityReport | null;
   };
 };
+
+export type LeaseState = "none" | "live" | "expired";
 
 export type WeatherSimulationRequest = {
   city_id: string;
@@ -260,6 +283,11 @@ export type SimulationJob = {
   completed_at: string | null;
   control_material_version_id?: string | null;
   rc_material_version_id?: string | null;
+  attempt?: number;
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  last_heartbeat_at?: string | null;
+  lease_state?: LeaseState;
 };
 
 export type SimulationJobDetail = SimulationJob & {

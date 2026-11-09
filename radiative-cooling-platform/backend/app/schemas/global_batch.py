@@ -342,6 +342,11 @@ class GlobalCityResultResponse(BaseModel):
     # Months with a durable checkpoint row (source of truth for resume).
     checkpoint_months: list[int] = Field(default_factory=list)
 
+    # Stage 9. Why heatwave analysis is or is not available for THIS result
+    # (configuration or data), so the UI never guesses from the request alone.
+    heatwave_analysis_available: bool | None = None
+    heatwave_unavailable_reason: str | None = None
+    heatwave_temperature_basis: str | None = None
 
 class GlobalBatchResponse(BaseModel):
     id: str
@@ -433,7 +438,11 @@ class CityCheckpointResponse(BaseModel):
     payload_sha256: str
     sampled_day_count: int
     skipped_sample_count: int
-
+    # Stage 9
+    model_version: str | None = None
+    parameter_fingerprint: str | None = None
+    provenance_matches_batch: bool = False
+    mismatch_reason: str | None = None
 
 class CityCheckpointListResponse(BaseModel):
     batch_id: str

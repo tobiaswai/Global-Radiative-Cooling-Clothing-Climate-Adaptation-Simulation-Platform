@@ -29,6 +29,8 @@ from uuid import uuid4
 
 from redis.asyncio import Redis
 
+from redis.exceptions import RedisError  # add near the redis import
+
 from app.core.config import settings
 
 from app.services.weather_quality import (
@@ -254,28 +256,15 @@ async def request_open_meteo(
 
         return payload, False
 
-    except (
-        ConnectionError,
-        TimeoutError,
-    ):
-        # Redis failure must not make weather
-        # simulation completely unavailable.
-        cached_payload = read_cached_payload(
-            cache_path
-        )
-
+    except (RedisError, OSError):
+        # Redis is unreachable or timed out. redis-py raises RedisError
+        # subclasses (NOT the builtin ConnectionError); OSError covers socket
+        # level failures. Weather must stay available without the lock.
+        cached_payload = read_cached_payload(cache_path)
         if cached_payload is not None:
             return cached_payload, True
-
-        payload = await download_open_meteo_payload(
-            params
-        )
-
-        write_cached_payload_atomic(
-            cache_path,
-            payload,
-        )
-
+        payload = await download_open_meteo_payload(params)
+        write_cached_payload_atomic(cache_path, payload)
         return payload, False
 
     finally:

@@ -16,11 +16,12 @@ from app.schemas.global_batch import (
     GlobalBatchResponse,
     GlobalCityProgress,
     GlobalCityResultResponse,
+    GlobalBatchCreate,
     LeaseState,
 )
-from app.services.checkpoints import load_resume_state
-
-from app.services.job_state import assert_batch_transition, derive_batch_status
+from app.services.checkpoints import CheckpointProvenance, load_resume_state
+from app.services.leases import db_now, derive_lease_state  # noqa: F401 (re-exported)
+from app.services.job_state import assert_batch_transition, derive_batch_status  # keep
 
 from collections import defaultdict
 import hashlib
@@ -154,6 +155,9 @@ def city_result_to_response(
         completed_at=result.completed_at,
         data_quality=analytics.get("data_quality"),
         metric_definitions=analytics.get("metric_definitions"),
+        heatwave_analysis_available=analytics.get("heatwave_analysis_available"),
+        heatwave_unavailable_reason=analytics.get("heatwave_unavailable_reason"),
+        heatwave_temperature_basis=analytics.get("heatwave_temperature_basis"),
         # Stage 8
         lease_owner=getattr(result, "lease_owner", None),
         lease_expires_at=getattr(result, "lease_expires_at", None),
@@ -202,8 +206,9 @@ def batch_to_detail(
     batch: GlobalBatchJob,
     *,
     checkpoint_months: dict[str, list[int]] | None = None,
+    now: datetime | None = None,
 ) -> GlobalBatchDetail:
-    now = utc_now()
+    now = now or utc_now()
     months = checkpoint_months or {}
     return GlobalBatchDetail(
         **batch_to_response(batch).model_dump(),
@@ -217,8 +222,9 @@ def batch_to_detail(
 def batch_progress_event(
     batch: GlobalBatchJob,
     checkpoint_months: dict[str, list[int]] | None = None,
+    now: datetime | None = None,
 ) -> GlobalBatchProgressEvent:
-    now = utc_now()
+    now = now or utc_now()
     months = checkpoint_months or {}
     return GlobalBatchProgressEvent(
         batch=batch_to_response(batch),
@@ -253,14 +259,10 @@ def _payload_sha256(payload: dict) -> str:
 
 
 def city_checkpoints_to_response(
-    session: Session,
-    *,
-    batch: GlobalBatchJob,
-    city_result: GlobalCityResult,
+    session: Session, *, batch: GlobalBatchJob, city_result: GlobalCityResult,
 ) -> CityCheckpointListResponse:
-    request = batch.request_json or {}
-    start_month = int(request.get("start_month", 1))
-    end_month = int(request.get("end_month", 12))
+    request = GlobalBatchCreate.model_validate(batch.request_json)
+    provenance = CheckpointProvenance.for_request(request)
 
     rows = session.scalars(
         select(GlobalCityCheckpoint)
@@ -268,17 +270,17 @@ def city_checkpoints_to_response(
         .order_by(GlobalCityCheckpoint.month)
     ).all()
 
-    resume_from_month, _ = load_resume_state(
-        session, city_result.id, start_month=start_month
+    resume = load_resume_state(
+        session, city_result.id, start_month=request.start_month, provenance=provenance
     )
 
     return CityCheckpointListResponse(
         batch_id=batch.id,
         city_result_id=city_result.id,
         city_id=city_result.city_id,
-        start_month=start_month,
-        end_month=end_month,
-        resume_from_month=resume_from_month,
+        start_month=request.start_month,
+        end_month=request.end_month,
+        resume_from_month=resume.next_month,
         items=[
             CityCheckpointResponse(
                 id=row.id,
@@ -288,6 +290,10 @@ def city_checkpoints_to_response(
                 payload_sha256=_payload_sha256(row.payload_json),
                 sampled_day_count=int((row.payload_json or {}).get("sampled_day_count", 0)),
                 skipped_sample_count=len((row.payload_json or {}).get("skipped_samples", [])),
+                model_version=row.model_version,
+                parameter_fingerprint=row.parameter_fingerprint,
+                provenance_matches_batch=provenance.mismatch_reason(row) is None,
+                mismatch_reason=provenance.mismatch_reason(row),
             )
             for row in rows
         ],
@@ -466,6 +472,8 @@ def reconcile_batch(db: Session, batch_id: str) -> None:
     batch.cancelled_city_count = counts.get("cancelled", 0)
     done = sum(counts.get(s, 0) for s in ("completed", "failed", "cancelled"))
     batch.progress = int(100 * done / max(batch.total_city_count, 1))
+    """Kept for callers; refresh_batch_status is the single implementation."""
+    refresh_batch_status(db, batch_id)
 
     target = derive_batch_status(counts, batch.total_city_count, batch.cancel_requested_at is not None)
     if target and batch.status != target:

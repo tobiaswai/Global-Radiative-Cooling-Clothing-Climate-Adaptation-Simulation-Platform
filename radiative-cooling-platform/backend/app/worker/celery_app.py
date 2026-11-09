@@ -48,4 +48,14 @@ celery_app.conf.beat_schedule = {
         "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
         "options": {"queue": "default"},
     },
+    "reap-expired-city-leases": {
+        "task": "global_batch.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
+    "reap-expired-job-leases": {
+        "task": "simulation.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
 }
