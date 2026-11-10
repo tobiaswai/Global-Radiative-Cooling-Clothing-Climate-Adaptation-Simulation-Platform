@@ -173,6 +173,62 @@
           "title": "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
           "type": "object"
         },
+        "CandidateEvaluation": {
+          "properties": {
+            "constraint_violation": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Constraint Violation"
+            },
+            "feasible": {
+              "title": "Feasible",
+              "type": "boolean"
+            },
+            "metrics": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EvaluationMetrics"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "objective_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Objective Value"
+            },
+            "parameters": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Parameters",
+              "type": "object"
+            }
+          },
+          "required": [
+            "parameters",
+            "metrics",
+            "objective_value",
+            "constraint_violation",
+            "feasible"
+          ],
+          "title": "CandidateEvaluation",
+          "type": "object"
+        },
         "CityCheckpointListResponse": {
           "properties": {
             "batch_id": {
@@ -234,13 +290,51 @@
               "title": "Id",
               "type": "string"
             },
+            "mismatch_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mismatch Reason"
+            },
+            "model_version": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Version"
+            },
             "month": {
               "title": "Month",
               "type": "integer"
             },
+            "parameter_fingerprint": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Parameter Fingerprint"
+            },
             "payload_sha256": {
               "title": "Payload Sha256",
               "type": "string"
+            },
+            "provenance_matches_batch": {
+              "default": false,
+              "title": "Provenance Matches Batch",
+              "type": "boolean"
             },
             "sampled_day_count": {
               "title": "Sampled Day Count",
@@ -455,6 +549,37 @@
             "weather_from_cache"
           ],
           "title": "DailyAdaptationResult",
+          "type": "object"
+        },
+        "DecisionVariable": {
+          "properties": {
+            "lower": {
+              "title": "Lower",
+              "type": "number"
+            },
+            "name": {
+              "enum": [
+                "solar_reflectance",
+                "solar_transmittance",
+                "infrared_emissivity",
+                "infrared_transmittance",
+                "clothing_insulation_clo",
+                "evaporative_resistance_m2pa_w"
+              ],
+              "title": "Name",
+              "type": "string"
+            },
+            "upper": {
+              "title": "Upper",
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "lower",
+            "upper"
+          ],
+          "title": "DecisionVariable",
           "type": "object"
         },
         "EnergyDiagnostics": {
@@ -732,6 +857,79 @@
           "title": "EnvironmentInput",
           "type": "object"
         },
+        "EvaluationMetrics": {
+          "properties": {
+            "core_exceedance_fraction": {
+              "title": "Core Exceedance Fraction",
+              "type": "number"
+            },
+            "mean_core_cooling_c": {
+              "title": "Mean Core Cooling C",
+              "type": "number"
+            },
+            "mean_skin_cooling_c": {
+              "title": "Mean Skin Cooling C",
+              "type": "number"
+            },
+            "mean_skin_temperature_c": {
+              "title": "Mean Skin Temperature C",
+              "type": "number"
+            },
+            "peak_core_temperature_c": {
+              "title": "Peak Core Temperature C",
+              "type": "number"
+            },
+            "peak_skin_temperature_c": {
+              "title": "Peak Skin Temperature C",
+              "type": "number"
+            },
+            "sample_count": {
+              "title": "Sample Count",
+              "type": "integer"
+            },
+            "skin_exceedance_fraction": {
+              "title": "Skin Exceedance Fraction",
+              "type": "number"
+            }
+          },
+          "required": [
+            "sample_count",
+            "mean_skin_temperature_c",
+            "peak_skin_temperature_c",
+            "peak_core_temperature_c",
+            "skin_exceedance_fraction",
+            "core_exceedance_fraction",
+            "mean_skin_cooling_c",
+            "mean_core_cooling_c"
+          ],
+          "title": "EvaluationMetrics",
+          "type": "object"
+        },
+        "FrontierPoint": {
+          "properties": {
+            "minimum_x": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimum X"
+            },
+            "y": {
+              "title": "Y",
+              "type": "number"
+            }
+          },
+          "required": [
+            "y",
+            "minimum_x"
+          ],
+          "title": "FrontierPoint",
+          "type": "object"
+        },
         "GaggeBenchmarkRequest": {
           "properties": {
             "duration_minutes": {
@@ -892,6 +1090,54 @@
             "standard_effective_temperature_c"
           ],
           "title": "GaggeModelOutput",
+          "type": "object"
+        },
+        "GenerationRecord": {
+          "properties": {
+            "best_feasible": {
+              "title": "Best Feasible",
+              "type": "boolean"
+            },
+            "best_metric_value": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Best Metric Value"
+            },
+            "best_parameters": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Best Parameters",
+              "type": "object"
+            },
+            "evaluation_count": {
+              "title": "Evaluation Count",
+              "type": "integer"
+            },
+            "generation": {
+              "title": "Generation",
+              "type": "integer"
+            },
+            "penalised_objective": {
+              "title": "Penalised Objective",
+              "type": "number"
+            }
+          },
+          "required": [
+            "generation",
+            "penalised_objective",
+            "best_parameters",
+            "best_metric_value",
+            "best_feasible",
+            "evaluation_count"
+          ],
+          "title": "GenerationRecord",
           "type": "object"
         },
         "GlobalBatchCreate": {
@@ -1814,6 +2060,17 @@
               ],
               "title": "Exposure Coverage Percent"
             },
+            "heatwave_analysis_available": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Heatwave Analysis Available"
+            },
             "heatwave_event_count": {
               "anyOf": [
                 {
@@ -1838,6 +2095,28 @@
                 }
               ],
               "title": "Heatwave Events"
+            },
+            "heatwave_temperature_basis": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Heatwave Temperature Basis"
+            },
+            "heatwave_unavailable_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Heatwave Unavailable Reason"
             },
             "id": {
               "title": "Id",
@@ -2665,6 +2944,8 @@
           "type": "object"
         },
         "MaterialUpdate": {
+          "additionalProperties": false,
+          "description": "PATCH /materials/{id}: metadata only.\n\n* Omitted keys are left unchanged; ``description``/``institution`` may be\n  cleared with null or \"\".\n* ``slug`` is immutable (it is the stable identifier); physical values live\n  in immutable versions -> POST /materials/{id}/versions.",
           "properties": {
             "description": {
               "anyOf": [
@@ -2680,6 +2961,7 @@
             "institution": {
               "anyOf": [
                 {
+                  "maxLength": 255,
                   "type": "string"
                 },
                 {
@@ -3177,6 +3459,42 @@
           "title": "MaterialVersionResponse",
           "type": "object"
         },
+        "MetricConstraint": {
+          "properties": {
+            "metric": {
+              "enum": [
+                "mean_skin_temperature_c",
+                "peak_skin_temperature_c",
+                "peak_core_temperature_c",
+                "skin_exceedance_fraction",
+                "core_exceedance_fraction",
+                "mean_skin_cooling_c",
+                "mean_core_cooling_c"
+              ],
+              "title": "Metric",
+              "type": "string"
+            },
+            "operator": {
+              "default": "<=",
+              "enum": [
+                "<=",
+                ">="
+              ],
+              "title": "Operator",
+              "type": "string"
+            },
+            "threshold": {
+              "title": "Threshold",
+              "type": "number"
+            }
+          },
+          "required": [
+            "metric",
+            "threshold"
+          ],
+          "title": "MetricConstraint",
+          "type": "object"
+        },
         "ModelMetadata": {
           "description": "Written into every simulation response for traceability.",
           "properties": {
@@ -3489,6 +3807,816 @@
           "title": "OpsStatusResponse",
           "type": "object"
         },
+        "OptimizationCreate": {
+          "properties": {
+            "algorithm": {
+              "const": "differential_evolution",
+              "default": "differential_evolution",
+              "title": "Algorithm",
+              "type": "string"
+            },
+            "base_material": {
+              "$ref": "#/components/schemas/MaterialInput"
+            },
+            "city_id": {
+              "minLength": 1,
+              "title": "City Id",
+              "type": "string"
+            },
+            "constraints": {
+              "items": {
+                "$ref": "#/components/schemas/MetricConstraint"
+              },
+              "maxItems": 6,
+              "title": "Constraints",
+              "type": "array"
+            },
+            "control_material": {
+              "$ref": "#/components/schemas/MaterialInput"
+            },
+            "core_threshold_c": {
+              "default": 38.0,
+              "maximum": 41.0,
+              "minimum": 36.5,
+              "title": "Core Threshold C",
+              "type": "number"
+            },
+            "duration_minutes": {
+              "default": 120,
+              "maximum": 480.0,
+              "minimum": 30.0,
+              "title": "Duration Minutes",
+              "type": "integer"
+            },
+            "environment_assumptions": {
+              "$ref": "#/components/schemas/EnvironmentAssumptions"
+            },
+            "local_start_hour": {
+              "default": 12,
+              "maximum": 23.0,
+              "minimum": 0.0,
+              "title": "Local Start Hour",
+              "type": "integer"
+            },
+            "max_generations": {
+              "default": 30,
+              "maximum": 200.0,
+              "minimum": 1.0,
+              "title": "Max Generations",
+              "type": "integer"
+            },
+            "months": {
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 12,
+              "minItems": 1,
+              "title": "Months",
+              "type": "array"
+            },
+            "name": {
+              "default": "Material requirement search",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Name",
+              "type": "string"
+            },
+            "objective": {
+              "$ref": "#/components/schemas/OptimizationObjective"
+            },
+            "output_interval_minutes": {
+              "default": 5,
+              "maximum": 30.0,
+              "minimum": 1.0,
+              "title": "Output Interval Minutes",
+              "type": "integer"
+            },
+            "person": {
+              "$ref": "#/components/schemas/PersonInput"
+            },
+            "population_multiplier": {
+              "default": 10,
+              "maximum": 30.0,
+              "minimum": 4.0,
+              "title": "Population Multiplier",
+              "type": "integer"
+            },
+            "requirement_map": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RequirementMapSpec"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sample_days_per_month": {
+              "default": 3,
+              "maximum": 31.0,
+              "minimum": 1.0,
+              "title": "Sample Days Per Month",
+              "type": "integer"
+            },
+            "seed": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": 42,
+              "title": "Seed"
+            },
+            "skin_threshold_c": {
+              "default": 35.0,
+              "maximum": 42.0,
+              "minimum": 30.0,
+              "title": "Skin Threshold C",
+              "type": "number"
+            },
+            "variables": {
+              "items": {
+                "$ref": "#/components/schemas/DecisionVariable"
+              },
+              "maxItems": 6,
+              "minItems": 1,
+              "title": "Variables",
+              "type": "array"
+            },
+            "year": {
+              "default": 2023,
+              "maximum": 2100.0,
+              "minimum": 1940.0,
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "city_id",
+            "person",
+            "control_material",
+            "base_material",
+            "variables"
+          ],
+          "title": "OptimizationCreate",
+          "type": "object"
+        },
+        "OptimizationEstimate": {
+          "properties": {
+            "optimizer_evaluation_budget": {
+              "title": "Optimizer Evaluation Budget",
+              "type": "integer"
+            },
+            "population_size": {
+              "title": "Population Size",
+              "type": "integer"
+            },
+            "requirement_map_evaluations": {
+              "title": "Requirement Map Evaluations",
+              "type": "integer"
+            },
+            "sample_count": {
+              "title": "Sample Count",
+              "type": "integer"
+            },
+            "thermal_simulation_budget": {
+              "title": "Thermal Simulation Budget",
+              "type": "integer"
+            },
+            "variable_count": {
+              "title": "Variable Count",
+              "type": "integer"
+            },
+            "weather_requests": {
+              "title": "Weather Requests",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "variable_count",
+            "population_size",
+            "optimizer_evaluation_budget",
+            "requirement_map_evaluations",
+            "sample_count",
+            "thermal_simulation_budget",
+            "weather_requests"
+          ],
+          "title": "OptimizationEstimate",
+          "type": "object"
+        },
+        "OptimizationJobDetail": {
+          "properties": {
+            "attempt": {
+              "default": 0,
+              "title": "Attempt",
+              "type": "integer"
+            },
+            "base_material_version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Base Material Version Id"
+            },
+            "cancel_requested_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cancel Requested At"
+            },
+            "celery_task_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Celery Task Id"
+            },
+            "city_id": {
+              "title": "City Id",
+              "type": "string"
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At"
+            },
+            "control_material_version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Control Material Version Id"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "evaluation_count": {
+              "title": "Evaluation Count",
+              "type": "integer"
+            },
+            "history": {
+              "items": {
+                "$ref": "#/components/schemas/GenerationRecord"
+              },
+              "title": "History",
+              "type": "array"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "last_heartbeat_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Heartbeat At"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
+            },
+            "lease_state": {
+              "default": "none",
+              "enum": [
+                "none",
+                "live",
+                "expired"
+              ],
+              "title": "Lease State",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "progress": {
+              "title": "Progress",
+              "type": "integer"
+            },
+            "request": {
+              "$ref": "#/components/schemas/OptimizationCreate"
+            },
+            "result": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/OptimizationResult"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "stage": {
+              "title": "Stage",
+              "type": "string"
+            },
+            "started_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Started At"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "cancelling",
+                "cancelled",
+                "completed",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "celery_task_id",
+            "name",
+            "city_id",
+            "status",
+            "stage",
+            "progress",
+            "evaluation_count",
+            "error_message",
+            "created_at",
+            "updated_at",
+            "started_at",
+            "completed_at",
+            "request",
+            "history",
+            "result"
+          ],
+          "title": "OptimizationJobDetail",
+          "type": "object"
+        },
+        "OptimizationJobListResponse": {
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/OptimizationJobResponse"
+              },
+              "title": "Items",
+              "type": "array"
+            },
+            "limit": {
+              "title": "Limit",
+              "type": "integer"
+            },
+            "offset": {
+              "title": "Offset",
+              "type": "integer"
+            },
+            "total": {
+              "title": "Total",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "items",
+            "total",
+            "limit",
+            "offset"
+          ],
+          "title": "OptimizationJobListResponse",
+          "type": "object"
+        },
+        "OptimizationJobResponse": {
+          "properties": {
+            "attempt": {
+              "default": 0,
+              "title": "Attempt",
+              "type": "integer"
+            },
+            "base_material_version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Base Material Version Id"
+            },
+            "cancel_requested_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cancel Requested At"
+            },
+            "celery_task_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Celery Task Id"
+            },
+            "city_id": {
+              "title": "City Id",
+              "type": "string"
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At"
+            },
+            "control_material_version_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Control Material Version Id"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "evaluation_count": {
+              "title": "Evaluation Count",
+              "type": "integer"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "last_heartbeat_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Heartbeat At"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
+            },
+            "lease_state": {
+              "default": "none",
+              "enum": [
+                "none",
+                "live",
+                "expired"
+              ],
+              "title": "Lease State",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "progress": {
+              "title": "Progress",
+              "type": "integer"
+            },
+            "stage": {
+              "title": "Stage",
+              "type": "string"
+            },
+            "started_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Started At"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "cancelling",
+                "cancelled",
+                "completed",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "celery_task_id",
+            "name",
+            "city_id",
+            "status",
+            "stage",
+            "progress",
+            "evaluation_count",
+            "error_message",
+            "created_at",
+            "updated_at",
+            "started_at",
+            "completed_at"
+          ],
+          "title": "OptimizationJobResponse",
+          "type": "object"
+        },
+        "OptimizationObjective": {
+          "properties": {
+            "metric": {
+              "default": "skin_exceedance_fraction",
+              "enum": [
+                "mean_skin_temperature_c",
+                "peak_skin_temperature_c",
+                "peak_core_temperature_c",
+                "skin_exceedance_fraction",
+                "core_exceedance_fraction",
+                "mean_skin_cooling_c",
+                "mean_core_cooling_c"
+              ],
+              "title": "Metric",
+              "type": "string"
+            },
+            "sense": {
+              "default": "minimize",
+              "enum": [
+                "minimize",
+                "maximize"
+              ],
+              "title": "Sense",
+              "type": "string"
+            }
+          },
+          "title": "OptimizationObjective",
+          "type": "object"
+        },
+        "OptimizationResult": {
+          "properties": {
+            "algorithm": {
+              "title": "Algorithm",
+              "type": "string"
+            },
+            "algorithm_message": {
+              "title": "Algorithm Message",
+              "type": "string"
+            },
+            "baseline": {
+              "$ref": "#/components/schemas/CandidateEvaluation"
+            },
+            "best": {
+              "$ref": "#/components/schemas/CandidateEvaluation"
+            },
+            "constraints": {
+              "items": {
+                "$ref": "#/components/schemas/MetricConstraint"
+              },
+              "title": "Constraints",
+              "type": "array"
+            },
+            "elapsed_seconds": {
+              "title": "Elapsed Seconds",
+              "type": "number"
+            },
+            "evaluation_count": {
+              "title": "Evaluation Count",
+              "type": "integer"
+            },
+            "generations": {
+              "title": "Generations",
+              "type": "integer"
+            },
+            "message": {
+              "title": "Message",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "objective": {
+              "$ref": "#/components/schemas/OptimizationObjective"
+            },
+            "optical_upper_bound": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CandidateEvaluation"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "parameter_fingerprint": {
+              "title": "Parameter Fingerprint",
+              "type": "string"
+            },
+            "requirement_map": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RequirementMapResult"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sample_count": {
+              "title": "Sample Count",
+              "type": "integer"
+            },
+            "simulation_count": {
+              "title": "Simulation Count",
+              "type": "integer"
+            },
+            "skipped_samples": {
+              "items": {
+                "$ref": "#/components/schemas/SkippedOptimizationSample"
+              },
+              "title": "Skipped Samples",
+              "type": "array"
+            },
+            "verdict": {
+              "enum": [
+                "feasible",
+                "infeasible",
+                "unconstrained"
+              ],
+              "title": "Verdict",
+              "type": "string"
+            },
+            "weather_payload_sha256": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": "Weather Payload Sha256",
+              "type": "object"
+            }
+          },
+          "required": [
+            "verdict",
+            "message",
+            "objective",
+            "constraints",
+            "best",
+            "baseline",
+            "optical_upper_bound",
+            "requirement_map",
+            "sample_count",
+            "skipped_samples",
+            "weather_payload_sha256",
+            "evaluation_count",
+            "simulation_count",
+            "generations",
+            "algorithm",
+            "algorithm_message",
+            "elapsed_seconds",
+            "model_version",
+            "parameter_fingerprint"
+          ],
+          "title": "OptimizationResult",
+          "type": "object"
+        },
         "ParameterSource": {
           "additionalProperties": false,
           "description": "Provenance of one numeric input.",
@@ -3658,6 +4786,186 @@
           "title": "ReferencePortParity",
           "type": "object"
         },
+        "RequirementCell": {
+          "properties": {
+            "constraint_violation": {
+              "title": "Constraint Violation",
+              "type": "number"
+            },
+            "feasible": {
+              "title": "Feasible",
+              "type": "boolean"
+            },
+            "metric_value": {
+              "title": "Metric Value",
+              "type": "number"
+            },
+            "x": {
+              "title": "X",
+              "type": "number"
+            },
+            "y": {
+              "title": "Y",
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y",
+            "metric_value",
+            "constraint_violation",
+            "feasible"
+          ],
+          "title": "RequirementCell",
+          "type": "object"
+        },
+        "RequirementMapResult": {
+          "properties": {
+            "cells": {
+              "items": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RequirementCell"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "title": "Cells",
+              "type": "array"
+            },
+            "fixed_parameters": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Fixed Parameters",
+              "type": "object"
+            },
+            "frontier": {
+              "items": {
+                "$ref": "#/components/schemas/FrontierPoint"
+              },
+              "title": "Frontier",
+              "type": "array"
+            },
+            "minimum_x_at_max_y": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimum X At Max Y"
+            },
+            "minimum_y_at_max_x": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Minimum Y At Max X"
+            },
+            "x_values": {
+              "items": {
+                "type": "number"
+              },
+              "title": "X Values",
+              "type": "array"
+            },
+            "x_variable": {
+              "enum": [
+                "solar_reflectance",
+                "solar_transmittance",
+                "infrared_emissivity",
+                "infrared_transmittance",
+                "clothing_insulation_clo",
+                "evaporative_resistance_m2pa_w"
+              ],
+              "title": "X Variable",
+              "type": "string"
+            },
+            "y_values": {
+              "items": {
+                "type": "number"
+              },
+              "title": "Y Values",
+              "type": "array"
+            },
+            "y_variable": {
+              "enum": [
+                "solar_reflectance",
+                "solar_transmittance",
+                "infrared_emissivity",
+                "infrared_transmittance",
+                "clothing_insulation_clo",
+                "evaporative_resistance_m2pa_w"
+              ],
+              "title": "Y Variable",
+              "type": "string"
+            }
+          },
+          "required": [
+            "x_variable",
+            "y_variable",
+            "x_values",
+            "y_values",
+            "cells",
+            "frontier",
+            "minimum_x_at_max_y",
+            "minimum_y_at_max_x",
+            "fixed_parameters"
+          ],
+          "title": "RequirementMapResult",
+          "type": "object"
+        },
+        "RequirementMapSpec": {
+          "properties": {
+            "resolution": {
+              "default": 11,
+              "maximum": 21.0,
+              "minimum": 3.0,
+              "title": "Resolution",
+              "type": "integer"
+            },
+            "x_variable": {
+              "default": "solar_reflectance",
+              "enum": [
+                "solar_reflectance",
+                "solar_transmittance",
+                "infrared_emissivity",
+                "infrared_transmittance",
+                "clothing_insulation_clo",
+                "evaporative_resistance_m2pa_w"
+              ],
+              "title": "X Variable",
+              "type": "string"
+            },
+            "y_variable": {
+              "default": "infrared_emissivity",
+              "enum": [
+                "solar_reflectance",
+                "solar_transmittance",
+                "infrared_emissivity",
+                "infrared_transmittance",
+                "clothing_insulation_clo",
+                "evaporative_resistance_m2pa_w"
+              ],
+              "title": "Y Variable",
+              "type": "string"
+            }
+          },
+          "title": "RequirementMapSpec",
+          "type": "object"
+        },
         "ScenarioResult": {
           "properties": {
             "assumptions_applied": {
@@ -3732,6 +5040,11 @@
         },
         "SimulationJobDetail": {
           "properties": {
+            "attempt": {
+              "default": 0,
+              "title": "Attempt",
+              "type": "integer"
+            },
             "celery_task_id": {
               "anyOf": [
                 {
@@ -3788,6 +5101,51 @@
             },
             "id": {
               "title": "Id",
+              "type": "string"
+            },
+            "last_heartbeat_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Heartbeat At"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
+            },
+            "lease_state": {
+              "default": "none",
+              "enum": [
+                "none",
+                "live",
+                "expired"
+              ],
+              "title": "Lease State",
               "type": "string"
             },
             "progress": {
@@ -3905,6 +5263,11 @@
         },
         "SimulationJobResponse": {
           "properties": {
+            "attempt": {
+              "default": 0,
+              "title": "Attempt",
+              "type": "integer"
+            },
             "celery_task_id": {
               "anyOf": [
                 {
@@ -3961,6 +5324,51 @@
             },
             "id": {
               "title": "Id",
+              "type": "string"
+            },
+            "last_heartbeat_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last Heartbeat At"
+            },
+            "lease_expires_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Expires At"
+            },
+            "lease_owner": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lease Owner"
+            },
+            "lease_state": {
+              "default": "none",
+              "enum": [
+                "none",
+                "live",
+                "expired"
+              ],
+              "title": "Lease State",
               "type": "string"
             },
             "progress": {
@@ -4173,6 +5581,30 @@
             "average_skin_temperature_improvement_c"
           ],
           "title": "SimulationSummary",
+          "type": "object"
+        },
+        "SkippedOptimizationSample": {
+          "properties": {
+            "message": {
+              "title": "Message",
+              "type": "string"
+            },
+            "reason_code": {
+              "title": "Reason Code",
+              "type": "string"
+            },
+            "sample_date_local": {
+              "format": "date-time",
+              "title": "Sample Date Local",
+              "type": "string"
+            }
+          },
+          "required": [
+            "sample_date_local",
+            "reason_code",
+            "message"
+          ],
+          "title": "SkippedOptimizationSample",
           "type": "object"
         },
         "SkippedSample": {
@@ -5747,6 +7179,40 @@
         }
       },
       "/api/v1/materials/{material_id}": {
+        "delete": {
+          "description": "Hard delete, only when no simulation references any of its versions.\n\nThe job FKs are ON DELETE SET NULL, so deleting a referenced material would\nsilently detach provenance. Referenced materials must be archived instead.",
+          "operationId": "delete_material_api_v1_materials__material_id__delete",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "material_id",
+              "required": true,
+              "schema": {
+                "title": "Material Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Delete Material",
+          "tags": [
+            "materials"
+          ]
+        },
         "get": {
           "operationId": "get_material_api_v1_materials__material_id__get",
           "parameters": [
@@ -6036,6 +7502,226 @@
           "summary": "Ops Status",
           "tags": [
             "ops"
+          ]
+        }
+      },
+      "/api/v1/optimizations": {
+        "get": {
+          "operationId": "list_optimizations_api_v1_optimizations_get",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "default": 20,
+                "maximum": 100,
+                "minimum": 1,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Offset",
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/OptimizationJobListResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List Optimizations",
+          "tags": [
+            "optimizations"
+          ]
+        },
+        "post": {
+          "operationId": "create_optimization_api_v1_optimizations_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "202": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/OptimizationJobResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Create Optimization",
+          "tags": [
+            "optimizations"
+          ]
+        }
+      },
+      "/api/v1/optimizations/estimate": {
+        "post": {
+          "operationId": "estimate_api_v1_optimizations_estimate_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OptimizationCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/OptimizationEstimate"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Estimate",
+          "tags": [
+            "optimizations"
+          ]
+        }
+      },
+      "/api/v1/optimizations/{job_id}": {
+        "get": {
+          "operationId": "get_optimization_api_v1_optimizations__job_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "job_id",
+              "required": true,
+              "schema": {
+                "title": "Job Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/OptimizationJobDetail"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Optimization",
+          "tags": [
+            "optimizations"
+          ]
+        }
+      },
+      "/api/v1/optimizations/{job_id}/cancel": {
+        "post": {
+          "operationId": "cancel_optimization_api_v1_optimizations__job_id__cancel_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "job_id",
+              "required": true,
+              "schema": {
+                "title": "Job Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/OptimizationJobResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Cancel Optimization",
+          "tags": [
+            "optimizations"
           ]
         }
       },
