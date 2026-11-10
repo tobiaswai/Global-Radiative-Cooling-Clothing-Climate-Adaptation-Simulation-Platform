@@ -518,7 +518,12 @@ function CityDetailPanel({
 
       <DataQualityPanel result={result} />
 
-      <HeatwaveResults events={result.heatwave_events ?? []} available={heatwaveAvailable} />
+      <HeatwaveResults
+        events={result.heatwave_events ?? []}
+        available={result.heatwave_analysis_available ?? heatwaveAvailable}
+        unavailableReason={result.heatwave_unavailable_reason ?? null}
+        basis={result.heatwave_temperature_basis ?? null}
+      />
     </section>
   );
 }
@@ -580,6 +585,9 @@ function MonthlyResultsTable({
 
                 <th className="px-4 py-3">
                   Weighted Days
+                </th>
+                <th className="px-4 py-3">
+                  Skipped
                 </th>
               </tr>
             </thead>
@@ -658,6 +666,9 @@ function MonthlyResultsTable({
                         month.total_weighted_days
                       }
                     </td>
+                    <td className="px-4 py-3">
+                      {month.skipped_weighted_days ?? 0}
+                    </td>
                   </tr>
                 ),
               )}
@@ -673,26 +684,30 @@ function MonthlyResultsTable({
 function HeatwaveResults({
   events,
   available,
+  unavailableReason,
+  basis,
 }: {
   events: HeatwaveEvent[];
   available: boolean;
+  unavailableReason: string | null;
+  basis: string | null;
 }) {
   return (
     <div className="mt-8">
-      <h3 className="text-lg font-semibold">
-        Heatwave Events
-      </h3>
+      <h3 className="text-lg font-semibold">Heatwave Events</h3>
+      {basis && (
+        <p className="mt-1 text-xs text-slate-500">
+          Temperature basis: <span className="font-mono">{basis}</span>
+        </p>
+      )}
 
       {!available ? (
         <p className="mt-3 text-sm text-amber-300">
-          Heatwave analysis is unavailable for
-          this sampling configuration.
+          Heatwave analysis is unavailable for this result
+          {unavailableReason ? `: ${unavailableReason}` : "."}
         </p>
       ) : events.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">
-          No qualifying heatwave event was
-          detected.
-        </p>
+        <p className="mt-3 text-sm text-slate-500">No qualifying heatwave event was detected.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
           <table className="min-w-[65rem] w-full text-left text-sm">

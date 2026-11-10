@@ -132,6 +132,19 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
           onChange={(v) => update("ground_albedo", v)}
         />
 
+        {/* ★ 新增：Hourly irradiance convention（放在 Ground albedo 之後） */}
+        <SelectField
+          label="Hourly irradiance convention"
+          value={value.radiation_time_convention}
+          disabled={disabled}
+          options={[
+            { value: "preceding_hour_mean_step", label: "Preceding-hour mean (energy-conserving)" },
+            { value: "instantaneous_linear", label: "Instantaneous, linear (legacy approximation)" },
+          ]}
+          hint="Open-Meteo stamps each hourly value as the mean over the preceding hour. The linear option shifts the solar profile by up to 30 min."
+          onChange={(v) => update("radiation_time_convention", v)}
+        />
+
         <NumberField
           label="Wind scaling (10 m → body)"
           value={value.wind_speed_scaling_factor}

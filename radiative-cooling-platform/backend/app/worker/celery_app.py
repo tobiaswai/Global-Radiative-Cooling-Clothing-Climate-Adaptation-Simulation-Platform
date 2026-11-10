@@ -8,9 +8,7 @@ celery_app = Celery(
     "radiative_cooling_worker",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=[
-        "app.worker.tasks",
-    ],
+    include=["app.worker.tasks", "app.worker.optimization_tasks"],
 )
 
 celery_app.conf.update(
@@ -29,22 +27,30 @@ celery_app.conf.update(
         Queue("default"),
         Queue("global_standard"),
         Queue("global_large"),
+        Queue("optimization"),
     ),
     task_default_queue="default",
     task_routes={
-        "simulation.run_weather": {
-            "queue": "default",
-        },
-        "global_batch.run_city": {
-            "queue": "global_standard",
-        },
+        "simulation.run_weather": {"queue": "default"},
+        "global_batch.run_city": {"queue": "global_standard"},
+        "optimization.run": {"queue": "optimization"},
     },
 )
 
+# One entry per reaper task. Two entries pointing at the same task run it twice.
 celery_app.conf.beat_schedule = {
-    "reap-expired-leases": {
-        # Must match the explicit task name below; a wrong name is silently dropped.
+    "reap-expired-city-leases": {
         "task": "global_batch.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
+    "reap-expired-job-leases": {
+        "task": "simulation.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
+    "reap-expired-optimization-leases": {
+        "task": "optimization.reap_expired_leases",
         "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
         "options": {"queue": "default"},
     },

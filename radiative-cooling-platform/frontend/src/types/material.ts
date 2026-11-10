@@ -108,3 +108,11 @@ export type MaterialVersionListResponse = {
   limit: number;
   offset: number;
 };
+
+/** PATCH /materials/{id}. Omit a key to keep it; null clears optional text. */
+export type MaterialUpdate = {
+  name?: string;
+  description?: string | null;
+  institution?: string | null;
+  is_archived?: boolean;
+};

@@ -12,6 +12,7 @@ import type { SimulationJob } from "@/types/simulation";
 import type {
   Material,
 } from "@/types/material";
+import { MaterialHeader } from "@/components/materials/material-header";
 
 type SpectrumType =
   | "solar_reflectance"
@@ -159,31 +160,7 @@ function MaterialDetailContent({
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header>
-          <p className="text-sm text-cyan-400">
-            Material Detail
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            {material.name}
-          </h1>
-
-          <p className="mt-2 text-slate-400">
-            {material.description ||
-              "Material description not available"}
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
-            <span>
-              Slug：{material.slug}
-            </span>
-
-            <span>
-              Institution:
-              {material.institution ?? "—"}
-            </span>
-          </div>
-        </header>
+        <MaterialHeader material={material} onUpdated={setMaterial} />
 
         {error && (
           <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">

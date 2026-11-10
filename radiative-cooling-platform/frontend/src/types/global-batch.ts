@@ -129,7 +129,8 @@ export type MonthlyAdaptationResult = {
   beneficial_weighted_days: number;
 
   exposure_coverage_percent: number;
-
+  skipped_weighted_days?: number;
+  
   climate_adaptation_rate_percent:
     | number
     | null;
@@ -184,15 +185,17 @@ export type HeatwaveEvent = {
 export type LeaseState = "none" | "live" | "expired";
 
 export type DataQualityInfo = {
-  weather_source: string;            // e.g. "open-meteo" | "cache" | "synthetic_fallback"
-  cached_sample_count: number;
-  fetched_sample_count: number;
   skipped_sample_count: number;
-  coverage_ratio: number;            // 0–1
-  warnings: string[];
-  skipped_weighted_days?: number | null;
-  skip_reasons?: Record<string, number>;
-  monthly_weather_payload_sha256?: Record<string, string | null>;
+  skipped_weighted_days: number;
+  skip_reasons: Record<string, number>;
+  monthly_weather_payload_sha256: Record<string, string | null>;
+  /** Stage 9 */
+  checkpoints_discarded?: Array<{ month: number; reason: string }>;
+  checkpoint_provenance?: {
+    model_version: string;
+    parameter_fingerprint: string;
+    request_sha256: string;
+  };
 };
 
 export type MetricDefinition = {
@@ -324,6 +327,11 @@ export type GlobalCityResult = {
   checkpoint_months?: number[];
   data_quality?: DataQualityInfo | null;
   metric_definitions?: Record<string, MetricDefinition> | null;
+
+  // Stage 9
+  heatwave_analysis_available?: boolean | null;
+  heatwave_unavailable_reason?: string | null;
+  heatwave_temperature_basis?: string | null;
 };
 
 
@@ -389,6 +397,10 @@ export type CityCheckpoint = {
   payload_sha256: string;
   sampled_day_count: number;
   skipped_sample_count: number;
+  model_version?: string | null;
+  parameter_fingerprint?: string | null;
+  provenance_matches_batch?: boolean;
+  mismatch_reason?: string | null;
 };
 
 export type CityCheckpointList = {

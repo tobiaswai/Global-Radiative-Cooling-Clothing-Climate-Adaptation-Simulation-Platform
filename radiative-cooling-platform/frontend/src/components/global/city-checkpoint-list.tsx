@@ -63,6 +63,7 @@ export function CityCheckpointList({ batchId, cityResultId, version }: Props) {
                 <th className="px-4 py-3">Skipped</th>
                 <th className="px-4 py-3">Written</th>
                 <th className="px-4 py-3">Payload SHA-256</th>
+                <th className="px-4 py-3">Provenance</th>
               </tr>
             </thead>
             <tbody>
@@ -79,6 +80,20 @@ export function CityCheckpointList({ batchId, cityResultId, version }: Props) {
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-400" title={item.payload_sha256}>
                     {item.payload_sha256.slice(0, 16)}…
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.provenance_matches_batch ? (
+                      <span className="rounded-full border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-xs text-emerald-300">
+                        {item.model_version}
+                      </span>
+                    ) : (
+                      <span
+                        title={item.mismatch_reason ?? undefined}
+                        className="rounded-full border border-amber-800 bg-amber-950 px-2 py-0.5 text-xs text-amber-300"
+                      >
+                        {item.model_version ?? "legacy"} · not resumable
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

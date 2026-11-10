@@ -19,7 +19,6 @@ from datetime import datetime, timedelta
 from typing import Any, TypedDict
 
 from app.core.cities import get_city
-from app.schemas import simulation
 from app.schemas.global_batch import (
     DailyAdaptationResult,
     GlobalBatchCreate,
@@ -36,7 +35,6 @@ from app.services.climate_analytics import build_city_analytics
 from app.services.exposure_statistics import (
     compute_daily_maximum_air_temperature,
     compute_exposure_window_statistics,
-    time_weighted_mean,
 )
 from app.services.scenario_summary import pair_scenarios
 from app.services.weather import (
@@ -416,54 +414,20 @@ async def analyze_city_climate_adaptation(
                 completed_sample_count += 1
                 continue
             
-            paired = pair_scenarios(
-                simulation.control, simulation.radiative_cooling
-            )
-            average_skin_improvement_c = paired.average_skin_c
-            average_core_improvement_c = paired.average_core_c
-            maximum_skin_improvement_c = paired.maximum_skin_c
-            final_skin_improvement_c = paired.final_skin_c
-            
-            paired_points = list(
-                zip(
-                    simulation.control.time_series,
-                    simulation.radiative_cooling.time_series,
-                    strict=True,
-                )
-            )
+            paired = pair_scenarios(simulation.control, simulation.radiative_cooling)
 
-            if not paired_points:
-                raise RuntimeError("Simulation returned no paired points")
-
-            minutes = [control.minute for control, _ in paired_points]
-
-            skin_improvements = [
-                control.skin_temperature_c - radiative.skin_temperature_c
-                for control, radiative in paired_points
-            ]
-
-            core_improvements = [
-                control.core_temperature_c - radiative.core_temperature_c
-                for control, radiative in paired_points
-            ]
-
-            # Exposure statistics strictly over [start, start + duration].
             exposure = compute_exposure_window_statistics(sample_weather)
-
             daily_maximum_air_temperature_c = compute_daily_maximum_air_temperature(
                 month_weather,
                 local_date=sample_day.date_local,
                 timezone_name=city.timezone,
             )
 
-            average_skin_improvement_c = time_weighted_mean(
-                minutes, skin_improvements
-            )
-            average_core_improvement_c = time_weighted_mean(
-                minutes, core_improvements
-            )
-            maximum_skin_improvement_c = max(skin_improvements)
-
+            average_skin_improvement_c = paired.average_skin_c
+            average_core_improvement_c = paired.average_core_c
+            maximum_skin_improvement_c = paired.maximum_skin_c
+            final_skin_improvement_c = paired.final_skin_c
+            
             exposure_eligible = is_exposure_eligible(
                 mean_air_temperature_c=exposure.mean_air_temperature_c,
                 mean_solar_radiation_w_m2=exposure.mean_solar_radiation_w_m2,

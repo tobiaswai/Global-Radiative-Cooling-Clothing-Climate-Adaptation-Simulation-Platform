@@ -16,8 +16,16 @@ import type {
 import type { OpsStatus } from "@/types/ops";
 
 import type {
+  OptimizationCreate,
+  OptimizationEstimate,
+  OptimizationJob,
+  OptimizationJobDetail,
+  OptimizationJobList,
+} from "@/types/optimization";
+
+import type {
   Material, MaterialCreate, MaterialListResponse,
-  MaterialVersionListResponse,
+  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
 } from "@/types/material";
 import type {
   City,
@@ -71,6 +79,15 @@ async function getErrorMessage(
     if (typeof detail === "object" && detail !== null && "message" in detail) {
       const { code, message } = detail as { code?: string; message?: string };
       return code ? `${message} [${code}]` : String(message);
+    }
+
+    if (Array.isArray(detail)) {
+      return (detail as Array<{ loc?: unknown[]; msg?: string }>)
+        .map((item) => {
+          const loc = (item.loc ?? []).filter((part) => part !== "body").join(".");
+          return loc ? `${loc}: ${item.msg}` : String(item.msg ?? JSON.stringify(item));
+        })
+        .join("; ");
     }
 
     if (typeof detail === "string") {
@@ -333,25 +350,72 @@ export function getSimulationEventsUrl(
 
 export async function getMaterials(
   search = "",
+  includeArchived = false,
 ): Promise<MaterialListResponse> {
   const parameters = new URLSearchParams();
+  if (search) parameters.set("search", search);
+  if (includeArchived) parameters.set("include_archived", "true");
 
-  if (search) {
-    parameters.set("search", search);
+  const response = await fetch(`${API_BASE_URL}/api/v1/materials?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch material list"));
   }
 
+  return response.json() as Promise<MaterialListResponse>;
+}
+
+export async function updateMaterial(
+  materialId: string,
+  update: MaterialUpdate,
+): Promise<Material> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials?${parameters}`,
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
     {
-      cache: "no-store",
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
     },
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch material list");
+    throw new Error(await getErrorMessage(response, "Failed to update material"));
   }
 
-  return response.json();
+  return response.json() as Promise<Material>;
+}
+
+export async function deleteMaterial(materialId: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
+    { method: "DELETE" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to delete material"));
+  }
+}
+
+export async function createMaterialVersion(
+  materialId: string,
+  version: MaterialVersionInput,
+): Promise<MaterialVersion> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}/versions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(version),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to create material version"));
+  }
+
+  return response.json() as Promise<MaterialVersion>;
 }
 
 
@@ -762,4 +826,70 @@ export async function getOpsStatus(): Promise<OpsStatus> {
   }
 
   return response.json() as Promise<OpsStatus>;
+}
+
+async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await getErrorMessage(response, fallback));
+  return response.json() as Promise<T>;
+}
+
+export function estimateOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationEstimate>(
+    "/api/v1/optimizations/estimate",
+    request,
+    "Unable to estimate optimization",
+  );
+}
+
+export function createOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationJob>(
+    "/api/v1/optimizations",
+    request,
+    "Unable to create optimization",
+  );
+}
+
+export async function cancelOptimization(id: string): Promise<OptimizationJob> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}/cancel`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to cancel optimization"));
+  }
+  return response.json() as Promise<OptimizationJob>;
+}
+
+export async function listOptimizations(
+  limit = 20,
+  offset = 0,
+): Promise<OptimizationJobList> {
+  const parameters = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations?${parameters}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimizations"));
+  }
+  return response.json() as Promise<OptimizationJobList>;
+}
+
+export async function getOptimization(id: string): Promise<OptimizationJobDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimization"));
+  }
+  return response.json() as Promise<OptimizationJobDetail>;
 }

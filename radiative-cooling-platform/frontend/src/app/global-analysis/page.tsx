@@ -15,6 +15,8 @@ import {
 } from "@/lib/api-client";
 
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 
 import type {
   AnalysisResolution,
@@ -68,7 +70,7 @@ const initialRequest: GlobalBatchCreate = {
 
   person: {
     met: 2,
-    body_mass_kg: 70,            // ← 加這行
+    body_mass_kg: 70,
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
@@ -78,7 +80,7 @@ const initialRequest: GlobalBatchCreate = {
   control_material: {
     name: "Conventional clothing",
     clothing_insulation_clo: 0.5,
-    clothing_area_factor: null,  // ← 加這行
+    clothing_area_factor: null,
     solar_reflectance: 0.3,
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
@@ -88,7 +90,7 @@ const initialRequest: GlobalBatchCreate = {
   rc_material: {
     name: "Radiative cooling clothing",
     clothing_insulation_clo: 0.4,
-    clothing_area_factor: null,  // ← 加這行
+    clothing_area_factor: null,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
@@ -371,27 +373,31 @@ export default function GlobalAnalysisPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <header>
-          <p className="text-sm font-medium text-cyan-400">
-            Global Analysis
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            Global Climate Adaptation Analysis
-          </h1>
-          <Link href="/global-analysis/batches" className="mt-4 inline-block text-sm text-cyan-300 hover:underline">
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-cyan-400">
+              Global Analysis
+            </p>
+            <h1 className="mt-2 text-3xl font-bold">
+              Global Climate Adaptation Analysis
+            </h1>
+            <p className="mt-3 max-w-4xl leading-7 text-slate-400">
+              Run representative-day or daily
+              radiative-cooling analyses across
+              multiple cities. Long-running jobs
+              support monthly checkpoints,
+              cooperative cancellation, queue
+              selection, percentile analytics, and
+              heatwave event analysis.
+            </p>
+          </div>
+          <Link
+            href="/global-analysis/batches"
+            className="text-sm text-cyan-300 hover:underline"
+          >
             View previous batches →
           </Link>
-          <p className="mt-3 max-w-4xl leading-7 text-slate-400">
-            Run representative-day or daily
-            radiative-cooling analyses across
-            multiple cities. Long-running jobs
-            support monthly checkpoints,
-            cooperative cancellation, queue
-            selection, percentile analytics, and
-            heatwave event analysis.
-          </p>
         </header>
 
         {error && (
@@ -811,37 +817,94 @@ export default function GlobalAnalysisPage() {
             )}
         </section>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-              <h2 className="text-lg font-semibold">Control Clothing</h2>
-              <div className="mt-4">
-                <MaterialInputFields
-                  material={request.control_material}
-                  showName
-                  enableLibrary
-                  disabled={submitting}
-                  onChange={(control_material) =>
-                    setRequest((current) => ({ ...current, control_material }))
-                  }
-                />
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
-              <div className="mt-4">
-                <MaterialInputFields
-                  material={request.rc_material}
-                  showName
-                  enableLibrary
-                  disabled={submitting}
-                  onChange={(rc_material) =>
-                    setRequest((current) => ({ ...current, rc_material }))
-                  }
-                />
-              </div>
-            </section>
+        {/* Person */}
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">
+            Person
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Applied to every sampled day in every
+            city. Body mass sets the core and skin
+            heat capacities.
+          </p>
+          <div className="mt-4">
+            <PersonInputFields
+              person={request.person}
+              disabled={submitting}
+              onChange={(person) =>
+                setRequest((current) => ({
+                  ...current,
+                  person,
+                }))
+              }
+            />
           </div>
+        </section>
+
+        {/* Environment Assumptions */}
+        <div className="mt-6">
+          <EnvironmentAssumptionsFields
+            value={
+              request.environment_assumptions ??
+              DEFAULT_ENVIRONMENT_ASSUMPTIONS
+            }
+            disabled={submitting}
+            onChange={(
+              environment_assumptions,
+            ) =>
+              setRequest((current) => ({
+                ...current,
+                environment_assumptions,
+              }))
+            }
+          />
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              Control Clothing
+            </h2>
+            <div className="mt-4">
+              <MaterialInputFields
+                material={
+                  request.control_material
+                }
+                showName
+                enableLibrary
+                disabled={submitting}
+                onChange={(
+                  control_material,
+                ) =>
+                  setRequest((current) => ({
+                    ...current,
+                    control_material,
+                  }))
+                }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              Radiative Cooling Clothing
+            </h2>
+            <div className="mt-4">
+              <MaterialInputFields
+                material={request.rc_material}
+                showName
+                enableLibrary
+                disabled={submitting}
+                onChange={(rc_material) =>
+                  setRequest((current) => ({
+                    ...current,
+                    rc_material,
+                  }))
+                }
+              />
+            </div>
+          </section>
+        </div>
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -970,89 +1033,95 @@ export default function GlobalAnalysisPage() {
           <h2 className="text-xl font-semibold">
             Workload Estimate
           </h2>
-            {!canEstimate ? (
-              <p className="mt-4 text-slate-400">
-                {request.city_ids.length === 0
-                  ? "Select at least one city to calculate the workload."
-                  : "Start month must be less than or equal to end month."}
-              </p>
-            ) : estimating ? (
-              <p className="mt-4 text-slate-400">
-                Calculating workload...
-              </p>
-            ) : estimate ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <EstimateMetric
-                  label="Cities"
-                  value={String(estimate.city_count)}
-                />
+          {!canEstimate ? (
+            <p className="mt-4 text-slate-400">
+              {request.city_ids.length === 0
+                ? "Select at least one city to calculate the workload."
+                : "Start month must be less than or equal to end month."}
+            </p>
+          ) : estimating ? (
+            <p className="mt-4 text-slate-400">
+              Calculating workload...
+            </p>
+          ) : estimate ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <EstimateMetric
+                label="Cities"
+                value={String(
+                  estimate.city_count,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Samples per City"
-                  value={String(
-                    estimate.samples_per_city,
-                  )}
-                />
+              <EstimateMetric
+                label="Samples per City"
+                value={String(
+                  estimate.samples_per_city,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Total Samples"
-                  value={String(
-                    estimate.total_samples,
-                  )}
-                />
+              <EstimateMetric
+                label="Total Samples"
+                value={String(
+                  estimate.total_samples,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Thermal Simulations"
-                  value={String(
-                    estimate.thermal_simulation_count,
-                  )}
-                />
+              <EstimateMetric
+                label="Thermal Simulations"
+                value={String(
+                  estimate.thermal_simulation_count,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Weather Requests"
-                  value={String(
-                    estimate.estimated_weather_requests,
-                  )}
-                />
+              <EstimateMetric
+                label="Weather Requests"
+                value={String(
+                  estimate.estimated_weather_requests,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Resolved Profile"
-                  value={formatLabel(
-                    estimate.resolved_execution_profile,
-                  )}
-                />
+              <EstimateMetric
+                label="Resolved Profile"
+                value={formatLabel(
+                  estimate.resolved_execution_profile,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Celery Queue"
-                  value={estimate.resolved_queue}
-                />
+              <EstimateMetric
+                label="Celery Queue"
+                value={
+                  estimate.resolved_queue
+                }
+              />
 
-                <EstimateMetric
-                  label="Monthly Checkpoints"
-                  value={
-                    `${estimate.checkpoint_count_per_city}` +
-                    " per city"
-                  }
-                />
+              <EstimateMetric
+                label="Monthly Checkpoints"
+                value={
+                  `${estimate.checkpoint_count_per_city}` +
+                  " per city"
+                }
+              />
 
-                <EstimateMetric
-                  label="Heatwave Analysis"
-                  value={
-                    estimate.heatwave_analysis_available
-                      ? "Available"
-                      : "Unavailable"
-                  }
-                />
-              </div>
-            ) : estimateState?.status === "error" ? (
-              <p className="mt-4 text-amber-300">
-                Unable to calculate the workload estimate.
-              </p>
-            ) : (
-              <p className="mt-4 text-slate-400">
-                Preparing workload estimate...
-              </p>
-            )}
+              <EstimateMetric
+                label="Heatwave Analysis"
+                value={
+                  estimate.heatwave_analysis_available
+                    ? "Available"
+                    : "Unavailable"
+                }
+              />
+            </div>
+          ) : estimateState?.status ===
+            "error" ? (
+            <p className="mt-4 text-amber-300">
+              Unable to calculate the workload
+              estimate.
+            </p>
+          ) : (
+            <p className="mt-4 text-slate-400">
+              Preparing workload estimate...
+            </p>
+          )}
         </section>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
@@ -1095,6 +1164,10 @@ function validateRequest(
     return "Select at least one city.";
   }
 
+  if (request.city_ids.length > 100) {
+    return "A batch supports at most 100 cities.";
+  }
+
   if (
     request.start_month >
     request.end_month
@@ -1113,6 +1186,28 @@ function validateRequest(
       "Output interval cannot exceed " +
       "the simulation duration."
     );
+  }
+
+  if (
+    request.local_start_hour * 60 +
+      request.duration_minutes >
+    48 * 60
+  ) {
+    return "The exposure window must end within the following day.";
+  }
+
+  if (
+    request.person.initial_skin_temperature_c >
+    request.person.initial_core_temperature_c
+  ) {
+    return "Initial skin temperature should not exceed initial core temperature.";
+  }
+
+  if (
+    request.enable_heatwave_analysis &&
+    request.heatwave_minimum_consecutive_days < 2
+  ) {
+    return "A heatwave needs at least two consecutive days.";
   }
 
   return null;

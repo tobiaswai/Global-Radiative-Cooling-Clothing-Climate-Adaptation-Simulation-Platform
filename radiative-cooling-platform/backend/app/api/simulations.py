@@ -14,6 +14,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 from app.services.scenario_summary import build_simulation_summary
+from app.services.leases import db_now
 
 from app.core.cities import get_city
 from app.db.session import SessionLocal, get_db
@@ -250,12 +251,10 @@ def list_simulation_jobs(
         .offset(offset)
         .limit(limit)
     ).all()
+    now = db_now(session)
 
     return SimulationJobListResponse(
-        items=[
-            job_to_response(job)
-            for job in jobs
-        ],
+        items=[job_to_response(job, now=now) for job in jobs],
         total=total,
         limit=limit,
         offset=offset,
@@ -280,7 +279,7 @@ def get_simulation_job(
             detail="Unable to find simulation job",
         )
 
-    return job_to_detail(job)
+    return job_to_detail(job, now=db_now(session))
 
 @router.get(
     "/jobs/{job_id}/result",

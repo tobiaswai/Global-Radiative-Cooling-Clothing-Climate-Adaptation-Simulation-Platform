@@ -492,3 +492,8 @@ class GlobalCityCheckpoint(Base):
     city_result: Mapped["GlobalCityResult"] = relationship(
         back_populates="checkpoints",
     )
+    # Stage 9. Provenance of the computation that produced this row.
+    # NULL on rows written before Stage 9; such rows are never resumed from.
+    model_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    parameter_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    request_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)

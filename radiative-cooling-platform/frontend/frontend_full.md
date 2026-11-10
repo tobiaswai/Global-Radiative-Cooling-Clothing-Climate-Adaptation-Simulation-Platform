@@ -12,12 +12,15 @@ frontend/README.md
 frontend/.env.example
 frontend/src/app/benchmarks/gagge/page.tsx
 frontend/src/app/global-analysis/[batchId]/page.tsx
+frontend/src/app/global-analysis/batches/page.tsx
 frontend/src/app/global-analysis/page.tsx
 frontend/src/app/globals.css
 frontend/src/app/layout.tsx
 frontend/src/app/materials/[materialId]/page.tsx
+frontend/src/app/materials/[materialId]/versions/new/page.tsx
 frontend/src/app/materials/new/page.tsx
 frontend/src/app/materials/page.tsx
+frontend/src/app/ops/page.tsx
 frontend/src/app/page.tsx
 frontend/src/app/simulations/[jobId]/page.tsx
 frontend/src/app/simulations/new/page.tsx
@@ -31,7 +34,14 @@ frontend/src/components/charts/weather-chart.tsx
 frontend/src/components/forms/number-field.tsx
 frontend/src/components/forms/select-field.tsx
 frontend/src/components/global-adaptation-map.tsx
+frontend/src/components/global/batch-reliability-panel.tsx
+frontend/src/components/global/checkpoint-timeline.tsx
+frontend/src/components/global/city-checkpoint-list.tsx
+frontend/src/components/global/data-quality-panel.tsx
+frontend/src/components/global/lease-badge.tsx
 frontend/src/components/layout/NavBar.tsx
+frontend/src/components/materials/material-header.tsx
+frontend/src/components/materials/material-version-fields.tsx
 frontend/src/components/materials/provenance-editor.tsx
 frontend/src/components/simulation/environment-assumptions-fields.tsx
 frontend/src/components/simulation/environment-input-fields.tsx
@@ -40,19 +50,29 @@ frontend/src/components/simulation/material-version-picker.tsx
 frontend/src/components/simulation/model-provenance-panel.tsx
 frontend/src/components/simulation/model-quality-panel.tsx
 frontend/src/components/simulation/person-input-fields.tsx
+frontend/src/components/simulation/weather-quality-panel.tsx
 frontend/src/config/navigation.ts
 frontend/src/lib/api-client.ts
+frontend/src/lib/checkpoint-cells.test.ts
+frontend/src/lib/checkpoint-cells.ts
 frontend/src/lib/date-defaults.test.ts
 frontend/src/lib/date-defaults.ts
 frontend/src/lib/environment-assumptions.ts
 frontend/src/lib/format.test.ts
 frontend/src/lib/format.ts
+frontend/src/lib/global-batch-progress.test.ts
+frontend/src/lib/global-batch-progress.ts
+frontend/src/lib/relative-time.test.ts
+frontend/src/lib/relative-time.ts
 frontend/src/lib/time-series.test.ts
 frontend/src/lib/time-series.ts
+frontend/src/lib/use-global-batch.ts
+frontend/src/lib/use-simulation-job.ts
 frontend/src/locales/en.ts
 frontend/src/types/benchmark.ts
 frontend/src/types/global-batch.ts
 frontend/src/types/material.ts
+frontend/src/types/ops.ts
 frontend/src/types/simulation.ts
 
 # public/ (names only)
@@ -801,29 +821,27 @@ function PortParityPanel({ result }: { result: GaggeBenchmarkResponse }) {
 ### File: `frontend/src/app/global-analysis/[batchId]/page.tsx`
 ```tsx
 "use client";
+
 import Link from "next/link";
-
 import dynamic from "next/dynamic";
-
 import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
+import { BatchReliabilityPanel } from "@/components/global/batch-reliability-panel";
+import { CheckpointTimeline } from "@/components/global/checkpoint-timeline";
+import { CityCheckpointList } from "@/components/global/city-checkpoint-list";
+import { DataQualityPanel } from "@/components/global/data-quality-panel";
+import { LeaseBadge } from "@/components/global/lease-badge";
 import {
   cancelGlobalBatch,
-  getGlobalBatch,
   getGlobalBatchExportUrl,
   getGlobalBatchGeoJson,
   retryFailedGlobalBatchCities,
 } from "@/lib/api-client";
-
+import { isTerminalBatchStatus } from "@/lib/global-batch-progress";
+import { useGlobalBatch } from "@/lib/use-global-batch";
 import type {
   GeoJsonFeatureCollection,
-  GlobalBatchDetail,
   GlobalCityResult,
   HeatwaveEvent,
 } from "@/types/global-batch";
@@ -845,298 +863,89 @@ const GlobalAdaptationMap = dynamic(
   },
 );
 
-
-const terminalStatuses =
-  new Set<string>([
-    "completed",
-    "partial_completed",
-    "failed",
-    "cancelled",
-  ]);
-
-
 export default function GlobalBatchPage() {
-  const parameters = useParams<{
-    batchId: string;
-  }>();
+  const parameters = useParams<{ batchId: string }>();
+  const batchId = parameters.batchId;
 
-  const [
-    batch,
-    setBatch,
-  ] = useState<GlobalBatchDetail | null>(
-    null,
-  );
+  const { batch, error, setError, transport, refresh, resubscribe } = useGlobalBatch(batchId);
 
-  const [
-    geoJson,
-    setGeoJson,
-  ] =
-    useState<GeoJsonFeatureCollection | null>(
-      null,
-    );
+  const [geoJson, setGeoJson] = useState<GeoJsonFeatureCollection | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  const [
-    selectedCityId,
-    setSelectedCityId,
-  ] = useState<string | null>(null);
+  const completedCityCount = batch?.completed_city_count ?? 0;
 
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const [
-    pollingRevision,
-    setPollingRevision,
-  ] = useState(0);
-
-  const [
-    isCancelling,
-    setIsCancelling,
-  ] = useState(false);
-
-  const [
-    isRetrying,
-    setIsRetrying,
-  ] = useState(false);
-
+  // Synchronise with the GeoJSON endpoint. Re-runs only when a city completes
+  // (keyed on the count, not on every heartbeat). The only setState here is in
+  // the fetch callback, i.e. after the external system answered.
   useEffect(() => {
-    let disposed = false;
-    let timer: number | null = null;
-
-    async function load() {
-      try {
-        const response =
-          await getGlobalBatch(
-            parameters.batchId,
-          );
-
-        if (disposed) {
-          return;
-        }
-
-        setBatch(response);
-        setError("");
-
-        if (
-          response.completed_city_count > 0
-        ) {
-          try {
-            const mapData =
-              await getGlobalBatchGeoJson(
-                parameters.batchId,
-              );
-
-            if (!disposed) {
-              setGeoJson(mapData);
-            }
-          } catch (mapError) {
-            if (!disposed) {
-              setError(
-                getErrorMessage(
-                  mapError,
-                  "Unable to load global map data.",
-                ),
-              );
-            }
-          }
-        } else {
-          setGeoJson(null);
-        }
-
-        if (
-          !terminalStatuses.has(
-            response.status,
-          )
-        ) {
-          timer = window.setTimeout(
-            load,
-            3000,
-          );
-        }
-      } catch (caughtError) {
-        if (disposed) {
-          return;
-        }
-
-        setError(
-          getErrorMessage(
-            caughtError,
-            "Unable to load the global analysis.",
-          ),
-        );
-
-        timer = window.setTimeout(
-          load,
-          5000,
-        );
-      }
+    if (completedCityCount === 0) {
+      return;
     }
 
-    void load();
+    let disposed = false;
+
+    getGlobalBatchGeoJson(batchId)
+      .then((data) => {
+        if (!disposed) setGeoJson(data);
+      })
+      .catch((caught: unknown) => {
+        if (!disposed) setError(getErrorMessage(caught, "Unable to load global map data."));
+      });
 
     return () => {
       disposed = true;
-
-      if (timer !== null) {
-        window.clearTimeout(timer);
-      }
     };
-  }, [
-    parameters.batchId,
-    pollingRevision,
-  ]);
+  }, [batchId, completedCityCount, setError]);
 
-  const selectedCity = useMemo(() => {
-    if (!batch || !selectedCityId) {
-      return null;
-    }
+  const mapData = completedCityCount > 0 ? geoJson : null;
 
-    return (
-      batch.city_results.find(
-        (result) =>
-          result.id === selectedCityId,
-      ) ?? null
-    );
-  }, [
-    batch,
-    selectedCityId,
-  ]);
+  const selectedCity = useMemo(
+    () => batch?.city_results.find((result) => result.id === selectedCityId) ?? null,
+    [batch, selectedCityId],
+  );
 
   const completedResults = useMemo(
-    () =>
-      batch?.city_results.filter(
-        (result) =>
-          result.status === "completed",
-      ) ?? [],
+    () => batch?.city_results.filter((result) => result.status === "completed") ?? [],
     [batch],
   );
 
   const aggregateMetrics = useMemo(
     () => ({
-      meanExposureCoverage:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .exposure_coverage_percent,
-          ),
-        ),
-
-      meanAdaptationRate:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .climate_adaptation_rate_percent,
-          ),
-        ),
-
-      meanSkinCooling:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .annual_average_skin_improvement_c,
-          ),
-        ),
-
-      meanSkinP90:
-        calculateMean(
-          completedResults.map(
-            (result) =>
-              result
-                .skin_improvement_p90_c,
-          ),
-        ),
-
-      totalHeatwaveEvents:
-        completedResults.reduce(
-          (total, result) =>
-            total +
-            (result.heatwave_event_count ??
-              0),
-          0,
-        ),
+      meanExposureCoverage: calculateMean(completedResults.map((r) => r.exposure_coverage_percent)),
+      meanAdaptationRate: calculateMean(completedResults.map((r) => r.climate_adaptation_rate_percent)),
+      meanSkinCooling: calculateMean(completedResults.map((r) => r.annual_average_skin_improvement_c)),
+      meanSkinP90: calculateMean(completedResults.map((r) => r.skin_improvement_p90_c)),
+      totalHeatwaveEvents: completedResults.reduce((t, r) => t + (r.heatwave_event_count ?? 0), 0),
     }),
     [completedResults],
   );
 
-  async function refreshBatch() {
-    const updated =
-      await getGlobalBatch(
-        parameters.batchId,
-      );
-
-    setBatch(updated);
-
-    if (
-      updated.completed_city_count > 0
-    ) {
-      const mapData =
-        await getGlobalBatchGeoJson(
-          parameters.batchId,
-        );
-
-      setGeoJson(mapData);
-    } else {
-      setGeoJson(null);
-    }
-
-    return updated;
-  }
-
   async function cancelBatch() {
-    if (isCancelling) {
-      return;
-    }
-
+    if (isCancelling) return;
     try {
       setIsCancelling(true);
       setError("");
-
-      await cancelGlobalBatch(
-        parameters.batchId,
-      );
-
-      await refreshBatch();
-    } catch (caughtError) {
-      setError(
-        getErrorMessage(
-          caughtError,
-          "Unable to cancel the analysis batch.",
-        ),
-      );
+      await cancelGlobalBatch(batchId);
+      await refresh();
+    } catch (caught) {
+      setError(getErrorMessage(caught, "Unable to cancel the analysis batch."));
     } finally {
       setIsCancelling(false);
     }
   }
 
   async function retryFailedCities() {
-    if (isRetrying) {
-      return;
-    }
-
+    if (isRetrying) return;
     try {
       setIsRetrying(true);
       setError("");
-
-      await retryFailedGlobalBatchCities(
-        parameters.batchId,
-      );
-
-      await refreshBatch();
-
-      setPollingRevision(
-        (current) => current + 1,
-      );
-    } catch (caughtError) {
-      setError(
-        getErrorMessage(
-          caughtError,
-          "Unable to retry failed cities.",
-        ),
-      );
+      await retryFailedGlobalBatchCities(batchId);
+      await refresh();
+      resubscribe(); // batch left its terminal state; reopen the stream
+    } catch (caught) {
+      setError(getErrorMessage(caught, "Unable to retry failed cities."));
     } finally {
       setIsRetrying(false);
     }
@@ -1147,115 +956,70 @@ export default function GlobalBatchPage() {
       <main className="min-h-screen bg-slate-950 p-10 text-white">
         <div className="mx-auto max-w-7xl">
           {error ? (
-            <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-              {error}
-            </div>
+            <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
           ) : (
-            <p className="text-slate-400">
-              Loading global analysis...
-            </p>
+            <p className="text-slate-400">Loading global analysis...</p>
           )}
         </div>
       </main>
     );
   }
 
-  const isTerminal =
-    terminalStatuses.has(batch.status);
-
+  const isTerminal = isTerminalBatchStatus(batch.status);
   const canRetry =
     isTerminal &&
     batch.failed_city_count > 0 &&
-    (
-      batch.status ===
-        "partial_completed" ||
-      batch.status === "failed"
-    );
+    (batch.status === "partial_completed" || batch.status === "failed");
 
-  const analysisResolution =
-    batch.request.analysis_resolution ??
-    "representative";
-
-  const analysisResolutionLabel =
-    analysisResolution === "daily"
-      ? "Daily"
-      : "Representative Days";
-
+  const analysisResolution = batch.request.analysis_resolution ?? "representative";
+  const analysisResolutionLabel = analysisResolution === "daily" ? "Daily" : "Representative Days";
   const samplingLabel =
     analysisResolution === "daily"
-      ? `Every ${
-          batch.request.daily_stride_days ??
-          1
-        } day(s)`
-      : `${
-          batch.request
-            .sample_days_per_month ?? 1
-        } day(s) per month`;
-
+      ? `Every ${batch.request.daily_stride_days ?? 1} day(s)`
+      : `${batch.request.sample_days_per_month ?? 1} day(s) per month`;
   const heatwaveAvailable =
-    batch.request
-      .enable_heatwave_analysis &&
+    batch.request.enable_heatwave_analysis &&
     analysisResolution === "daily" &&
-    (
-      batch.request.daily_stride_days ??
-      1
-    ) === 1;
+    (batch.request.daily_stride_days ?? 1) === 1;
+
+  const startMonth = batch.request.start_month ?? 1;
+  const endMonth = batch.request.end_month ?? 12;
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-[95rem] px-6 py-10">
         <nav className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-          <Link href="/global-analysis" className="hover:text-slate-100">
-            Global Analysis
-          </Link>
+          <Link href="/global-analysis" className="hover:text-slate-100">Global Analysis</Link>
+          <span>/</span>
+          <Link href="/global-analysis/batches" className="hover:text-slate-100">Batches</Link>
           <span>/</span>
           <span className="text-slate-200">Batch Result</span>
         </nav>
+
         <header className="flex flex-wrap items-start justify-between gap-5">
           <div>
-            <p className="text-sm font-medium text-cyan-400">
-              Global Analysis
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold">
-              {batch.request.name}
-            </h1>
-
+            <p className="text-sm font-medium text-cyan-400">Global Analysis</p>
+            <h1 className="mt-2 text-3xl font-bold">{batch.request.name}</h1>
             <p className="mt-3 text-sm text-slate-400">
-              Batch ID:{" "}
-              <span className="font-mono text-slate-300">
-                {batch.id}
-              </span>
+              Batch ID: <span className="font-mono text-slate-300">{batch.id}</span>
             </p>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Created{" "}
-              {formatDateTime(
-                batch.created_at,
-              )}
-            </p>
+            <p className="mt-1 text-sm text-slate-500">Created {formatDateTime(batch.created_at)}</p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             {canRetry && (
               <button
                 type="button"
-                onClick={
-                  retryFailedCities
-                }
+                onClick={retryFailedCities}
                 disabled={isRetrying}
                 className="rounded-lg border border-amber-700 px-5 py-2 text-amber-300 transition-colors hover:bg-amber-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isRetrying
-                  ? "Submitting Retry..."
-                  : "Retry Failed Cities"}
+                {isRetrying ? "Submitting Retry..." : "Retry Failed Cities"}
               </button>
             )}
 
             <a
-              href={getGlobalBatchExportUrl(
-                batch.id,
-              )}
+              href={getGlobalBatchExportUrl(batch.id)}
               className="rounded-lg border border-cyan-700 px-5 py-2 text-cyan-300 transition-colors hover:bg-cyan-950"
             >
               Download Export
@@ -1265,261 +1029,114 @@ export default function GlobalBatchPage() {
               <button
                 type="button"
                 onClick={cancelBatch}
-                disabled={isCancelling}
+                disabled={isCancelling || Boolean(batch.cancel_requested_at)}
                 className="rounded-lg border border-red-800 px-5 py-2 text-red-300 transition-colors hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isCancelling
-                  ? "Cancelling..."
-                  : "Cancel Batch"}
+                {batch.cancel_requested_at
+                  ? "Cancel requested – finishing current month"
+                  : isCancelling
+                    ? "Cancelling..."
+                    : "Cancel Batch"}
               </button>
             )}
           </div>
         </header>
 
         <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8">
-          <Metric
-            label="Status"
-            value={formatLabel(
-              batch.status,
-            )}
-          />
-
-          <Metric
-            label="Overall Progress"
-            value={`${batch.progress}%`}
-          />
-
-          <Metric
-            label="Completed Cities"
-            value={
-              `${batch.completed_city_count}` +
-              ` / ${batch.total_city_count}`
-            }
-          />
-
-          <Metric
-            label="Failed Cities"
-            value={String(
-              batch.failed_city_count,
-            )}
-          />
-
-          <Metric
-            label="Cancelled Cities"
-            value={String(
-              batch.cancelled_city_count,
-            )}
-          />
-
-          <Metric
-            label="Resolution"
-            value={
-              analysisResolutionLabel
-            }
-          />
-
-          <Metric
-            label="Sampling"
-            value={samplingLabel}
-          />
-
-          <Metric
-            label="Execution Profile"
-            value={formatLabel(
-              batch.request
-                .execution_profile ??
-                "auto",
-            )}
-          />
+          <Metric label="Status" value={formatLabel(batch.status)} />
+          <Metric label="Overall Progress" value={`${batch.progress}%`} />
+          <Metric label="Completed Cities" value={`${batch.completed_city_count} / ${batch.total_city_count}`} />
+          <Metric label="Failed Cities" value={String(batch.failed_city_count)} />
+          <Metric label="Cancelled Cities" value={String(batch.cancelled_city_count)} />
+          <Metric label="Resolution" value={analysisResolutionLabel} />
+          <Metric label="Sampling" value={samplingLabel} />
+          <Metric label="Execution Profile" value={formatLabel(batch.request.execution_profile ?? "auto")} />
         </section>
 
         <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-800">
           <div
             className="h-full bg-cyan-400 transition-all duration-500"
-            style={{
-              width: `${
-                clampProgress(
-                  batch.progress,
-                )
-              }%`,
-            }}
+            style={{ width: `${clampProgress(batch.progress)}%` }}
           />
         </div>
 
+        <BatchReliabilityPanel batch={batch} transport={transport} />
+
         <section className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Metric
-            label="Mean Exposure Coverage"
-            value={formatNumber(
-              aggregateMetrics
-                .meanExposureCoverage,
-              "%",
-            )}
-          />
-
-          <Metric
-            label="Mean Adaptation Rate"
-            value={formatNumber(
-              aggregateMetrics
-                .meanAdaptationRate,
-              "%",
-            )}
-          />
-
-          <Metric
-            label="Mean Skin Cooling"
-            value={formatNumber(
-              aggregateMetrics
-                .meanSkinCooling,
-              " °C",
-            )}
-          />
-
-          <Metric
-            label="Mean P90 Skin Cooling"
-            value={formatNumber(
-              aggregateMetrics
-                .meanSkinP90,
-              " °C",
-            )}
-          />
-
+          <Metric label="Mean Exposure Coverage" value={formatNumber(aggregateMetrics.meanExposureCoverage, "%")} />
+          <Metric label="Mean Adaptation Rate" value={formatNumber(aggregateMetrics.meanAdaptationRate, "%")} />
+          <Metric label="Mean Skin Cooling" value={formatNumber(aggregateMetrics.meanSkinCooling, " °C")} />
+          <Metric label="Mean P90 Skin Cooling" value={formatNumber(aggregateMetrics.meanSkinP90, " °C")} />
           <Metric
             label="Detected Heatwaves"
-            value={
-              heatwaveAvailable
-                ? String(
-                    aggregateMetrics
-                      .totalHeatwaveEvents,
-                  )
-                : "Unavailable"
-            }
+            value={heatwaveAvailable ? String(aggregateMetrics.totalHeatwaveEvents) : "Unavailable"}
           />
         </section>
 
         {batch.error_message && (
           <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-            <p className="font-semibold">
-              Batch Error
-            </p>
-
-            <p className="mt-2 text-sm">
-              {batch.error_message}
-            </p>
+            <p className="font-semibold">Batch Error</p>
+            <p className="mt-2 text-sm">{batch.error_message}</p>
           </div>
         )}
 
         {error && (
-          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-            {error}
-          </div>
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
         )}
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
           <div className="mb-5">
-            <h2 className="text-xl font-semibold">
-              Global Adaptation Map
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-400">
-              Completed cities are colored by
-              climate adaptation rate.
-            </p>
+            <h2 className="text-xl font-semibold">Global Adaptation Map</h2>
+            <p className="mt-2 text-sm text-slate-400">Completed cities are colored by climate adaptation rate.</p>
           </div>
 
-          {geoJson &&
-          geoJson.features.length > 0 ? (
-            <GlobalAdaptationMap
-              data={geoJson}
-            />
+          {mapData && mapData.features.length > 0 ? (
+            <GlobalAdaptationMap data={mapData} />
           ) : (
             <div className="flex h-80 items-center justify-center rounded-xl bg-slate-950 text-slate-500">
-              Map data will appear after at
-              least one city completes.
+              Map data will appear after at least one city completes.
             </div>
           )}
         </section>
 
         <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900">
           <div className="border-b border-slate-800 p-5">
-            <h2 className="text-xl font-semibold">
-              City Results
-            </h2>
-
+            <h2 className="text-xl font-semibold">City Results</h2>
             <p className="mt-2 text-sm text-slate-400">
-              Select a city to inspect monthly,
-              percentile, checkpoint, and
-              heatwave results.
+              Select a city to inspect monthly, percentile, checkpoint, data-quality and heatwave results.
             </p>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-[90rem] w-full text-left text-sm">
+            <table className="min-w-[100rem] w-full text-left text-sm">
               <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-4">
-                    City
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Status
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Checkpoint
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Exposure
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Adaptation
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Mean Skin
-                  </th>
-
-                  <th className="px-4 py-4">
-                    P90 Skin
-                  </th>
-
-                  <th className="px-4 py-4">
-                    P95 Skin
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Heatwaves
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Samples
-                  </th>
-
-                  <th className="px-4 py-4">
-                    Heartbeat
-                  </th>
+                  <th className="px-4 py-4">City</th>
+                  <th className="px-4 py-4">Status</th>
+                  <th className="px-4 py-4">Lease</th>
+                  <th className="px-4 py-4">Checkpoints</th>
+                  <th className="px-4 py-4">Attempts</th>
+                  <th className="px-4 py-4">Exposure</th>
+                  <th className="px-4 py-4">Adaptation</th>
+                  <th className="px-4 py-4">Mean Skin</th>
+                  <th className="px-4 py-4">P90 Skin</th>
+                  <th className="px-4 py-4">P95 Skin</th>
+                  <th className="px-4 py-4">Heatwaves</th>
+                  <th className="px-4 py-4">Samples</th>
                 </tr>
               </thead>
 
               <tbody>
-                {batch.city_results.map(
-                  (result) => (
-                    <CityResultRow
-                      key={result.id}
-                      result={result}
-                      selected={
-                        selectedCityId ===
-                        result.id
-                      }
-                      onSelect={() =>
-                        setSelectedCityId(
-                          result.id,
-                        )
-                      }
-                    />
-                  ),
-                )}
+                {batch.city_results.map((result) => (
+                  <CityResultRow
+                    key={result.id}
+                    result={result}
+                    startMonth={startMonth}
+                    endMonth={endMonth}
+                    selected={selectedCityId === result.id}
+                    onSelect={() => setSelectedCityId(result.id)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -1527,13 +1144,12 @@ export default function GlobalBatchPage() {
 
         {selectedCity && (
           <CityDetailPanel
+            batchId={batch.id}
             result={selectedCity}
-            heatwaveAvailable={
-              heatwaveAvailable
-            }
-            onClose={() =>
-              setSelectedCityId(null)
-            }
+            startMonth={startMonth}
+            endMonth={endMonth}
+            heatwaveAvailable={heatwaveAvailable}
+            onClose={() => setSelectedCityId(null)}
           />
         )}
       </div>
@@ -1541,68 +1157,64 @@ export default function GlobalBatchPage() {
   );
 }
 
-
 function CityResultRow({
   result,
+  startMonth,
+  endMonth,
   selected,
   onSelect,
 }: {
   result: GlobalCityResult;
+  startMonth: number;
+  endMonth: number;
   selected: boolean;
   onSelect: () => void;
 }) {
+  const checkpointMonths = result.checkpoint_months ?? [];
+
   return (
     <tr
       className={[
         "cursor-pointer border-t border-slate-800 align-top transition",
-        selected
-          ? "bg-cyan-950/50"
-          : "hover:bg-slate-800/50",
+        selected ? "bg-cyan-950/50" : "hover:bg-slate-800/50",
       ].join(" ")}
       onClick={onSelect}
     >
       <td className="px-4 py-4">
-        <p className="font-medium">
-          {result.city_name}
-        </p>
-
-        <p className="text-xs text-slate-500">
-          {result.country}
-        </p>
-
+        <p className="font-medium">{result.city_name}</p>
+        <p className="text-xs text-slate-500">{result.country}</p>
         {result.error_message && (
-          <p className="mt-2 max-w-xs text-xs leading-5 text-red-400">
-            {result.error_message}
-          </p>
+          <p className="mt-2 max-w-xs text-xs leading-5 text-red-400">{result.error_message}</p>
         )}
       </td>
 
       <td className="px-4 py-4">
-        <StatusBadge
-          status={result.status}
-        />
-
-        <p className="mt-2 text-xs text-slate-500">
-          {result.progress}%
-        </p>
-
-        <p className="mt-1 max-w-44 break-words text-xs text-slate-600">
-          {formatLabel(result.stage)}
-        </p>
+        <StatusBadge status={result.status} />
+        <p className="mt-2 text-xs text-slate-500">{result.progress}%</p>
+        <p className="mt-1 max-w-44 break-words text-xs text-slate-600">{formatLabel(result.stage)}</p>
       </td>
 
       <td className="px-4 py-4">
-        <p>
-          {result.completed_month_count}{" "}
-          month(s)
-        </p>
+        <LeaseBadge
+          leaseState={result.lease_state}
+          leaseOwner={result.lease_owner}
+          lastHeartbeatAt={result.last_heartbeat_at}
+          leaseExpiresAt={result.lease_expires_at}
+        />
+      </td>
 
-        <p className="mt-1 text-xs text-slate-500">
-          Last month:{" "}
-          {result.last_checkpoint_month ??
-            "—"}
+      <td className="px-4 py-4">
+        <CheckpointTimeline
+          startMonth={startMonth}
+          endMonth={endMonth}
+          checkpointMonths={checkpointMonths}
+          status={result.status}
+          compact
+        />
+        <p className="mt-2 text-xs text-slate-500">
+          {result.completed_month_count} / {endMonth - startMonth + 1} month(s)
+          {result.last_checkpoint_month ? ` · last ${result.last_checkpoint_month}` : ""}
         </p>
-
         {result.resumed_from_checkpoint && (
           <span className="mt-2 inline-flex rounded-full border border-violet-800 bg-violet-950 px-2 py-1 text-xs text-violet-300">
             Resumed
@@ -1611,104 +1223,60 @@ function CityResultRow({
       </td>
 
       <td className="px-4 py-4">
-        {formatNumber(
-          result.exposure_coverage_percent,
-          "%",
+        <p className={result.retry_count > 0 ? "text-amber-300" : ""}>{result.retry_count + 1}</p>
+        {result.retry_count > 0 && (
+          <p className="mt-1 text-xs text-slate-500">{result.retry_count} retr{result.retry_count === 1 ? "y" : "ies"}</p>
         )}
+      </td>
 
-        {result.evaluated_weighted_days !==
-          null && (
-          <p className="mt-1 text-xs text-slate-500">
-            {
-              result.evaluated_weighted_days
-            }{" "}
-            weighted days
-          </p>
+      <td className="px-4 py-4">
+        {formatNumber(result.exposure_coverage_percent, "%")}
+        {result.evaluated_weighted_days !== null && (
+          <p className="mt-1 text-xs text-slate-500">{result.evaluated_weighted_days} weighted days</p>
         )}
       </td>
 
       <td className="px-4 py-4 text-cyan-300">
-        {result
-          .climate_adaptation_rate_percent ===
-        null ? (
-          <span className="text-slate-500">
-            No qualifying exposure
-          </span>
+        {result.climate_adaptation_rate_percent === null ? (
+          <span className="text-slate-500">No qualifying exposure</span>
         ) : (
-          formatNumber(
-            result
-              .climate_adaptation_rate_percent,
-            "%",
-          )
+          formatNumber(result.climate_adaptation_rate_percent, "%")
         )}
       </td>
 
-      <td className="px-4 py-4">
-        {formatNumber(
-          result
-            .annual_average_skin_improvement_c,
-          " °C",
-        )}
-      </td>
+      <td className="px-4 py-4">{formatNumber(result.annual_average_skin_improvement_c, " °C")}</td>
+      <td className="px-4 py-4">{formatNumber(result.skin_improvement_p90_c, " °C")}</td>
+      <td className="px-4 py-4">{formatNumber(result.skin_improvement_p95_c, " °C")}</td>
 
       <td className="px-4 py-4">
-        {formatNumber(
-          result.skin_improvement_p90_c,
-          " °C",
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        {formatNumber(
-          result.skin_improvement_p95_c,
-          " °C",
-        )}
-      </td>
-
-      <td className="px-4 py-4">
-        {result.heatwave_event_count ??
-          "—"}
-
-        {result.longest_heatwave_days !==
-          null && (
-          <p className="mt-1 text-xs text-slate-500">
-            Longest:{" "}
-            {result.longest_heatwave_days}{" "}
-            days
-          </p>
+        {result.heatwave_event_count ?? "—"}
+        {result.longest_heatwave_days !== null && (
+          <p className="mt-1 text-xs text-slate-500">Longest: {result.longest_heatwave_days} days</p>
         )}
       </td>
 
       <td className="px-4 py-4">
         {result.sampled_day_count ?? "—"}
-
-        {result.eligible_sample_count !==
-          null && (
-          <p className="mt-1 text-xs text-slate-500">
-            {
-              result.eligible_sample_count
-            }{" "}
-            eligible
-          </p>
-        )}
-      </td>
-
-      <td className="px-4 py-4 text-xs text-slate-400">
-        {formatDateTime(
-          result.last_heartbeat_at,
+        {result.eligible_sample_count !== null && (
+          <p className="mt-1 text-xs text-slate-500">{result.eligible_sample_count} eligible</p>
         )}
       </td>
     </tr>
   );
 }
 
-
 function CityDetailPanel({
+  batchId,
   result,
+  startMonth,
+  endMonth,
   heatwaveAvailable,
   onClose,
 }: {
+  batchId: string;
   result: GlobalCityResult;
+  startMonth: number;
+  endMonth: number;
   heatwaveAvailable: boolean;
   onClose: () => void;
 }) {
@@ -1716,111 +1284,71 @@ function CityDetailPanel({
     <section className="mt-8 rounded-2xl border border-cyan-900 bg-slate-900 p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-cyan-400">
-            City Analytics
-          </p>
-
+          <p className="text-sm font-medium text-cyan-400">City Analytics</p>
           <h2 className="mt-1 text-2xl font-semibold">
-            {result.city_name},{" "}
-            {result.country}
+            {result.city_name}, {result.country}
           </h2>
-
           <p className="mt-2 text-sm text-slate-500">
-            {result.latitude.toFixed(4)},{" "}
-            {result.longitude.toFixed(4)}
+            {result.latitude.toFixed(4)}, {result.longitude.toFixed(4)}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
-        >
-          Close
-        </button>
+        <div className="flex flex-col items-end gap-3">
+          <LeaseBadge
+            leaseState={result.lease_state}
+            leaseOwner={result.lease_owner}
+            lastHeartbeatAt={result.last_heartbeat_at}
+            leaseExpiresAt={result.lease_expires_at}
+          />
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        <CheckpointTimeline
+          startMonth={startMonth}
+          endMonth={endMonth}
+          checkpointMonths={result.checkpoint_months ?? []}
+          status={result.status}
+        />
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Metric
-          label="Skin Cooling P50"
-          value={formatNumber(
-            result.skin_improvement_p50_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Skin Cooling P90"
-          value={formatNumber(
-            result.skin_improvement_p90_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Skin Cooling P95"
-          value={formatNumber(
-            result.skin_improvement_p95_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Maximum Skin Cooling"
-          value={formatNumber(
-            result
-              .maximum_skin_improvement_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Core Cooling P50"
-          value={formatNumber(
-            result.core_improvement_p50_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Core Cooling P90"
-          value={formatNumber(
-            result.core_improvement_p90_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Core Cooling P95"
-          value={formatNumber(
-            result.core_improvement_p95_c,
-            " °C",
-          )}
-        />
-
-        <Metric
-          label="Effective Cooling"
-          value={formatNumber(
-            result.effective_cooling_hours,
-            " hours",
-          )}
-        />
+        <Metric label="Skin Cooling P50" value={formatNumber(result.skin_improvement_p50_c, " °C")} />
+        <Metric label="Skin Cooling P90" value={formatNumber(result.skin_improvement_p90_c, " °C")} />
+        <Metric label="Skin Cooling P95" value={formatNumber(result.skin_improvement_p95_c, " °C")} />
+        <Metric label="Maximum Skin Cooling" value={formatNumber(result.maximum_skin_improvement_c, " °C")} />
+        <Metric label="Core Cooling P50" value={formatNumber(result.core_improvement_p50_c, " °C")} />
+        <Metric label="Core Cooling P90" value={formatNumber(result.core_improvement_p90_c, " °C")} />
+        <Metric label="Core Cooling P95" value={formatNumber(result.core_improvement_p95_c, " °C")} />
+        <Metric label="Effective Cooling" value={formatNumber(result.effective_cooling_hours, " hours")} />
       </div>
 
-      <MonthlyResultsTable
-        result={result}
+      <MonthlyResultsTable result={result} />
+
+      <CityCheckpointList
+        batchId={batchId}
+        cityResultId={result.id}
+        version={result.completed_month_count}
       />
 
+      <DataQualityPanel result={result} />
+
       <HeatwaveResults
-        events={
-          result.heatwave_events ?? []
-        }
-        available={heatwaveAvailable}
+        events={result.heatwave_events ?? []}
+        available={result.heatwave_analysis_available ?? heatwaveAvailable}
+        unavailableReason={result.heatwave_unavailable_reason ?? null}
+        basis={result.heatwave_temperature_basis ?? null}
       />
     </section>
   );
 }
-
 
 function MonthlyResultsTable({
   result,
@@ -1879,6 +1407,9 @@ function MonthlyResultsTable({
 
                 <th className="px-4 py-3">
                   Weighted Days
+                </th>
+                <th className="px-4 py-3">
+                  Skipped
                 </th>
               </tr>
             </thead>
@@ -1957,6 +1488,9 @@ function MonthlyResultsTable({
                         month.total_weighted_days
                       }
                     </td>
+                    <td className="px-4 py-3">
+                      {month.skipped_weighted_days ?? 0}
+                    </td>
                   </tr>
                 ),
               )}
@@ -1972,26 +1506,30 @@ function MonthlyResultsTable({
 function HeatwaveResults({
   events,
   available,
+  unavailableReason,
+  basis,
 }: {
   events: HeatwaveEvent[];
   available: boolean;
+  unavailableReason: string | null;
+  basis: string | null;
 }) {
   return (
     <div className="mt-8">
-      <h3 className="text-lg font-semibold">
-        Heatwave Events
-      </h3>
+      <h3 className="text-lg font-semibold">Heatwave Events</h3>
+      {basis && (
+        <p className="mt-1 text-xs text-slate-500">
+          Temperature basis: <span className="font-mono">{basis}</span>
+        </p>
+      )}
 
       {!available ? (
         <p className="mt-3 text-sm text-amber-300">
-          Heatwave analysis is unavailable for
-          this sampling configuration.
+          Heatwave analysis is unavailable for this result
+          {unavailableReason ? `: ${unavailableReason}` : "."}
         </p>
       ) : events.length === 0 ? (
-        <p className="mt-3 text-sm text-slate-500">
-          No qualifying heatwave event was
-          detected.
-        </p>
+        <p className="mt-3 text-sm text-slate-500">No qualifying heatwave event was detected.</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
           <table className="min-w-[65rem] w-full text-left text-sm">
@@ -2360,6 +1898,184 @@ function getErrorMessage(
 }
 ```
 
+### File: `frontend/src/app/global-analysis/batches/page.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { listGlobalBatches } from "@/lib/api-client";
+import { isTerminalBatchStatus } from "@/lib/global-batch-progress";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { GlobalBatch } from "@/types/global-batch";
+
+const PAGE_SIZE = 20;
+const REFRESH_MS = 10000;
+
+export default function GlobalBatchListPage() {
+  const [items, setItems] = useState<GlobalBatch[]>([]);
+  const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+    let timer: number | null = null;
+
+    async function load() {
+      try {
+        const response = await listGlobalBatches(PAGE_SIZE, offset);
+        if (disposed) return;
+        setItems(response.items);
+        setTotal(response.total);
+        setError("");
+        // Keep refreshing while anything on this page is still running.
+        if (response.items.some((batch) => !isTerminalBatchStatus(batch.status))) {
+          timer = window.setTimeout(load, REFRESH_MS);
+        }
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load batches.");
+      } finally {
+        if (!disposed) setLoading(false);
+      }
+    }
+
+    void load();
+
+    return () => {
+      disposed = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [offset]);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-cyan-400">Global Analysis</p>
+            <h1 className="mt-2 text-3xl font-bold">Analysis Batches</h1>
+          </div>
+          <Link
+            href="/global-analysis"
+            className="rounded-lg bg-cyan-400 px-5 py-2.5 font-semibold text-slate-950"
+          >
+            New Batch
+          </Link>
+        </header>
+
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
+        )}
+
+        <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-4">Batch</th>
+                <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4">Progress</th>
+                <th className="px-5 py-4">Cities</th>
+                <th className="px-5 py-4">Attempt</th>
+                <th className="px-5 py-4">Created</th>
+                <th className="px-5 py-4">Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((batch) => (
+                <tr key={batch.id} className="border-t border-slate-800 bg-slate-950">
+                  <td className="px-5 py-4">
+                    <Link
+                      href={`/global-analysis/${batch.id}`}
+                      className="font-mono text-cyan-300 hover:underline"
+                    >
+                      {batch.id.slice(0, 8)}
+                    </Link>
+                    {batch.cancel_requested_at && (
+                      <p className="mt-1 text-xs text-amber-300">cancel requested</p>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusClass(batch.status)}`}>
+                      {batch.status.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="h-2 w-32 overflow-hidden rounded-full bg-slate-800">
+                      <div className="h-full bg-cyan-400" style={{ width: `${batch.progress}%` }} />
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">{batch.progress}%</p>
+                  </td>
+                  <td className="px-5 py-4 text-slate-300">
+                    {batch.completed_city_count} / {batch.total_city_count}
+                    {batch.failed_city_count > 0 && (
+                      <span className="ml-2 text-red-300">{batch.failed_city_count} failed</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">{batch.attempt ?? 0}</td>
+                  <td className="px-5 py-4 text-slate-400">{formatRelativeTime(batch.created_at)}</td>
+                  <td className="px-5 py-4 text-slate-400">{formatRelativeTime(batch.updated_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {loading && <div className="p-10 text-center text-slate-400">Loading…</div>}
+          {!loading && items.length === 0 && (
+            <div className="p-10 text-center text-slate-400">No batches yet.</div>
+          )}
+        </section>
+
+        <div className="mt-6 flex items-center justify-between text-sm text-slate-400">
+          <span>
+            {total === 0 ? "0" : `${offset + 1}–${Math.min(offset + PAGE_SIZE, total)}`} of {total}
+          </span>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              disabled={offset === 0}
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              className="rounded-lg border border-slate-700 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={offset + PAGE_SIZE >= total}
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+              className="rounded-lg border border-slate-700 px-4 py-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function statusClass(status: string): string {
+  switch (status) {
+    case "completed":
+      return "bg-emerald-950 text-emerald-300";
+    case "partial_completed":
+      return "bg-amber-950 text-amber-300";
+    case "running":
+      return "bg-cyan-950 text-cyan-300";
+    case "cancelling":
+      return "bg-amber-950 text-amber-300";
+    case "failed":
+      return "bg-red-950 text-red-300";
+    case "cancelled":
+      return "bg-slate-800 text-slate-300";
+    default:
+      return "bg-slate-800 text-slate-300";
+  }
+}
+```
+
 ### File: `frontend/src/app/global-analysis/page.tsx`
 ```tsx
 "use client";
@@ -2371,7 +2087,7 @@ import {
 } from "react";
 
 import { useRouter } from "next/navigation";
-
+import Link from "next/link";
 import {
   createGlobalBatch,
   estimateGlobalBatch,
@@ -2379,6 +2095,8 @@ import {
 } from "@/lib/api-client";
 
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 
 import type {
   AnalysisResolution,
@@ -2432,7 +2150,7 @@ const initialRequest: GlobalBatchCreate = {
 
   person: {
     met: 2,
-    body_mass_kg: 70,            // ← 加這行
+    body_mass_kg: 70,
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
@@ -2442,7 +2160,7 @@ const initialRequest: GlobalBatchCreate = {
   control_material: {
     name: "Conventional clothing",
     clothing_insulation_clo: 0.5,
-    clothing_area_factor: null,  // ← 加這行
+    clothing_area_factor: null,
     solar_reflectance: 0.3,
     solar_transmittance: 0,
     infrared_emissivity: 0.9,
@@ -2452,7 +2170,7 @@ const initialRequest: GlobalBatchCreate = {
   rc_material: {
     name: "Radiative cooling clothing",
     clothing_insulation_clo: 0.4,
-    clothing_area_factor: null,  // ← 加這行
+    clothing_area_factor: null,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
@@ -2735,25 +2453,31 @@ export default function GlobalAnalysisPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <header>
-          <p className="text-sm font-medium text-cyan-400">
-            Global Analysis
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            Global Climate Adaptation Analysis
-          </h1>
-
-          <p className="mt-3 max-w-4xl leading-7 text-slate-400">
-            Run representative-day or daily
-            radiative-cooling analyses across
-            multiple cities. Long-running jobs
-            support monthly checkpoints,
-            cooperative cancellation, queue
-            selection, percentile analytics, and
-            heatwave event analysis.
-          </p>
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-cyan-400">
+              Global Analysis
+            </p>
+            <h1 className="mt-2 text-3xl font-bold">
+              Global Climate Adaptation Analysis
+            </h1>
+            <p className="mt-3 max-w-4xl leading-7 text-slate-400">
+              Run representative-day or daily
+              radiative-cooling analyses across
+              multiple cities. Long-running jobs
+              support monthly checkpoints,
+              cooperative cancellation, queue
+              selection, percentile analytics, and
+              heatwave event analysis.
+            </p>
+          </div>
+          <Link
+            href="/global-analysis/batches"
+            className="text-sm text-cyan-300 hover:underline"
+          >
+            View previous batches →
+          </Link>
         </header>
 
         {error && (
@@ -3173,37 +2897,94 @@ export default function GlobalAnalysisPage() {
             )}
         </section>
 
-          <div className="mt-8 grid gap-6 lg:grid-cols-2">
-            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-              <h2 className="text-lg font-semibold">Control Clothing</h2>
-              <div className="mt-4">
-                <MaterialInputFields
-                  material={request.control_material}
-                  showName
-                  enableLibrary
-                  disabled={submitting}
-                  onChange={(control_material) =>
-                    setRequest((current) => ({ ...current, control_material }))
-                  }
-                />
-              </div>
-            </section>
-
-            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
-              <div className="mt-4">
-                <MaterialInputFields
-                  material={request.rc_material}
-                  showName
-                  enableLibrary
-                  disabled={submitting}
-                  onChange={(rc_material) =>
-                    setRequest((current) => ({ ...current, rc_material }))
-                  }
-                />
-              </div>
-            </section>
+        {/* Person */}
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <h2 className="text-xl font-semibold">
+            Person
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Applied to every sampled day in every
+            city. Body mass sets the core and skin
+            heat capacities.
+          </p>
+          <div className="mt-4">
+            <PersonInputFields
+              person={request.person}
+              disabled={submitting}
+              onChange={(person) =>
+                setRequest((current) => ({
+                  ...current,
+                  person,
+                }))
+              }
+            />
           </div>
+        </section>
+
+        {/* Environment Assumptions */}
+        <div className="mt-6">
+          <EnvironmentAssumptionsFields
+            value={
+              request.environment_assumptions ??
+              DEFAULT_ENVIRONMENT_ASSUMPTIONS
+            }
+            disabled={submitting}
+            onChange={(
+              environment_assumptions,
+            ) =>
+              setRequest((current) => ({
+                ...current,
+                environment_assumptions,
+              }))
+            }
+          />
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              Control Clothing
+            </h2>
+            <div className="mt-4">
+              <MaterialInputFields
+                material={
+                  request.control_material
+                }
+                showName
+                enableLibrary
+                disabled={submitting}
+                onChange={(
+                  control_material,
+                ) =>
+                  setRequest((current) => ({
+                    ...current,
+                    control_material,
+                  }))
+                }
+              />
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+            <h2 className="text-lg font-semibold">
+              Radiative Cooling Clothing
+            </h2>
+            <div className="mt-4">
+              <MaterialInputFields
+                material={request.rc_material}
+                showName
+                enableLibrary
+                disabled={submitting}
+                onChange={(rc_material) =>
+                  setRequest((current) => ({
+                    ...current,
+                    rc_material,
+                  }))
+                }
+              />
+            </div>
+          </section>
+        </div>
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -3332,89 +3113,95 @@ export default function GlobalAnalysisPage() {
           <h2 className="text-xl font-semibold">
             Workload Estimate
           </h2>
-            {!canEstimate ? (
-              <p className="mt-4 text-slate-400">
-                {request.city_ids.length === 0
-                  ? "Select at least one city to calculate the workload."
-                  : "Start month must be less than or equal to end month."}
-              </p>
-            ) : estimating ? (
-              <p className="mt-4 text-slate-400">
-                Calculating workload...
-              </p>
-            ) : estimate ? (
-              <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <EstimateMetric
-                  label="Cities"
-                  value={String(estimate.city_count)}
-                />
+          {!canEstimate ? (
+            <p className="mt-4 text-slate-400">
+              {request.city_ids.length === 0
+                ? "Select at least one city to calculate the workload."
+                : "Start month must be less than or equal to end month."}
+            </p>
+          ) : estimating ? (
+            <p className="mt-4 text-slate-400">
+              Calculating workload...
+            </p>
+          ) : estimate ? (
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <EstimateMetric
+                label="Cities"
+                value={String(
+                  estimate.city_count,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Samples per City"
-                  value={String(
-                    estimate.samples_per_city,
-                  )}
-                />
+              <EstimateMetric
+                label="Samples per City"
+                value={String(
+                  estimate.samples_per_city,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Total Samples"
-                  value={String(
-                    estimate.total_samples,
-                  )}
-                />
+              <EstimateMetric
+                label="Total Samples"
+                value={String(
+                  estimate.total_samples,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Thermal Simulations"
-                  value={String(
-                    estimate.thermal_simulation_count,
-                  )}
-                />
+              <EstimateMetric
+                label="Thermal Simulations"
+                value={String(
+                  estimate.thermal_simulation_count,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Weather Requests"
-                  value={String(
-                    estimate.estimated_weather_requests,
-                  )}
-                />
+              <EstimateMetric
+                label="Weather Requests"
+                value={String(
+                  estimate.estimated_weather_requests,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Resolved Profile"
-                  value={formatLabel(
-                    estimate.resolved_execution_profile,
-                  )}
-                />
+              <EstimateMetric
+                label="Resolved Profile"
+                value={formatLabel(
+                  estimate.resolved_execution_profile,
+                )}
+              />
 
-                <EstimateMetric
-                  label="Celery Queue"
-                  value={estimate.resolved_queue}
-                />
+              <EstimateMetric
+                label="Celery Queue"
+                value={
+                  estimate.resolved_queue
+                }
+              />
 
-                <EstimateMetric
-                  label="Monthly Checkpoints"
-                  value={
-                    `${estimate.checkpoint_count_per_city}` +
-                    " per city"
-                  }
-                />
+              <EstimateMetric
+                label="Monthly Checkpoints"
+                value={
+                  `${estimate.checkpoint_count_per_city}` +
+                  " per city"
+                }
+              />
 
-                <EstimateMetric
-                  label="Heatwave Analysis"
-                  value={
-                    estimate.heatwave_analysis_available
-                      ? "Available"
-                      : "Unavailable"
-                  }
-                />
-              </div>
-            ) : estimateState?.status === "error" ? (
-              <p className="mt-4 text-amber-300">
-                Unable to calculate the workload estimate.
-              </p>
-            ) : (
-              <p className="mt-4 text-slate-400">
-                Preparing workload estimate...
-              </p>
-            )}
+              <EstimateMetric
+                label="Heatwave Analysis"
+                value={
+                  estimate.heatwave_analysis_available
+                    ? "Available"
+                    : "Unavailable"
+                }
+              />
+            </div>
+          ) : estimateState?.status ===
+            "error" ? (
+            <p className="mt-4 text-amber-300">
+              Unable to calculate the workload
+              estimate.
+            </p>
+          ) : (
+            <p className="mt-4 text-slate-400">
+              Preparing workload estimate...
+            </p>
+          )}
         </section>
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
@@ -3457,6 +3244,10 @@ function validateRequest(
     return "Select at least one city.";
   }
 
+  if (request.city_ids.length > 100) {
+    return "A batch supports at most 100 cities.";
+  }
+
   if (
     request.start_month >
     request.end_month
@@ -3475,6 +3266,28 @@ function validateRequest(
       "Output interval cannot exceed " +
       "the simulation duration."
     );
+  }
+
+  if (
+    request.local_start_hour * 60 +
+      request.duration_minutes >
+    48 * 60
+  ) {
+    return "The exposure window must end within the following day.";
+  }
+
+  if (
+    request.person.initial_skin_temperature_c >
+    request.person.initial_core_temperature_c
+  ) {
+    return "Initial skin temperature should not exceed initial core temperature.";
+  }
+
+  if (
+    request.enable_heatwave_analysis &&
+    request.heatwave_minimum_consecutive_days < 2
+  ) {
+    return "A heatwave needs at least two consecutive days.";
   }
 
   return null;
@@ -3792,6 +3605,7 @@ import type { SimulationJob } from "@/types/simulation";
 import type {
   Material,
 } from "@/types/material";
+import { MaterialHeader } from "@/components/materials/material-header";
 
 type SpectrumType =
   | "solar_reflectance"
@@ -3939,31 +3753,7 @@ function MaterialDetailContent({
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header>
-          <p className="text-sm text-cyan-400">
-            Material Detail
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            {material.name}
-          </h1>
-
-          <p className="mt-2 text-slate-400">
-            {material.description ||
-              "Material description not available"}
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
-            <span>
-              Slug：{material.slug}
-            </span>
-
-            <span>
-              Institution:
-              {material.institution ?? "—"}
-            </span>
-          </div>
-        </header>
+        <MaterialHeader material={material} onUpdated={setMaterial} />
 
         {error && (
           <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
@@ -4283,6 +4073,208 @@ function LinkedSimulations({ versionId }: { versionId: string }) {
 }
 ```
 
+### File: `frontend/src/app/materials/[materialId]/versions/new/page.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { type FormEvent, useEffect, useState } from "react";
+
+import { MaterialVersionFields } from "@/components/materials/material-version-fields";
+import { ProvenanceEditor } from "@/components/materials/provenance-editor";
+import { createMaterialVersion, getMaterial } from "@/lib/api-client";
+import type { Material, MaterialVersion, MaterialVersionInput } from "@/types/material";
+
+/** Pre-fill from an existing version. Deprecated fields are not copied. */
+function versionToInput(version: MaterialVersion): MaterialVersionInput {
+  return {
+    mode: version.mode,
+    clothing_insulation_clo: version.clothing_insulation_clo,
+    clothing_area_factor: version.clothing_area_factor ?? null,
+    evaporative_resistance_m2pa_w: version.evaporative_resistance_m2pa_w,
+    solar_reflectance: version.solar_reflectance,
+    solar_transmittance: version.solar_transmittance,
+    infrared_emissivity: version.infrared_emissivity,
+    infrared_transmittance: version.infrared_transmittance,
+    projected_solar_area_factor: version.projected_solar_area_factor,
+    areal_density_g_m2: version.areal_density_g_m2,
+    specific_heat_j_kgk: version.specific_heat_j_kgk,
+    source_type: version.source_type,
+    source_reference: version.source_reference,
+    notes: null,
+    parameter_sources: version.parameter_sources ?? null,
+  };
+}
+
+export default function NewMaterialVersionPage() {
+  const { materialId } = useParams<{ materialId: string }>();
+  return <NewVersionContent key={materialId} materialId={materialId} />;
+}
+
+function NewVersionContent({ materialId }: { materialId: string }) {
+  const router = useRouter();
+  const [material, setMaterial] = useState<Material | null>(null);
+  const [draft, setDraft] = useState<MaterialVersionInput | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getMaterial(materialId)
+      .then((response) => {
+        if (ignore) return;
+        const latest = response.versions.at(-1);
+        setMaterial(response);
+        if (latest) {
+          setDraft(versionToInput(latest));
+        } else {
+          setLoadError("This material has no version to start from.");
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!ignore) {
+          setLoadError(caught instanceof Error ? caught.message : "Failed to load material");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [materialId]);
+
+  function update<K extends keyof MaterialVersionInput>(field: K, value: MaterialVersionInput[K]) {
+    setDraft((current) => (current ? { ...current, [field]: value } : current));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft || submitting) return;
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await createMaterialVersion(materialId, draft);
+      router.push(`/materials/${materialId}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to create version");
+      setSubmitting(false);
+    }
+  }
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
+        <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{loadError}</div>
+      </main>
+    );
+  }
+
+  if (!material || !draft) {
+    return <main className="min-h-screen bg-slate-950 p-10 text-white">Loading material…</main>;
+  }
+
+  const base = material.versions.at(-1);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-4xl px-6 py-10">
+        <nav className="mb-4 flex items-center gap-2 text-sm text-slate-400">
+          <Link href="/materials" className="hover:text-slate-100">Materials</Link>
+          <span>/</span>
+          <Link href={`/materials/${material.id}`} className="hover:text-slate-100">{material.name}</Link>
+          <span>/</span>
+          <span className="text-slate-200">New version</span>
+        </nav>
+
+        <h1 className="text-3xl font-bold">New Version of {material.name}</h1>
+        <p className="mt-3 text-slate-400">
+          Pre-filled from v{base?.version_number}. Existing versions are immutable because
+          simulations reference them; saving creates v{(base?.version_number ?? 0) + 1}.
+          Spectra are not copied.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-8">
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Physical Parameters</h2>
+            <div className="mt-5">
+              <MaterialVersionFields value={draft} disabled={submitting} onChange={update} />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Source</h2>
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate-300">Source Type</span>
+                <input
+                  value={draft.source_type}
+                  maxLength={50}
+                  disabled={submitting}
+                  onChange={(event) => update("source_type", event.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate-300">Source Reference</span>
+                <input
+                  value={draft.source_reference ?? ""}
+                  disabled={submitting}
+                  onChange={(event) => update("source_reference", event.target.value || null)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="mb-2 block text-sm text-slate-300">Notes (what changed and why)</span>
+                <textarea
+                  rows={3}
+                  value={draft.notes ?? ""}
+                  disabled={submitting}
+                  onChange={(event) => update("notes", event.target.value || null)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Parameter Provenance</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Copied from v{base?.version_number}. Update the entries for values you changed.
+            </p>
+            <div className="mt-5">
+              <ProvenanceEditor
+                sources={draft.parameter_sources ?? null}
+                values={draft}
+                disabled={submitting}
+                onChange={(sources) => update("parameter_sources", sources)}
+              />
+            </div>
+          </section>
+
+          {error && (
+            <div role="alert" className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-cyan-400 px-7 py-3 font-semibold text-slate-950 disabled:opacity-50"
+          >
+            {submitting ? "Creating version…" : "Create Version"}
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
+```
+
 ### File: `frontend/src/app/materials/new/page.tsx`
 ```tsx
 "use client";
@@ -4290,9 +4282,9 @@ function LinkedSimulations({ versionId }: { versionId: string }) {
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import {ProvenanceEditor} from "@/components/materials/provenance-editor";
-import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
 import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
+import { MaterialVersionFields } from "@/components/materials/material-version-fields";
 
 
 const initialMaterial: MaterialCreate = {
@@ -4444,116 +4436,11 @@ export default function NewMaterialPage() {
             <h2 className="text-xl font-semibold">
               Initial Physical Parameters
             </h2>
-
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <NumberInput
-                label="Clothing Insulation (clo)"
-                value={
-                  material.initial_version
-                    .clothing_insulation_clo
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "clothing_insulation_clo",
-                    value,
-                  )
-                }
-              />
-
-              <OptionalNumberField
-                label="Clothing Area Factor (f_cl)"
-                value={material.initial_version.clothing_area_factor}
-                placeholder="Derived from clo"
-                min={1}
-                max={2}
-                step={0.01}
-                hint="Leave empty to let the backend derive f_cl from clo."
-                onChange={(value) => updateVersion("clothing_area_factor", value)}
-              />
-
-              <OptionalNumberField
-                label="Evaporative Resistance (Re,cl)"
-                suffix="m²·Pa/W"
-                value={material.initial_version.evaporative_resistance_m2pa_w}
-                placeholder="Derived from clo"
-                min={0} max={1000} step={0.5}
-                onChange={(value) => updateVersion("evaporative_resistance_m2pa_w", value)}
-              />
-              <NumberInput
-                label="Projected Solar Area Factor"
-                value={material.initial_version.projected_solar_area_factor}
-                onChange={(value) => updateVersion("projected_solar_area_factor", value)}
-              />
-
-
-              <NumberInput
-                label="Solar Reflectance"
-                value={
-                  material.initial_version
-                    .solar_reflectance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_reflectance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Solar Transmittance"
-                value={
-                  material.initial_version
-                    .solar_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Emissivity"
-                value={
-                  material.initial_version
-                    .infrared_emissivity
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_emissivity",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Transmittance"
-                value={
-                  material.initial_version
-                    .infrared_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Areal Density (g/m²)"
-                value={
-                  material.initial_version
-                    .areal_density_g_m2 ?? 0
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "areal_density_g_m2",
-                    value,
-                  )
-                }
+            <div className="mt-5">
+              <MaterialVersionFields
+                value={material.initial_version}
+                disabled={loading}
+                onChange={updateVersion}
               />
             </div>
           </section>
@@ -4623,37 +4510,6 @@ function TextInput({
   );
 }
 
-
-function NumberInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm text-slate-300">
-        {label}
-      </span>
-
-      <input
-        type="number"
-        min={0}
-        step={0.01}
-        value={value}
-        onChange={(event) =>
-          onChange(
-            Number(event.target.value),
-          )
-        }
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-      />
-    </label>
-  );
-}
 ```
 
 ### File: `frontend/src/app/materials/page.tsx`
@@ -4714,29 +4570,25 @@ export default function MaterialsPage() {
     };
   }, []);
 
-  async function handleSearchSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
+  const [includeArchived, setIncludeArchived] = useState(false);
 
+  async function reload(nextSearch: string, nextIncludeArchived: boolean) {
     setLoading(true);
     setError("");
 
     try {
-      const response = await getMaterials(
-        search,
-      );
-
+      const response = await getMaterials(nextSearch, nextIncludeArchived);
       setMaterials(response.items);
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to load materials.",
-      );
+      setError(caughtError instanceof Error ? caughtError.message : "Failed to load materials.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await reload(search, includeArchived);
   }
 
   return (
@@ -4781,6 +4633,19 @@ export default function MaterialsPage() {
           >
             {loading ? "Loading…" : "Search"}
           </button>
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              disabled={loading}
+              onChange={(event) => {
+                setIncludeArchived(event.target.checked);
+                void reload(search, event.target.checked);
+              }}
+              className="h-4 w-4 accent-cyan-400"
+            />
+            Show archived
+          </label>
         </form>
 
         {error && (
@@ -4821,7 +4686,12 @@ export default function MaterialsPage() {
                     >
                       {material.name}
                     </Link>
-
+                    {material.is_archived && (
+                      <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                        archived
+                      </span>
+                    )}
+                    
                     <p className="mt-1 text-xs text-slate-500">
                       {material.slug}
                     </p>
@@ -4866,12 +4736,190 @@ export default function MaterialsPage() {
 }
 ```
 
+### File: `frontend/src/app/ops/page.tsx`
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { getOpsStatus } from "@/lib/api-client";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { OpsStatus } from "@/types/ops";
+
+const REFRESH_MS = 10000;
+
+export default function OperationsPage() {
+  const [status, setStatus] = useState<OpsStatus | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+
+    async function load() {
+      try {
+        const response = await getOpsStatus();
+        if (!disposed) {
+          setStatus(response);
+          setError("");
+        }
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load status.");
+      }
+    }
+
+    void load();
+    const timer = window.setInterval(load, REFRESH_MS);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-6xl px-6 py-10">
+        <header>
+          <p className="text-sm text-cyan-400">Operations</p>
+          <h1 className="mt-2 text-3xl font-bold">Pipeline Health</h1>
+          <p className="mt-3 max-w-3xl text-slate-400">
+            Celery workers, lease state and recovery bounds for the global analysis pipeline.
+            Refreshes every {REFRESH_MS / 1000} seconds.
+          </p>
+        </header>
+
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
+        )}
+
+        {!status ? (
+          <p className="mt-8 text-slate-400">Loading…</p>
+        ) : (
+          <>
+            <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <Card
+                label="Broker"
+                value={status.broker_reachable ? "Reachable" : "Unreachable"}
+                tone={status.broker_reachable ? "emerald" : "red"}
+              />
+              <Card
+                label="Workers"
+                value={String(status.worker_count)}
+                tone={status.worker_count > 0 ? "emerald" : "red"}
+              />
+              <Card
+                label="Expired leases"
+                value={String(status.leases.expired_leases)}
+                tone={status.leases.expired_leases > 0 ? "red" : "slate"}
+              />
+              <Card label="Live leases" value={String(status.leases.live_leases)} tone="cyan" />
+              <Card label="Running cities" value={String(status.leases.running_cities)} />
+              <Card label="Queued cities" value={String(status.leases.queued_cities)} />
+              <Card label="Running batches" value={String(status.leases.running_batches)} />
+              <Card
+                label="Cancelling batches"
+                value={String(status.leases.cancelling_batches)}
+                tone={status.leases.cancelling_batches > 0 ? "amber" : "slate"}
+              />
+            </section>
+
+            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <h2 className="text-xl font-semibold">Recovery Bounds</h2>
+              <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                <Pair label="Lease TTL" value={`${status.lease_ttl_seconds} s`} />
+                <Pair label="Heartbeat interval" value={`${status.heartbeat_interval_seconds} s`} />
+                <Pair label="Reaper interval" value={`${status.reaper_interval_seconds} s`} />
+                <Pair
+                  label="Worst-case recovery after kill -9"
+                  value={`${status.worst_case_recovery_seconds} s`}
+                />
+              </dl>
+              <p className="mt-4 text-xs text-slate-500">
+                A city whose worker dies is re-queued no later than lease TTL + reaper interval
+                after its last heartbeat, and resumes from its last durable monthly checkpoint.
+              </p>
+            </section>
+
+            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+              <div className="flex items-baseline justify-between">
+                <h2 className="text-xl font-semibold">Workers</h2>
+                <span className="text-xs text-slate-500">checked {formatRelativeTime(status.checked_at)}</span>
+              </div>
+
+              {status.workers.length === 0 ? (
+                <p className="mt-4 text-sm text-red-300">
+                  No worker answered the ping. Jobs will stay queued; expired leases will not be reaped
+                  until a worker consuming the <span className="font-mono">default</span> queue is up.
+                </p>
+              ) : (
+                <table className="mt-4 w-full text-left text-sm">
+                  <thead className="border-b border-slate-700 text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2">Worker</th>
+                      <th className="px-3 py-2">Active</th>
+                      <th className="px-3 py-2">Reserved</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {status.workers.map((worker) => (
+                      <tr key={worker.name} className="border-b border-slate-800">
+                        <td className="px-3 py-2 font-mono text-slate-200">{worker.name}</td>
+                        <td className="px-3 py-2">{worker.active_task_count}</td>
+                        <td className="px-3 py-2">{worker.reserved_task_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function Card({
+  label,
+  value,
+  tone = "slate",
+}: {
+  label: string;
+  value: string;
+  tone?: "slate" | "emerald" | "cyan" | "amber" | "red";
+}) {
+  const color = {
+    slate: "text-slate-100",
+    emerald: "text-emerald-300",
+    cyan: "text-cyan-300",
+    amber: "text-amber-300",
+    red: "text-red-300",
+  }[tone];
+
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className={`mt-2 text-2xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function Pair({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="mt-1 font-mono text-slate-200">{value}</dd>
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/app/page.tsx`
 ```tsx
 import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  redirect("/simulations");
+  redirect("/simulations/new");
 }
 ```
 
@@ -4879,488 +4927,183 @@ export default function HomePage() {
 ```tsx
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useState } from "react";
 
 import { HeatFluxChart } from "@/components/charts/heat-flux-chart";
 import { PhysiologyChart } from "@/components/charts/physiology-chart";
 import { TemperatureChart } from "@/components/charts/temperature-chart";
 import { WeatherChart } from "@/components/charts/weather-chart";
+import { LeaseBadge } from "@/components/global/lease-badge";
 import { ModelProvenancePanel } from "@/components/simulation/model-provenance-panel";
 import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
-import {
-  cancelSimulationJob,
-  getSimulationEventsUrl,
-  getSimulationExportUrl,
-  getSimulationJob,
-  getSimulationResult,
-} from "@/lib/api-client";
-import type {
-  SimulationJob,
-  WeatherSimulationResponse,
-} from "@/types/simulation";
-
-const terminalStatuses =
-  new Set<SimulationJob["status"]>([
-    "completed",
-    "failed",
-    "cancelled",
-  ]);
-
+import { WeatherQualityPanel } from "@/components/simulation/weather-quality-panel";
+import { getSimulationExportUrl } from "@/lib/api-client";
+import { isTerminalJobStatus, useSimulationJob } from "@/lib/use-simulation-job";
 
 const stageLabels: Record<string, string> = {
   queued: "Waiting for computing resources",
+  retry_scheduled: "Re-queued after a worker failure",
   initializing: "Initializing model",
-  downloading_weather:
-    "Downloading historical weather data",
-  running_control_simulation:
-    "Running control simulation",
-  running_radiative_cooling_simulation:
-    "Running radiative cooling simulation",
-  generating_summary:
-    "Generating summary",
-  saving_result:
-    "Saving result",
+  downloading_weather: "Downloading historical weather data",
+  running_control_simulation: "Running control simulation",
+  running_radiative_cooling_simulation: "Running radiative cooling simulation",
+  generating_summary: "Generating summary",
+  saving_result: "Saving result",
   completed: "Simulation completed",
   failed: "Simulation failed",
   cancelling: "Cancelling simulation",
-  waiting_for_cooperative_cancel:
-    "Waiting for cooperative cancel",
+  waiting_for_cooperative_cancel: "Waiting for cooperative cancel",
   cancelled: "Cancelled",
 };
 
-
 export default function SimulationJobPage() {
-  const parameters =
-    useParams<{ jobId: string }>();
-
-  const jobId = parameters.jobId;
-
-  const [job, setJob] =
-    useState<SimulationJob | null>(null);
-
-  const [result, setResult] =
-    useState<WeatherSimulationResponse | null>(
-      null,
-    );
-
-  const [error, setError] =
-    useState("");
-
-  const [cancelling, setCancelling] =
-    useState(false);
-
-
-  useEffect(() => {
-    let ignore = false;
-
-    function handleJobUpdate(
-      nextJob: SimulationJob,
-    ) {
-      if (ignore) {
-        return;
-      }
-
-      setJob((currentJob) => {
-        if (!currentJob) {
-          return nextJob;
-        }
-
-        return {
-          ...currentJob,
-          ...nextJob,
-        };
-      });
-    }
-
-    function handleRequestError(
-      caughtError: unknown,
-    ) {
-      if (ignore) {
-        return;
-      }
-
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to load simulation job",
-      );
-    }
-
-    getSimulationJob(jobId)
-      .then(handleJobUpdate)
-      .catch(handleRequestError);
-
-    const eventSource = new EventSource(
-      getSimulationEventsUrl(jobId),
-    );
-
-    eventSource.addEventListener(
-      "progress",
-      (event) => {
-        try {
-          const nextJob = JSON.parse(
-            (event as MessageEvent<string>).data,
-          ) as SimulationJob;
-
-          handleJobUpdate(nextJob);
-        } catch {
-          if (!ignore) {
-            setError("Failed to parse job progress data");
-          }
-        }
-      },
-    );
-
-    eventSource.addEventListener(
-      "terminal",
-      (event) => {
-        try {
-          const nextJob = JSON.parse(
-            (event as MessageEvent<string>).data,
-          ) as SimulationJob;
-
-          handleJobUpdate(nextJob);
-        } catch {
-          if (!ignore) {
-            setError("Failed to parse job terminal state");
-          }
-        } finally {
-          eventSource.close();
-        }
-      },
-    );
-
-    eventSource.onerror = () => {
-      eventSource.close();
-    };
-
-    const pollingTimer = window.setInterval(
-      () => {
-        getSimulationJob(jobId)
-          .then(handleJobUpdate)
-          .catch(handleRequestError);
-      },
-      5000,
-    );
-
-    return () => {
-      ignore = true;
-      window.clearInterval(pollingTimer);
-      eventSource.close();
-    };
-  }, [jobId]);
-
-
-  useEffect(() => {
-    if (
-      job?.status !== "completed"
-      || result !== null
-    ) {
-      return;
-    }
-
-    let ignore = false;
-
-    getSimulationResult(jobId)
-      .then((nextResult) => {
-        if (!ignore) {
-          setResult(nextResult);
-        }
-      })
-      .catch((caughtError: unknown) => {
-        if (!ignore) {
-          setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Failed to load simulation result",
-          );
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [job?.status, jobId, result]);
-
+  const { jobId } = useParams<{ jobId: string }>();
+  const { job, result, error, resultError, transport, cancel, retryResult } = useSimulationJob(jobId);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   async function handleCancel() {
-    if (cancelling) {
-      return;
-    }
-
+    if (cancelling) return;
     setCancelling(true);
-    setError("");
-
+    setCancelError("");
     try {
-      const updatedJob =
-        await cancelSimulationJob(jobId);
-
-      setJob((currentJob) => {
-        if (!currentJob) {
-          return updatedJob;
-        }
-
-        return {
-          ...currentJob,
-          ...updatedJob,
-        };
-      });
-    } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to cancel simulation job",
-      );
+      await cancel();
+    } catch (caught) {
+      setCancelError(caught instanceof Error ? caught.message : "Failed to cancel simulation job");
     } finally {
       setCancelling(false);
     }
   }
-  
+
   if (!job) {
     return (
       <main className="min-h-screen bg-slate-950 p-10 text-white">
         <div className="mx-auto max-w-4xl">
           {error ? (
-            <div
-              role="alert"
-              className="rounded-xl border border-red-900 bg-red-950 p-5 text-red-300"
-            >
-              {error}
-            </div>
+            <div role="alert" className="rounded-xl border border-red-900 bg-red-950 p-5 text-red-300">{error}</div>
           ) : (
-            <p className="text-slate-400">
-              Loading simulation job…
-            </p>
+            <p className="text-slate-400">Loading simulation job…</p>
           )}
         </div>
       </main>
     );
   }
 
-  const isTerminal =
-    terminalStatuses.has(job.status);
-
-  const progress = Math.min(
-    100,
-    Math.max(0, job.progress),
-  );
-
+  const isTerminal = isTerminalJobStatus(job.status);
+  const progress = Math.min(100, Math.max(0, job.progress));
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl px-6 py-10">
-        <header>
-          <p className="text-sm font-medium text-cyan-400">
-            Simulation Job
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            Simulation Job
-          </h1>
-
-          <p className="mt-2 break-all text-sm text-slate-400">
-            {job.id}
-          </p>
+        <header className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-cyan-400">Simulation Job</p>
+            <h1 className="mt-2 text-3xl font-bold">Simulation Job</h1>
+            <p className="mt-2 break-all text-sm text-slate-400">{job.id}</p>
+          </div>
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+            Updates via {transport === "sse" ? "server-sent events" : transport === "polling" ? "polling" : "—"}
+          </span>
         </header>
 
         <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-slate-400">
-                Current Stage
-              </p>
-
-              <p className="mt-1 text-xl font-semibold">
-                {stageLabels[job.stage]
-                  ?? job.stage}
-              </p>
+              <p className="text-sm text-slate-400">Current Stage</p>
+              <p className="mt-1 text-xl font-semibold">{stageLabels[job.stage] ?? job.stage}</p>
             </div>
 
-            {!isTerminal && (
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={cancelling}
-                className="rounded-lg border border-red-800 px-4 py-2 text-red-300 transition hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {cancelling
-                  ? "Cancelling…"
-                  : "Cancel Job"}
-              </button>
-            )}
+            <div className="flex items-center gap-4">
+              <LeaseBadge
+                leaseState={job.lease_state}
+                leaseOwner={job.lease_owner}
+                lastHeartbeatAt={job.last_heartbeat_at}
+                leaseExpiresAt={job.lease_expires_at}
+              />
+              {!isTerminal && (
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancelling || job.status === "cancelling"}
+                  className="rounded-lg border border-red-800 px-4 py-2 text-red-300 transition hover:bg-red-950 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {job.status === "cancelling" ? "Cancel requested…" : cancelling ? "Cancelling…" : "Cancel Job"}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-800">
-            <div
-              className="h-full bg-cyan-400 transition-all duration-500"
-              style={{
-                width: `${progress}%`,
-              }}
-            />
+            <div className="h-full bg-cyan-400 transition-all duration-500" style={{ width: `${progress}%` }} />
           </div>
-
           <div className="mt-2 flex justify-between text-sm text-slate-400">
-            <span>{job.status}</span>
+            <span>{job.status}{(job.attempt ?? 0) > 1 ? ` · attempt ${job.attempt}` : ""}</span>
             <span>{progress}%</span>
           </div>
 
           <dl className="mt-6 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div>
-              <dt className="text-slate-500">
-                City
-              </dt>
-              <dd className="mt-1">
-                {job.city_id}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-slate-500">
-                Created At
-              </dt>
-              <dd className="mt-1">
-                {new Date(
-                  job.created_at,
-                ).toLocaleString()}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-slate-500">
-                Started At
-              </dt>
-              <dd className="mt-1">
-                {job.started_at
-                  ? new Date(
-                      job.started_at,
-                    ).toLocaleString()
-                  : "Not started"}
-              </dd>
-            </div>
-
-            <div>
-              <dt className="text-slate-500">
-                Completed At
-              </dt>
-              <dd className="mt-1">
-                {job.completed_at
-                  ? new Date(
-                      job.completed_at,
-                    ).toLocaleString()
-                  : "Not completed"}
-              </dd>
-            </div>
+            <Field label="City" value={job.city_id} />
+            <Field label="Created At" value={new Date(job.created_at).toLocaleString()} />
+            <Field label="Started At" value={job.started_at ? new Date(job.started_at).toLocaleString() : "Not started"} />
+            <Field label="Completed At" value={job.completed_at ? new Date(job.completed_at).toLocaleString() : "Not completed"} />
           </dl>
+
           {(job.control_material_version_id || job.rc_material_version_id) && (
             <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
-              <div>
-                <dt className="text-slate-500">Control material version</dt>
-                <dd className="mt-1 font-mono text-xs text-slate-300">
-                  {job.control_material_version_id ?? "manual values"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">RC material version</dt>
-                <dd className="mt-1 font-mono text-xs text-slate-300">
-                  {job.rc_material_version_id ?? "manual values"}
-                </dd>
-              </div>
+              <Field label="Control material version" value={job.control_material_version_id ?? "manual values"} mono />
+              <Field label="RC material version" value={job.rc_material_version_id ?? "manual values"} mono />
             </dl>
           )}
-          {job.error_message && (
-            <div className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
-              {job.error_message}
-            </div>
-          )}
 
-          {error && (
-            <div
-              role="alert"
-              className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300"
-            >
-              {error}
-            </div>
-          )}
+          {job.error_message && <Alert>{job.error_message}</Alert>}
+          {error && <Alert>{error}</Alert>}
+          {cancelError && <Alert>{cancelError}</Alert>}
         </section>
 
-        {job.status === "completed"
-          && !result && (
-            <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
-              Loading complete simulation results…
-            </section>
-          )}
+        {job.status === "completed" && !result && (
+          <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            {resultError ? (
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <p className="text-red-300">{resultError}</p>
+                <button
+                  type="button"
+                  onClick={() => void retryResult()}
+                  className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+                >
+                  Retry loading result
+                </button>
+              </div>
+            ) : (
+              <p className="text-slate-400">Loading complete simulation results…</p>
+            )}
+          </section>
+        )}
 
         {result && (
           <section className="mt-10 space-y-8">
             <div className="grid gap-4 md:grid-cols-3">
-              <SummaryCard
-                label="final skin temperature improvement"
-                value={
-                  result.summary
-                    .final_skin_temperature_improvement_c
-                }
-              />
-
-              <SummaryCard
-                label="average skin temperature improvement"
-                value={
-                  result.summary
-                    .average_skin_temperature_improvement_c
-                }
-              />
-
-              <SummaryCard
-                label="final core temperature improvement"
-                value={
-                  result.summary
-                    .final_core_temperature_improvement_c
-                }
-              />
+              <SummaryCard label="final skin temperature improvement" value={result.summary.final_skin_temperature_improvement_c} />
+              <SummaryCard label="average skin temperature improvement" value={result.summary.average_skin_temperature_improvement_c} hint={result.summary.averaging_method ?? undefined} />
+              <SummaryCard label="final core temperature improvement" value={result.summary.final_core_temperature_improvement_c} />
             </div>
 
             <div className="rounded-xl border border-amber-800 bg-amber-950/50 p-4 text-amber-200">
               <p>{result.warning}</p>
-
-              <p className="mt-2 text-sm">
-                {result.environment_model_note}
-              </p>
+              <p className="mt-2 text-sm">{result.environment_model_note}</p>
             </div>
 
-            <WeatherChart
-              weather={result.weather}
-            />
-
-            <TemperatureChart
-              result={result}
-            />
-
-            <HeatFluxChart
-              result={result}
-            />
+            <WeatherChart weather={result.weather} />
+            <WeatherQualityPanel weather={result.weather} />
+            <TemperatureChart result={result} />
+            <HeatFluxChart result={result} />
             <PhysiologyChart result={result} />
             <ModelQualityPanel result={result} />
             <ModelProvenancePanel result={result} />
-            <div className="flex flex-wrap gap-3">
-              <a
-                href={getSimulationExportUrl(
-                  jobId,
-                  "csv",
-                )}
-                className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950"
-              >
-                Export CSV
-              </a>
 
-              <a
-                href={getSimulationExportUrl(
-                  jobId,
-                  "json",
-                )}
-                className="rounded-lg border border-slate-700 px-5 py-2"
-              >
-                Export JSON
-              </a>
+            <div className="flex flex-wrap gap-3">
+              <a href={getSimulationExportUrl(jobId, "csv")} className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950">Export CSV</a>
+              <a href={getSimulationExportUrl(jobId, "json")} className="rounded-lg border border-slate-700 px-5 py-2">Export JSON</a>
             </div>
           </section>
         )}
@@ -5369,32 +5112,32 @@ export default function SimulationJobPage() {
   );
 }
 
-
-function SummaryCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function Field({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-      <p className="text-sm text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-2 text-3xl font-bold text-cyan-300">
-        {value.toFixed(3)}
-
-        <span className="ml-1 text-base font-normal">
-          °C
-        </span>
-      </p>
-    </article>
+    <div>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className={`mt-1 ${mono ? "font-mono text-xs text-slate-300" : ""}`}>{value}</dd>
+    </div>
   );
 }
 
+function Alert({ children }: { children: React.ReactNode }) {
+  return (
+    <div role="alert" className="mt-5 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{children}</div>
+  );
+}
 
+function SummaryCard({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-2 text-3xl font-bold text-cyan-300">
+        {value.toFixed(3)}<span className="ml-1 text-base font-normal">°C</span>
+      </p>
+      {hint && <p className="mt-1 font-mono text-xs text-slate-500">{hint}</p>}
+    </article>
+  );
+}
 ```
 
 ### File: `frontend/src/app/simulations/new/page.tsx`
@@ -7734,6 +7477,417 @@ function escapeHtml(
 }
 ```
 
+### File: `frontend/src/components/global/batch-reliability-panel.tsx`
+```tsx
+"use client";
+
+import { LeaseBadge } from "@/components/global/lease-badge";
+import type { BatchTransport } from "@/lib/use-global-batch";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { GlobalBatchDetail } from "@/types/global-batch";
+
+type Props = {
+  batch: GlobalBatchDetail;
+  transport: BatchTransport;
+};
+
+export function BatchReliabilityPanel({ batch, transport }: Props) {
+  const cities = batch.city_results;
+  const live = cities.filter((c) => c.lease_state === "live").length;
+  const expired = cities.filter((c) => c.lease_state === "expired").length;
+  const resumed = cities.filter((c) => c.resumed_from_checkpoint).length;
+  const retries = cities.reduce((sum, c) => sum + (c.retry_count ?? 0), 0);
+  const checkpoints = cities.reduce((sum, c) => sum + (c.checkpoint_months?.length ?? 0), 0);
+
+  return (
+    <section className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold">Reliability</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Worker leases, heartbeats and durable monthly checkpoints (Stage 7).
+          </p>
+        </div>
+
+        <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
+          Updates via {transport === "sse" ? "server-sent events" : transport === "polling" ? "polling" : "—"}
+        </span>
+      </div>
+
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <Item label="Batch attempt" value={String(batch.attempt ?? 0)} />
+        <Item label="Live leases" value={String(live)} tone={live > 0 ? "cyan" : undefined} />
+        <Item label="Expired leases" value={String(expired)} tone={expired > 0 ? "red" : undefined} />
+        <Item label="Cities resumed" value={String(resumed)} />
+        <Item label="City retries" value={String(retries)} tone={retries > 0 ? "amber" : undefined} />
+        <Item label="Checkpoints stored" value={String(checkpoints)} />
+        <Item
+          label="Cancel requested"
+          value={batch.cancel_requested_at ? formatRelativeTime(batch.cancel_requested_at) : "No"}
+          tone={batch.cancel_requested_at ? "amber" : undefined}
+        />
+      </dl>
+
+      {expired > 0 && (
+        <p className="mt-4 rounded-lg border border-red-900 bg-red-950/50 p-3 text-sm text-red-300">
+          {expired} city lease(s) have expired. The lease reaper re-queues them within one
+          reaper interval; if this persists, check <a href="/ops" className="underline">Operations</a>.
+        </p>
+      )}
+
+      {batch.lease_owner && (
+        <div className="mt-4">
+          <LeaseBadge
+            leaseState={batch.lease_expires_at && new Date(batch.lease_expires_at) > new Date() ? "live" : "expired"}
+            leaseOwner={batch.lease_owner}
+            lastHeartbeatAt={batch.last_heartbeat_at}
+            leaseExpiresAt={batch.lease_expires_at}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Item({ label, value, tone }: { label: string; value: string; tone?: "cyan" | "amber" | "red" }) {
+  const color =
+    tone === "red" ? "text-red-300" : tone === "amber" ? "text-amber-300" : tone === "cyan" ? "text-cyan-300" : "text-slate-100";
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className={`mt-2 text-lg font-semibold ${color}`}>{value}</dd>
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/checkpoint-timeline.tsx`
+```tsx
+"use client";
+
+import { buildCheckpointCells, type CheckpointCellState } from "@/lib/checkpoint-cells";
+
+type Props = {
+  startMonth: number;
+  endMonth: number;
+  checkpointMonths: readonly number[];
+  status: string;
+  compact?: boolean;
+};
+
+const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+const cellStyles: Record<CheckpointCellState, string> = {
+  checkpointed: "bg-emerald-500 text-slate-950",
+  running: "bg-cyan-400 text-slate-950 animate-pulse",
+  pending: "bg-slate-800 text-slate-500",
+  outside: "bg-transparent text-slate-700 border border-dashed border-slate-800",
+};
+
+const cellTitles: Record<CheckpointCellState, string> = {
+  checkpointed: "Checkpoint saved",
+  running: "In progress",
+  pending: "Not started",
+  outside: "Outside requested range",
+};
+
+export function CheckpointTimeline({
+  startMonth,
+  endMonth,
+  checkpointMonths,
+  status,
+  compact = false,
+}: Props) {
+  const cells = buildCheckpointCells(startMonth, endMonth, checkpointMonths, status);
+  const size = compact ? "h-4 w-4 text-[10px]" : "h-7 w-7 text-xs";
+
+  return (
+    <div
+      className="flex gap-0.5"
+      role="img"
+      aria-label={`${checkpointMonths.length} of ${endMonth - startMonth + 1} months checkpointed`}
+    >
+      {cells.map((cell) => (
+        <span
+          key={cell.month}
+          title={`${cell.month}: ${cellTitles[cell.state]}`}
+          className={`flex items-center justify-center rounded ${size} ${cellStyles[cell.state]}`}
+        >
+          {compact ? "" : MONTHS[cell.month - 1]}
+        </span>
+      ))}
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/city-checkpoint-list.tsx`
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { getGlobalBatchCityCheckpoints } from "@/lib/api-client";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { CityCheckpointList } from "@/types/global-batch";
+
+type Props = {
+  batchId: string;
+  cityResultId: string;
+  /** Re-fetch when this changes (e.g. completed_month_count). */
+  version: number;
+};
+
+export function CityCheckpointList({ batchId, cityResultId, version }: Props) {
+  const [data, setData] = useState<CityCheckpointList | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+    getGlobalBatchCityCheckpoints(batchId, cityResultId)
+      .then((response) => {
+        if (!disposed) {
+          setData(response);
+          setError("");
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load checkpoints");
+      });
+    return () => {
+      disposed = true;
+    };
+  }, [batchId, cityResultId, version]);
+
+  if (error) return <p className="mt-3 text-sm text-red-300">{error}</p>;
+  if (!data) return <p className="mt-3 text-sm text-slate-500">Loading checkpoints…</p>;
+
+  const complete = data.resume_from_month > data.end_month;
+
+  return (
+    <div className="mt-8">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h3 className="text-lg font-semibold">Durable Checkpoints</h3>
+        <p className="text-sm text-slate-400">
+          {complete
+            ? "All requested months checkpointed."
+            : `A resumed worker would start at month ${data.resume_from_month}.`}
+        </p>
+      </div>
+
+      {data.items.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">No checkpoint has been written yet.</p>
+      ) : (
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-800">
+          <table className="w-full min-w-[40rem] text-left text-sm">
+            <thead className="bg-slate-950 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Month</th>
+                <th className="px-4 py-3">Attempt</th>
+                <th className="px-4 py-3">Samples</th>
+                <th className="px-4 py-3">Skipped</th>
+                <th className="px-4 py-3">Written</th>
+                <th className="px-4 py-3">Payload SHA-256</th>
+                <th className="px-4 py-3">Provenance</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.items.map((item) => (
+                <tr key={item.id} className="border-t border-slate-800">
+                  <td className="px-4 py-3 font-medium">{item.month}</td>
+                  <td className="px-4 py-3">{item.attempt}</td>
+                  <td className="px-4 py-3">{item.sampled_day_count}</td>
+                  <td className={`px-4 py-3 ${item.skipped_sample_count ? "text-amber-300" : ""}`}>
+                    {item.skipped_sample_count}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400" title={new Date(item.created_at).toLocaleString()}>
+                    {formatRelativeTime(item.created_at)}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-400" title={item.payload_sha256}>
+                    {item.payload_sha256.slice(0, 16)}…
+                  </td>
+                  <td className="px-4 py-3">
+                    {item.provenance_matches_batch ? (
+                      <span className="rounded-full border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-xs text-emerald-300">
+                        {item.model_version}
+                      </span>
+                    ) : (
+                      <span
+                        title={item.mismatch_reason ?? undefined}
+                        className="rounded-full border border-amber-800 bg-amber-950 px-2 py-0.5 text-xs text-amber-300"
+                      >
+                        {item.model_version ?? "legacy"} · not resumable
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/data-quality-panel.tsx`
+```tsx
+"use client";
+
+import type { GlobalCityResult } from "@/types/global-batch";
+
+export function DataQualityPanel({ result }: { result: GlobalCityResult }) {
+  const quality = result.data_quality ?? null;
+  const definitions = result.metric_definitions ?? {};
+
+  if (!quality) {
+    return (
+      <p className="text-sm text-slate-500">
+        Data-quality metadata is not available for this result.
+      </p>
+    );
+  }
+
+  const reasons = Object.entries(quality?.skip_reasons ?? {});
+  const hashes = Object.entries(quality?.monthly_weather_payload_sha256 ?? {});
+
+  return (
+    <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      {quality && (
+        <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+          <h3 className="text-lg font-semibold">Data Quality</h3>
+
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <dt className="text-slate-500">Skipped samples</dt>
+              <dd className={quality.skipped_sample_count ? "text-amber-300" : "text-slate-200"}>
+                {quality.skipped_sample_count ?? 0}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-slate-500">Skipped weighted days</dt>
+              <dd className="text-slate-200">{quality.skipped_weighted_days ?? 0}</dd>
+            </div>
+          </dl>
+
+          {reasons.length > 0 && (
+            <ul className="mt-3 space-y-1 text-xs text-slate-400">
+              {reasons.map(([code, count]) => (
+                <li key={code}>
+                  <span className="font-mono text-amber-300">{code}</span> × {count}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {hashes.length > 0 && (
+            <details className="mt-3 text-xs text-slate-500">
+              <summary className="cursor-pointer">Weather payload SHA-256 per month ({hashes.length})</summary>
+              <ul className="mt-2 space-y-1 font-mono">
+                {hashes.map(([month, digest]) => (
+                  <li key={month}>
+                    {month}: {digest ? `${digest.slice(0, 16)}…` : "— (restored from checkpoint)"}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+      )}
+
+      {Object.keys(definitions).length > 0 && (
+        <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-5">
+          <h3 className="text-lg font-semibold">Metric Definitions</h3>
+          <dl className="mt-3 space-y-3 text-sm">
+            {Object.entries(definitions).map(([key, definition]) => (
+              <div key={key}>
+                <dt className="font-mono text-cyan-300">{key}</dt>
+                <dd className="mt-1 text-slate-300">{definition.display_name}</dd>
+                {definition.formula && (
+                  <dd className="mt-1 font-mono text-xs text-slate-400">{definition.formula}</dd>
+                )}
+                {definition.interpretation && (
+                  <dd className="mt-1 text-xs leading-5 text-slate-500">{definition.interpretation}</dd>
+                )}
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/global/lease-badge.tsx`
+```tsx
+"use client";
+
+import { formatRelativeTime, heartbeatHealth, shortOwner } from "@/lib/relative-time";
+import type { LeaseState } from "@/types/global-batch";
+
+type Props = {
+  leaseState: LeaseState | undefined;
+  leaseOwner: string | null | undefined;
+  lastHeartbeatAt: string | null | undefined;
+  leaseExpiresAt?: string | null;
+  heartbeatIntervalSeconds?: number;
+};
+
+const DEFAULT_HEARTBEAT_SECONDS = 30; // mirrors settings.CITY_HEARTBEAT_SECONDS
+
+const styles: Record<string, string> = {
+  healthy: "border-emerald-800 bg-emerald-950 text-emerald-300",
+  stale: "border-amber-800 bg-amber-950 text-amber-300",
+  expired: "border-red-800 bg-red-950 text-red-300",
+  none: "border-slate-700 bg-slate-900 text-slate-400",
+};
+
+const labels: Record<string, string> = {
+  healthy: "Lease live",
+  stale: "Heartbeat stale",
+  expired: "Lease expired",
+  none: "No lease",
+};
+
+export function LeaseBadge({
+  leaseState,
+  leaseOwner,
+  lastHeartbeatAt,
+  leaseExpiresAt,
+  heartbeatIntervalSeconds = DEFAULT_HEARTBEAT_SECONDS,
+}: Props) {
+  const health = heartbeatHealth(leaseState, lastHeartbeatAt, heartbeatIntervalSeconds);
+
+  const title = [
+    leaseOwner ? `Owner: ${leaseOwner}` : null,
+    lastHeartbeatAt ? `Heartbeat: ${new Date(lastHeartbeatAt).toLocaleString()}` : null,
+    leaseExpiresAt ? `Expires: ${new Date(leaseExpiresAt).toLocaleString()}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return (
+    <div className="space-y-1" title={title}>
+      <span
+        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${styles[health]}`}
+      >
+        {labels[health]}
+      </span>
+
+      {health !== "none" && (
+        <p className="text-xs text-slate-500">
+          <span className="font-mono">{shortOwner(leaseOwner)}</span>
+          {" · "}
+          {formatRelativeTime(lastHeartbeatAt)}
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/layout/NavBar.tsx`
 ```tsx
 "use client";
@@ -7756,7 +7910,7 @@ export function NavBar() {
     <header className="border-b border-slate-800 bg-slate-950">
       <nav className="mx-auto flex min-h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
-          href="/simulations"
+          href="/simulations/new"
           className="font-semibold text-white"
           onClick={() => setIsMobileMenuOpen(false)}
         >
@@ -7826,6 +7980,403 @@ export function NavBar() {
         </div>
       )}
     </header>
+  );
+}
+```
+
+### File: `frontend/src/components/materials/material-header.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
+
+import { deleteMaterial, updateMaterial } from "@/lib/api-client";
+import type { Material, MaterialUpdate } from "@/types/material";
+
+type Busy = "saving" | "archiving" | "deleting" | null;
+type Draft = { name: string; description: string; institution: string };
+
+function toDraft(material: Material): Draft {
+  return {
+    name: material.name,
+    description: material.description ?? "",
+    institution: material.institution ?? "",
+  };
+}
+
+/** PATCH semantics: send only what changed. */
+function diff(material: Material, draft: Draft): MaterialUpdate {
+  const changes: MaterialUpdate = {};
+  const name = draft.name.trim();
+  const description = draft.description.trim();
+  const institution = draft.institution.trim();
+
+  if (name !== material.name) changes.name = name;
+  if (description !== (material.description ?? "")) changes.description = description || null;
+  if (institution !== (material.institution ?? "")) changes.institution = institution || null;
+
+  return changes;
+}
+
+export function MaterialHeader({
+  material,
+  onUpdated,
+}: {
+  material: Material;
+  onUpdated: (material: Material) => void;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Draft>(() => toDraft(material));
+  const [busy, setBusy] = useState<Busy>(null);
+  const [error, setError] = useState("");
+  const disabled = busy !== null;
+
+  async function run(kind: Exclude<Busy, null>, action: () => Promise<void>) {
+    setBusy(kind);
+    setError("");
+    try {
+      await action();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Request failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function startEditing() {
+    setDraft(toDraft(material));
+    setError("");
+    setEditing(true);
+  }
+
+  function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!draft.name.trim()) {
+      setError("Material name is required.");
+      return;
+    }
+
+    const changes = diff(material, draft);
+
+    if (Object.keys(changes).length === 0) {
+      setEditing(false);
+      return;
+    }
+
+    void run("saving", async () => {
+      onUpdated(await updateMaterial(material.id, changes));
+      setEditing(false);
+    });
+  }
+
+  function toggleArchived() {
+    void run("archiving", async () => {
+      onUpdated(await updateMaterial(material.id, { is_archived: !material.is_archived }));
+    });
+  }
+
+  function handleDelete() {
+    const confirmed = window.confirm(
+      `Permanently delete "${material.name}" with its ${material.versions.length} ` +
+        "version(s) and uploaded spectra? This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    void run("deleting", async () => {
+      await deleteMaterial(material.id);
+      router.push("/materials");
+    });
+  }
+
+  return (
+    <header>
+      <p className="text-sm text-cyan-400">Material Detail</p>
+
+      {editing ? (
+        <form
+          onSubmit={handleSave}
+          className="mt-4 space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              label="Material Name"
+              value={draft.name}
+              maxLength={200}
+              disabled={disabled}
+              onChange={(name) => setDraft({ ...draft, name })}
+            />
+            <TextField
+              label="Institution"
+              value={draft.institution}
+              maxLength={255}
+              disabled={disabled}
+              onChange={(institution) => setDraft({ ...draft, institution })}
+            />
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block text-sm text-slate-300">Description</span>
+            <textarea
+              value={draft.description}
+              rows={3}
+              disabled={disabled}
+              onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
+            />
+          </label>
+
+          <p className="text-xs text-slate-500">
+            Slug <span className="font-mono">{material.slug}</span> cannot be changed.
+            Physical parameters are versioned; create a new version to change them.
+          </p>
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={disabled}
+              className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950 disabled:opacity-50"
+            >
+              {busy === "saving" ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setEditing(false)}
+              className="rounded-lg border border-slate-700 px-5 py-2 text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold">{material.name}</h1>
+            {material.is_archived && (
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                Archived
+              </span>
+            )}
+          </div>
+
+          <p className="mt-2 text-slate-400">
+            {material.description || "Material description not available"}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
+            <span>Slug: <span className="font-mono">{material.slug}</span></span>
+            <span>Institution: {material.institution ?? "—"}</span>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={startEditing}
+              className="rounded-lg border border-cyan-700 px-4 py-2 text-sm text-cyan-300 hover:bg-cyan-950 disabled:opacity-50"
+            >
+              Edit details
+            </button>
+
+            <Link
+              href={`/materials/${material.id}/versions/new`}
+              className="rounded-lg border border-cyan-700 px-4 py-2 text-sm text-cyan-300 hover:bg-cyan-950"
+            >
+              New version
+            </Link>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={toggleArchived}
+              className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-300 hover:bg-amber-950 disabled:opacity-50"
+            >
+              {busy === "archiving"
+                ? "Updating…"
+                : material.is_archived ? "Unarchive" : "Archive"}
+            </button>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={handleDelete}
+              className="rounded-lg border border-red-800 px-4 py-2 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+            >
+              {busy === "deleting" ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <div role="alert" className="mt-4 rounded-lg border border-red-900 bg-red-950 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+    </header>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  maxLength,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  maxLength: number;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm text-slate-300">{label}</span>
+      <input
+        value={value}
+        maxLength={maxLength}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+```
+
+### File: `frontend/src/components/materials/material-version-fields.tsx`
+```tsx
+"use client";
+
+import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
+import { SelectField } from "@/components/forms/select-field";
+import type { MaterialMode, MaterialVersionInput } from "@/types/material";
+
+const MODE_OPTIONS: { value: MaterialMode; label: string }[] = [
+  { value: "ordinary", label: "Ordinary textile" },
+  { value: "opaque_emitter", label: "Opaque emitter" },
+  { value: "infrared_transparent", label: "Infrared transparent" },
+  { value: "hybrid", label: "Hybrid" },
+];
+
+type Props = {
+  value: MaterialVersionInput;
+  disabled?: boolean;
+  onChange: <K extends keyof MaterialVersionInput>(
+    field: K,
+    value: MaterialVersionInput[K],
+  ) => void;
+};
+
+/** Physical fields of a material version; bounds mirror MaterialVersionCreate. */
+export function MaterialVersionFields({ value, disabled = false, onChange }: Props) {
+  const solarSumTooHigh = value.solar_reflectance + value.solar_transmittance > 1 + 1e-6;
+  const infraredSumTooHigh =
+    value.infrared_emissivity + value.infrared_transmittance > 1 + 1e-6;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-5 md:grid-cols-2">
+        <SelectField
+          label="Mode"
+          value={value.mode}
+          options={MODE_OPTIONS}
+          disabled={disabled}
+          onChange={(mode) => onChange("mode", mode)}
+        />
+        <NumberField
+          label="Clothing Insulation"
+          suffix="clo"
+          value={value.clothing_insulation_clo}
+          min={0} max={5} step={0.05}
+          disabled={disabled}
+          onChange={(v) => onChange("clothing_insulation_clo", v)}
+        />
+        <OptionalNumberField
+          label="Clothing Area Factor (f_cl)"
+          value={value.clothing_area_factor}
+          placeholder="Derived from clo"
+          min={1} max={2} step={0.01}
+          disabled={disabled}
+          hint="Leave empty to let the backend derive f_cl from clo."
+          onChange={(v) => onChange("clothing_area_factor", v)}
+        />
+        <OptionalNumberField
+          label="Evaporative Resistance (Re,cl)"
+          suffix="m²·Pa/W"
+          value={value.evaporative_resistance_m2pa_w}
+          placeholder="Derived from clo"
+          min={0} max={1000} step={0.5}
+          disabled={disabled}
+          onChange={(v) => onChange("evaporative_resistance_m2pa_w", v)}
+        />
+        <NumberField
+          label="Projected Solar Area Factor"
+          value={value.projected_solar_area_factor}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("projected_solar_area_factor", v)}
+        />
+        <NumberField
+          label="Solar Reflectance"
+          value={value.solar_reflectance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("solar_reflectance", v)}
+        />
+        <NumberField
+          label="Solar Transmittance"
+          value={value.solar_transmittance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("solar_transmittance", v)}
+        />
+        <NumberField
+          label="Infrared Emissivity"
+          value={value.infrared_emissivity}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("infrared_emissivity", v)}
+        />
+        <NumberField
+          label="Infrared Transmittance"
+          value={value.infrared_transmittance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("infrared_transmittance", v)}
+        />
+        <OptionalNumberField
+          label="Areal Density"
+          suffix="g/m²"
+          value={value.areal_density_g_m2}
+          placeholder="Not recorded"
+          min={0} step={1}
+          disabled={disabled}
+          onChange={(v) => onChange("areal_density_g_m2", v)}
+        />
+        <OptionalNumberField
+          label="Specific Heat"
+          suffix="J/(kg·K)"
+          value={value.specific_heat_j_kgk}
+          placeholder="Not recorded"
+          min={0} step={10}
+          disabled={disabled}
+          onChange={(v) => onChange("specific_heat_j_kgk", v)}
+        />
+      </div>
+
+      {(solarSumTooHigh || infraredSumTooHigh) && (
+        <p role="alert" className="text-sm text-amber-300">
+          {solarSumTooHigh && "Solar reflectance + transmittance must not exceed 1. "}
+          {infraredSumTooHigh && "Infrared emissivity + transmittance must not exceed 1."}
+        </p>
+      )}
+    </div>
   );
 }
 ```
@@ -8129,6 +8680,19 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
           disabled={disabled}
           hint="Shortwave reflectance of the ground (Stage 5, ADR 0006)."
           onChange={(v) => update("ground_albedo", v)}
+        />
+
+        {/* ★ 新增：Hourly irradiance convention（放在 Ground albedo 之後） */}
+        <SelectField
+          label="Hourly irradiance convention"
+          value={value.radiation_time_convention}
+          disabled={disabled}
+          options={[
+            { value: "preceding_hour_mean_step", label: "Preceding-hour mean (energy-conserving)" },
+            { value: "instantaneous_linear", label: "Instantaneous, linear (legacy approximation)" },
+          ]}
+          hint="Open-Meteo stamps each hourly value as the mean over the preceding hour. The linear option shifts the solar profile by up to 30 min."
+          onChange={(v) => update("radiation_time_convention", v)}
         />
 
         <NumberField
@@ -9083,6 +9647,66 @@ export function PersonInputFields({
 }
 ```
 
+### File: `frontend/src/components/simulation/weather-quality-panel.tsx`
+```tsx
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { WeatherTimeSeries } from "@/types/simulation";
+
+export function WeatherQualityPanel({ weather }: { weather: WeatherTimeSeries }) {
+  const quality = weather.source.quality ?? null;
+
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Weather Data Quality</h2>
+      <p className="mt-2 text-sm text-slate-400">
+        Provenance and timeline audit of the ERA5 series that drove this run.
+      </p>
+
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <Item label="Payload SHA-256">
+          <span className="font-mono" title={weather.source.payload_sha256 ?? undefined}>
+            {weather.source.payload_sha256 ? `${weather.source.payload_sha256.slice(0, 16)}…` : "—"}
+          </span>
+        </Item>
+        <Item label="Cache">{weather.source.from_cache ? "Local cache" : "Downloaded"}</Item>
+        <Item label="Downloaded">{formatRelativeTime(weather.source.downloaded_at)}</Item>
+        <Item label="Points in window">{weather.points.length}</Item>
+      </dl>
+
+      {quality ? (
+        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+          <Item label="Expected step">{quality.expected_step_seconds} s</Item>
+          <Item label="Sorted on arrival">{quality.was_sorted ? "Yes" : "No (sorted)"}</Item>
+          <Item label="Duplicates removed">{quality.duplicates_removed}</Item>
+          <Item label="Gaps">
+            <span className={quality.gaps.length ? "text-amber-300" : ""}>{quality.gaps.length}</span>
+          </Item>
+        </dl>
+      ) : (
+        <p className="mt-5 text-sm text-slate-500">
+          No quality report was stored with this result (recorded before Stage 1 PR-1).
+        </p>
+      )}
+
+      {quality && quality.notes.length > 0 && (
+        <ul className="mt-4 list-inside list-disc space-y-1 text-xs text-slate-400">
+          {quality.notes.map((note) => <li key={note}>{note}</li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function Item({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <dt className="text-slate-500">{label}</dt>
+      <dd className="mt-1 text-slate-200">{children}</dd>
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/config/navigation.ts`
 ```typescript
 export type NavLink = {
@@ -9095,8 +9719,8 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/materials", label: "Materials" },
   { href: "/global-analysis", label: "Global Analysis" },
   { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
+  { href: "/ops", label: "Operations" },
 ];
-
 ```
 
 ### File: `frontend/src/lib/api-client.ts`
@@ -9112,10 +9736,15 @@ import type {
   GlobalBatchDetail,
   GlobalBatchEstimate,
   GlobalCity,
+  CityCheckpointList, 
+  GlobalBatchListResponse,
 } from "@/types/global-batch";
+
+import type { OpsStatus } from "@/types/ops";
+
 import type {
   Material, MaterialCreate, MaterialListResponse,
-  MaterialVersionListResponse,
+  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
 } from "@/types/material";
 import type {
   City,
@@ -9169,6 +9798,15 @@ async function getErrorMessage(
     if (typeof detail === "object" && detail !== null && "message" in detail) {
       const { code, message } = detail as { code?: string; message?: string };
       return code ? `${message} [${code}]` : String(message);
+    }
+
+    if (Array.isArray(detail)) {
+      return (detail as Array<{ loc?: unknown[]; msg?: string }>)
+        .map((item) => {
+          const loc = (item.loc ?? []).filter((part) => part !== "body").join(".");
+          return loc ? `${loc}: ${item.msg}` : String(item.msg ?? JSON.stringify(item));
+        })
+        .join("; ");
     }
 
     if (typeof detail === "string") {
@@ -9431,25 +10069,72 @@ export function getSimulationEventsUrl(
 
 export async function getMaterials(
   search = "",
+  includeArchived = false,
 ): Promise<MaterialListResponse> {
   const parameters = new URLSearchParams();
+  if (search) parameters.set("search", search);
+  if (includeArchived) parameters.set("include_archived", "true");
 
-  if (search) {
-    parameters.set("search", search);
+  const response = await fetch(`${API_BASE_URL}/api/v1/materials?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch material list"));
   }
 
+  return response.json() as Promise<MaterialListResponse>;
+}
+
+export async function updateMaterial(
+  materialId: string,
+  update: MaterialUpdate,
+): Promise<Material> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials?${parameters}`,
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
     {
-      cache: "no-store",
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
     },
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch material list");
+    throw new Error(await getErrorMessage(response, "Failed to update material"));
   }
 
-  return response.json();
+  return response.json() as Promise<Material>;
+}
+
+export async function deleteMaterial(materialId: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
+    { method: "DELETE" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to delete material"));
+  }
+}
+
+export async function createMaterialVersion(
+  materialId: string,
+  version: MaterialVersionInput,
+): Promise<MaterialVersion> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}/versions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(version),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to create material version"));
+  }
+
+  return response.json() as Promise<MaterialVersion>;
 }
 
 
@@ -9815,6 +10500,142 @@ export async function getMaterialVersions(
   return response.json() as Promise<MaterialVersionListResponse>;
 }
 
+export function getGlobalBatchEventsUrl(batchId: string): string {
+  return `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}/events`;
+}
+
+export async function listGlobalBatches(
+  limit = 20,
+  offset = 0,
+): Promise<GlobalBatchListResponse> {
+  const parameters = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const response = await fetch(`${API_BASE_URL}/api/v1/global-batches?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load global batches"));
+  }
+
+  return response.json() as Promise<GlobalBatchListResponse>;
+}
+
+export async function getGlobalBatchCityCheckpoints(
+  batchId: string,
+  cityResultId: string,
+): Promise<CityCheckpointList> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}` +
+      `/cities/${encodeURIComponent(cityResultId)}/checkpoints`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load city checkpoints"));
+  }
+
+  return response.json() as Promise<CityCheckpointList>;
+}
+
+export async function getOpsStatus(): Promise<OpsStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/ops/status`, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load operations status"));
+  }
+
+  return response.json() as Promise<OpsStatus>;
+}
+```
+
+### File: `frontend/src/lib/checkpoint-cells.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { buildCheckpointCells, monthsFromCheckpoint } from "@/lib/checkpoint-cells";
+
+describe("buildCheckpointCells", () => {
+  it("marks outside, checkpointed, running and pending months", () => {
+    const cells = buildCheckpointCells(7, 12, [7, 8], "running");
+    const states = cells.map((c) => c.state);
+
+    expect(states.slice(0, 6)).toEqual(Array(6).fill("outside"));
+    expect(states[6]).toBe("checkpointed");
+    expect(states[7]).toBe("checkpointed");
+    expect(states[8]).toBe("running");
+    expect(states.slice(9)).toEqual(["pending", "pending", "pending"]);
+  });
+
+  it("never shows a running cell for a non-running city", () => {
+    const cells = buildCheckpointCells(1, 12, [1, 2, 3], "failed");
+    expect(cells.filter((c) => c.state === "running")).toHaveLength(0);
+    expect(cells.filter((c) => c.state === "pending")).toHaveLength(9);
+  });
+
+  it("always returns twelve cells", () => {
+    expect(buildCheckpointCells(3, 3, [], "queued")).toHaveLength(12);
+  });
+});
+
+describe("monthsFromCheckpoint", () => {
+  it("splits restored and computed months", () => {
+    expect(monthsFromCheckpoint([1, 2, 3], true, 12)).toEqual({ restored: 3, computed: 9 });
+    expect(monthsFromCheckpoint([1, 2, 3], false, 12)).toEqual({ restored: 0, computed: 12 });
+  });
+});
+```
+
+### File: `frontend/src/lib/checkpoint-cells.ts`
+```typescript
+import type { GlobalCityStatus } from "@/types/global-batch";
+
+export type CheckpointCellState = "outside" | "checkpointed" | "running" | "pending";
+
+export type CheckpointCell = {
+  month: number;
+  state: CheckpointCellState;
+};
+
+/**
+ * Twelve cells, one per calendar month. Months outside [startMonth, endMonth]
+ * are "outside"; months with a durable checkpoint are "checkpointed"; for a
+ * running city the first missing month is "running"; the rest are "pending".
+ */
+export function buildCheckpointCells(
+  startMonth: number,
+  endMonth: number,
+  checkpointMonths: readonly number[],
+  status: GlobalCityStatus | string,
+): CheckpointCell[] {
+  const done = new Set(checkpointMonths);
+  let runningAssigned = false;
+
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+
+    if (month < startMonth || month > endMonth) {
+      return { month, state: "outside" as const };
+    }
+    if (done.has(month)) {
+      return { month, state: "checkpointed" as const };
+    }
+    if (status === "running" && !runningAssigned) {
+      runningAssigned = true;
+      return { month, state: "running" as const };
+    }
+    return { month, state: "pending" as const };
+  });
+}
+
+export function monthsFromCheckpoint(
+  checkpointMonths: readonly number[],
+  resumedFromCheckpoint: boolean,
+  completedMonthCount: number,
+): { restored: number; computed: number } {
+  if (!resumedFromCheckpoint) return { restored: 0, computed: completedMonthCount };
+  const restored = Math.min(checkpointMonths.length, completedMonthCount);
+  return { restored, computed: Math.max(0, completedMonthCount - restored) };
+}
 ```
 
 ### File: `frontend/src/lib/date-defaults.test.ts`
@@ -9902,6 +10723,7 @@ export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
   sky_view_factor: 0.5,
   wind_speed_scaling_factor: 1,
   ground_albedo: 0.2,
+  radiation_time_convention: "instantaneous_linear",
 };
 ```
 
@@ -9960,6 +10782,215 @@ export function formatSignedNumber(
   const sign = value > 0 ? "+" : "";
 
   return `${sign}${value.toFixed(digits)}${unit}`;
+}
+```
+
+### File: `frontend/src/lib/global-batch-progress.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { mergeBatchProgress, progressRequiresDetailReload } from "@/lib/global-batch-progress";
+import type { GlobalBatchDetail, GlobalBatchProgressEvent } from "@/types/global-batch";
+
+const detail = {
+  id: "b1",
+  status: "running",
+  progress: 10,
+  completed_city_count: 0,
+  failed_city_count: 0,
+  cancelled_city_count: 0,
+  request: { name: "x" },
+  city_results: [
+    { id: "c1", status: "running", progress: 10, monthly_results: [{ month: 1 }], checkpoint_months: [1] },
+    { id: "c2", status: "queued", progress: 0, monthly_results: null, checkpoint_months: [] },
+  ],
+} as unknown as GlobalBatchDetail;
+
+const event = {
+  batch: { id: "b1", status: "running", progress: 35, completed_city_count: 0, failed_city_count: 0, cancelled_city_count: 0 },
+  cities: [
+    { id: "c1", status: "running", progress: 70, checkpoint_months: [1, 2, 3], lease_state: "live" },
+  ],
+} as unknown as GlobalBatchProgressEvent;
+
+describe("mergeBatchProgress", () => {
+  it("overlays progress without discarding heavy fields", () => {
+    const merged = mergeBatchProgress(detail, event);
+
+    expect(merged.progress).toBe(35);
+    expect(merged.request).toEqual({ name: "x" });
+    expect(merged.city_results[0].progress).toBe(70);
+    expect(merged.city_results[0].checkpoint_months).toEqual([1, 2, 3]);
+    expect(merged.city_results[0].monthly_results).toEqual([{ month: 1 }]);
+    expect(merged.city_results[1]).toBe(detail.city_results[1]);
+  });
+});
+
+describe("progressRequiresDetailReload", () => {
+  it("reloads when a city reaches a terminal state or the batch finishes", () => {
+    expect(progressRequiresDetailReload(null, event)).toBe(true);
+    expect(progressRequiresDetailReload(detail, event)).toBe(false);
+
+    const oneDone = { ...event, batch: { ...event.batch, completed_city_count: 1 } };
+    expect(progressRequiresDetailReload(detail, oneDone)).toBe(true);
+
+    const finished = { ...event, batch: { ...event.batch, status: "completed" as const} };
+    expect(progressRequiresDetailReload(detail, finished)).toBe(true);
+  });
+});
+```
+
+### File: `frontend/src/lib/global-batch-progress.ts`
+```typescript
+import type {
+  GlobalBatchDetail,
+  GlobalBatchProgressEvent,
+} from "@/types/global-batch";
+
+export const TERMINAL_BATCH_STATUSES = new Set<string>([
+  "completed",
+  "partial_completed",
+  "failed",
+  "cancelled",
+]);
+
+export function isTerminalBatchStatus(status: string): boolean {
+  return TERMINAL_BATCH_STATUSES.has(status);
+}
+
+/** Overlay a lightweight SSE snapshot onto the full detail without touching
+ *  monthly results or analytics (those arrive via a detail reload). */
+export function mergeBatchProgress(
+  detail: GlobalBatchDetail,
+  event: GlobalBatchProgressEvent,
+): GlobalBatchDetail {
+  const byId = new Map(event.cities.map((city) => [city.id, city]));
+
+  return {
+    ...detail,
+    ...event.batch,
+    request: detail.request,
+    city_results: detail.city_results.map((city) => {
+      const progress = byId.get(city.id);
+      return progress ? { ...city, ...progress } : city;
+    }),
+  };
+}
+
+/** A full reload is needed when heavy fields (analytics, monthly results)
+ *  may have changed: a city reached a terminal state or the batch did. */
+export function progressRequiresDetailReload(
+  previous: GlobalBatchDetail | null,
+  event: GlobalBatchProgressEvent,
+): boolean {
+  if (!previous) return true;
+
+  const processedBefore =
+    previous.completed_city_count + previous.failed_city_count + previous.cancelled_city_count;
+  const processedNow =
+    event.batch.completed_city_count +
+    event.batch.failed_city_count +
+    event.batch.cancelled_city_count;
+
+  return processedNow !== processedBefore || isTerminalBatchStatus(event.batch.status);
+}
+```
+
+### File: `frontend/src/lib/relative-time.test.ts`
+```typescript
+import { describe, expect, it } from "vitest";
+
+import { formatRelativeTime, heartbeatHealth, shortOwner } from "@/lib/relative-time";
+
+const NOW = new Date("2026-01-01T12:00:00Z");
+
+describe("formatRelativeTime", () => {
+  it("handles missing and invalid input", () => {
+    expect(formatRelativeTime(null, NOW)).toBe("—");
+    expect(formatRelativeTime("nope", NOW)).toBe("nope");
+  });
+
+  it("scales units", () => {
+    expect(formatRelativeTime("2026-01-01T11:59:50Z", NOW)).toBe("just now");
+    expect(formatRelativeTime("2026-01-01T11:58:00Z", NOW)).toBe("2 min ago");
+    expect(formatRelativeTime("2026-01-01T09:00:00Z", NOW)).toBe("3 h ago");
+    expect(formatRelativeTime("2025-12-29T12:00:00Z", NOW)).toBe("3 d ago");
+    expect(formatRelativeTime("2026-01-01T12:05:00Z", NOW)).toBe("in 5 min");
+  });
+});
+
+describe("heartbeatHealth", () => {
+  it("is none without a lease and expired when the server says so", () => {
+    expect(heartbeatHealth("none", "2026-01-01T11:59:59Z", 30, NOW)).toBe("none");
+    expect(heartbeatHealth(undefined, null, 30, NOW)).toBe("none");
+    expect(heartbeatHealth("expired", "2026-01-01T11:59:59Z", 30, NOW)).toBe("expired");
+  });
+
+  it("flags a live lease whose heartbeat is older than two intervals", () => {
+    expect(heartbeatHealth("live", "2026-01-01T11:59:40Z", 30, NOW)).toBe("healthy");
+    expect(heartbeatHealth("live", "2026-01-01T11:58:00Z", 30, NOW)).toBe("stale");
+    expect(heartbeatHealth("live", null, 30, NOW)).toBe("stale");
+  });
+});
+
+describe("shortOwner", () => {
+  it("compacts host:pid:task", () => {
+    expect(shortOwner("worker-a:4242:0f1e2d3c4b5a")).toBe("worker-a · 0f1e2d");
+    expect(shortOwner("single")).toBe("single");
+    expect(shortOwner(null)).toBe("—");
+  });
+});
+```
+
+### File: `frontend/src/lib/relative-time.ts`
+```typescript
+import type { LeaseState } from "@/types/global-batch";
+
+/** "just now", "3 min ago", "2 h ago", "5 d ago". Future values say "in …". */
+export function formatRelativeTime(value: string | null | undefined, now = new Date()): string {
+  if (!value) return "—";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const seconds = Math.round((now.getTime() - date.getTime()) / 1000);
+  const abs = Math.abs(seconds);
+  const suffix = seconds < 0 ? (text: string) => `in ${text}` : (text: string) => `${text} ago`;
+
+  if (abs < 45) return seconds < 0 ? "in a few seconds" : "just now";
+  if (abs < 90) return suffix("1 min");
+  if (abs < 3600) return suffix(`${Math.round(abs / 60)} min`);
+  if (abs < 86400) return suffix(`${Math.round(abs / 3600)} h`);
+  return suffix(`${Math.round(abs / 86400)} d`);
+}
+
+export type HeartbeatHealth = "none" | "healthy" | "stale" | "expired";
+
+/**
+ * Combines the server-derived lease state with the heartbeat age so the UI
+ * can warn before the lease actually expires.
+ */
+export function heartbeatHealth(
+  leaseState: LeaseState | undefined,
+  lastHeartbeatAt: string | null | undefined,
+  heartbeatIntervalSeconds: number,
+  now = new Date(),
+): HeartbeatHealth {
+  if (!leaseState || leaseState === "none") return "none";
+  if (leaseState === "expired") return "expired";
+  if (!lastHeartbeatAt) return "stale";
+
+  const age = (now.getTime() - new Date(lastHeartbeatAt).getTime()) / 1000;
+  return age > heartbeatIntervalSeconds * 2 ? "stale" : "healthy";
+}
+
+/** "host:pid:task-id" -> "host · 1a2b3c" for compact display. */
+export function shortOwner(owner: string | null | undefined): string {
+  if (!owner) return "—";
+  const parts = owner.split(":");
+  const host = parts[0] ?? owner;
+  const tail = parts.at(-1) ?? "";
+  return tail && tail !== host ? `${host} · ${tail.slice(0, 6)}` : host;
 }
 ```
 
@@ -10042,6 +11073,326 @@ export function pluckOptionalSeries(
 
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   });
+}
+```
+
+### File: `frontend/src/lib/use-global-batch.ts`
+```typescript
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { getGlobalBatch, getGlobalBatchEventsUrl } from "@/lib/api-client";
+import {
+  isTerminalBatchStatus,
+  mergeBatchProgress,
+  progressRequiresDetailReload,
+} from "@/lib/global-batch-progress";
+import type { GlobalBatchDetail, GlobalBatchProgressEvent } from "@/types/global-batch";
+
+export type BatchTransport = "sse" | "polling" | "idle";
+
+const POLL_INTERVAL_MS = 3000;
+const POLL_INTERVAL_ON_ERROR_MS = 5000;
+
+export function useGlobalBatch(batchId: string) {
+  const [batch, setBatch] = useState<GlobalBatchDetail | null>(null);
+  const [error, setError] = useState("");
+  const [transport, setTransport] = useState<BatchTransport>("idle");
+  const [revision, setRevision] = useState(0);
+  const batchRef = useRef<GlobalBatchDetail | null>(null);
+
+  useEffect(() => {
+    batchRef.current = batch;
+  }, [batch]);
+
+  const refresh = useCallback(async () => {
+    const detail = await getGlobalBatch(batchId);
+    setBatch(detail);
+    setError("");
+    return detail;
+  }, [batchId]);
+
+  /** Restart the subscription (after retry, for example). */
+  const resubscribe = useCallback(() => setRevision((current) => current + 1), []);
+
+  useEffect(() => {
+    let disposed = false;
+    let pollTimer: number | null = null;
+    let eventSource: EventSource | null = null;
+
+    function message(caught: unknown, fallback: string) {
+      return caught instanceof Error ? caught.message : fallback;
+    }
+
+    async function loadDetail(): Promise<GlobalBatchDetail | null> {
+      try {
+        const detail = await getGlobalBatch(batchId);
+        if (!disposed) {
+          setBatch(detail);
+          setError("");
+        }
+        return detail;
+      } catch (caught) {
+        if (!disposed) setError(message(caught, "Unable to load the global analysis."));
+        return null;
+      }
+    }
+
+    function stopPolling() {
+      if (pollTimer !== null) {
+        window.clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+    }
+
+    function startPolling() {
+      setTransport("polling");
+
+      async function tick() {
+        const detail = await loadDetail();
+        if (disposed) return;
+        if (detail && isTerminalBatchStatus(detail.status)) {
+          setTransport("idle");
+          return;
+        }
+        pollTimer = window.setTimeout(tick, detail ? POLL_INTERVAL_MS : POLL_INTERVAL_ON_ERROR_MS);
+      }
+
+      pollTimer = window.setTimeout(tick, POLL_INTERVAL_MS);
+    }
+
+    function startStream() {
+      if (typeof EventSource === "undefined") {
+        startPolling();
+        return;
+      }
+
+      try {
+        eventSource = new EventSource(getGlobalBatchEventsUrl(batchId));
+      } catch {
+        startPolling();
+        return;
+      }
+
+      setTransport("sse");
+
+      eventSource.addEventListener("progress", (event) => {
+        if (disposed) return;
+        try {
+          const parsed = JSON.parse((event as MessageEvent<string>).data) as GlobalBatchProgressEvent;
+          const needsReload = progressRequiresDetailReload(batchRef.current, parsed);
+          setBatch((current) => (current ? mergeBatchProgress(current, parsed) : current));
+          if (needsReload) void loadDetail();
+        } catch {
+          setError("Failed to parse batch progress data.");
+        }
+      });
+
+      eventSource.addEventListener("terminal", () => {
+        eventSource?.close();
+        eventSource = null;
+        void loadDetail().then(() => {
+          if (!disposed) setTransport("idle");
+        });
+      });
+
+      eventSource.onerror = () => {
+        // Proxy without SSE support, network blip, or server restart: fall back.
+        eventSource?.close();
+        eventSource = null;
+        if (!disposed) startPolling();
+      };
+    }
+
+    void loadDetail().then((detail) => {
+      if (disposed || !detail) {
+        if (!disposed) startPolling();
+        return;
+      }
+      if (isTerminalBatchStatus(detail.status)) {
+        setTransport("idle");
+        return;
+      }
+      startStream();
+    });
+
+    return () => {
+      disposed = true;
+      stopPolling();
+      eventSource?.close();
+    };
+  }, [batchId, revision]);
+
+  return { batch, error, setError, transport, refresh, resubscribe };
+}
+```
+
+### File: `frontend/src/lib/use-simulation-job.ts`
+```typescript
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import {
+  cancelSimulationJob,
+  getSimulationEventsUrl,
+  getSimulationJob,
+  getSimulationResult,
+} from "@/lib/api-client";
+import type { SimulationJob, WeatherSimulationResponse } from "@/types/simulation";
+
+export type JobTransport = "sse" | "polling" | "idle";
+
+const TERMINAL = new Set<SimulationJob["status"]>(["completed", "failed", "cancelled"]);
+const POLL_MS = 3000;
+const POLL_ON_ERROR_MS = 5000;
+
+export function isTerminalJobStatus(status: string): boolean {
+  return TERMINAL.has(status as SimulationJob["status"]);
+}
+
+/** Same reliability pattern as useGlobalBatch: load, stream, fall back to
+ *  polling, stop at a terminal status, ignore stale snapshots. */
+export function useSimulationJob(jobId: string) {
+  const [job, setJob] = useState<SimulationJob | null>(null);
+  const [result, setResult] = useState<WeatherSimulationResponse | null>(null);
+  const [error, setError] = useState("");
+  const [resultError, setResultError] = useState("");
+  const [transport, setTransport] = useState<JobTransport>("idle");
+  const [revision, setRevision] = useState(0);
+  const updatedAtRef = useRef<number>(0);
+
+  const applyJob = useCallback((next: SimulationJob) => {
+    const stamp = new Date(next.updated_at).getTime();
+    // SSE and polling race; never let an older snapshot overwrite a newer one.
+    if (Number.isFinite(stamp) && stamp < updatedAtRef.current) return;
+    if (Number.isFinite(stamp)) updatedAtRef.current = stamp;
+    setJob((current) => (current ? { ...current, ...next } : next));
+  }, []);
+
+  const loadResult = useCallback(async () => {
+    setResultError("");
+    try {
+      setResult(await getSimulationResult(jobId));
+    } catch (caught) {
+      setResultError(caught instanceof Error ? caught.message : "Failed to load simulation result");
+    }
+  }, [jobId]);
+
+  const refresh = useCallback(async () => {
+    const detail = await getSimulationJob(jobId);
+    applyJob(detail);
+    return detail;
+  }, [jobId, applyJob]);
+
+  const cancel = useCallback(async () => {
+    const updated = await cancelSimulationJob(jobId);
+    applyJob(updated);
+  }, [jobId, applyJob]);
+
+  const resubscribe = useCallback(() => setRevision((r) => r + 1), []);
+
+  useEffect(() => {
+    let disposed = false;
+    let pollTimer: number | null = null;
+    let eventSource: EventSource | null = null;
+
+    async function load(): Promise<SimulationJob | null> {
+      try {
+        const detail = await getSimulationJob(jobId);
+        if (!disposed) {
+          applyJob(detail);
+          setError("");
+        }
+        return detail;
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Failed to load simulation job");
+        return null;
+      }
+    }
+
+    function startPolling() {
+      setTransport("polling");
+      async function tick() {
+        const detail = await load();
+        if (disposed) return;
+        if (detail && isTerminalJobStatus(detail.status)) {
+          setTransport("idle");
+          return;
+        }
+        pollTimer = window.setTimeout(tick, detail ? POLL_MS : POLL_ON_ERROR_MS);
+      }
+      pollTimer = window.setTimeout(tick, POLL_MS);
+    }
+
+    function startStream() {
+      if (typeof EventSource === "undefined") return startPolling();
+      try {
+        eventSource = new EventSource(getSimulationEventsUrl(jobId));
+      } catch {
+        return startPolling();
+      }
+      setTransport("sse");
+
+      const onProgress = (event: Event) => {
+        if (disposed) return;
+        try {
+          applyJob(JSON.parse((event as MessageEvent<string>).data) as SimulationJob);
+        } catch {
+          setError("Failed to parse job progress data");
+        }
+      };
+
+      eventSource.addEventListener("progress", onProgress);
+      eventSource.addEventListener("terminal", (event) => {
+        onProgress(event);
+        eventSource?.close();
+        eventSource = null;
+        if (!disposed) setTransport("idle");
+      });
+      eventSource.onerror = () => {
+        eventSource?.close();
+        eventSource = null;
+        if (!disposed) startPolling();
+      };
+    }
+
+    void load().then((detail) => {
+      if (disposed) return;
+      if (!detail) return startPolling();
+      if (isTerminalJobStatus(detail.status)) return setTransport("idle");
+      startStream();
+    });
+
+    return () => {
+      disposed = true;
+      if (pollTimer !== null) window.clearTimeout(pollTimer);
+      eventSource?.close();
+    };
+  }, [jobId, revision, applyJob]);
+
+    useEffect(() => {
+    if (job?.status !== "completed" || result !== null || resultError !== "") return;
+
+    let cancelled = false;
+    (async () => {
+        try {
+        const data = await getSimulationResult(jobId);
+        if (!cancelled) setResult(data);
+        } catch (caught) {
+        if (!cancelled) {
+            setResultError(caught instanceof Error ? caught.message : "Failed to load simulation result");
+        }
+        }
+    })();
+
+    return () => {
+        cancelled = true;
+    };
+    }, [job?.status, result, resultError, jobId]);
+
+  return { job, result, error, resultError, transport, refresh, cancel, resubscribe, retryResult: loadResult };
 }
 ```
 
@@ -10302,7 +11653,8 @@ export type MonthlyAdaptationResult = {
   beneficial_weighted_days: number;
 
   exposure_coverage_percent: number;
-
+  skipped_weighted_days?: number;
+  
   climate_adaptation_rate_percent:
     | number
     | null;
@@ -10354,6 +11706,30 @@ export type HeatwaveEvent = {
   beneficial_day_count: number;
 };
 
+export type LeaseState = "none" | "live" | "expired";
+
+export type DataQualityInfo = {
+  skipped_sample_count: number;
+  skipped_weighted_days: number;
+  skip_reasons: Record<string, number>;
+  monthly_weather_payload_sha256: Record<string, string | null>;
+  /** Stage 9 */
+  checkpoints_discarded?: Array<{ month: number; reason: string }>;
+  checkpoint_provenance?: {
+    model_version: string;
+    parameter_fingerprint: string;
+    request_sha256: string;
+  };
+};
+
+export type MetricDefinition = {
+  label: string;
+  description: string;
+  display_name: string;
+  unit?: string | null;
+  formula?: string | null;
+  interpretation?: string | null;
+};
 
 export type GlobalCityResult = {
   id: string;
@@ -10467,6 +11843,19 @@ export type GlobalCityResult = {
   error_message: string | null;
   started_at: string | null;
   completed_at: string | null;
+
+  // Stage 8
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  lease_state?: LeaseState;
+  checkpoint_months?: number[];
+  data_quality?: DataQualityInfo | null;
+  metric_definitions?: Record<string, MetricDefinition> | null;
+
+  // Stage 9
+  heatwave_analysis_available?: boolean | null;
+  heatwave_unavailable_reason?: string | null;
+  heatwave_temperature_basis?: string | null;
 };
 
 
@@ -10492,8 +11881,61 @@ export type GlobalBatch = {
   completed_at: string | null;
   control_material_version_id?: string | null;
   rc_material_version_id?: string | null;
+
+  // Stage 8
+  attempt?: number;
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  last_heartbeat_at?: string | null;
+  cancel_requested_at?: string | null;
 };
 
+export type GlobalCityProgress = {
+  id: string;
+  city_id: string;
+  status: GlobalCityStatus;
+  stage: string;
+  progress: number;
+  retry_count: number;
+  completed_month_count: number;
+  last_checkpoint_month: number | null;
+  last_heartbeat_at: string | null;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
+  lease_state: LeaseState;
+  checkpoint_months: number[];
+  error_message: string | null;
+};
+
+
+export type GlobalBatchProgressEvent = {
+  batch: GlobalBatch;
+  cities: GlobalCityProgress[];
+};
+
+export type CityCheckpoint = {
+  id: string;
+  month: number;
+  attempt: number;
+  created_at: string;
+  payload_sha256: string;
+  sampled_day_count: number;
+  skipped_sample_count: number;
+  model_version?: string | null;
+  parameter_fingerprint?: string | null;
+  provenance_matches_batch?: boolean;
+  mismatch_reason?: string | null;
+};
+
+export type CityCheckpointList = {
+  batch_id: string;
+  city_result_id: string;
+  city_id: string;
+  start_month: number;
+  end_month: number;
+  items: CityCheckpoint[];
+  resume_from_month: number;
+};
 
 export type GlobalBatchDetail =
   GlobalBatch & {
@@ -10763,6 +12205,44 @@ export type MaterialVersionListResponse = {
   limit: number;
   offset: number;
 };
+
+/** PATCH /materials/{id}. Omit a key to keep it; null clears optional text. */
+export type MaterialUpdate = {
+  name?: string;
+  description?: string | null;
+  institution?: string | null;
+  is_archived?: boolean;
+};
+```
+
+### File: `frontend/src/types/ops.ts`
+```typescript
+export type WorkerStatus = {
+  name: string;
+  active_task_count: number;
+  reserved_task_count: number;
+};
+
+export type LeaseSummary = {
+  running_cities: number;
+  queued_cities: number;
+  live_leases: number;
+  expired_leases: number;
+  running_batches: number;
+  cancelling_batches: number;
+};
+
+export type OpsStatus = {
+  checked_at: string;
+  broker_reachable: boolean;
+  worker_count: number;
+  workers: WorkerStatus[];
+  leases: LeaseSummary;
+  lease_ttl_seconds: number;
+  heartbeat_interval_seconds: number;
+  reaper_interval_seconds: number;
+  worst_case_recovery_seconds: number;
+};
 ```
 
 ### File: `frontend/src/types/simulation.ts`
@@ -10787,6 +12267,10 @@ export type ResolvedParameterSource = "material_input" | "derived_from_clo";
 export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
 export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
 
+export type RadiationTimeConvention =
+  | "instantaneous_linear"
+  | "preceding_hour_mean_step";
+
 export type EnvironmentAssumptions = {
   mean_radiant_temperature_method: MeanRadiantTemperatureMethod;
   solar_mrt_gain_k_per_w_m2: number;
@@ -10798,6 +12282,20 @@ export type EnvironmentAssumptions = {
   sky_view_factor: number;
   wind_speed_scaling_factor: number;
   ground_albedo: number;
+  radiation_time_convention: RadiationTimeConvention;
+};
+
+export type WeatherGap = { start: string; end: string; missing_steps: number };
+
+export type WeatherQualityReport = {
+  expected_step_seconds: number;
+  point_count: number;
+  first_timestamp: string | null;
+  last_timestamp: string | null;
+  was_sorted: boolean;
+  duplicates_removed: number;
+  gaps: WeatherGap[];
+  notes: string[];
 };
 
 export type BodyPosition = "standing" | "sitting";
@@ -10934,6 +12432,7 @@ export type SimulationSummary = {
   final_skin_temperature_improvement_c: number;
   final_core_temperature_improvement_c: number;
   average_skin_temperature_improvement_c: number;
+  averaging_method?: string | null;
 };
 
 export type SimulationResponse = {
@@ -10986,8 +12485,12 @@ export type WeatherTimeSeries = {
     downloaded_at: string;
     from_cache: boolean;
     attribution: string;
+    payload_sha256?: string | null;
+    quality?: WeatherQualityReport | null;
   };
 };
+
+export type LeaseState = "none" | "live" | "expired";
 
 export type WeatherSimulationRequest = {
   city_id: string;
@@ -11029,6 +12532,11 @@ export type SimulationJob = {
   completed_at: string | null;
   control_material_version_id?: string | null;
   rc_material_version_id?: string | null;
+  attempt?: number;
+  lease_owner?: string | null;
+  lease_expires_at?: string | null;
+  last_heartbeat_at?: string | null;
+  lease_state?: LeaseState;
 };
 
 export type SimulationJobDetail = SimulationJob & {
