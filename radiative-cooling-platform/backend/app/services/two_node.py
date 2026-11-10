@@ -596,6 +596,25 @@ def simulate_material(
         failure_label="Fixed-environment numerical solution failed",
     )
 
+def simulate_material_with_interpolator(
+    duration_minutes: int,
+    output_interval_minutes: int,
+    interpolator: WeatherInterpolator,
+    person: PersonInput,
+    material: MaterialInput,
+) -> ScenarioResult:
+    """Same physics as simulate_material_with_weather, but reuses a prebuilt
+    interpolator (optimization evaluates thousands of garments per window)."""
+    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
+
+    return _integrate(
+        duration_minutes=duration_minutes,
+        output_interval_minutes=output_interval_minutes,
+        environment_at=interpolator.environment_at,
+        person=person,
+        material=material,
+        failure_label="Weather-driven numerical solution failed",
+    )
 
 def simulate_material_with_weather(
     duration_minutes: int,
@@ -608,16 +627,8 @@ def simulate_material_with_weather(
     interpolator = WeatherInterpolator.from_series(
         weather, assumptions=assumptions or EnvironmentAssumptions()
     )
-
-    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
-
-    return _integrate(
-        duration_minutes=duration_minutes,
-        output_interval_minutes=output_interval_minutes,
-        environment_at=interpolator.environment_at,
-        person=person,
-        material=material,
-        failure_label="Weather-driven numerical solution failed",
+    return simulate_material_with_interpolator(
+        duration_minutes, output_interval_minutes, interpolator, person, material
     )
     
 # Numerical (not physical) settings.

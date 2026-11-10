@@ -21,7 +21,6 @@ from app.schemas.global_batch import (
 )
 from app.services.checkpoints import CheckpointProvenance, load_resume_state
 from app.services.leases import db_now, derive_lease_state  # noqa: F401 (re-exported)
-from app.services.job_state import assert_batch_transition, derive_batch_status  # keep
 
 from collections import defaultdict
 import hashlib
@@ -459,25 +458,5 @@ def refresh_batch_status(
     session.commit()
 
 def reconcile_batch(db: Session, batch_id: str) -> None:
-    counts = dict(
-        db.execute(
-            select(GlobalCityResult.status, func.count())
-            .where(GlobalCityResult.batch_id == batch_id)
-            .group_by(GlobalCityResult.status)
-        ).all()
-    )
-    batch = db.get(GlobalBatchJob, batch_id)
-    batch.completed_city_count = counts.get("completed", 0)
-    batch.failed_city_count = counts.get("failed", 0)
-    batch.cancelled_city_count = counts.get("cancelled", 0)
-    done = sum(counts.get(s, 0) for s in ("completed", "failed", "cancelled"))
-    batch.progress = int(100 * done / max(batch.total_city_count, 1))
     """Kept for callers; refresh_batch_status is the single implementation."""
     refresh_batch_status(db, batch_id)
-
-    target = derive_batch_status(counts, batch.total_city_count, batch.cancel_requested_at is not None)
-    if target and batch.status != target:
-        assert_batch_transition(batch.status, target)
-        batch.status = target
-        batch.completed_at = func.now()
-    db.commit()

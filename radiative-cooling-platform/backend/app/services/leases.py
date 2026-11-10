@@ -26,6 +26,8 @@ from app.core.time import utc_now
 from app.models.global_batch import GlobalCityResult
 from app.models.simulation_job import SimulationJob
 from app.services.job_state import CityStatus, JobStatus
+from app.models.optimization_job import OptimizationJob
+
 
 
 LeaseState = str  # "none" | "live" | "expired"
@@ -147,3 +149,17 @@ def heartbeat_job_lease(session: Session, job_id: str, owner: str, **values: Any
 
 def release_job_lease(session: Session, job_id: str, owner: str) -> None:
     _release(session, SimulationJob, job_id, owner)
+    
+def acquire_optimization_lease(session: Session, job_id: str, owner: str) -> bool:
+    return _acquire(
+        session, OptimizationJob, job_id, owner,
+        (JobStatus.QUEUED, JobStatus.RUNNING), JobStatus.RUNNING,
+    )
+
+
+def heartbeat_optimization_lease(session: Session, job_id: str, owner: str, **values: Any) -> bool:
+    return _heartbeat(session, OptimizationJob, job_id, owner, values)
+
+
+def release_optimization_lease(session: Session, job_id: str, owner: str) -> None:
+    _release(session, OptimizationJob, job_id, owner)

@@ -691,6 +691,7 @@ def build_sample_results_csv(
             "weight_days",
             "mean_air_temperature_c",
             "maximum_air_temperature_c",
+            "daily_maximum_air_temperature_c",
             "mean_solar_radiation_w_m2",
             "maximum_solar_radiation_w_m2",
             "exposure_eligible",

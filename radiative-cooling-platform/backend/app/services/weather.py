@@ -31,7 +31,7 @@ from redis.asyncio import Redis
 
 from redis.exceptions import RedisError  # add near the redis import
 
-from app.core.config import settings
+from app.core.config import BACKEND_DIRECTORY, settings   # 合併原本的 settings import
 
 from app.services.weather_quality import (
     DEFAULT_STEP_SECONDS,
@@ -55,7 +55,7 @@ HOURLY_VARIABLES = [
     "direct_normal_irradiance",
 ]
 
-CACHE_DIRECTORY = Path("data/cache/weather")
+CACHE_DIRECTORY = BACKEND_DIRECTORY / "data" / "cache" / "weather"
 
 
 def city_to_response(

@@ -13,6 +13,7 @@ from sqlalchemy.orm import (
 )
 
 from app.models.global_batch import GlobalBatchJob
+from app.models.optimization_job import OptimizationJob
 from app.models.simulation_job import SimulationJob
 
 from app.db.session import get_db
@@ -316,7 +317,7 @@ def update_material(
     return MaterialResponse.model_validate(load_material(session, material_id))
 
 def count_material_references(session: Session, material_id: str) -> dict[str, int]:
-    """Jobs and batches whose control or RC garment used any version of this material."""
+    """Jobs whose control, RC, or optimization base garment used any version of this material."""
     version_ids = select(MaterialVersion.id).where(MaterialVersion.material_id == material_id)
 
     def count(model) -> int:
@@ -329,9 +330,19 @@ def count_material_references(session: Session, material_id: str) -> dict[str, i
             )
         ) or 0
 
+    optimization_count = session.scalar(
+        select(func.count()).select_from(OptimizationJob).where(
+            or_(
+                OptimizationJob.control_material_version_id.in_(version_ids),
+                OptimizationJob.base_material_version_id.in_(version_ids),
+            )
+        )
+    ) or 0
+
     return {
         "simulation_job_count": count(SimulationJob),
         "global_batch_count": count(GlobalBatchJob),
+        "optimization_job_count": optimization_count,
     }
 
 
@@ -350,15 +361,20 @@ def delete_material(material_id: str, session: Session = Depends(get_db)) -> Res
         raise HTTPException(status_code=404, detail="Material not found")
 
     references = count_material_references(session, material_id)
-    if references["simulation_job_count"] or references["global_batch_count"]:
+    if (
+        references["simulation_job_count"]
+        or references["global_batch_count"]
+        or references["optimization_job_count"]
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "code": "MATERIAL_IN_USE",
                 "message": (
-                    f"Versions of this material are referenced by "
-                    f"{references['simulation_job_count']} simulation job(s) and "
-                    f"{references['global_batch_count']} global batch(es). "
+                    "Versions of this material are referenced by "
+                    f"{references['simulation_job_count']} simulation job(s), "
+                    f"{references['global_batch_count']} global batch(es), and "
+                    f"{references['optimization_job_count']} optimization job(s). "
                     "Archive it instead: archived materials are hidden from lists "
                     "and pickers but keep their provenance."
                 ),

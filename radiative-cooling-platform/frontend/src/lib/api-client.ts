@@ -16,6 +16,14 @@ import type {
 import type { OpsStatus } from "@/types/ops";
 
 import type {
+  OptimizationCreate,
+  OptimizationEstimate,
+  OptimizationJob,
+  OptimizationJobDetail,
+  OptimizationJobList,
+} from "@/types/optimization";
+
+import type {
   Material, MaterialCreate, MaterialListResponse,
   MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
 } from "@/types/material";
@@ -818,4 +826,70 @@ export async function getOpsStatus(): Promise<OpsStatus> {
   }
 
   return response.json() as Promise<OpsStatus>;
+}
+
+async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await getErrorMessage(response, fallback));
+  return response.json() as Promise<T>;
+}
+
+export function estimateOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationEstimate>(
+    "/api/v1/optimizations/estimate",
+    request,
+    "Unable to estimate optimization",
+  );
+}
+
+export function createOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationJob>(
+    "/api/v1/optimizations",
+    request,
+    "Unable to create optimization",
+  );
+}
+
+export async function cancelOptimization(id: string): Promise<OptimizationJob> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}/cancel`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to cancel optimization"));
+  }
+  return response.json() as Promise<OptimizationJob>;
+}
+
+export async function listOptimizations(
+  limit = 20,
+  offset = 0,
+): Promise<OptimizationJobList> {
+  const parameters = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations?${parameters}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimizations"));
+  }
+  return response.json() as Promise<OptimizationJobList>;
+}
+
+export async function getOptimization(id: string): Promise<OptimizationJobDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimization"));
+  }
+  return response.json() as Promise<OptimizationJobDetail>;
 }

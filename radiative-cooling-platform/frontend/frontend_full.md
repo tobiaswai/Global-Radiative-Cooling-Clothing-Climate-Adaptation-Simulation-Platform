@@ -17,6 +17,7 @@ frontend/src/app/global-analysis/page.tsx
 frontend/src/app/globals.css
 frontend/src/app/layout.tsx
 frontend/src/app/materials/[materialId]/page.tsx
+frontend/src/app/materials/[materialId]/versions/new/page.tsx
 frontend/src/app/materials/new/page.tsx
 frontend/src/app/materials/page.tsx
 frontend/src/app/ops/page.tsx
@@ -39,6 +40,8 @@ frontend/src/components/global/city-checkpoint-list.tsx
 frontend/src/components/global/data-quality-panel.tsx
 frontend/src/components/global/lease-badge.tsx
 frontend/src/components/layout/NavBar.tsx
+frontend/src/components/materials/material-header.tsx
+frontend/src/components/materials/material-version-fields.tsx
 frontend/src/components/materials/provenance-editor.tsx
 frontend/src/components/simulation/environment-assumptions-fields.tsx
 frontend/src/components/simulation/environment-input-fields.tsx
@@ -3602,6 +3605,7 @@ import type { SimulationJob } from "@/types/simulation";
 import type {
   Material,
 } from "@/types/material";
+import { MaterialHeader } from "@/components/materials/material-header";
 
 type SpectrumType =
   | "solar_reflectance"
@@ -3749,31 +3753,7 @@ function MaterialDetailContent({
   return (
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <header>
-          <p className="text-sm text-cyan-400">
-            Material Detail
-          </p>
-
-          <h1 className="mt-2 text-3xl font-bold">
-            {material.name}
-          </h1>
-
-          <p className="mt-2 text-slate-400">
-            {material.description ||
-              "Material description not available"}
-          </p>
-
-          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
-            <span>
-              Slug：{material.slug}
-            </span>
-
-            <span>
-              Institution:
-              {material.institution ?? "—"}
-            </span>
-          </div>
-        </header>
+        <MaterialHeader material={material} onUpdated={setMaterial} />
 
         {error && (
           <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
@@ -4093,6 +4073,208 @@ function LinkedSimulations({ versionId }: { versionId: string }) {
 }
 ```
 
+### File: `frontend/src/app/materials/[materialId]/versions/new/page.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { type FormEvent, useEffect, useState } from "react";
+
+import { MaterialVersionFields } from "@/components/materials/material-version-fields";
+import { ProvenanceEditor } from "@/components/materials/provenance-editor";
+import { createMaterialVersion, getMaterial } from "@/lib/api-client";
+import type { Material, MaterialVersion, MaterialVersionInput } from "@/types/material";
+
+/** Pre-fill from an existing version. Deprecated fields are not copied. */
+function versionToInput(version: MaterialVersion): MaterialVersionInput {
+  return {
+    mode: version.mode,
+    clothing_insulation_clo: version.clothing_insulation_clo,
+    clothing_area_factor: version.clothing_area_factor ?? null,
+    evaporative_resistance_m2pa_w: version.evaporative_resistance_m2pa_w,
+    solar_reflectance: version.solar_reflectance,
+    solar_transmittance: version.solar_transmittance,
+    infrared_emissivity: version.infrared_emissivity,
+    infrared_transmittance: version.infrared_transmittance,
+    projected_solar_area_factor: version.projected_solar_area_factor,
+    areal_density_g_m2: version.areal_density_g_m2,
+    specific_heat_j_kgk: version.specific_heat_j_kgk,
+    source_type: version.source_type,
+    source_reference: version.source_reference,
+    notes: null,
+    parameter_sources: version.parameter_sources ?? null,
+  };
+}
+
+export default function NewMaterialVersionPage() {
+  const { materialId } = useParams<{ materialId: string }>();
+  return <NewVersionContent key={materialId} materialId={materialId} />;
+}
+
+function NewVersionContent({ materialId }: { materialId: string }) {
+  const router = useRouter();
+  const [material, setMaterial] = useState<Material | null>(null);
+  const [draft, setDraft] = useState<MaterialVersionInput | null>(null);
+  const [loadError, setLoadError] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+
+    getMaterial(materialId)
+      .then((response) => {
+        if (ignore) return;
+        const latest = response.versions.at(-1);
+        setMaterial(response);
+        if (latest) {
+          setDraft(versionToInput(latest));
+        } else {
+          setLoadError("This material has no version to start from.");
+        }
+      })
+      .catch((caught: unknown) => {
+        if (!ignore) {
+          setLoadError(caught instanceof Error ? caught.message : "Failed to load material");
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [materialId]);
+
+  function update<K extends keyof MaterialVersionInput>(field: K, value: MaterialVersionInput[K]) {
+    setDraft((current) => (current ? { ...current, [field]: value } : current));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draft || submitting) return;
+
+    setSubmitting(true);
+    setError("");
+
+    try {
+      await createMaterialVersion(materialId, draft);
+      router.push(`/materials/${materialId}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Failed to create version");
+      setSubmitting(false);
+    }
+  }
+
+  if (loadError) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
+        <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{loadError}</div>
+      </main>
+    );
+  }
+
+  if (!material || !draft) {
+    return <main className="min-h-screen bg-slate-950 p-10 text-white">Loading material…</main>;
+  }
+
+  const base = material.versions.at(-1);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-4xl px-6 py-10">
+        <nav className="mb-4 flex items-center gap-2 text-sm text-slate-400">
+          <Link href="/materials" className="hover:text-slate-100">Materials</Link>
+          <span>/</span>
+          <Link href={`/materials/${material.id}`} className="hover:text-slate-100">{material.name}</Link>
+          <span>/</span>
+          <span className="text-slate-200">New version</span>
+        </nav>
+
+        <h1 className="text-3xl font-bold">New Version of {material.name}</h1>
+        <p className="mt-3 text-slate-400">
+          Pre-filled from v{base?.version_number}. Existing versions are immutable because
+          simulations reference them; saving creates v{(base?.version_number ?? 0) + 1}.
+          Spectra are not copied.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-8">
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Physical Parameters</h2>
+            <div className="mt-5">
+              <MaterialVersionFields value={draft} disabled={submitting} onChange={update} />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Source</h2>
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate-300">Source Type</span>
+                <input
+                  value={draft.source_type}
+                  maxLength={50}
+                  disabled={submitting}
+                  onChange={(event) => update("source_type", event.target.value)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm text-slate-300">Source Reference</span>
+                <input
+                  value={draft.source_reference ?? ""}
+                  disabled={submitting}
+                  onChange={(event) => update("source_reference", event.target.value || null)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                />
+              </label>
+              <label className="block md:col-span-2">
+                <span className="mb-2 block text-sm text-slate-300">Notes (what changed and why)</span>
+                <textarea
+                  rows={3}
+                  value={draft.notes ?? ""}
+                  disabled={submitting}
+                  onChange={(event) => update("notes", event.target.value || null)}
+                  className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 disabled:opacity-50"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Parameter Provenance</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Copied from v{base?.version_number}. Update the entries for values you changed.
+            </p>
+            <div className="mt-5">
+              <ProvenanceEditor
+                sources={draft.parameter_sources ?? null}
+                values={draft}
+                disabled={submitting}
+                onChange={(sources) => update("parameter_sources", sources)}
+              />
+            </div>
+          </section>
+
+          {error && (
+            <div role="alert" className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-lg bg-cyan-400 px-7 py-3 font-semibold text-slate-950 disabled:opacity-50"
+          >
+            {submitting ? "Creating version…" : "Create Version"}
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
+```
+
 ### File: `frontend/src/app/materials/new/page.tsx`
 ```tsx
 "use client";
@@ -4100,9 +4282,9 @@ function LinkedSimulations({ versionId }: { versionId: string }) {
 import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import {ProvenanceEditor} from "@/components/materials/provenance-editor";
-import { OptionalNumberField } from "@/components/forms/number-field";
 import { createMaterial } from "@/lib/api-client";
 import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
+import { MaterialVersionFields } from "@/components/materials/material-version-fields";
 
 
 const initialMaterial: MaterialCreate = {
@@ -4254,116 +4436,11 @@ export default function NewMaterialPage() {
             <h2 className="text-xl font-semibold">
               Initial Physical Parameters
             </h2>
-
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <NumberInput
-                label="Clothing Insulation (clo)"
-                value={
-                  material.initial_version
-                    .clothing_insulation_clo
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "clothing_insulation_clo",
-                    value,
-                  )
-                }
-              />
-
-              <OptionalNumberField
-                label="Clothing Area Factor (f_cl)"
-                value={material.initial_version.clothing_area_factor}
-                placeholder="Derived from clo"
-                min={1}
-                max={2}
-                step={0.01}
-                hint="Leave empty to let the backend derive f_cl from clo."
-                onChange={(value) => updateVersion("clothing_area_factor", value)}
-              />
-
-              <OptionalNumberField
-                label="Evaporative Resistance (Re,cl)"
-                suffix="m²·Pa/W"
-                value={material.initial_version.evaporative_resistance_m2pa_w}
-                placeholder="Derived from clo"
-                min={0} max={1000} step={0.5}
-                onChange={(value) => updateVersion("evaporative_resistance_m2pa_w", value)}
-              />
-              <NumberInput
-                label="Projected Solar Area Factor"
-                value={material.initial_version.projected_solar_area_factor}
-                onChange={(value) => updateVersion("projected_solar_area_factor", value)}
-              />
-
-
-              <NumberInput
-                label="Solar Reflectance"
-                value={
-                  material.initial_version
-                    .solar_reflectance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_reflectance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Solar Transmittance"
-                value={
-                  material.initial_version
-                    .solar_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Emissivity"
-                value={
-                  material.initial_version
-                    .infrared_emissivity
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_emissivity",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Transmittance"
-                value={
-                  material.initial_version
-                    .infrared_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Areal Density (g/m²)"
-                value={
-                  material.initial_version
-                    .areal_density_g_m2 ?? 0
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "areal_density_g_m2",
-                    value,
-                  )
-                }
+            <div className="mt-5">
+              <MaterialVersionFields
+                value={material.initial_version}
+                disabled={loading}
+                onChange={updateVersion}
               />
             </div>
           </section>
@@ -4433,37 +4510,6 @@ function TextInput({
   );
 }
 
-
-function NumberInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm text-slate-300">
-        {label}
-      </span>
-
-      <input
-        type="number"
-        min={0}
-        step={0.01}
-        value={value}
-        onChange={(event) =>
-          onChange(
-            Number(event.target.value),
-          )
-        }
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-      />
-    </label>
-  );
-}
 ```
 
 ### File: `frontend/src/app/materials/page.tsx`
@@ -4524,29 +4570,25 @@ export default function MaterialsPage() {
     };
   }, []);
 
-  async function handleSearchSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
+  const [includeArchived, setIncludeArchived] = useState(false);
 
+  async function reload(nextSearch: string, nextIncludeArchived: boolean) {
     setLoading(true);
     setError("");
 
     try {
-      const response = await getMaterials(
-        search,
-      );
-
+      const response = await getMaterials(nextSearch, nextIncludeArchived);
       setMaterials(response.items);
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to load materials.",
-      );
+      setError(caughtError instanceof Error ? caughtError.message : "Failed to load materials.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await reload(search, includeArchived);
   }
 
   return (
@@ -4591,6 +4633,19 @@ export default function MaterialsPage() {
           >
             {loading ? "Loading…" : "Search"}
           </button>
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              disabled={loading}
+              onChange={(event) => {
+                setIncludeArchived(event.target.checked);
+                void reload(search, event.target.checked);
+              }}
+              className="h-4 w-4 accent-cyan-400"
+            />
+            Show archived
+          </label>
         </form>
 
         {error && (
@@ -4631,7 +4686,12 @@ export default function MaterialsPage() {
                     >
                       {material.name}
                     </Link>
-
+                    {material.is_archived && (
+                      <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                        archived
+                      </span>
+                    )}
+                    
                     <p className="mt-1 text-xs text-slate-500">
                       {material.slug}
                     </p>
@@ -7924,6 +7984,403 @@ export function NavBar() {
 }
 ```
 
+### File: `frontend/src/components/materials/material-header.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
+
+import { deleteMaterial, updateMaterial } from "@/lib/api-client";
+import type { Material, MaterialUpdate } from "@/types/material";
+
+type Busy = "saving" | "archiving" | "deleting" | null;
+type Draft = { name: string; description: string; institution: string };
+
+function toDraft(material: Material): Draft {
+  return {
+    name: material.name,
+    description: material.description ?? "",
+    institution: material.institution ?? "",
+  };
+}
+
+/** PATCH semantics: send only what changed. */
+function diff(material: Material, draft: Draft): MaterialUpdate {
+  const changes: MaterialUpdate = {};
+  const name = draft.name.trim();
+  const description = draft.description.trim();
+  const institution = draft.institution.trim();
+
+  if (name !== material.name) changes.name = name;
+  if (description !== (material.description ?? "")) changes.description = description || null;
+  if (institution !== (material.institution ?? "")) changes.institution = institution || null;
+
+  return changes;
+}
+
+export function MaterialHeader({
+  material,
+  onUpdated,
+}: {
+  material: Material;
+  onUpdated: (material: Material) => void;
+}) {
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Draft>(() => toDraft(material));
+  const [busy, setBusy] = useState<Busy>(null);
+  const [error, setError] = useState("");
+  const disabled = busy !== null;
+
+  async function run(kind: Exclude<Busy, null>, action: () => Promise<void>) {
+    setBusy(kind);
+    setError("");
+    try {
+      await action();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Request failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function startEditing() {
+    setDraft(toDraft(material));
+    setError("");
+    setEditing(true);
+  }
+
+  function handleSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!draft.name.trim()) {
+      setError("Material name is required.");
+      return;
+    }
+
+    const changes = diff(material, draft);
+
+    if (Object.keys(changes).length === 0) {
+      setEditing(false);
+      return;
+    }
+
+    void run("saving", async () => {
+      onUpdated(await updateMaterial(material.id, changes));
+      setEditing(false);
+    });
+  }
+
+  function toggleArchived() {
+    void run("archiving", async () => {
+      onUpdated(await updateMaterial(material.id, { is_archived: !material.is_archived }));
+    });
+  }
+
+  function handleDelete() {
+    const confirmed = window.confirm(
+      `Permanently delete "${material.name}" with its ${material.versions.length} ` +
+        "version(s) and uploaded spectra? This cannot be undone.",
+    );
+    if (!confirmed) return;
+
+    void run("deleting", async () => {
+      await deleteMaterial(material.id);
+      router.push("/materials");
+    });
+  }
+
+  return (
+    <header>
+      <p className="text-sm text-cyan-400">Material Detail</p>
+
+      {editing ? (
+        <form
+          onSubmit={handleSave}
+          className="mt-4 space-y-4 rounded-2xl border border-slate-800 bg-slate-900 p-6"
+        >
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              label="Material Name"
+              value={draft.name}
+              maxLength={200}
+              disabled={disabled}
+              onChange={(name) => setDraft({ ...draft, name })}
+            />
+            <TextField
+              label="Institution"
+              value={draft.institution}
+              maxLength={255}
+              disabled={disabled}
+              onChange={(institution) => setDraft({ ...draft, institution })}
+            />
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block text-sm text-slate-300">Description</span>
+            <textarea
+              value={draft.description}
+              rows={3}
+              disabled={disabled}
+              onChange={(event) => setDraft({ ...draft, description: event.target.value })}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
+            />
+          </label>
+
+          <p className="text-xs text-slate-500">
+            Slug <span className="font-mono">{material.slug}</span> cannot be changed.
+            Physical parameters are versioned; create a new version to change them.
+          </p>
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={disabled}
+              className="rounded-lg bg-cyan-400 px-5 py-2 font-semibold text-slate-950 disabled:opacity-50"
+            >
+              {busy === "saving" ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => setEditing(false)}
+              className="rounded-lg border border-slate-700 px-5 py-2 text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-bold">{material.name}</h1>
+            {material.is_archived && (
+              <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                Archived
+              </span>
+            )}
+          </div>
+
+          <p className="mt-2 text-slate-400">
+            {material.description || "Material description not available"}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-500">
+            <span>Slug: <span className="font-mono">{material.slug}</span></span>
+            <span>Institution: {material.institution ?? "—"}</span>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={startEditing}
+              className="rounded-lg border border-cyan-700 px-4 py-2 text-sm text-cyan-300 hover:bg-cyan-950 disabled:opacity-50"
+            >
+              Edit details
+            </button>
+
+            <Link
+              href={`/materials/${material.id}/versions/new`}
+              className="rounded-lg border border-cyan-700 px-4 py-2 text-sm text-cyan-300 hover:bg-cyan-950"
+            >
+              New version
+            </Link>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={toggleArchived}
+              className="rounded-lg border border-amber-700 px-4 py-2 text-sm text-amber-300 hover:bg-amber-950 disabled:opacity-50"
+            >
+              {busy === "archiving"
+                ? "Updating…"
+                : material.is_archived ? "Unarchive" : "Archive"}
+            </button>
+
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={handleDelete}
+              className="rounded-lg border border-red-800 px-4 py-2 text-sm text-red-300 hover:bg-red-950 disabled:opacity-50"
+            >
+              {busy === "deleting" ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {error && (
+        <div role="alert" className="mt-4 rounded-lg border border-red-900 bg-red-950 p-4 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+    </header>
+  );
+}
+
+function TextField({
+  label,
+  value,
+  maxLength,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  maxLength: number;
+  disabled: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm text-slate-300">{label}</span>
+      <input
+        value={value}
+        maxLength={maxLength}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-cyan-500 disabled:opacity-50"
+      />
+    </label>
+  );
+}
+```
+
+### File: `frontend/src/components/materials/material-version-fields.tsx`
+```tsx
+"use client";
+
+import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
+import { SelectField } from "@/components/forms/select-field";
+import type { MaterialMode, MaterialVersionInput } from "@/types/material";
+
+const MODE_OPTIONS: { value: MaterialMode; label: string }[] = [
+  { value: "ordinary", label: "Ordinary textile" },
+  { value: "opaque_emitter", label: "Opaque emitter" },
+  { value: "infrared_transparent", label: "Infrared transparent" },
+  { value: "hybrid", label: "Hybrid" },
+];
+
+type Props = {
+  value: MaterialVersionInput;
+  disabled?: boolean;
+  onChange: <K extends keyof MaterialVersionInput>(
+    field: K,
+    value: MaterialVersionInput[K],
+  ) => void;
+};
+
+/** Physical fields of a material version; bounds mirror MaterialVersionCreate. */
+export function MaterialVersionFields({ value, disabled = false, onChange }: Props) {
+  const solarSumTooHigh = value.solar_reflectance + value.solar_transmittance > 1 + 1e-6;
+  const infraredSumTooHigh =
+    value.infrared_emissivity + value.infrared_transmittance > 1 + 1e-6;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-5 md:grid-cols-2">
+        <SelectField
+          label="Mode"
+          value={value.mode}
+          options={MODE_OPTIONS}
+          disabled={disabled}
+          onChange={(mode) => onChange("mode", mode)}
+        />
+        <NumberField
+          label="Clothing Insulation"
+          suffix="clo"
+          value={value.clothing_insulation_clo}
+          min={0} max={5} step={0.05}
+          disabled={disabled}
+          onChange={(v) => onChange("clothing_insulation_clo", v)}
+        />
+        <OptionalNumberField
+          label="Clothing Area Factor (f_cl)"
+          value={value.clothing_area_factor}
+          placeholder="Derived from clo"
+          min={1} max={2} step={0.01}
+          disabled={disabled}
+          hint="Leave empty to let the backend derive f_cl from clo."
+          onChange={(v) => onChange("clothing_area_factor", v)}
+        />
+        <OptionalNumberField
+          label="Evaporative Resistance (Re,cl)"
+          suffix="m²·Pa/W"
+          value={value.evaporative_resistance_m2pa_w}
+          placeholder="Derived from clo"
+          min={0} max={1000} step={0.5}
+          disabled={disabled}
+          onChange={(v) => onChange("evaporative_resistance_m2pa_w", v)}
+        />
+        <NumberField
+          label="Projected Solar Area Factor"
+          value={value.projected_solar_area_factor}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("projected_solar_area_factor", v)}
+        />
+        <NumberField
+          label="Solar Reflectance"
+          value={value.solar_reflectance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("solar_reflectance", v)}
+        />
+        <NumberField
+          label="Solar Transmittance"
+          value={value.solar_transmittance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("solar_transmittance", v)}
+        />
+        <NumberField
+          label="Infrared Emissivity"
+          value={value.infrared_emissivity}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("infrared_emissivity", v)}
+        />
+        <NumberField
+          label="Infrared Transmittance"
+          value={value.infrared_transmittance}
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("infrared_transmittance", v)}
+        />
+        <OptionalNumberField
+          label="Areal Density"
+          suffix="g/m²"
+          value={value.areal_density_g_m2}
+          placeholder="Not recorded"
+          min={0} step={1}
+          disabled={disabled}
+          onChange={(v) => onChange("areal_density_g_m2", v)}
+        />
+        <OptionalNumberField
+          label="Specific Heat"
+          suffix="J/(kg·K)"
+          value={value.specific_heat_j_kgk}
+          placeholder="Not recorded"
+          min={0} step={10}
+          disabled={disabled}
+          onChange={(v) => onChange("specific_heat_j_kgk", v)}
+        />
+      </div>
+
+      {(solarSumTooHigh || infraredSumTooHigh) && (
+        <p role="alert" className="text-sm text-amber-300">
+          {solarSumTooHigh && "Solar reflectance + transmittance must not exceed 1. "}
+          {infraredSumTooHigh && "Infrared emissivity + transmittance must not exceed 1."}
+        </p>
+      )}
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/materials/provenance-editor.tsx`
 ```tsx
 "use client";
@@ -9287,7 +9744,7 @@ import type { OpsStatus } from "@/types/ops";
 
 import type {
   Material, MaterialCreate, MaterialListResponse,
-  MaterialVersionListResponse,
+  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
 } from "@/types/material";
 import type {
   City,
@@ -9341,6 +9798,15 @@ async function getErrorMessage(
     if (typeof detail === "object" && detail !== null && "message" in detail) {
       const { code, message } = detail as { code?: string; message?: string };
       return code ? `${message} [${code}]` : String(message);
+    }
+
+    if (Array.isArray(detail)) {
+      return (detail as Array<{ loc?: unknown[]; msg?: string }>)
+        .map((item) => {
+          const loc = (item.loc ?? []).filter((part) => part !== "body").join(".");
+          return loc ? `${loc}: ${item.msg}` : String(item.msg ?? JSON.stringify(item));
+        })
+        .join("; ");
     }
 
     if (typeof detail === "string") {
@@ -9603,25 +10069,72 @@ export function getSimulationEventsUrl(
 
 export async function getMaterials(
   search = "",
+  includeArchived = false,
 ): Promise<MaterialListResponse> {
   const parameters = new URLSearchParams();
+  if (search) parameters.set("search", search);
+  if (includeArchived) parameters.set("include_archived", "true");
 
-  if (search) {
-    parameters.set("search", search);
+  const response = await fetch(`${API_BASE_URL}/api/v1/materials?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch material list"));
   }
 
+  return response.json() as Promise<MaterialListResponse>;
+}
+
+export async function updateMaterial(
+  materialId: string,
+  update: MaterialUpdate,
+): Promise<Material> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials?${parameters}`,
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
     {
-      cache: "no-store",
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
     },
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch material list");
+    throw new Error(await getErrorMessage(response, "Failed to update material"));
   }
 
-  return response.json();
+  return response.json() as Promise<Material>;
+}
+
+export async function deleteMaterial(materialId: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
+    { method: "DELETE" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to delete material"));
+  }
+}
+
+export async function createMaterialVersion(
+  materialId: string,
+  version: MaterialVersionInput,
+): Promise<MaterialVersion> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}/versions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(version),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to create material version"));
+  }
+
+  return response.json() as Promise<MaterialVersion>;
 }
 
 
@@ -11691,6 +12204,14 @@ export type MaterialVersionListResponse = {
   total: number;
   limit: number;
   offset: number;
+};
+
+/** PATCH /materials/{id}. Omit a key to keep it; null clears optional text. */
+export type MaterialUpdate = {
+  name?: string;
+  description?: string | null;
+  institution?: string | null;
+  is_archived?: boolean;
 };
 ```
 

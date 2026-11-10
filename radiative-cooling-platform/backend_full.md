@@ -143,6 +143,7 @@ backend/tests/test_job_service.py
 backend/tests/test_material_fields.py
 backend/tests/test_material_resolution.py
 backend/tests/test_materials_api.py
+backend/tests/test_materials_update_delete.py
 backend/tests/test_model_parameters.py
 backend/tests/test_parameter_participation.py
 backend/tests/test_physics.py
@@ -2036,24 +2037,19 @@ def retry_failed_cities(
 from typing import Annotated
 
 from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
+    APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status,
 )
-from sqlalchemy import (
-    func,
-    select,
-)
+
+from sqlalchemy import delete, func, or_, select
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (
     Session,
     selectinload,
 )
+
+from app.models.global_batch import GlobalBatchJob
+from app.models.simulation_job import SimulationJob
 
 from app.db.session import get_db
 from app.models.material import (
@@ -2332,44 +2328,84 @@ def get_material(
     )
 
 
-@router.patch(
-    "/{material_id}",
-    response_model=MaterialResponse,
-)
+@router.patch("/{material_id}", response_model=MaterialResponse)
 def update_material(
     material_id: str,
     request: MaterialUpdate,
     session: Session = Depends(get_db),
 ) -> MaterialResponse:
-    material = load_material(
-        session,
-        material_id,
-    )
-
+    material = session.get(Material, material_id)
     if material is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Material not found",
-        )
+        raise HTTPException(status_code=404, detail="Material not found")
 
-    update_data = request.model_dump(
-        exclude_unset=True
-    )
-
-    for field, value in update_data.items():
+    for field, value in request.model_dump(exclude_unset=True).items():
         setattr(material, field, value)
 
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise HTTPException(
+            status_code=409, detail="Material update conflicts with existing data"
+        ) from error
+
+    return MaterialResponse.model_validate(load_material(session, material_id))
+
+def count_material_references(session: Session, material_id: str) -> dict[str, int]:
+    """Jobs and batches whose control or RC garment used any version of this material."""
+    version_ids = select(MaterialVersion.id).where(MaterialVersion.material_id == material_id)
+
+    def count(model) -> int:
+        return session.scalar(
+            select(func.count()).select_from(model).where(
+                or_(
+                    model.control_material_version_id.in_(version_ids),
+                    model.rc_material_version_id.in_(version_ids),
+                )
+            )
+        ) or 0
+
+    return {
+        "simulation_job_count": count(SimulationJob),
+        "global_batch_count": count(GlobalBatchJob),
+    }
+
+
+@router.delete(
+    "/{material_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_material(material_id: str, session: Session = Depends(get_db)) -> Response:
+    """Hard delete, only when no simulation references any of its versions.
+
+    The job FKs are ON DELETE SET NULL, so deleting a referenced material would
+    silently detach provenance. Referenced materials must be archived instead.
+    """
+    if session.get(Material, material_id) is None:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    references = count_material_references(session, material_id)
+    if references["simulation_job_count"] or references["global_batch_count"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "MATERIAL_IN_USE",
+                "message": (
+                    f"Versions of this material are referenced by "
+                    f"{references['simulation_job_count']} simulation job(s) and "
+                    f"{references['global_batch_count']} global batch(es). "
+                    "Archive it instead: archived materials are hidden from lists "
+                    "and pickers but keep their provenance."
+                ),
+                **references,
+            },
+        )
+
+    # Versions and spectra go with it via ON DELETE CASCADE.
+    session.execute(delete(Material).where(Material.id == material_id))
     session.commit()
-
-    updated = load_material(
-        session,
-        material_id,
-    )
-
-    return MaterialResponse.model_validate(
-        updated
-    )
-
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post(
     "/{material_id}/versions",
@@ -5792,8 +5828,10 @@ from pydantic import (
     ConfigDict,
     Field,
     model_validator,
+    field_validator,
 )
 
+_NON_NULLABLE_UPDATE_FIELDS = frozenset({"name", "is_archived"})
 
 MaterialMode = Literal[
     "ordinary",
@@ -5920,15 +5958,39 @@ class MaterialCreate(BaseModel):
 
 
 class MaterialUpdate(BaseModel):
-    name: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=200,
-    )
+    """PATCH /materials/{id}: metadata only.
 
+    * Omitted keys are left unchanged; ``description``/``institution`` may be
+      cleared with null or "".
+    * ``slug`` is immutable (it is the stable identifier); physical values live
+      in immutable versions -> POST /materials/{id}/versions.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
-    institution: str | None = None
+    institution: str | None = Field(default=None, max_length=255)
     is_archived: bool | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("description", "institution", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value):
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def _reject_null_for_required(self) -> "MaterialUpdate":
+        for field in self.model_fields_set & _NON_NULLABLE_UPDATE_FIELDS:
+            if getattr(self, field) is None:
+                raise ValueError(f"'{field}' cannot be null")
+        return self
 
 
 class SpectrumSummary(BaseModel):
@@ -19298,6 +19360,150 @@ def test_version_with_unknown_provenance_key_is_rejected_on_write(client):
         },
     )
     assert response.status_code == 422
+```
+
+### File: `backend/tests/test_materials_update_delete.py`
+```python
+"""Material metadata update (PATCH) and delete (DELETE)."""
+
+from types import SimpleNamespace
+from uuid import uuid4
+
+import pytest
+
+from app.api import simulations as simulations_api
+
+
+def create_material(client) -> dict:
+    suffix = uuid4().hex[:8]
+    response = client.post(
+        "/api/v1/materials",
+        json={
+            "name": f"Edit Fabric {suffix}",
+            "slug": f"edit-fabric-{suffix}",
+            "description": "original",
+            "institution": "Test Lab",
+            "initial_version": {
+                "clothing_insulation_clo": 0.4,
+                "solar_reflectance": 0.92,
+                "infrared_emissivity": 0.95,
+            },
+        },
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+@pytest.mark.integration
+def test_patch_changes_only_given_fields(client):
+    material = create_material(client)
+
+    response = client.patch(
+        f"/api/v1/materials/{material['id']}", json={"description": "  updated  "}
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["description"] == "updated"
+    assert body["name"] == material["name"]
+    assert body["institution"] == "Test Lab"
+    assert len(body["versions"]) == 1
+
+
+@pytest.mark.integration
+def test_patch_clears_optional_text_with_blank(client):
+    material = create_material(client)
+    body = client.patch(
+        f"/api/v1/materials/{material['id']}", json={"institution": "   "}
+    ).json()
+    assert body["institution"] is None
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "payload",
+    [{"name": None}, {"name": "   "}, {"is_archived": None}, {"slug": "renamed"}],
+)
+def test_patch_rejects_invalid_payload(client, payload):
+    material = create_material(client)
+    response = client.patch(f"/api/v1/materials/{material['id']}", json=payload)
+    assert response.status_code == 422
+
+
+@pytest.mark.integration
+def test_patch_and_delete_missing_material_return_404(client):
+    assert client.patch("/api/v1/materials/nope", json={"name": "x"}).status_code == 404
+    assert client.delete("/api/v1/materials/nope").status_code == 404
+
+
+@pytest.mark.integration
+def test_unreferenced_material_is_deleted_with_its_versions(client):
+    material = create_material(client)
+    version_id = material["versions"][0]["id"]
+
+    response = client.delete(f"/api/v1/materials/{material['id']}")
+
+    assert response.status_code == 204
+    assert client.get(f"/api/v1/materials/{material['id']}").status_code == 404
+    assert client.get(
+        f"/api/v1/materials/versions/{version_id}/simulation-input"
+    ).status_code == 404
+
+
+@pytest.mark.integration
+def test_referenced_material_cannot_be_deleted_but_can_be_archived(
+    client, monkeypatch, simulation_request
+):
+    material = create_material(client)
+    version_id = material["versions"][0]["id"]
+
+    monkeypatch.setattr(
+        simulations_api,
+        "run_weather_simulation_task",
+        SimpleNamespace(delay=lambda job_id: SimpleNamespace(id="celery-test-task")),
+    )
+    base = simulation_request.model_dump(mode="json")
+    job = client.post(
+        "/api/v1/simulations/jobs",
+        json={
+            "city_id": "dubai",
+            "start_time_local": "2023-07-15T12:00:00",
+            "duration_minutes": 120,
+            "output_interval_minutes": 10,
+            "person": base["person"],
+            "control_material": base["control_material"],
+            "rc_material": {"name": "RC", "material_version_id": version_id},
+        },
+    )
+    assert job.status_code == 202, job.text
+
+    blocked = client.delete(f"/api/v1/materials/{material['id']}")
+    assert blocked.status_code == 409
+    detail = blocked.json()["detail"]
+    assert detail["code"] == "MATERIAL_IN_USE"
+    assert detail["simulation_job_count"] == 1
+    assert detail["global_batch_count"] == 0
+    assert client.get(f"/api/v1/materials/{material['id']}").status_code == 200
+
+    archived = client.patch(
+        f"/api/v1/materials/{material['id']}", json={"is_archived": True}
+    )
+    assert archived.status_code == 200
+    assert archived.json()["is_archived"] is True
+
+    hidden = client.get("/api/v1/materials", params={"search": material["name"]}).json()
+    assert all(item["id"] != material["id"] for item in hidden["items"])
+
+    shown = client.get(
+        "/api/v1/materials",
+        params={"search": material["name"], "include_archived": "true"},
+    ).json()
+    assert any(item["id"] == material["id"] for item in shown["items"])
+
+    picker = client.get(
+        "/api/v1/materials/versions", params={"material_id": material["id"]}
+    ).json()
+    assert picker["items"] == []
 ```
 
 ### File: `backend/tests/test_model_parameters.py`

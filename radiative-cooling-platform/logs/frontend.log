@@ -2,40 +2,20 @@
 > frontend@0.1.0 dev
 > next dev
 
+⚠ Port 3000 is in use by process 1136, using available port 3001 instead.
 ▲ Next.js 16.3.7 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://192.168.240.17:3000
+- Local:         http://localhost:3001
+- Network:       http://192.168.240.17:3001
 - Environments: .env.local
-✓ Ready in 796ms
-✓ Running next.config.ts took 50ms
+✓ Ready in 999ms
+✓ Running next.config.ts took 43ms
+⨯ Another next dev server is already running.
 
- GET /simulations/new 200 in 1111ms (next.js: 798ms, application-code: 313ms)
- GET /simulations/new 200 in 75ms (next.js: 19ms, application-code: 55ms)
- GET /simulations/new 200 in 96ms (next.js: 9ms, application-code: 87ms)
- GET /simulations/new 200 in 79ms (next.js: 8ms, application-code: 71ms)
- GET /materials 200 in 75ms (next.js: 48ms, application-code: 27ms)
- GET /materials/6e4c30f5-715e-4ce6-9510-681c27c682f0 200 in 639ms (next.js: 608ms, application-code: 30ms)
- GET /materials/5e725622-6821-48bf-8906-4d9c37494050 200 in 44ms (next.js: 19ms, application-code: 25ms)
- GET /materials/5e725622-6821-48bf-8906-4d9c37494050 200 in 73ms (next.js: 14ms, application-code: 58ms)
- GET /materials 200 in 38ms (next.js: 11ms, application-code: 27ms)
- GET /materials/cb1c5f0f-d5b9-40a3-b0fd-93d04f9fb834 200 in 42ms (next.js: 19ms, application-code: 24ms)
- GET /materials/7da70040-55c5-4619-9f67-c7c4461a66c3 200 in 40ms (next.js: 14ms, application-code: 26ms)
- GET /materials 200 in 28ms (next.js: 6ms, application-code: 22ms)
- GET /materials/6e4c30f5-715e-4ce6-9510-681c27c682f0 200 in 41ms (next.js: 16ms, application-code: 26ms)
- GET /materials 200 in 26ms (next.js: 7ms, application-code: 19ms)
- GET /materials/new 200 in 73ms (next.js: 47ms, application-code: 27ms)
- GET /materials 200 in 30ms (next.js: 9ms, application-code: 21ms)
- GET /materials/cb1c5f0f-d5b9-40a3-b0fd-93d04f9fb834 200 in 323ms (next.js: 296ms, application-code: 26ms)
- GET /materials/cb1c5f0f-d5b9-40a3-b0fd-93d04f9fb834 200 in 38ms (next.js: 14ms, application-code: 24ms)
- GET /materials/cb1c5f0f-d5b9-40a3-b0fd-93d04f9fb834/versions/new 200 in 1012ms (next.js: 980ms, application-code: 32ms)
- GET /materials 200 in 33ms (next.js: 11ms, application-code: 22ms)
- GET /materials/new 200 in 33ms (next.js: 8ms, application-code: 25ms)
- GET /materials/0e162f30-b412-4ff0-b521-aa6b82e5937c 200 in 40ms (next.js: 18ms, application-code: 23ms)
- GET /simulations/new 200 in 36ms (next.js: 10ms, application-code: 26ms)
- GET /global-analysis 200 in 63ms (next.js: 42ms, application-code: 21ms)
- GET /simulations 200 in 58ms (next.js: 39ms, application-code: 19ms)
- GET /simulations/weather 200 in 71ms (next.js: 46ms, application-code: 24ms)
- GET /simulations/333373d0-7885-4bd9-8b25-4da038a0d41b 200 in 628ms (next.js: 601ms, application-code: 27ms)
- GET /global-analysis 200 in 28ms (next.js: 8ms, application-code: 19ms)
- GET /global-analysis/39a4c4b6-7a2e-4f36-9d93-88ced4983da9 200 in 658ms (next.js: 629ms, application-code: 28ms)
- GET /global-analysis/39a4c4b6-7a2e-4f36-9d93-88ced4983da9 200 in 99ms (next.js: 21ms, application-code: 77ms)
+- Local:        http://localhost:3000
+- PID:          1136
+- Dir:          C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\frontend
+- Log:          .next\dev\logs\next-development.log
+
+You can access the existing server at http://localhost:3000,
+or run taskkill /PID 1136 /F to stop it and start a new one.
+[?25h
