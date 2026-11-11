@@ -9,7 +9,7 @@ set -Eeuo pipefail
 #   1. Activate the Python virtual environment
 #   2. Start Redis
 #   3. Start FastAPI
-#   4. Start the Celery worker
+#   4. Start the Celery worker (+ Beat)
 #   5. Start the frontend
 #
 # The browser will not be opened automatically.
@@ -30,6 +30,8 @@ BACKEND_PORT="${BACKEND_PORT:-8000}"
 # Celery settings
 CELERY_APP="${CELERY_APP:-app.worker.celery_app:celery_app}"
 CELERY_CONCURRENCY="${CELERY_CONCURRENCY:-4}"
+# IMPORTANT: optimization queue must be included, otherwise optimization tasks stay in "queued"
+CELERY_QUEUES="${CELERY_QUEUES:-default,global_standard,global_large,optimization}"
 
 # Redis settings
 REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
@@ -268,7 +270,7 @@ success "Required dependencies are available"
 # 1. Start Redis
 # ============================================================
 
-section "1/4 Starting Redis"
+section "1/5 Starting Redis"
 
 if port_is_open "${REDIS_HOST}" "${REDIS_PORT}"; then
     success "Redis is already running at ${REDIS_HOST}:${REDIS_PORT}"
@@ -325,7 +327,7 @@ fi
 # 2. Start FastAPI
 # ============================================================
 
-section "2/4 Starting the FastAPI backend"
+section "2/5 Starting the FastAPI backend"
 
 if port_is_open "${BACKEND_HOST}" "${BACKEND_PORT}"; then
     success "FastAPI is already running at http://${BACKEND_HOST}:${BACKEND_PORT}"
@@ -361,13 +363,13 @@ fi
 # 3. Start the Celery worker
 # ============================================================
 
-section "3/4 Starting the Celery worker"
+section "3/5 Starting the Celery worker"
 
 if [[ -f "${PID_DIR}/celery.pid" ]]; then
     OLD_CELERY_PID="$(cat "${PID_DIR}/celery.pid" 2>/dev/null || true)"
 
     if process_is_running "${OLD_CELERY_PID}"; then
-        warning "Celery appears to be running with PID ${OLD_CELERY_PID}"
+        warning "Celery worker appears to be running with PID ${OLD_CELERY_PID}"
         warning "Run ./stop-all.sh before restarting it"
     else
         rm -f "${PID_DIR}/celery.pid"
@@ -376,7 +378,7 @@ fi
 
 if [[ ! -f "${PID_DIR}/celery.pid" ]]; then
     if [[ "${PLATFORM}" == "windows-bash" ]]; then
-        # The solo pool avoids common multiprocessing issues on Windows.
+        # The solo pool avoids common multiprocessing / PermissionError issues on Windows.
         CELERY_POOL="solo"
         CELERY_CONCURRENCY="1"
 
@@ -387,6 +389,7 @@ if [[ ! -f "${PID_DIR}/celery.pid" ]]; then
     fi
 
     info "Celery application: ${CELERY_APP}"
+    info "Celery queues: ${CELERY_QUEUES}"
     info "Celery pool: ${CELERY_POOL}"
     info "Celery concurrency: ${CELERY_CONCURRENCY}"
 
@@ -396,6 +399,7 @@ if [[ ! -f "${PID_DIR}/celery.pid" ]]; then
         exec python -m celery \
             -A "${CELERY_APP}" \
             worker \
+            -Q "${CELERY_QUEUES}" \
             --loglevel=info \
             --pool="${CELERY_POOL}" \
             --concurrency="${CELERY_CONCURRENCY}"
@@ -417,10 +421,55 @@ if [[ ! -f "${PID_DIR}/celery.pid" ]]; then
 fi
 
 # ============================================================
-# 4. Install frontend dependencies and start the frontend
+# 4. Start Celery Beat
 # ============================================================
 
-section "4/4 Starting the frontend"
+section "4/5 Starting Celery Beat"
+
+if [[ -f "${PID_DIR}/celerybeat.pid" ]]; then
+    OLD_BEAT_PID="$(cat "${PID_DIR}/celerybeat.pid" 2>/dev/null || true)"
+
+    if process_is_running "${OLD_BEAT_PID}"; then
+        warning "Celery Beat appears to be running with PID ${OLD_BEAT_PID}"
+        warning "Run ./stop-all.sh before restarting it"
+    else
+        rm -f "${PID_DIR}/celerybeat.pid"
+    fi
+fi
+
+if [[ ! -f "${PID_DIR}/celerybeat.pid" ]]; then
+    info "Cleaning possible stale celerybeat-schedule files"
+    rm -f "${BACKEND_DIR}"/celerybeat-schedule.* 2>/dev/null || true
+
+    (
+        cd "${BACKEND_DIR}"
+
+        exec python -m celery \
+            -A "${CELERY_APP}" \
+            beat \
+            --loglevel=info
+    ) > "${LOG_DIR}/celerybeat.log" 2>&1 &
+
+    BEAT_PID=$!
+    save_pid "celerybeat" "${BEAT_PID}"
+
+    sleep 3
+
+    if process_is_running "${BEAT_PID}"; then
+        success "Celery Beat started with PID ${BEAT_PID}"
+    else
+        error "Celery Beat failed to start"
+        tail -n 50 "${LOG_DIR}/celerybeat.log" || true
+        rm -f "${PID_DIR}/celerybeat.pid"
+        exit 1
+    fi
+fi
+
+# ============================================================
+# 5. Install frontend dependencies and start the frontend
+# ============================================================
+
+section "5/5 Starting the frontend"
 
 cd "${FRONTEND_DIR}"
 
@@ -499,13 +548,17 @@ else
 fi
 
 echo
+echo "Celery queues: ${CELERY_QUEUES}"
 echo "Log directory: ${LOG_DIR}"
 echo
 echo "View the backend log:"
 echo "  tail -f logs/backend.log"
 echo
-echo "View the Celery log:"
+echo "View the Celery worker log:"
 echo "  tail -f logs/celery.log"
+echo
+echo "View the Celery Beat log:"
+echo "  tail -f logs/celerybeat.log"
 echo
 echo "View the frontend log:"
 echo "  tail -f logs/frontend.log"

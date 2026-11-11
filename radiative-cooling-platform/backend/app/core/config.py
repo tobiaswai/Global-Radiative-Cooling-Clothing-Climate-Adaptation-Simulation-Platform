@@ -94,6 +94,13 @@ class Settings(BaseSettings):
         return split_csv_setting(
             self.cors_expose_headers
         )
+    
+    # Stage 7 reliability
+    CITY_LEASE_TTL_SECONDS: int = 180        # lease 有效期
+    CITY_HEARTBEAT_SECONDS: int = 30         # 續約間隔，需 << TTL
+    CITY_MAX_RETRIES: int = 3                # retry_count 上限
+    LEASE_REAPER_INTERVAL_SECONDS: int = 60  # beat 週期
+    CHECKPOINT_EVERY_MONTHS: int = 1         # 目前每月一筆
 
 
 @lru_cache(maxsize=1)

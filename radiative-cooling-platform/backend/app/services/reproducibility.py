@@ -18,7 +18,7 @@ What is NOT in the fingerprint
 
 Hard limit
     Only constants registered in ``model_parameters.MODEL_PARAMETERS``,
-    ``model_parameters.SOLVER_SETTINGS`` or ``EnvironmentAssumptions`` are
+    or ``EnvironmentAssumptions`` are
     visible here. A literal left inside ``two_node.py`` is invisible.
 """
 
@@ -39,7 +39,7 @@ from app.schemas.simulation import WeatherSimulationResponse
 from app.services import model_parameters as mp
 
 # Bump only when the *shape* of the snapshot changes (new section, renamed
-# key). A changed constant value must bump ``mp.MODEL_VERSION`` instead.
+# key). A changed constant value must bump ``mp.MODEL_PARAMETER_SET_VERSION``.
 SNAPSHOT_SCHEMA_VERSION = 1
 
 
@@ -161,11 +161,12 @@ def diff_snapshots(
 
 
 _REGEN_HINT = (
-    "If intentional: bump MODEL_VERSION in app/services/model_parameters.py, "
-    "note it in the changelog, then regenerate the fixture "
-    "(python -m scripts.regenerate_golden). Otherwise revert the constant."
+    "If intentional: bump MODEL_PARAMETER_SET_VERSION in "
+    "app/services/model_parameters.py, record the change in "
+    "docs/acceptance/<stage>/golden-refresh.md, then regenerate the fixture "
+    "(UPDATE_GOLDEN=1 python -m pytest tests/test_golden_dubai_2h.py). "
+    "Otherwise revert the constant."
 )
-
 
 def _compare_parameter_fingerprint(
     expected: Mapping[str, Any],
@@ -181,7 +182,7 @@ def _compare_parameter_fingerprint(
     if expected_fp is None or expected_snapshot is None:
         return [
             "parameter_fingerprint: fixture has no fingerprint/snapshot; "
-            "regenerate it (python -m scripts.regenerate_golden)"
+            "regenerate it (UPDATE_GOLDEN=1 python -m pytest tests/test_golden_dubai_2h.py)"
         ]
 
     # Fixture integrity: catches hand-edited snapshots with a stale hash.
@@ -261,7 +262,6 @@ def summarize_result_for_regression(
         ],
     }
 
-
 def compare_regression_payloads(
     expected: dict[str, Any],
     actual: dict[str, Any],
@@ -285,8 +285,13 @@ def compare_regression_payloads(
             differences.append(f"{key}: {expected.get(key)!r} != {actual.get(key)!r}")
 
     for key, value in expected["summary"].items():
-        if abs(value - actual["summary"][key]) > temperature_atol:
-            differences.append(f"summary.{key}: {value} != {actual['summary'][key]}")
+        actual_value = actual["summary"].get(key)
+        if isinstance(value, (int, float)):
+            if actual_value is None or abs(value - actual_value) > temperature_atol:
+                differences.append(f"summary.{key}: {value} != {actual_value}")
+        else:
+            if value != actual_value:
+                differences.append(f"summary.{key}: {value!r} != {actual_value!r}")
 
     for scenario in ("control", "radiative_cooling"):
         expected_points = expected[scenario]

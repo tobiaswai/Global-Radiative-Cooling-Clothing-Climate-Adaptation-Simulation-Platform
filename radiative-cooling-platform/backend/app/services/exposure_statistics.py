@@ -11,7 +11,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, date, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
@@ -76,12 +77,12 @@ def compute_exposure_window_statistics(
     origin = weather.points[0].timestamp
 
     relative_seconds = np.asarray(
-        [(p.timestamp - origin).total_seconds() for p in weather.points],
+        [elapsed_seconds(p.timestamp, origin) for p in weather.points],
         dtype=float,
     )
 
-    start_s = (window_start - origin).total_seconds()
-    end_s = (window_end - origin).total_seconds()
+    start_s = elapsed_seconds(window_start, origin)
+    end_s = elapsed_seconds(window_end, origin)
 
     if start_s < relative_seconds[0] - 1e-6 or end_s > relative_seconds[-1] + 1e-6:
         raise WeatherInsufficientCoverageError(
@@ -114,3 +115,41 @@ def compute_exposure_window_statistics(
         mean_solar_radiation_w_m2=time_weighted_mean(knots, ghi),
         maximum_solar_radiation_w_m2=float(ghi.max()),
     )
+    
+def elapsed_seconds(later: datetime, earlier: datetime) -> float:
+    """UTC-based elapsed time. Safe across tzinfo objects and DST transitions
+    (plain aware-datetime subtraction ignores tzinfo when both share it)."""
+    return later.timestamp() - earlier.timestamp()
+
+
+def compute_daily_maximum_air_temperature(
+    weather: WeatherTimeSeries,
+    *,
+    local_date: date,
+    timezone_name: str,
+) -> float | None:
+    """Maximum air temperature over one local calendar day [00:00, 24:00).
+
+    Returns None when the series does not fully bracket the day, so that a
+    partial day is never reported as a daily maximum. Used for heatwave
+    detection (Stage 6); the exposure-window maximum is a different quantity.
+    """
+    tz = ZoneInfo(timezone_name)
+    day_start = datetime.combine(local_date, time(0), tzinfo=tz)
+    day_end = datetime.combine(local_date + timedelta(days=1), time(0), tzinfo=tz)
+
+    points = weather.points
+    if elapsed_seconds(points[0].timestamp, day_start) > 1e-6:
+        return None
+    if elapsed_seconds(day_end, points[-1].timestamp) > 1e-6:
+        return None
+
+    origin = points[0].timestamp
+    relative = np.asarray([elapsed_seconds(p.timestamp, origin) for p in points])
+    temperatures = np.asarray([p.air_temperature_c for p in points])
+
+    start_s = elapsed_seconds(day_start, origin)
+    end_s = elapsed_seconds(day_end, origin)
+
+    knots = _window_knots(relative, start_s, end_s)
+    return float(np.interp(knots, relative, temperatures).max())

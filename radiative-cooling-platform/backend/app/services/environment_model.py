@@ -18,6 +18,8 @@ def derive_environment(
     wind_speed_m_s: float,
     ghi_w_m2: float,
     assumptions: EnvironmentAssumptions,
+    direct_normal_irradiance_w_m2: float | None = None,
+    diffuse_horizontal_irradiance_w_m2: float | None = None,
 ) -> EnvironmentInput:
     air = float(air_temperature_c)
     ghi = max(0.0, float(ghi_w_m2))
@@ -43,6 +45,20 @@ def derive_environment(
     else:
         sky = SWINBANK_COEFFICIENT * (air + KELVIN_OFFSET) ** 1.5 - KELVIN_OFFSET
 
+    dni = (
+        None
+        if direct_normal_irradiance_w_m2 is None
+        else max(0.0, float(direct_normal_irradiance_w_m2))
+    )
+    dhi = (
+        None
+        if diffuse_horizontal_irradiance_w_m2 is None
+        else max(0.0, float(diffuse_horizontal_irradiance_w_m2))
+    )
+
+    if (dni is None) != (dhi is None):
+        raise ValueError("DNI and DHI must be supplied together")
+
     return EnvironmentInput(
         air_temperature_c=air,
         mean_radiant_temperature_c=mean_radiant,
@@ -51,4 +67,7 @@ def derive_environment(
         wind_speed_m_s=wind,
         solar_radiation_w_m2=ghi,
         sky_view_factor=assumptions.sky_view_factor,
+        direct_normal_irradiance_w_m2=dni,
+        diffuse_horizontal_irradiance_w_m2=dhi,
+        ground_albedo=assumptions.ground_albedo,
     )

@@ -1,16 +1,17 @@
 """Two-node transient human thermal model.
 
-Stage 2 changes
----------------
-* Evaporation is limited by an explicit clothing evaporative resistance
-  (``MaterialInput.evaporative_resistance_m2pa_w``). If the material does not
-  supply one it is derived from clo (see ``clothing.py``) and reported in
-  ``ScenarioResult.assumptions_applied``.
-* ``infrared_transmittance`` participates in the longwave term: transmitted
-  skin emission bypasses the clothing coupling factor (first-order model).
-* Every numeric constant is bound from ``model_parameters`` (unit + source).
-* Fixed-environment and weather-driven runs share ``_integrate``; the
-  weather-driven path takes explicit ``EnvironmentAssumptions``.
+Stage 5 changes (ADR 0005, ADR 0006)
+------------------------------------
+* Solar radiation absorbed by the textile is a source term in the clothing
+  surface balance; the share reaching the skin is an outcome of that balance.
+  ``MaterialInput.absorbed_solar_to_body_fraction`` is ignored.
+* Solar transmitted through the textile is deposited on the skin node.
+* Incident shortwave uses the beam/diffuse split when available
+  (``services.solar``); ``PersonInput.position`` selects A_r/A_D.
+
+Retained from Stage 3: body-mass heat capacities (ADR 0001), Gagge 1986
+controllers (ADR 0002), explicit clothing surface temperature (ADR 0003).
+Every numeric constant is bound from ``model_parameters``.
 """
 
 from __future__ import annotations
@@ -24,6 +25,8 @@ from scipy.integrate import solve_ivp
 
 from app.schemas.environment import EnvironmentAssumptions
 from app.schemas.simulation import (
+    BodyPosition,
+    BodyThermalSummary,
     ClothingSummary,
     EnergyDiagnostics,
     EnvironmentInput,
@@ -33,6 +36,7 @@ from app.schemas.simulation import (
     TimeSeriesPoint,
 )
 from app.schemas.weather import WeatherTimeSeries
+from app.services.body import BodyHeatCapacities, body_heat_capacities
 from app.services.clothing import (
     ClothingResistances,
     assumptions_applied,
@@ -40,31 +44,41 @@ from app.services.clothing import (
     resolve_clothing,
 )
 from app.services.model_parameters import get_parameter_value as _param
+from app.services.solar import solar_load
 from app.services.weather_interpolation import WeatherInterpolator
 
 
+# Version of the physics engine written into every response. Bump together
+# with MODEL_PARAMETER_SET_VERSION whenever results change.
+MODEL_VERSION = "0.7.0"  # Stage 6: shared time-weighted summary, audit grid, radiation convention key
+
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
-CORE_HEAT_CAPACITY = _param("core_heat_capacity")
-SKIN_HEAT_CAPACITY = _param("skin_heat_capacity")
 NATURAL_CONVECTION_MINIMUM = _param("natural_convection_minimum_coefficient")
 FORCED_CONVECTION_COEFFICIENT = _param("forced_convection_coefficient")
-LINEARIZED_RADIATIVE_COEFFICIENT = _param("linearized_radiative_coefficient")
 SKIN_EMISSIVITY = _param("skin_emissivity")
+RADIATION_AREA_RATIO_STANDING = _param("effective_radiation_area_ratio_standing")
+RADIATION_AREA_RATIO_SITTING = _param("effective_radiation_area_ratio_sitting")
+SKIN_MASS_FRACTION = _param("skin_mass_fraction")
 CORE_SETPOINT = _param("core_setpoint_temperature")
 SKIN_SETPOINT = _param("skin_setpoint_temperature")
-SWEATING_GAIN_CORE = _param("sweating_gain_core")
-SWEATING_GAIN_SKIN = _param("sweating_gain_skin")
+SWEATING_GAIN_BODY = _param("sweating_gain_body")
+SWEATING_SKIN_SIGNAL_SCALE = _param("sweating_skin_signal_scale")
 MAXIMUM_SWEAT_RATE = _param("maximum_sweat_rate")
 LATENT_HEAT_PER_GRAM_HOUR = _param("latent_heat_of_sweat")
 SKIN_DIFFUSION_FRACTION = _param("skin_diffusion_fraction")
+W_MAX_CLOTHED_COEFFICIENT = _param("maximum_wettedness_clothed_coefficient")
+W_MAX_CLOTHED_EXPONENT = _param("maximum_wettedness_clothed_exponent")
+W_MAX_NUDE_COEFFICIENT = _param("maximum_wettedness_nude_coefficient")
+W_MAX_NUDE_EXPONENT = _param("maximum_wettedness_nude_exponent")
 SKIN_BLOOD_FLOW_BASAL = _param("skin_blood_flow_basal")
-SKIN_BLOOD_FLOW_CORE_GAIN = _param("skin_blood_flow_core_gain")
-SKIN_BLOOD_FLOW_SKIN_GAIN = _param("skin_blood_flow_skin_gain")
+VASODILATION_GAIN = _param("vasodilation_gain")
+VASOCONSTRICTION_GAIN = _param("vasoconstriction_gain")
 SKIN_BLOOD_FLOW_MINIMUM = _param("skin_blood_flow_minimum")
 SKIN_BLOOD_FLOW_MAXIMUM = _param("skin_blood_flow_maximum")
 CORE_SKIN_CONDUCTANCE_BASAL = _param("core_skin_conductance_basal")
 BLOOD_HEAT_CAPACITY_PER_FLOW = _param("blood_heat_capacity_per_flow")
+SHIVERING_COEFFICIENT = _param("shivering_coefficient")
 METABOLIC_RATE_PER_MET = _param("metabolic_rate_per_met")
 RESPIRATORY_LATENT_COEFFICIENT = _param("respiratory_latent_coefficient")
 RESPIRATORY_REFERENCE_PRESSURE = _param("respiratory_reference_vapor_pressure")
@@ -76,12 +90,20 @@ MAGNUS_B = _param("magnus_b")
 MAGNUS_C = _param("magnus_c")
 
 KELVIN_OFFSET = 273.15
+BODY_SETPOINT = (
+    SKIN_MASS_FRACTION * SKIN_SETPOINT + (1.0 - SKIN_MASS_FRACTION) * CORE_SETPOINT
+)
 
 # Numerical (not physical) settings.
 SOLVER_METHOD = "RK45"
 SOLVER_RTOL = 1e-6
 SOLVER_ATOL = 1e-8
 SOLVER_MAX_STEP_SECONDS = 60.0
+SURFACE_TEMPERATURE_TOLERANCE_K = 1e-5
+SURFACE_TEMPERATURE_MAX_ITERATIONS = 30
+NUDE_RESISTANCE_THRESHOLD_M2K_W = 1e-6
+# Gagge's w_max correlations were fitted for v >= 0.1 m/s.
+MINIMUM_WIND_FOR_WETTEDNESS_M_S = 0.1
 
 EnvironmentAt = Callable[[float], EnvironmentInput]
 
@@ -90,13 +112,21 @@ EnvironmentAt = Callable[[float], EnvironmentInput]
 class HeatFluxes:
     convection: float
     longwave_radiation: float
+    longwave_transmitted: float
     evaporation: float
     maximum_evaporation: float
     skin_wettedness: float
-    absorbed_solar: float
+    maximum_skin_wettedness: float
+    solar_incident: float
+    solar_absorbed_by_textile: float
+    solar_transmitted: float
+    absorbed_solar: float  # solar entering the clothing-body system
     core_to_skin: float
     respiration: float
     metabolism: float
+    skin_blood_flow: float
+    clothing_surface_temperature_c: float
+    radiation_area_ratio: float
 
     @property
     def net_body_gain(self) -> float:
@@ -115,8 +145,100 @@ def clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(value, upper))
 
 
+def effective_radiation_area_ratio(position: BodyPosition) -> float:
+    """A_r / A_D for the given posture (ADR 0006)."""
+    if position == "sitting":
+        return RADIATION_AREA_RATIO_SITTING
+    return RADIATION_AREA_RATIO_STANDING
+
+
 def saturation_vapor_pressure_kpa(temperature_c: float) -> float:
     return MAGNUS_A * exp(MAGNUS_B * temperature_c / (temperature_c + MAGNUS_C))
+
+
+def convection_coefficient_w_m2k(wind_speed_m_s: float) -> float:
+    return max(
+        NATURAL_CONVECTION_MINIMUM,
+        FORCED_CONVECTION_COEFFICIENT * sqrt(max(wind_speed_m_s, 0.0)),
+    )
+
+
+def environment_radiant_fourth_power_k4(environment: EnvironmentInput) -> float:
+    """F_sky * T_sky^4 + (1 - F_sky) * T_mrt^4 in K^4."""
+    sky_temperature_c = environment.sky_temperature_c
+    if sky_temperature_c is None:
+        sky_temperature_c = environment.air_temperature_c - FALLBACK_SKY_OFFSET
+
+    sky_k = sky_temperature_c + KELVIN_OFFSET
+    radiant_k = environment.mean_radiant_temperature_c + KELVIN_OFFSET
+    f = environment.sky_view_factor
+
+    return f * sky_k**4 + (1.0 - f) * radiant_k**4
+
+
+def clothing_surface_temperature_c(
+    *,
+    skin_temperature_c: float,
+    air_temperature_c: float,
+    environment_fourth_k4: float,
+    clothing: ClothingResistances,
+    convection_coefficient: float,
+    emissivity: float,
+    radiation_area_ratio: float,
+    absorbed_solar_w_m2: float = 0.0,
+) -> float:
+    """Solve the clothing surface balance (ADR 0003 + ADR 0005)
+
+        (T_sk - T_cl)/R_cl + S_abs
+            = f_cl [h_c (T_cl - T_a) + (A_r/A_D) eps sigma (T_cl^4 - T_env^4)]
+
+    S_abs (solar absorbed by the textile, per unit A_D) does not depend on
+    T_cl, so the residual stays strictly decreasing and concave. Newton from
+    T_sk lands at or below the root after the first step and then converges
+    monotonically.
+    """
+    if clothing.dry_resistance_m2k_w < NUDE_RESISTANCE_THRESHOLD_M2K_W:
+        return skin_temperature_c
+
+    resistance = clothing.dry_resistance_m2k_w
+    area_factor = clothing.area_factor
+    skin_k = skin_temperature_c + KELVIN_OFFSET
+    air_k = air_temperature_c + KELVIN_OFFSET
+
+    t = skin_k
+
+    radiative_factor = radiation_area_ratio * emissivity * SIGMA
+
+    for _ in range(SURFACE_TEMPERATURE_MAX_ITERATIONS):
+        emission = radiative_factor * (t**4 - environment_fourth_k4)
+        residual = (
+            (skin_k - t) / resistance
+            + absorbed_solar_w_m2
+            - area_factor * (convection_coefficient * (t - air_k) + emission)
+        )
+        derivative = -1.0 / resistance - area_factor * (
+            convection_coefficient + 4.0 * radiative_factor * t**3
+        )
+        step = residual / derivative
+        t -= step
+
+        if abs(step) < SURFACE_TEMPERATURE_TOLERANCE_K:
+            return t - KELVIN_OFFSET
+
+    raise RuntimeError(
+        "Clothing surface temperature iteration did not converge "
+        f"(T_sk = {skin_temperature_c:.3f} C, T_a = {air_temperature_c:.3f} C, "
+        f"S_abs = {absorbed_solar_w_m2:.1f} W/m^2)"
+    )
+
+
+def maximum_skin_wettedness(wind_speed_m_s: float, clothing: ClothingResistances) -> float:
+    v = max(wind_speed_m_s, MINIMUM_WIND_FOR_WETTEDNESS_M_S)
+    if clothing.is_nude:
+        w_max = W_MAX_NUDE_COEFFICIENT * v**W_MAX_NUDE_EXPONENT
+    else:
+        w_max = W_MAX_CLOTHED_COEFFICIENT * v**W_MAX_CLOTHED_EXPONENT
+    return clamp(w_max, SKIN_DIFFUSION_FRACTION, 1.0)
 
 
 def calculate_fluxes(
@@ -131,61 +253,62 @@ def calculate_fluxes(
         clothing = resolve_clothing(material)
 
     air_temperature_c = environment.air_temperature_c
+    area_ratio = effective_radiation_area_ratio(person.position)
 
-    sky_temperature_c = environment.sky_temperature_c
-    if sky_temperature_c is None:
-        sky_temperature_c = air_temperature_c - FALLBACK_SKY_OFFSET
+    # --- thermoregulatory signals (Gagge 1986) ------------------------------
+    warm_skin = max(skin_temperature_c - SKIN_SETPOINT, 0.0)
+    cold_skin = max(SKIN_SETPOINT - skin_temperature_c, 0.0)
+    warm_core = max(core_temperature_c - CORE_SETPOINT, 0.0)
+    cold_core = max(CORE_SETPOINT - core_temperature_c, 0.0)
 
-    # --- convection ---------------------------------------------------------
-    convection_coefficient = max(
-        NATURAL_CONVECTION_MINIMUM,
-        FORCED_CONVECTION_COEFFICIENT * sqrt(max(environment.wind_speed_m_s, 0.0)),
+    body_temperature_c = (
+        SKIN_MASS_FRACTION * skin_temperature_c
+        + (1.0 - SKIN_MASS_FRACTION) * core_temperature_c
     )
+    warm_body = max(body_temperature_c - BODY_SETPOINT, 0.0)
 
-    clothing_coupling = 1.0 / (
-        1.0
-        + clothing.dry_resistance_m2k_w
-        * (convection_coefficient + LINEARIZED_RADIATIVE_COEFFICIENT)
+    # --- solar (ADR 0005 / 0006) --------------------------------------------
+    solar = solar_load(environment, material, area_ratio)
+
+    # --- dry heat: clothing surface balance with the solar source -----------
+    convection_coefficient = convection_coefficient_w_m2k(environment.wind_speed_m_s)
+    environment_fourth = environment_radiant_fourth_power_k4(environment)
+
+    surface_c = clothing_surface_temperature_c(
+        skin_temperature_c=skin_temperature_c,
+        air_temperature_c=air_temperature_c,
+        environment_fourth_k4=environment_fourth,
+        clothing=clothing,
+        convection_coefficient=convection_coefficient,
+        emissivity=material.infrared_emissivity,
+        radiation_area_ratio=area_ratio,
+        absorbed_solar_w_m2=solar.absorbed_by_textile_w_m2,
     )
-
-    convection = (
-        convection_coefficient
-        * (skin_temperature_c - air_temperature_c)
-        * clothing_coupling
-    )
-
-    # --- longwave radiation -------------------------------------------------
+    surface_k = surface_c + KELVIN_OFFSET
     skin_k = skin_temperature_c + KELVIN_OFFSET
-    sky_k = sky_temperature_c + KELVIN_OFFSET
-    radiant_k = environment.mean_radiant_temperature_c + KELVIN_OFFSET
 
-    sky_view_factor = environment.sky_view_factor
-
-    net_radiation = SIGMA * (
-        sky_view_factor * (skin_k**4 - sky_k**4)
-        + (1.0 - sky_view_factor) * (skin_k**4 - radiant_k**4)
+    convection = clothing.area_factor * convection_coefficient * (
+        surface_c - air_temperature_c
     )
 
-    # Emission from the textile surface (attenuated by the clothing coupling)
-    # plus skin emission transmitted directly through an IR-transparent textile.
-    effective_emitter = (
-        material.infrared_emissivity * clothing_coupling
-        + clothing.infrared_transmittance * SKIN_EMISSIVITY
+    longwave_surface = (
+        clothing.area_factor
+        * area_ratio
+        * material.infrared_emissivity
+        * SIGMA
+        * (surface_k**4 - environment_fourth)
     )
 
-    longwave_radiation = effective_emitter * net_radiation
-
-    # --- solar --------------------------------------------------------------
-    solar_absorptance = clamp(
-        1.0 - material.solar_reflectance - material.solar_transmittance, 0.0, 1.0
+    # Skin emission transmitted directly through an IR-transparent textile.
+    longwave_transmitted = (
+        area_ratio
+        * clothing.infrared_transmittance
+        * SKIN_EMISSIVITY
+        * SIGMA
+        * (skin_k**4 - environment_fourth)
     )
 
-    absorbed_solar = (
-        solar_absorptance
-        * environment.solar_radiation_w_m2
-        * material.projected_solar_area_factor
-        * material.absorbed_solar_to_body_fraction
-    )
+    longwave_radiation = longwave_surface + longwave_transmitted
 
     # --- evaporation --------------------------------------------------------
     ambient_vapor_pressure_kpa = (
@@ -201,27 +324,29 @@ def calculate_fluxes(
         ambient_vapor_pressure_kpa,
     )
 
-    regulatory_sweating_g_h_m2 = clamp(
-        SWEATING_GAIN_CORE * max(core_temperature_c - CORE_SETPOINT, 0.0)
-        + SWEATING_GAIN_SKIN * max(skin_temperature_c - SKIN_SETPOINT, 0.0),
-        0.0,
+    regulatory_sweating_g_h_m2 = min(
+        SWEATING_GAIN_BODY * warm_body * exp(warm_skin / SWEATING_SKIN_SIGNAL_SCALE),
         MAXIMUM_SWEAT_RATE,
     )
-
     regulatory_evaporation = regulatory_sweating_g_h_m2 * LATENT_HEAT_PER_GRAM_HOUR
-    diffusion_evaporation = SKIN_DIFFUSION_FRACTION * maximum_evaporation
 
-    evaporation = min(maximum_evaporation, regulatory_evaporation + diffusion_evaporation)
+    w_max = maximum_skin_wettedness(environment.wind_speed_m_s, clothing)
 
-    skin_wettedness = (
-        evaporation / maximum_evaporation if maximum_evaporation > 0.0 else 1.0
-    )
+    if maximum_evaporation <= 0.0:
+        skin_wettedness = w_max
+        evaporation = 0.0
+    else:
+        sweat_ratio = regulatory_evaporation / maximum_evaporation
+        skin_wettedness = min(
+            SKIN_DIFFUSION_FRACTION + (1.0 - SKIN_DIFFUSION_FRACTION) * sweat_ratio,
+            w_max,
+        )
+        evaporation = skin_wettedness * maximum_evaporation
 
     # --- core <-> skin ------------------------------------------------------
     skin_blood_flow = clamp(
-        SKIN_BLOOD_FLOW_BASAL
-        + SKIN_BLOOD_FLOW_CORE_GAIN * max(core_temperature_c - CORE_SETPOINT, 0.0)
-        + SKIN_BLOOD_FLOW_SKIN_GAIN * max(skin_temperature_c - SKIN_SETPOINT, 0.0),
+        (SKIN_BLOOD_FLOW_BASAL + VASODILATION_GAIN * warm_core)
+        / (1.0 + VASOCONSTRICTION_GAIN * cold_skin),
         SKIN_BLOOD_FLOW_MINIMUM,
         SKIN_BLOOD_FLOW_MAXIMUM,
     )
@@ -233,7 +358,10 @@ def calculate_fluxes(
     core_to_skin = core_skin_conductance * (core_temperature_c - skin_temperature_c)
 
     # --- metabolism and respiration -----------------------------------------
-    metabolism = person.met * METABOLIC_RATE_PER_MET
+    metabolism = (
+        person.met * METABOLIC_RATE_PER_MET
+        + SHIVERING_COEFFICIENT * cold_skin * cold_core
+    )
 
     respiration_latent = max(
         0.0,
@@ -253,13 +381,21 @@ def calculate_fluxes(
     return HeatFluxes(
         convection=convection,
         longwave_radiation=longwave_radiation,
+        longwave_transmitted=longwave_transmitted,
         evaporation=evaporation,
         maximum_evaporation=maximum_evaporation,
         skin_wettedness=skin_wettedness,
-        absorbed_solar=absorbed_solar,
+        maximum_skin_wettedness=w_max,
+        solar_incident=solar.incident_w_m2,
+        solar_absorbed_by_textile=solar.absorbed_by_textile_w_m2,
+        solar_transmitted=solar.transmitted_to_skin_w_m2,
+        absorbed_solar=solar.entering_system_w_m2,
         core_to_skin=core_to_skin,
         respiration=respiration,
         metabolism=metabolism,
+        skin_blood_flow=skin_blood_flow,
+        clothing_surface_temperature_c=surface_c,
+        radiation_area_ratio=area_ratio,
     )
 
 
@@ -276,12 +412,13 @@ def _energy_diagnostics(
     skin_temperatures: np.ndarray,
     net_heat_fluxes: np.ndarray,
     solver_function_evaluations: int,
+    capacities: BodyHeatCapacities,
 ) -> EnergyDiagnostics:
     integrated_net_heat = float(np.trapezoid(net_heat_fluxes, times_seconds))
 
     stored_energy_change = float(
-        CORE_HEAT_CAPACITY * (core_temperatures[-1] - core_temperatures[0])
-        + SKIN_HEAT_CAPACITY * (skin_temperatures[-1] - skin_temperatures[0])
+        capacities.core_j_m2k * (core_temperatures[-1] - core_temperatures[0])
+        + capacities.skin_j_m2k * (skin_temperatures[-1] - skin_temperatures[0])
     )
 
     residual = stored_energy_change - integrated_net_heat
@@ -298,6 +435,7 @@ def _energy_diagnostics(
         maximum_core_step_c=round(max_step(core_temperatures), 6),
         maximum_skin_step_c=round(max_step(skin_temperatures), 6),
         solver_function_evaluations=int(solver_function_evaluations),
+        diagnostic_interval_seconds=DIAGNOSTIC_INTERVAL_SECONDS,
     )
 
 
@@ -311,9 +449,13 @@ def _integrate(
     failure_label: str,
 ) -> ScenarioResult:
     clothing = resolve_clothing(material)
+    capacities = body_heat_capacities(person)
+    area_ratio = effective_radiation_area_ratio(person.position)
+    solar_split_available = environment_at(0.0).has_solar_split
 
     duration_seconds = duration_minutes * 60.0
     output_times = _output_times(duration_seconds, output_interval_minutes * 60.0)
+    eval_times = _diagnostic_times(duration_seconds, output_times)
 
     def derivatives(time_seconds: float, state: np.ndarray) -> list[float]:
         fluxes = calculate_fluxes(
@@ -326,6 +468,8 @@ def _integrate(
         )
 
         core_storage = fluxes.metabolism - fluxes.respiration - fluxes.core_to_skin
+        # absorbed_solar = textile absorption (routed through the surface
+        # balance, which already raised convection/longwave) + transmission.
         skin_storage = (
             fluxes.core_to_skin
             + fluxes.absorbed_solar
@@ -334,13 +478,16 @@ def _integrate(
             - fluxes.evaporation
         )
 
-        return [core_storage / CORE_HEAT_CAPACITY, skin_storage / SKIN_HEAT_CAPACITY]
+        return [
+            core_storage / capacities.core_j_m2k,
+            skin_storage / capacities.skin_j_m2k,
+        ]
 
     solution = solve_ivp(
         fun=derivatives,
         t_span=(0.0, duration_seconds),
         y0=[person.initial_core_temperature_c, person.initial_skin_temperature_c],
-        t_eval=output_times,
+        t_eval=eval_times,
         method=SOLVER_METHOD,
         rtol=SOLVER_RTOL,
         atol=SOLVER_ATOL,
@@ -353,11 +500,14 @@ def _integrate(
     times = np.asarray(solution.t, dtype=float)
     core_array = np.asarray(solution.y[0], dtype=float)
     skin_array = np.asarray(solution.y[1], dtype=float)
+    is_output = np.isin(times, output_times)
 
     time_series: list[TimeSeriesPoint] = []
     net_heat: list[float] = []
 
-    for time_seconds, core_c, skin_c in zip(times, core_array, skin_array, strict=True):
+    for time_seconds, core_c, skin_c, emit in zip(
+        times, core_array, skin_array, is_output, strict=True
+    ):
         fluxes = calculate_fluxes(
             core_temperature_c=float(core_c),
             skin_temperature_c=float(skin_c),
@@ -367,7 +517,10 @@ def _integrate(
             clothing=clothing,
         )
 
-        net_heat.append(fluxes.net_body_gain)
+        net_heat.append(fluxes.net_body_gain)  # every audit point
+
+        if not emit:
+            continue
 
         time_series.append(
             TimeSeriesPoint(
@@ -381,31 +534,49 @@ def _integrate(
                 core_to_skin_w_m2=round(fluxes.core_to_skin, 4),
                 maximum_evaporation_w_m2=round(fluxes.maximum_evaporation, 4),
                 skin_wettedness=round(fluxes.skin_wettedness, 4),
+                clothing_surface_temperature_c=round(
+                    fluxes.clothing_surface_temperature_c, 4
+                ),
+                skin_blood_flow_kg_h_m2=round(fluxes.skin_blood_flow, 4),
+                solar_incident_w_m2=round(fluxes.solar_incident, 4),
+                solar_absorbed_by_textile_w_m2=round(
+                    fluxes.solar_absorbed_by_textile, 4
+                ),
+                solar_transmitted_w_m2=round(fluxes.solar_transmitted, 4),
             )
         )
 
     diagnostics = _energy_diagnostics(
-        times, core_array, skin_array, np.asarray(net_heat), solution.nfev
+        times, core_array, skin_array, np.asarray(net_heat), solution.nfev, capacities
     )
-
-    core_temperatures = [p.core_temperature_c for p in time_series]
-    skin_temperatures = [p.skin_temperature_c for p in time_series]
 
     return ScenarioResult(
         material_name=material.name,
         time_series=time_series,
-        final_core_temperature_c=core_temperatures[-1],
-        final_skin_temperature_c=skin_temperatures[-1],
-        peak_core_temperature_c=max(core_temperatures),
-        peak_skin_temperature_c=max(skin_temperatures),
+        final_core_temperature_c=time_series[-1].core_temperature_c,
+        final_skin_temperature_c=time_series[-1].skin_temperature_c,
+        peak_core_temperature_c=round(float(core_array.max()), 4),
+        peak_skin_temperature_c=round(float(skin_array.max()), 4),
         diagnostics=diagnostics,
         clothing=ClothingSummary(
             dry_resistance_m2k_w=round(clothing.dry_resistance_m2k_w, 6),
             evaporative_resistance_m2pa_w=round(clothing.evaporative_resistance_m2pa_w, 4),
             evaporative_resistance_source=clothing.evaporative_resistance_source,
             infrared_transmittance=clothing.infrared_transmittance,
+            clothing_area_factor=round(clothing.area_factor, 6),
+            clothing_area_factor_source=clothing.area_factor_source,
         ),
-        assumptions_applied=assumptions_applied(clothing),
+        assumptions_applied=assumptions_applied(
+            clothing, solar_split_available=solar_split_available
+        ),
+        body=BodyThermalSummary(
+            body_mass_kg=person.body_mass_kg,
+            body_surface_area_m2=person.body_surface_area_m2,
+            core_heat_capacity_j_m2k=round(capacities.core_j_m2k, 2),
+            skin_heat_capacity_j_m2k=round(capacities.skin_j_m2k, 2),
+            position=person.position,
+            effective_radiation_area_ratio=area_ratio,
+        ),
     )
 
 
@@ -425,6 +596,25 @@ def simulate_material(
         failure_label="Fixed-environment numerical solution failed",
     )
 
+def simulate_material_with_interpolator(
+    duration_minutes: int,
+    output_interval_minutes: int,
+    interpolator: WeatherInterpolator,
+    person: PersonInput,
+    material: MaterialInput,
+) -> ScenarioResult:
+    """Same physics as simulate_material_with_weather, but reuses a prebuilt
+    interpolator (optimization evaluates thousands of garments per window)."""
+    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
+
+    return _integrate(
+        duration_minutes=duration_minutes,
+        output_interval_minutes=output_interval_minutes,
+        environment_at=interpolator.environment_at,
+        person=person,
+        material=material,
+        failure_label="Weather-driven numerical solution failed",
+    )
 
 def simulate_material_with_weather(
     duration_minutes: int,
@@ -437,15 +627,22 @@ def simulate_material_with_weather(
     interpolator = WeatherInterpolator.from_series(
         weather, assumptions=assumptions or EnvironmentAssumptions()
     )
-
-    # Fail before solving if the requested duration exceeds the weather data.
-    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
-
-    return _integrate(
-        duration_minutes=duration_minutes,
-        output_interval_minutes=output_interval_minutes,
-        environment_at=interpolator.environment_at,
-        person=person,
-        material=material,
-        failure_label="Weather-driven numerical solution failed",
+    return simulate_material_with_interpolator(
+        duration_minutes, output_interval_minutes, interpolator, person, material
     )
+    
+# Numerical (not physical) settings.
+DIAGNOSTIC_INTERVAL_SECONDS = 60.0  # energy audit grid, independent of output interval
+
+
+def _diagnostic_times(duration_seconds: float, output_times: np.ndarray) -> np.ndarray:
+    """Union of a fixed 60 s audit grid and the requested output times.
+
+    solve_ivp chooses its steps independently of t_eval, so evaluating on a
+    denser grid does not change the trajectory at the output times; it only
+    makes the energy-balance integral independent of output_interval_minutes.
+    """
+    fine = np.arange(0.0, duration_seconds + 0.1, DIAGNOSTIC_INTERVAL_SECONDS)
+    if fine[-1] < duration_seconds:
+        fine = np.append(fine, duration_seconds)
+    return np.unique(np.concatenate([fine, output_times]))

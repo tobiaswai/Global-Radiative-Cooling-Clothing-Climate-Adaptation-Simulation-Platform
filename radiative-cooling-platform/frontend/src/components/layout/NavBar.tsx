@@ -18,7 +18,7 @@ export function NavBar() {
     <header className="border-b border-slate-800 bg-slate-950">
       <nav className="mx-auto flex min-h-16 w-full items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link
-          href="/simulations"
+          href="/simulations/new"
           className="font-semibold text-white"
           onClick={() => setIsMobileMenuOpen(false)}
         >

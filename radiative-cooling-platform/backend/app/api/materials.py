@@ -1,24 +1,20 @@
 from typing import Annotated
 
 from fastapi import (
-    APIRouter,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    Query,
-    UploadFile,
-    status,
+    APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status,
 )
-from sqlalchemy import (
-    func,
-    select,
-)
+
+from sqlalchemy import delete, func, or_, select
+
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import (
     Session,
     selectinload,
 )
+
+from app.models.global_batch import GlobalBatchJob
+from app.models.optimization_job import OptimizationJob
+from app.models.simulation_job import SimulationJob
 
 from app.db.session import get_db
 from app.models.material import (
@@ -36,6 +32,13 @@ from app.schemas.material import (
     MaterialVersionResponse,
     SpectrumResponse,
     SpectrumSummary,
+    MaterialVersionListItem,
+    MaterialVersionListResponse,
+)
+from app.services.material_resolution import (
+    MaterialVersionNotFoundError,
+    load_material_version,
+    material_input_from_version,
 )
 from app.schemas.simulation import MaterialInput
 from app.services.spectrum_parser import (
@@ -67,6 +70,74 @@ def version_column_values(request: MaterialVersionCreate) -> dict:
     values = request.model_dump(mode="json")
     values["parameter_sources_json"] = values.pop("parameter_sources")
     return values
+
+
+@router.get(
+    "/versions",
+    response_model=MaterialVersionListResponse,
+)
+def list_material_versions(
+    include_archived: bool = False,
+    material_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_db),
+) -> MaterialVersionListResponse:
+    """Flat list of versions for simulation-form pickers (Stage 4)."""
+    filters = []
+
+    if not include_archived:
+        filters.append(Material.is_archived.is_(False))
+
+    if material_id:
+        filters.append(MaterialVersion.material_id == material_id)
+
+    total = session.scalar(
+        select(func.count())
+        .select_from(MaterialVersion)
+        .join(MaterialVersion.material)
+        .where(*filters)
+    ) or 0
+
+    versions = session.scalars(
+        select(MaterialVersion)
+        .join(MaterialVersion.material)
+        .options(selectinload(MaterialVersion.material))
+        .where(*filters)
+        .order_by(
+            Material.name.asc(),
+            MaterialVersion.version_number.desc(),
+        )
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return MaterialVersionListResponse(
+        items=[
+            MaterialVersionListItem(
+                id=version.id,
+                material_id=version.material_id,
+                material_name=version.material.name,
+                material_slug=version.material.slug,
+                version_number=version.version_number,
+                mode=version.mode,
+                clothing_insulation_clo=version.clothing_insulation_clo,
+                evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
+                clothing_area_factor=version.clothing_area_factor,
+                solar_reflectance=version.solar_reflectance,
+                solar_transmittance=version.solar_transmittance,
+                infrared_emissivity=version.infrared_emissivity,
+                infrared_transmittance=version.infrared_transmittance,
+                source_type=version.source_type,
+                is_archived=version.material.is_archived,
+                created_at=version.created_at,
+            )
+            for version in versions
+        ],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 @router.post(
     "",
@@ -222,44 +293,99 @@ def get_material(
     )
 
 
-@router.patch(
-    "/{material_id}",
-    response_model=MaterialResponse,
-)
+@router.patch("/{material_id}", response_model=MaterialResponse)
 def update_material(
     material_id: str,
     request: MaterialUpdate,
     session: Session = Depends(get_db),
 ) -> MaterialResponse:
-    material = load_material(
-        session,
-        material_id,
-    )
-
+    material = session.get(Material, material_id)
     if material is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Material not found",
-        )
+        raise HTTPException(status_code=404, detail="Material not found")
 
-    update_data = request.model_dump(
-        exclude_unset=True
-    )
-
-    for field, value in update_data.items():
+    for field, value in request.model_dump(exclude_unset=True).items():
         setattr(material, field, value)
 
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise HTTPException(
+            status_code=409, detail="Material update conflicts with existing data"
+        ) from error
+
+    return MaterialResponse.model_validate(load_material(session, material_id))
+
+def count_material_references(session: Session, material_id: str) -> dict[str, int]:
+    """Jobs whose control, RC, or optimization base garment used any version of this material."""
+    version_ids = select(MaterialVersion.id).where(MaterialVersion.material_id == material_id)
+
+    def count(model) -> int:
+        return session.scalar(
+            select(func.count()).select_from(model).where(
+                or_(
+                    model.control_material_version_id.in_(version_ids),
+                    model.rc_material_version_id.in_(version_ids),
+                )
+            )
+        ) or 0
+
+    optimization_count = session.scalar(
+        select(func.count()).select_from(OptimizationJob).where(
+            or_(
+                OptimizationJob.control_material_version_id.in_(version_ids),
+                OptimizationJob.base_material_version_id.in_(version_ids),
+            )
+        )
+    ) or 0
+
+    return {
+        "simulation_job_count": count(SimulationJob),
+        "global_batch_count": count(GlobalBatchJob),
+        "optimization_job_count": optimization_count,
+    }
+
+
+@router.delete(
+    "/{material_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+)
+def delete_material(material_id: str, session: Session = Depends(get_db)) -> Response:
+    """Hard delete, only when no simulation references any of its versions.
+
+    The job FKs are ON DELETE SET NULL, so deleting a referenced material would
+    silently detach provenance. Referenced materials must be archived instead.
+    """
+    if session.get(Material, material_id) is None:
+        raise HTTPException(status_code=404, detail="Material not found")
+
+    references = count_material_references(session, material_id)
+    if (
+        references["simulation_job_count"]
+        or references["global_batch_count"]
+        or references["optimization_job_count"]
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": "MATERIAL_IN_USE",
+                "message": (
+                    "Versions of this material are referenced by "
+                    f"{references['simulation_job_count']} simulation job(s), "
+                    f"{references['global_batch_count']} global batch(es), and "
+                    f"{references['optimization_job_count']} optimization job(s). "
+                    "Archive it instead: archived materials are hidden from lists "
+                    "and pickers but keep their provenance."
+                ),
+                **references,
+            },
+        )
+
+    # Versions and spectra go with it via ON DELETE CASCADE.
+    session.execute(delete(Material).where(Material.id == material_id))
     session.commit()
-
-    updated = load_material(
-        session,
-        material_id,
-    )
-
-    return MaterialResponse.model_validate(
-        updated
-    )
-
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @router.post(
     "/{material_id}/versions",
@@ -309,32 +435,24 @@ def create_material_version(
     )
 
 
-@router.get("/versions/{version_id}/simulation-input", response_model=MaterialInput)
-def material_version_to_simulation_input(version_id: str, session: Session = Depends(get_db)) -> MaterialInput:
-    version = session.scalar(
-        select(MaterialVersion)
-        .options(selectinload(MaterialVersion.material))
-        .where(MaterialVersion.id == version_id)
-    )
-    
-    if version is None:
-        raise HTTPException(status_code=404, detail="Material version not found")
+@router.get(
+    "/versions/{version_id}/simulation-input",
+    response_model=MaterialInput,
+)
+def material_version_to_simulation_input(
+    version_id: str,
+    session: Session = Depends(get_db),
+) -> MaterialInput:
+    try:
+        version = load_material_version(session, version_id)
+    except MaterialVersionNotFoundError as error:
+        raise HTTPException(
+            status_code=404,
+            detail="Material version not found",
+        ) from error
 
-    return MaterialInput(
-        name=f"{version.material.name} v{version.version_number}",
-        clothing_insulation_clo=version.clothing_insulation_clo,
-        evaporative_resistance_m2pa_w=version.evaporative_resistance_m2pa_w,
-        solar_reflectance=version.solar_reflectance,
-        solar_transmittance=version.solar_transmittance,
-        infrared_emissivity=version.infrared_emissivity,
-        infrared_transmittance=version.infrared_transmittance,
-        projected_solar_area_factor=version.projected_solar_area_factor,
-        absorbed_solar_to_body_fraction=version.absorbed_solar_to_body_fraction,
-        material_version_id=version.id,
-        source_type=version.source_type,
-        source_reference=version.source_reference,
-        parameter_sources=version.parameter_sources_json,
-    )
+    # MaterialVersionInvalidError propagates to the global 422 handler.
+    return material_input_from_version(version)
 
 
 @router.post(

@@ -1,5 +1,35 @@
 import type {
+  GaggeBenchmarkRequest,
+  GaggeBenchmarkResponse,
+} from "@/types/benchmark";
+import type {
+  GeoJsonFeatureCollection,
+  GlobalBatch,
+  GlobalBatchCreate,
+  GlobalBatchDetail,
+  GlobalBatchEstimate,
+  GlobalCity,
+  CityCheckpointList, 
+  GlobalBatchListResponse,
+} from "@/types/global-batch";
+
+import type { OpsStatus } from "@/types/ops";
+
+import type {
+  OptimizationCreate,
+  OptimizationEstimate,
+  OptimizationJob,
+  OptimizationJobDetail,
+  OptimizationJobList,
+} from "@/types/optimization";
+
+import type {
+  Material, MaterialCreate, MaterialListResponse,
+  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
+} from "@/types/material";
+import type {
   City,
+  MaterialInput,
   SimulationJob,
   SimulationJobDetail,
   SimulationJobList,
@@ -8,6 +38,9 @@ import type {
   WeatherSimulationRequest,
   WeatherSimulationResponse,
   WeatherTimeSeries,
+  MaterialFieldManifest, 
+  ModelMetadata, 
+  ModelParameterManifest,
 } from "@/types/simulation";
 
 
@@ -43,6 +76,20 @@ async function getErrorMessage(
       }
     ).detail;
 
+    if (typeof detail === "object" && detail !== null && "message" in detail) {
+      const { code, message } = detail as { code?: string; message?: string };
+      return code ? `${message} [${code}]` : String(message);
+    }
+
+    if (Array.isArray(detail)) {
+      return (detail as Array<{ loc?: unknown[]; msg?: string }>)
+        .map((item) => {
+          const loc = (item.loc ?? []).filter((part) => part !== "body").join(".");
+          return loc ? `${loc}: ${item.msg}` : String(item.msg ?? JSON.stringify(item));
+        })
+        .join("; ");
+    }
+
     if (typeof detail === "string") {
       return detail;
     }
@@ -51,7 +98,7 @@ async function getErrorMessage(
       return JSON.stringify(detail);
     }
   }
-
+  
   return `${fallbackMessage}：HTTP ${response.status}`;
 }
 
@@ -213,12 +260,17 @@ export async function getSimulationJob(
 export async function getSimulationJobs(
   limit = 20,
   offset = 0,
+  materialVersionId?: string,
 ): Promise<SimulationJobList> {
   const parameters = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
   });
 
+  if (materialVersionId) {
+    parameters.set("material_version_id", materialVersionId);
+  }
+  
   const response = await fetch(
     `${API_BASE_URL}/api/v1/simulations/jobs?${parameters.toString()}`,
     {
@@ -294,37 +346,76 @@ export function getSimulationEventsUrl(
   );
 }
 
-import type {
-  Material,
-  MaterialCreate,
-  MaterialListResponse,
-} from "@/types/material";
-import type {
-  MaterialInput,
-} from "@/types/simulation";
 
 
 export async function getMaterials(
   search = "",
+  includeArchived = false,
 ): Promise<MaterialListResponse> {
   const parameters = new URLSearchParams();
+  if (search) parameters.set("search", search);
+  if (includeArchived) parameters.set("include_archived", "true");
 
-  if (search) {
-    parameters.set("search", search);
+  const response = await fetch(`${API_BASE_URL}/api/v1/materials?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch material list"));
   }
 
+  return response.json() as Promise<MaterialListResponse>;
+}
+
+export async function updateMaterial(
+  materialId: string,
+  update: MaterialUpdate,
+): Promise<Material> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials?${parameters}`,
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
     {
-      cache: "no-store",
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
     },
   );
 
   if (!response.ok) {
-    throw new Error("Failed to fetch material list");
+    throw new Error(await getErrorMessage(response, "Failed to update material"));
   }
 
-  return response.json();
+  return response.json() as Promise<Material>;
+}
+
+export async function deleteMaterial(materialId: string): Promise<void> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}`,
+    { method: "DELETE" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to delete material"));
+  }
+}
+
+export async function createMaterialVersion(
+  materialId: string,
+  version: MaterialVersionInput,
+): Promise<MaterialVersion> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/${encodeURIComponent(materialId)}/versions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(version),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to create material version"));
+  }
+
+  return response.json() as Promise<MaterialVersion>;
 }
 
 
@@ -417,18 +508,50 @@ export async function getMaterialSimulationInput(
   versionId: string,
 ): Promise<MaterialInput> {
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/materials/versions/${versionId}/simulation-input`,
+    `${API_BASE_URL}/api/v1/materials/versions/${encodeURIComponent(versionId)}/simulation-input`,
+    { cache: "no-store" },
   );
 
   if (!response.ok) {
     throw new Error(
-      "Failed to fetch material simulation input",
+      await getErrorMessage(response, "Failed to fetch material simulation input"),
     );
   }
 
-  return response.json();
+  return response.json() as Promise<MaterialInput>;
 }
 
+export async function getMaterialFieldManifest(): Promise<MaterialFieldManifest> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/material-fields`);
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Failed to fetch material field manifest"),
+    );
+  }
+
+  return response.json() as Promise<MaterialFieldManifest>;
+}
+
+export async function getModelMetadata(): Promise<ModelMetadata> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/metadata`);
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch model metadata"));
+  }
+
+  return response.json() as Promise<ModelMetadata>;
+}
+
+export async function getModelParameters(): Promise<ModelParameterManifest> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/model/parameters`);
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Failed to fetch model parameters"));
+  }
+
+  return response.json() as Promise<ModelParameterManifest>;
+}
 
 export function getSimulationExportUrl(
   jobId: string,
@@ -440,14 +563,6 @@ export function getSimulationExportUrl(
   );
 }
 
-import type {
-  GeoJsonFeatureCollection,
-  GlobalBatch,
-  GlobalBatchCreate,
-  GlobalBatchEstimate,
-  GlobalBatchDetail,
-  GlobalCity,
-} from "@/types/global-batch";
 
 export async function getGlobalCities(): Promise<
   GlobalCity[]
@@ -623,4 +738,158 @@ export function getGlobalBatchExportUrl(
     `${API_BASE_URL}/api/v1/` +
     `global-batches/${batchId}/export`
   );
+}
+
+export async function compareWithGagge(
+  request: GaggeBenchmarkRequest,
+): Promise<GaggeBenchmarkResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/benchmarks/gagge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Gagge benchmark request failed"),
+    );
+  }
+
+  return response.json() as Promise<GaggeBenchmarkResponse>;
+}
+
+export async function getMaterialVersions(
+  includeArchived = false,
+  limit = 200,
+): Promise<MaterialVersionListResponse> {
+  const parameters = new URLSearchParams({
+    include_archived: String(includeArchived),
+    limit: String(limit),
+  });
+
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions?${parameters}`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      await getErrorMessage(response, "Failed to fetch material versions"),
+    );
+  }
+
+  return response.json() as Promise<MaterialVersionListResponse>;
+}
+
+export function getGlobalBatchEventsUrl(batchId: string): string {
+  return `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}/events`;
+}
+
+export async function listGlobalBatches(
+  limit = 20,
+  offset = 0,
+): Promise<GlobalBatchListResponse> {
+  const parameters = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  const response = await fetch(`${API_BASE_URL}/api/v1/global-batches?${parameters}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load global batches"));
+  }
+
+  return response.json() as Promise<GlobalBatchListResponse>;
+}
+
+export async function getGlobalBatchCityCheckpoints(
+  batchId: string,
+  cityResultId: string,
+): Promise<CityCheckpointList> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/global-batches/${encodeURIComponent(batchId)}` +
+      `/cities/${encodeURIComponent(cityResultId)}/checkpoints`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load city checkpoints"));
+  }
+
+  return response.json() as Promise<CityCheckpointList>;
+}
+
+export async function getOpsStatus(): Promise<OpsStatus> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/ops/status`, { cache: "no-store" });
+
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load operations status"));
+  }
+
+  return response.json() as Promise<OpsStatus>;
+}
+
+async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await getErrorMessage(response, fallback));
+  return response.json() as Promise<T>;
+}
+
+export function estimateOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationEstimate>(
+    "/api/v1/optimizations/estimate",
+    request,
+    "Unable to estimate optimization",
+  );
+}
+
+export function createOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationJob>(
+    "/api/v1/optimizations",
+    request,
+    "Unable to create optimization",
+  );
+}
+
+export async function cancelOptimization(id: string): Promise<OptimizationJob> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}/cancel`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to cancel optimization"));
+  }
+  return response.json() as Promise<OptimizationJob>;
+}
+
+export async function listOptimizations(
+  limit = 20,
+  offset = 0,
+): Promise<OptimizationJobList> {
+  const parameters = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations?${parameters}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimizations"));
+  }
+  return response.json() as Promise<OptimizationJobList>;
+}
+
+export async function getOptimization(id: string): Promise<OptimizationJobDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimization"));
+  }
+  return response.json() as Promise<OptimizationJobDetail>;
 }

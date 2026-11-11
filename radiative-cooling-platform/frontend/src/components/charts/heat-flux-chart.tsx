@@ -19,6 +19,11 @@ export function HeatFluxChart({
   const points =
     result.radiative_cooling.time_series;
 
+  // 檢查時間序列的第一個點是否包含 solar_incident_w_m2 屬性
+  const hasOptionalSeries =
+    points.length > 0 &&
+    "solar_incident_w_m2" in points[0];
+
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
       <h2 className="mb-4 text-xl font-semibold">
@@ -64,6 +69,22 @@ export function HeatFluxChart({
             mode: "lines",
             name: "Absorbed Solar Radiation",
           },
+          ...(hasOptionalSeries
+            ? [
+                {
+                  x: points.map((point) => point.minute),
+                  y: points.map(
+                    (point) =>
+                      (point as { solar_incident_w_m2?: number })
+                        .solar_incident_w_m2 ?? 0,
+                  ),
+                  type: "scatter" as const,
+                  mode: "lines" as const,
+                  name: "Incident Solar (per A_D)",
+                  visible: "legendonly" as const,
+                },
+              ]
+            : []),
         ]}
         layout={{
           autosize: true,
@@ -111,3 +132,4 @@ export function HeatFluxChart({
     </div>
   );
 }
+

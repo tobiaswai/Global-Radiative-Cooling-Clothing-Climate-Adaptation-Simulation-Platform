@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from app.services.two_node import simulate_material
+from app.services.two_node import simulate_material, calculate_fluxes
 
 
 @pytest.mark.unit
@@ -180,3 +180,73 @@ def test_identical_materials_produce_identical_results(
             abs=1e-8,
         )
     )
+    
+@pytest.mark.unit
+def test_absorbed_solar_raises_clothing_surface_temperature(
+    environment, person, control_material
+):
+    sunlit = calculate_fluxes(36.8, 33.7, environment, person, control_material)
+    shaded = calculate_fluxes(
+        36.8, 33.7,
+        environment.model_copy(update={"solar_radiation_w_m2": 0.0}),
+        person, control_material,
+    )
+
+    assert sunlit.clothing_surface_temperature_c > shaded.clothing_surface_temperature_c
+
+
+@pytest.mark.unit
+def test_surface_re_emits_part_of_the_absorbed_solar(
+    environment, person, control_material
+):
+    """ADR 0005: the extra surface losses caused by S_abs lie strictly between
+    0 and S_abs, so only a fraction of the absorbed solar reaches the skin."""
+    sunlit = calculate_fluxes(36.8, 33.7, environment, person, control_material)
+    shaded = calculate_fluxes(
+        36.8, 33.7,
+        environment.model_copy(update={"solar_radiation_w_m2": 0.0}),
+        person, control_material,
+    )
+
+    extra_surface_losses = (
+        sunlit.convection + sunlit.longwave_radiation
+    ) - (shaded.convection + shaded.longwave_radiation)
+
+    assert 0.0 < extra_surface_losses < sunlit.solar_absorbed_by_textile
+    assert sunlit.evaporation == pytest.approx(shaded.evaporation)
+
+
+@pytest.mark.unit
+def test_deprecated_absorbed_fraction_is_ignored(environment, person, control_material):
+    baseline = simulate_material(30, 1, environment, person, control_material)
+    altered = simulate_material(
+        30, 1, environment, person,
+        control_material.model_copy(update={"absorbed_solar_to_body_fraction": 0.9}),
+    )
+
+    assert altered.final_skin_temperature_c == pytest.approx(
+        baseline.final_skin_temperature_c, abs=1e-9
+    )
+    
+@pytest.mark.unit
+def test_energy_diagnostics_do_not_depend_on_output_interval(environment, person, control_material):
+    fine = simulate_material(120, 1, environment, person, control_material)
+    coarse = simulate_material(120, 30, environment, person, control_material)
+
+    assert coarse.diagnostics.integrated_net_heat_j_m2 == pytest.approx(
+        fine.diagnostics.integrated_net_heat_j_m2, abs=1e-3
+    )
+    assert coarse.diagnostics.normalized_residual_percent == pytest.approx(
+        fine.diagnostics.normalized_residual_percent, abs=1e-6
+    )
+    assert coarse.peak_skin_temperature_c == pytest.approx(fine.peak_skin_temperature_c, abs=1e-4)
+    assert coarse.diagnostics.diagnostic_interval_seconds == 60.0
+
+
+@pytest.mark.unit
+def test_output_interval_does_not_change_trajectory(environment, person, control_material):
+    fine = simulate_material(120, 1, environment, person, control_material)
+    coarse = simulate_material(120, 10, environment, person, control_material)
+    by_minute = {p.minute: p for p in fine.time_series}
+    for p in coarse.time_series:
+        assert p.skin_temperature_c == pytest.approx(by_minute[p.minute].skin_temperature_c, abs=1e-6)

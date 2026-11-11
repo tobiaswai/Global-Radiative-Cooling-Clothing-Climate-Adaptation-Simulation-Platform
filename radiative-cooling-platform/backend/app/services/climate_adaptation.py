@@ -16,6 +16,7 @@ Stage 1 changes
 
 from collections.abc import Callable
 from datetime import datetime, timedelta
+from typing import Any, TypedDict
 
 from app.core.cities import get_city
 from app.schemas.global_batch import (
@@ -32,9 +33,10 @@ from app.services.annual_sampling import (  # noqa: F401 (re-export)
 )
 from app.services.climate_analytics import build_city_analytics
 from app.services.exposure_statistics import (
+    compute_daily_maximum_air_temperature,
     compute_exposure_window_statistics,
-    time_weighted_mean,
 )
+from app.services.scenario_summary import pair_scenarios
 from app.services.weather import (
     get_historical_weather_range,
     slice_weather_time_series,
@@ -61,6 +63,45 @@ CheckpointCallback = Callable[
     None,
 ]
 
+class DataQualitySummary(TypedDict):
+    skipped_sample_count: int
+    skipped_weighted_days: float
+    skip_reasons: dict[str, int]
+    monthly_weather_payload_sha256: dict[str, str | None]
+
+
+class CityClimateAdaptationSummary(TypedDict):
+    city_id: str
+    city_name: str
+    country: str
+    latitude: float
+    longitude: float
+    climate_adaptation_rate_percent: float | None
+    exposure_coverage_percent: float
+    annual_average_skin_improvement_c: float | None
+    annual_average_core_improvement_c: float | None
+    maximum_skin_improvement_c: float | None
+    effective_cooling_hours: float
+    sampled_day_count: int
+    eligible_sample_count: int
+    evaluated_weighted_days: float
+    beneficial_weighted_days: float
+    completed_month_count: int
+    skin_improvement_p50_c: float | None
+    skin_improvement_p90_c: float | None
+    skin_improvement_p95_c: float | None
+    core_improvement_p50_c: float | None
+    core_improvement_p90_c: float | None
+    core_improvement_p95_c: float | None
+    heatwave_analysis_available: bool
+    heatwave_unavailable_reason: str | None
+    heatwave_temperature_basis: str | None
+    heatwave_event_count: int
+    longest_heatwave_days: int
+    heatwave_events: list[dict[str, Any]]
+    data_quality: DataQualitySummary
+    metric_definitions: dict[str, Any]
+    monthly_results: list[dict[str, Any]]
 
 def build_metric_definitions(request: GlobalBatchCreate) -> dict:
     """Machine-readable definitions of derived metrics (see docs/metrics.md)."""
@@ -244,7 +285,7 @@ async def analyze_city_climate_adaptation(
     progress_callback: ProgressCallback | None = None,
     checkpoint_callback: CheckpointCallback | None = None,
     initial_monthly_results: list[MonthlyAdaptationResult] | None = None,
-) -> dict:
+) -> CityClimateAdaptationSummary:
     city = get_city(city_id)
 
     annual_plan = build_annual_sampling_plan(request)
@@ -372,41 +413,21 @@ async def analyze_city_climate_adaptation(
                 )
                 completed_sample_count += 1
                 continue
+            
+            paired = pair_scenarios(simulation.control, simulation.radiative_cooling)
 
-            paired_points = list(
-                zip(
-                    simulation.control.time_series,
-                    simulation.radiative_cooling.time_series,
-                    strict=True,
-                )
-            )
-
-            if not paired_points:
-                raise RuntimeError("Simulation returned no paired points")
-
-            minutes = [control.minute for control, _ in paired_points]
-
-            skin_improvements = [
-                control.skin_temperature_c - radiative.skin_temperature_c
-                for control, radiative in paired_points
-            ]
-
-            core_improvements = [
-                control.core_temperature_c - radiative.core_temperature_c
-                for control, radiative in paired_points
-            ]
-
-            # Exposure statistics strictly over [start, start + duration].
             exposure = compute_exposure_window_statistics(sample_weather)
-
-            average_skin_improvement_c = time_weighted_mean(
-                minutes, skin_improvements
+            daily_maximum_air_temperature_c = compute_daily_maximum_air_temperature(
+                month_weather,
+                local_date=sample_day.date_local,
+                timezone_name=city.timezone,
             )
-            average_core_improvement_c = time_weighted_mean(
-                minutes, core_improvements
-            )
-            maximum_skin_improvement_c = max(skin_improvements)
 
+            average_skin_improvement_c = paired.average_skin_c
+            average_core_improvement_c = paired.average_core_c
+            maximum_skin_improvement_c = paired.maximum_skin_c
+            final_skin_improvement_c = paired.final_skin_c
+            
             exposure_eligible = is_exposure_eligible(
                 mean_air_temperature_c=exposure.mean_air_temperature_c,
                 mean_solar_radiation_w_m2=exposure.mean_solar_radiation_w_m2,
@@ -441,7 +462,7 @@ async def analyze_city_climate_adaptation(
                         average_skin_improvement_c, 4
                     ),
                     final_skin_improvement_c=round(
-                        simulation.summary.final_skin_temperature_improvement_c,
+                        final_skin_improvement_c,
                         4,
                     ),
                     average_core_improvement_c=round(
@@ -451,6 +472,7 @@ async def analyze_city_climate_adaptation(
                         maximum_skin_improvement_c, 4
                     ),
                     weather_from_cache=month_weather.source.from_cache,
+                    daily_maximum_air_temperature_c=round_optional(daily_maximum_air_temperature_c)
                 )
             )
 
@@ -551,16 +573,26 @@ async def analyze_city_climate_adaptation(
         "evaluated_weighted_days": evaluated_weighted_days,
         "beneficial_weighted_days": beneficial_weighted_days,
         "completed_month_count": len(monthly_results),
-        "skin_improvement_p50_c": analytics["skin_improvement_p50_c"],
-        "skin_improvement_p90_c": analytics["skin_improvement_p90_c"],
-        "skin_improvement_p95_c": analytics["skin_improvement_p95_c"],
-        "core_improvement_p50_c": analytics["core_improvement_p50_c"],
-        "core_improvement_p90_c": analytics["core_improvement_p90_c"],
-        "core_improvement_p95_c": analytics["core_improvement_p95_c"],
-        "heatwave_analysis_available": analytics["heatwave_analysis_available"],
-        "heatwave_event_count": analytics["heatwave_event_count"],
-        "longest_heatwave_days": analytics["longest_heatwave_days"],
-        "heatwave_events": analytics["heatwave_events"],
+        # Analytics 分位數欄位 (防護 Key 不存在)
+        "skin_improvement_p50_c": analytics.get("skin_improvement_p50_c"),
+        "skin_improvement_p90_c": analytics.get("skin_improvement_p90_c"),
+        "skin_improvement_p95_c": analytics.get("skin_improvement_p95_c"),
+        "core_improvement_p50_c": analytics.get("core_improvement_p50_c"),
+        "core_improvement_p90_c": analytics.get("core_improvement_p90_c"),
+        "core_improvement_p95_c": analytics.get("core_improvement_p95_c"),
+        # Analytics 熱浪分析欄位 (包含條件性與預設 Key，固定回傳 schema)
+        "heatwave_analysis_available": analytics.get(
+            "heatwave_analysis_available", False
+        ),
+        "heatwave_unavailable_reason": analytics.get(
+            "heatwave_unavailable_reason"
+        ),
+        "heatwave_temperature_basis": analytics.get(
+            "heatwave_temperature_basis"
+        ),
+        "heatwave_event_count": analytics.get("heatwave_event_count", 0),
+        "longest_heatwave_days": analytics.get("longest_heatwave_days", 0),
+        "heatwave_events": analytics.get("heatwave_events", []),
         "data_quality": {
             "skipped_sample_count": len(all_skipped),
             "skipped_weighted_days": sum(s.weight_days for s in all_skipped),

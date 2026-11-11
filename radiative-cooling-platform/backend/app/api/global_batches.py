@@ -2,7 +2,10 @@ from datetime import (
     datetime,
     timezone,
 )
+import asyncio
+import json
 
+import anyio
 from celery import group
 from fastapi import (
     APIRouter,
@@ -10,9 +13,11 @@ from fastapi import (
     HTTPException,
     Query,
     status,
+    Request,
 )
-from fastapi.responses import Response
+from fastapi.responses import Response,StreamingResponse
 from sqlalchemy import (
+    delete,
     func,
     select,
 )
@@ -25,17 +30,29 @@ from app.core.cities import (
     get_city,
     list_cities,
 )
-from app.db.session import get_db
+from app.db.session import get_db, SessionLocal
 from app.models.global_batch import (
     GlobalBatchJob,
+    GlobalCityCheckpoint,
     GlobalCityResult,
 )
+from app.services.job_state import (
+    CityStatus,
+    assert_batch_transition,
+    assert_city_transition,
+    BatchStatus,
+)
+
+from app.services.leases import db_now
+
 from app.schemas.global_batch import (
     GlobalBatchCreate,
     GlobalBatchDetail,
     GlobalBatchEstimateResponse,
     GlobalBatchListResponse,
     GlobalBatchResponse,
+    CityCheckpointListResponse, 
+    GlobalBatchProgressEvent
 )
 from app.services.annual_sampling import (
     estimate_sample_count,
@@ -52,12 +69,18 @@ from app.services.global_batch_service import (
     batch_to_detail,
     batch_to_response,
     refresh_batch_status,
+    batch_progress_event,
+    city_checkpoints_to_response,
+    load_checkpoint_months,
+)
+from app.services.material_resolution import (
+    linked_material_version_ids,
+    resolve_request_materials,
 )
 from app.worker.celery_app import celery_app
 from app.worker.tasks import (
     run_global_city_analysis_task,
 )
-
 
 router = APIRouter(
     prefix="/api/v1/global-batches",
@@ -203,22 +226,23 @@ def create_global_batch(
             )
         except ValueError as error:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(error),
             ) from error
 
-    queue_name = resolve_queue_name(
-        request
-    )
+    request = resolve_request_materials(session, request)
+    control_version_id, rc_version_id = linked_material_version_ids(request)
+
+    queue_name = resolve_queue_name(request)
 
     batch = GlobalBatchJob(
         status="queued",
         stage="creating_city_tasks",
         progress=0,
         total_city_count=len(cities),
-        request_json=request.model_dump(
-            mode="json"
-        ),
+        request_json=request.model_dump(mode="json"),
+        control_material_version_id=control_version_id,
+        rc_material_version_id=rc_version_id,
     )
 
     session.add(batch)
@@ -337,27 +361,108 @@ def list_global_batches(
     )
 
 
-@router.get(
-    "/{batch_id}",
-    response_model=GlobalBatchDetail,
-)
-def get_global_batch(
-    batch_id: str,
-    session: Session = Depends(get_db),
-) -> GlobalBatchDetail:
-    batch = load_batch(
-        session,
-        batch_id,
+@router.get("/{batch_id}", response_model=GlobalBatchDetail)
+def get_global_batch(batch_id: str, session: Session = Depends(get_db)) -> GlobalBatchDetail:
+    batch = load_batch(session, batch_id)
+    if batch is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
+    return batch_to_detail(
+        batch,
+        checkpoint_months=load_checkpoint_months(session, batch.id),
+        now=db_now(session),
     )
 
+PROGRESS_COLUMNS = (
+    GlobalCityResult.id, GlobalCityResult.batch_id, GlobalCityResult.city_id,
+    GlobalCityResult.status, GlobalCityResult.stage, GlobalCityResult.progress,
+    GlobalCityResult.retry_count, GlobalCityResult.completed_month_count,
+    GlobalCityResult.last_checkpoint_month, GlobalCityResult.last_heartbeat_at,
+    GlobalCityResult.lease_owner, GlobalCityResult.lease_expires_at,
+    GlobalCityResult.error_message,
+)
+
+TERMINAL_BATCH_STATUSES = {"completed", "partial_completed", "failed", "cancelled"}
+
+
+@router.get(
+    "/{batch_id}/cities/{city_result_id}/checkpoints",
+    response_model=CityCheckpointListResponse,
+)
+def list_city_checkpoints(
+    batch_id: str,
+    city_result_id: str,
+    session: Session = Depends(get_db),
+) -> CityCheckpointListResponse:
+    batch = session.get(GlobalBatchJob, batch_id)
     if batch is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Global batch not found",
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
+
+    city_result = session.scalar(
+        select(GlobalCityResult).where(
+            GlobalCityResult.id == city_result_id,
+            GlobalCityResult.batch_id == batch_id,
         )
+    )
+    if city_result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="City result not found")
 
-    return batch_to_detail(batch)
+    return city_checkpoints_to_response(session, batch=batch, city_result=city_result)
 
+
+def load_batch_progress_snapshot(batch_id: str) -> GlobalBatchProgressEvent | None:
+    with SessionLocal() as session:
+        batch = session.scalar(
+            select(GlobalBatchJob)
+            .options(selectinload(GlobalBatchJob.city_results).load_only(*PROGRESS_COLUMNS))
+            .where(GlobalBatchJob.id == batch_id)
+        )
+        if batch is None:
+            return None
+        return batch_progress_event(batch, load_checkpoint_months(session, batch_id), now=db_now(session))
+
+
+@router.get("/{batch_id}/events")
+async def global_batch_events(batch_id: str, request: Request) -> StreamingResponse:
+    """Server-sent progress. Emits ``progress`` when the lightweight snapshot
+    changes and a final ``terminal`` event; clients fetch the full detail
+    themselves when city counts change."""
+    initial = await anyio.to_thread.run_sync(load_batch_progress_snapshot, batch_id)
+    if initial is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Global batch not found")
+
+    async def event_generator():
+        previous_payload: str | None = None
+
+        while True:
+            if await request.is_disconnected():
+                break
+
+            snapshot = await anyio.to_thread.run_sync(load_batch_progress_snapshot, batch_id)
+            if snapshot is None:
+                yield 'event: error\ndata: {"detail":"batch not found"}\n\n'
+                break
+
+            payload = json.dumps(snapshot.model_dump(mode="json"), ensure_ascii=False)
+
+            if payload != previous_payload:
+                yield f"event: progress\ndata: {payload}\n\n"
+                previous_payload = payload
+
+            if snapshot.batch.status in TERMINAL_BATCH_STATUSES:
+                yield f"event: terminal\ndata: {payload}\n\n"
+                break
+
+            await asyncio.sleep(2)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 @router.post(
     "/{batch_id}/cancel",
@@ -398,6 +503,7 @@ def cancel_global_batch(
     batch.stage = (
         "waiting_for_cooperative_cancel"
     )
+    batch.cancel_requested_at = batch.cancel_requested_at or now
 
     for result in batch.city_results:
         if result.status == "queued":
@@ -544,11 +650,14 @@ def retry_failed_cities(
     now = utc_now()
 
     for result in failed_results:
-        checkpoint_available = bool(
-            result.monthly_json
-        )
+        assert_city_transition(result.status, CityStatus.QUEUED)
 
-        result.status = "queued"
+        has_checkpoints = session.scalar(
+            select(func.count()).select_from(GlobalCityCheckpoint)
+            .where(GlobalCityCheckpoint.city_result_id == result.id)
+        ) or 0
+
+        result.status = CityStatus.QUEUED
         result.stage = "queued_for_retry"
         result.progress = 0
         result.retry_count += 1
@@ -556,44 +665,38 @@ def retry_failed_cities(
         result.error_message = None
         result.completed_at = None
         result.last_heartbeat_at = None
+        result.lease_owner = None
+        result.lease_expires_at = None
 
-        result.climate_adaptation_rate_percent = None
-        result.exposure_coverage_percent = None
-
-        result.annual_average_skin_improvement_c = None
-        result.annual_average_core_improvement_c = None
-        result.maximum_skin_improvement_c = None
-        result.effective_cooling_hours = None
-
-        result.sampled_day_count = None
-        result.eligible_sample_count = None
-        result.evaluated_weighted_days = None
-        result.beneficial_weighted_days = None
-
-        result.skin_improvement_p50_c = None
-        result.skin_improvement_p90_c = None
-        result.skin_improvement_p95_c = None
-
-        result.core_improvement_p50_c = None
-        result.core_improvement_p90_c = None
-        result.core_improvement_p95_c = None
-
-        result.heatwave_event_count = None
-        result.longest_heatwave_days = None
-        result.analytics_json = None
+        for column in (
+            "climate_adaptation_rate_percent", "exposure_coverage_percent",
+            "annual_average_skin_improvement_c", "annual_average_core_improvement_c",
+            "maximum_skin_improvement_c", "effective_cooling_hours",
+            "sampled_day_count", "eligible_sample_count",
+            "evaluated_weighted_days", "beneficial_weighted_days",
+            "skin_improvement_p50_c", "skin_improvement_p90_c", "skin_improvement_p95_c",
+            "core_improvement_p50_c", "core_improvement_p90_c", "core_improvement_p95_c",
+            "heatwave_event_count", "longest_heatwave_days", "analytics_json",
+        ):
+            setattr(result, column, None)
 
         if request.resume_from_checkpoint:
-            result.resumed_from_checkpoint = (
-                checkpoint_available
-            )
+            # Hint only; the worker decides after checking provenance.
+            result.resumed_from_checkpoint = bool(result.monthly_json) or has_checkpoints > 0
         else:
+            # The user asked for a clean recomputation: remove the durable rows
+            # so the worker cannot resume from them.
+            session.execute(
+                delete(GlobalCityCheckpoint).where(GlobalCityCheckpoint.city_result_id == result.id)
+            )
             result.monthly_json = None
             result.completed_month_count = 0
             result.last_checkpoint_month = None
             result.resumed_from_checkpoint = False
             result.started_at = None
 
-    batch.status = "running"
+    assert_batch_transition(batch.status, BatchStatus.RUNNING)
+    batch.status = BatchStatus.RUNNING
     batch.stage = "retrying_failed_cities"
 
     already_processed_count = (

@@ -1,3 +1,5 @@
+import type { ParameterSource } from "@/types/simulation";
+
 export type MaterialMode =
   | "ordinary"
   | "opaque_emitter"
@@ -7,18 +9,21 @@ export type MaterialMode =
 export type MaterialVersionInput = {
   mode: MaterialMode;
   clothing_insulation_clo: number;
+  /** Stage 3: f_cl in [1, 2]; `null` = derived from clo by the backend. */
+  clothing_area_factor: number | null;
   evaporative_resistance_m2pa_w: number | null;
   solar_reflectance: number;
   solar_transmittance: number;
   infrared_emissivity: number;
   infrared_transmittance: number;
   projected_solar_area_factor: number;
-  absorbed_solar_to_body_fraction: number;
+  absorbed_solar_to_body_fraction?: number;
   areal_density_g_m2: number | null;
   specific_heat_j_kgk: number | null;
   source_type: string;
   source_reference: string | null;
   notes: string | null;
+  parameter_sources?: Record<string, ParameterSource> | null;
 };
 
 export type MaterialCreate = {
@@ -76,4 +81,38 @@ export type MaterialListResponse = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type MaterialVersionListItem = {
+  id: string;
+  material_id: string;
+  material_name: string;
+  material_slug: string;
+  version_number: number;
+  mode: string;
+  clothing_insulation_clo: number;
+  evaporative_resistance_m2pa_w: number | null;
+  clothing_area_factor: number | null;
+  solar_reflectance: number;
+  solar_transmittance: number;
+  infrared_emissivity: number;
+  infrared_transmittance: number;
+  source_type: string;
+  is_archived: boolean;
+  created_at: string;
+};
+
+export type MaterialVersionListResponse = {
+  items: MaterialVersionListItem[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+/** PATCH /materials/{id}. Omit a key to keep it; null clears optional text. */
+export type MaterialUpdate = {
+  name?: string;
+  description?: string | null;
+  institution?: string | null;
+  is_archived?: boolean;
 };

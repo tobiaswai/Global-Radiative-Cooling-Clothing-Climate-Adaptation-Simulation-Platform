@@ -5,9 +5,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
-from app.core.config import get_settings
+from app.core.config import get_settings, settings
 from app.core.runtime import configure_runtime
 
 from datetime import datetime, timedelta
@@ -52,33 +52,42 @@ from app.schemas.simulation import (
     SimulationRequest,
 )
 
+@pytest.fixture(scope="session")
+def engine():
+    """One engine for the whole run; disposed so no psycopg connection is
+    left for the garbage collector (that is the ResourceWarning pytest was
+    reporting as an unraisable exception at shutdown)."""
+    engine = create_engine(settings.database_url, pool_pre_ping=True)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 @pytest.fixture
-def db_session():
-    engine = create_engine(
-        settings.database_url,
-        pool_pre_ping=True,
-    )
+def db_session(engine):
+    """Each test runs inside one outer transaction that is always rolled back.
 
+    ``join_transaction_mode="create_savepoint"`` is essential: service code
+    (leases._heartbeat) calls ``session.rollback()`` when a lease is lost.
+    With the SQLAlchemy 2.0 default (``conservative_savepoint``) that would
+    roll back the *outer* transaction and wipe every row the test seeded;
+    with savepoints it only undoes the work staged since the last commit.
+    """
     connection = engine.connect()
     transaction = connection.begin()
-
-    TestingSessionLocal = sessionmaker(
+    session = Session(
         bind=connection,
         autoflush=False,
         expire_on_commit=False,
+        join_transaction_mode="create_savepoint",
     )
-
-    session = TestingSessionLocal()
-
     try:
         yield session
     finally:
         session.close()
-        transaction.rollback()
+        if transaction.is_active:
+            transaction.rollback()
         connection.close()
-        engine.dispose()
-
 
 @pytest.fixture
 def client(db_session):

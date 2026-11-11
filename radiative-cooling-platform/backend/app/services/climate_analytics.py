@@ -10,6 +10,15 @@ from app.schemas.global_batch import (
     HeatwaveEvent,
 )
 
+HEATWAVE_TEMPERATURE_BASIS = "local_calendar_day_maximum_air_temperature"
+
+def _daily_maximum(sample: DailyAdaptationResult) -> float:
+    if sample.daily_maximum_air_temperature_c is None:
+        raise ValueError(
+            "Heatwave detection requires daily_maximum_air_temperature_c "
+            f"(missing for {sample.sample_date_local.date()})"
+        )
+    return sample.daily_maximum_air_temperature_c
 
 def weighted_percentile(
     values: Iterable[tuple[float, int]],
@@ -67,10 +76,7 @@ def round_optional(
 def build_heatwave_event(
     samples: list[DailyAdaptationResult],
 ) -> HeatwaveEvent:
-    temperatures = [
-        sample.maximum_air_temperature_c
-        for sample in samples
-    ]
+    temperatures = [_daily_maximum(s) for s in samples]
 
     skin_improvements = [
         sample.average_skin_improvement_c
@@ -147,10 +153,7 @@ def detect_heatwave_events(
         current_event = []
 
     for sample in ordered_samples:
-        qualifies = (
-            sample.maximum_air_temperature_c
-            >= temperature_threshold_c
-        )
+        qualifies = _daily_maximum(sample) >= temperature_threshold_c
 
         if not qualifies:
             flush_event()
@@ -202,11 +205,25 @@ def build_city_analytics(
         for sample in eligible_samples
     ]
 
-    heatwave_available = (
+    configuration_allows_heatwave = (
         request.enable_heatwave_analysis
         and request.analysis_resolution == "daily"
         and request.daily_stride_days == 1
     )
+    daily_maximum_available = all(
+        s.daily_maximum_air_temperature_c is not None for s in samples
+    )
+
+    heatwave_available = configuration_allows_heatwave and daily_maximum_available
+
+    heatwave_unavailable_reason: str | None = None
+    if not configuration_allows_heatwave:
+        heatwave_unavailable_reason = "requires daily resolution with a one-day stride"
+    elif not daily_maximum_available:
+        heatwave_unavailable_reason = (
+            "one or more samples lack a full-day maximum "
+            "(checkpoint predates Stage 6 or weather did not cover the day)"
+        )
 
     heatwave_events: list[HeatwaveEvent] = []
 
@@ -269,9 +286,10 @@ def build_city_analytics(
                 95,
             )
         ),
-        "heatwave_analysis_available": (
-            heatwave_available
-        ),
+        "heatwave_analysis_available": heatwave_available,
+        "heatwave_unavailable_reason": heatwave_unavailable_reason,
+        "heatwave_temperature_basis": HEATWAVE_TEMPERATURE_BASIS,
+
         "heatwave_event_count": (
             len(heatwave_events)
             if heatwave_available

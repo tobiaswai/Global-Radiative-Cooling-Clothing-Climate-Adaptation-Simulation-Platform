@@ -1,15 +1,11 @@
 "use client";
 
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { type FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import {ProvenanceEditor} from "@/components/materials/provenance-editor";
 import { createMaterial } from "@/lib/api-client";
-import type {
-  MaterialCreate,
-} from "@/types/material";
+import type { MaterialCreate, MaterialVersionInput } from "@/types/material";
+import { MaterialVersionFields } from "@/components/materials/material-version-fields";
 
 
 const initialMaterial: MaterialCreate = {
@@ -20,13 +16,13 @@ const initialMaterial: MaterialCreate = {
   initial_version: {
     mode: "opaque_emitter",
     clothing_insulation_clo: 0.4,
+    clothing_area_factor: null,
     evaporative_resistance_m2pa_w: 18,
     solar_reflectance: 0.92,
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     infrared_transmittance: 0,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
     areal_density_g_m2: 150,
     specific_heat_j_kgk: 1300,
     source_type: "manual",
@@ -73,16 +69,13 @@ export default function NewMaterialPage() {
     }
   }
 
-  function updateVersion(
-    field: string,
-    value: string | number,
+  function updateVersion<K extends keyof MaterialVersionInput>(
+    field: K,
+    value: MaterialVersionInput[K],
   ) {
     setMaterial({
       ...material,
-      initial_version: {
-        ...material.initial_version,
-        [field]: value,
-      },
+      initial_version: { ...material.initial_version, [field]: value },
     });
   }
 
@@ -164,90 +157,27 @@ export default function NewMaterialPage() {
             <h2 className="text-xl font-semibold">
               Initial Physical Parameters
             </h2>
-
-            <div className="mt-5 grid gap-5 md:grid-cols-2">
-              <NumberInput
-                label="Clothing Insulation (clo)"
-                value={
-                  material.initial_version
-                    .clothing_insulation_clo
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "clothing_insulation_clo",
-                    value,
-                  )
-                }
+            <div className="mt-5">
+              <MaterialVersionFields
+                value={material.initial_version}
+                disabled={loading}
+                onChange={updateVersion}
               />
+            </div>
+          </section>
 
-              <NumberInput
-                label="Solar Reflectance"
-                value={
-                  material.initial_version
-                    .solar_reflectance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_reflectance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Solar Transmittance"
-                value={
-                  material.initial_version
-                    .solar_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "solar_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Emissivity"
-                value={
-                  material.initial_version
-                    .infrared_emissivity
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_emissivity",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Infrared Transmittance"
-                value={
-                  material.initial_version
-                    .infrared_transmittance
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "infrared_transmittance",
-                    value,
-                  )
-                }
-              />
-
-              <NumberInput
-                label="Areal Density (g/m²)"
-                value={
-                  material.initial_version
-                    .areal_density_g_m2 ?? 0
-                }
-                onChange={(value) =>
-                  updateVersion(
-                    "areal_density_g_m2",
-                    value,
-                  )
-                }
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <h2 className="text-xl font-semibold">Parameter Provenance</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Record where each value came from. Provenance travels with the
+              version into every simulation that references it.
+            </p>
+            <div className="mt-5">
+              <ProvenanceEditor
+                sources={material.initial_version.parameter_sources ?? null}
+                values={material.initial_version}
+                disabled={loading}
+                onChange={(sources) => updateVersion("parameter_sources", sources)}
               />
             </div>
           </section>
@@ -294,38 +224,6 @@ function TextInput({
         value={value}
         onChange={(event) =>
           onChange(event.target.value)
-        }
-        className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
-      />
-    </label>
-  );
-}
-
-
-function NumberInput({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <label>
-      <span className="mb-2 block text-sm text-slate-300">
-        {label}
-      </span>
-
-      <input
-        type="number"
-        min={0}
-        step={0.01}
-        value={value}
-        onChange={(event) =>
-          onChange(
-            Number(event.target.value),
-          )
         }
         className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2"
       />

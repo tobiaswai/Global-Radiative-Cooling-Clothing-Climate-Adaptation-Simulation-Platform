@@ -1,5 +1,6 @@
 "use client";
 
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import {
   type FormEvent,
   useEffect,
@@ -15,19 +16,27 @@ import type {
   City,
   WeatherSimulationRequest,
 } from "@/types/simulation";
+import { NumberField } from "@/components/forms/number-field";
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { getDefaultSimulationDateTime } from "@/lib/date-defaults";
+import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 
 
 const initialRequest: WeatherSimulationRequest = {
   city_id: "dubai",
-  start_time_local: "2026-07-15T10:00",
+  start_time_local: getDefaultSimulationDateTime(), 
   duration_minutes: 120,
   output_interval_minutes: 1,
+  environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
 
   person: {
     met: 2.6,
     body_surface_area_m2: 1.8,
     initial_core_temperature_c: 36.8,
     initial_skin_temperature_c: 33.7,
+    body_mass_kg: 70,
+    position: "standing",
   },
 
   control_material: {
@@ -37,7 +46,7 @@ const initialRequest: WeatherSimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.8,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
+    clothing_area_factor: null,
   },
 
   rc_material: {
@@ -47,7 +56,7 @@ const initialRequest: WeatherSimulationRequest = {
     solar_transmittance: 0,
     infrared_emissivity: 0.95,
     projected_solar_area_factor: 0.25,
-    absorbed_solar_to_body_fraction: 0.35,
+    clothing_area_factor: null,
   },
 };
 
@@ -256,95 +265,78 @@ export default function WeatherSimulationPage() {
                 className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-300">
-                Activity Intensity (MET)
-              </span>
-
-              <input
-                type="number"
-                required
-                min={0.7}
-                max={10}
-                step={0.1}
-                value={request.person.met}
-                disabled={submitting}
-                onChange={(event) => {
-                  const met = Number(
-                    event.target.value,
-                  );
-
-                  setRequest((current) => ({
-                    ...current,
-                    person: {
-                      ...current.person,
-                      met,
-                    },
-                  }));
-                }}
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-cyan-500 disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </label>
+            <NumberField
+              label="Output Interval"
+              suffix="min"
+              value={request.output_interval_minutes}
+              min={1} max={60} step={1}
+              disabled={submitting}
+              onChange={(value) =>
+                setRequest((current) => ({ ...current, output_interval_minutes: value }))
+              }
+            />
           </div>
 
           <section className="mt-8 rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-            <h2 className="text-lg font-semibold">
-              Simulation Configuration Summary
-            </h2>
+            <h2 className="text-lg font-semibold">Person</h2>
 
-            <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <dt className="text-slate-500">
-                  Output Interval
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request
-                      .output_interval_minutes
-                  }{" "}
-                  minutes
-                </dd>
-              </div>
+            <p className="mt-1 text-sm text-slate-400">
+              Body mass sets the core and skin heat capacities used by the
+              transient solver (Stage 3).
+            </p>
 
-              <div>
-                <dt className="text-slate-500">
-                  Control Clothing
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.control_material
-                      .clothing_insulation_clo
-                  }{" "}
-                  clo
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-slate-500">
-                  Control Clothing Solar Reflectance
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.control_material
-                      .solar_reflectance
-                  }
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-slate-500">
-                  RC Clothing Solar Reflectance
-                </dt>
-                <dd className="mt-1 text-slate-200">
-                  {
-                    request.rc_material
-                      .solar_reflectance
-                  }
-                </dd>
-              </div>
-            </dl>
+            <div className="mt-4">
+              <PersonInputFields
+                person={request.person}
+                disabled={submitting}
+                onChange={(person) =>
+                  setRequest((current) => ({ ...current, person }))
+                }
+              />
+            </div>
           </section>
+
+          <div className="mt-8">
+            <EnvironmentAssumptionsFields
+              value={request.environment_assumptions ?? DEFAULT_ENVIRONMENT_ASSUMPTIONS}
+              disabled={submitting}
+              onChange={(environment_assumptions) =>
+                setRequest((current) => ({ ...current, environment_assumptions }))
+              }
+            />
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Control Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.control_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(control_material) =>
+                    setRequest((current) => ({ ...current, control_material }))
+                  }
+                />
+              </div>
+            </section>
+
+            <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
+              <h2 className="text-lg font-semibold">Radiative Cooling Clothing</h2>
+              <div className="mt-4">
+                <MaterialInputFields
+                  material={request.rc_material}
+                  showName
+                  enableLibrary
+                  disabled={submitting}
+                  onChange={(rc_material) =>
+                    setRequest((current) => ({ ...current, rc_material }))
+                  }
+                />
+              </div>
+            </section>
+          </div>
 
           <button
             type="submit"

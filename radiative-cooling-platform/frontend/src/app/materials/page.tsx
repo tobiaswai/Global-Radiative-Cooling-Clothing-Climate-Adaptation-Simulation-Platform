@@ -54,29 +54,25 @@ export default function MaterialsPage() {
     };
   }, []);
 
-  async function handleSearchSubmit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
+  const [includeArchived, setIncludeArchived] = useState(false);
 
+  async function reload(nextSearch: string, nextIncludeArchived: boolean) {
     setLoading(true);
     setError("");
 
     try {
-      const response = await getMaterials(
-        search,
-      );
-
+      const response = await getMaterials(nextSearch, nextIncludeArchived);
       setMaterials(response.items);
     } catch (caughtError) {
-      setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Failed to load materials.",
-      );
+      setError(caughtError instanceof Error ? caughtError.message : "Failed to load materials.");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await reload(search, includeArchived);
   }
 
   return (
@@ -121,6 +117,19 @@ export default function MaterialsPage() {
           >
             {loading ? "Loading…" : "Search"}
           </button>
+          <label className="flex items-center gap-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={includeArchived}
+              disabled={loading}
+              onChange={(event) => {
+                setIncludeArchived(event.target.checked);
+                void reload(search, event.target.checked);
+              }}
+              className="h-4 w-4 accent-cyan-400"
+            />
+            Show archived
+          </label>
         </form>
 
         {error && (
@@ -161,7 +170,12 @@ export default function MaterialsPage() {
                     >
                       {material.name}
                     </Link>
-
+                    {material.is_archived && (
+                      <span className="ml-2 rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">
+                        archived
+                      </span>
+                    )}
+                    
                     <p className="mt-1 text-xs text-slate-500">
                       {material.slug}
                     </p>

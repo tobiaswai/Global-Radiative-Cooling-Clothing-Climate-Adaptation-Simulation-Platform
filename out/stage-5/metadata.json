@@ -1,0 +1,79 @@
+{
+  "run_at_utc": "2026-09-30T10:38:43.227113+00:00",
+  "git_commit": "fe1d8f900dd4bb8c9be04c1260e7197a59bcd026",
+  "model_version": "0.6.0",
+  "request": {
+    "city_id": "dubai",
+    "start_time_local": "2023-07-15T12:00:00",
+    "duration_minutes": 120,
+    "output_interval_minutes": 10,
+    "person": {
+      "met": 2.6,
+      "body_surface_area_m2": 1.8,
+      "body_mass_kg": 70.0,
+      "initial_core_temperature_c": 36.8,
+      "initial_skin_temperature_c": 33.7,
+      "position": "standing"
+    },
+    "control_material": {
+      "name": "Control",
+      "clothing_insulation_clo": 0.5,
+      "evaporative_resistance_m2pa_w": null,
+      "clothing_area_factor": null,
+      "solar_reflectance": 0.4,
+      "solar_transmittance": 0.0,
+      "infrared_emissivity": 0.8,
+      "infrared_transmittance": 0.0,
+      "projected_solar_area_factor": 0.25,
+      "absorbed_solar_to_body_fraction": 0.35,
+      "material_version_id": null,
+      "source_type": null,
+      "source_reference": null,
+      "parameter_sources": null
+    },
+    "rc_material": {
+      "name": "Radiative Cooling",
+      "clothing_insulation_clo": 0.4,
+      "evaporative_resistance_m2pa_w": null,
+      "clothing_area_factor": null,
+      "solar_reflectance": 0.92,
+      "solar_transmittance": 0.0,
+      "infrared_emissivity": 0.95,
+      "infrared_transmittance": 0.0,
+      "projected_solar_area_factor": 0.25,
+      "absorbed_solar_to_body_fraction": 0.35,
+      "material_version_id": null,
+      "source_type": null,
+      "source_reference": null,
+      "parameter_sources": null
+    },
+    "environment_assumptions": {
+      "mean_radiant_temperature_method": "air_plus_solar_linear",
+      "solar_mrt_gain_k_per_w_m2": 0.012,
+      "solar_mrt_gain_cap_k": 15.0,
+      "sky_temperature_method": "humidity_offset",
+      "sky_offset_base_k": 5.0,
+      "sky_offset_humidity_range_k": 10.0,
+      "fixed_sky_offset_k": 15.0,
+      "sky_view_factor": 0.5,
+      "wind_speed_scaling_factor": 1.0,
+      "ground_albedo": 0.2
+    }
+  },
+  "weather_payload_sha256": "b568200999e8bc079896b86d451e3c82213682d90698ef1f846100fcc863f9d3",
+  "weather_quality": {
+    "expected_step_seconds": 3600,
+    "point_count": 24,
+    "first_timestamp": "2023-07-15T00:00:00+04:00",
+    "last_timestamp": "2023-07-15T23:00:00+04:00",
+    "was_sorted": true,
+    "duplicates_removed": 0,
+    "gaps": [],
+    "notes": []
+  },
+  "summary": {
+    "final_skin_temperature_improvement_c": 2.1232,
+    "final_core_temperature_improvement_c": 1.9117,
+    "average_skin_temperature_improvement_c": 1.2703
+  }
+}

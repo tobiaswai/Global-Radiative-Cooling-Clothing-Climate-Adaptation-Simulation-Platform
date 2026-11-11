@@ -7,9 +7,7 @@ function padTwoDigits(value: number): string {
   return value.toString().padStart(2, "0");
 }
 
-export function getPreviousCompleteYear(
-  now: Date = new Date(),
-): number {
+export function getPreviousCompleteYear(now: Date = new Date()): number {
   if (Number.isNaN(now.getTime())) {
     throw new Error("A valid date is required.");
   }
@@ -17,15 +15,20 @@ export function getPreviousCompleteYear(
   return now.getFullYear() - 1;
 }
 
-export function getDefaultSimulationDateTime(
-  now: Date = new Date(),
-): string {
+/** `YYYY-MM-DDTHH:mm`, the value format of an `<input type="datetime-local">`. */
+export function getDefaultSimulationDateTime(now: Date = new Date()): string {
   const year = getPreviousCompleteYear(now);
 
-  return [
-    `${year}-${padTwoDigits(DEFAULT_SIMULATION_MONTH)}`,
-    `${padTwoDigits(DEFAULT_SIMULATION_DAY)}T`,
-    `${padTwoDigits(DEFAULT_SIMULATION_HOUR)}:`,
+  const date = [
+    String(year),
+    padTwoDigits(DEFAULT_SIMULATION_MONTH),
+    padTwoDigits(DEFAULT_SIMULATION_DAY),
+  ].join("-");
+
+  const time = [
+    padTwoDigits(DEFAULT_SIMULATION_HOUR),
     padTwoDigits(DEFAULT_SIMULATION_MINUTE),
-  ].join("");
+  ].join(":");
+
+  return `${date}T${time}`;
 }

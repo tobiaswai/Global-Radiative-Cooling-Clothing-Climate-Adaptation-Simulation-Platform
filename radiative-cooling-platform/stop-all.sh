@@ -56,6 +56,7 @@ echo "Stopping the Radiative Cooling Platform"
 echo "============================================================"
 
 stop_service "frontend"
+stop_service "celerybeat"
 stop_service "celery"
 stop_service "backend"
 stop_service "redis"

@@ -1,14 +1,19 @@
 from datetime import datetime
 from typing import Literal
-from app.schemas.provenance import ParameterSource
+from app.schemas.provenance import (
+    ParameterSource,
+    validate_parameter_source_keys,
+)
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
     model_validator,
+    field_validator,
 )
 
+_NON_NULLABLE_UPDATE_FIELDS = frozenset({"name", "is_archived"})
 
 MaterialMode = Literal[
     "ordinary",
@@ -37,7 +42,10 @@ class MaterialVersionCreate(BaseModel):
     evaporative_resistance_m2pa_w: float | None = Field(
         default=None,
         ge=0,
+        le=1000,
     )
+
+    clothing_area_factor: float | None = Field(default=None, ge=1.0, le=2.0)
 
     solar_reflectance: float = Field(
         default=0.5,
@@ -73,6 +81,10 @@ class MaterialVersionCreate(BaseModel):
         default=0.35,
         ge=0,
         le=1,
+        description=(
+            "DEPRECATED since Stage 5 (ADR 0005): ignored by the physics. "
+            "Kept so stored requests and library versions keep loading."
+        ),
     )
 
     areal_density_g_m2: float | None = Field(
@@ -94,8 +106,9 @@ class MaterialVersionCreate(BaseModel):
     notes: str | None = None
     parameter_sources: dict[str, ParameterSource] | None = None
 
+# 3. MaterialVersionCreate validator: also check provenance keys
     @model_validator(mode="after")
-    def validate_optical_properties(self):
+    def validate_version(self):
         if self.solar_reflectance + self.solar_transmittance > 1.0 + 1e-6:
             raise ValueError(
                 "solar_reflectance + solar_transmittance cannot be greater than 1"
@@ -104,6 +117,7 @@ class MaterialVersionCreate(BaseModel):
             raise ValueError(
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
             )
+        validate_parameter_source_keys(self.parameter_sources)
         return self
 
 
@@ -126,15 +140,39 @@ class MaterialCreate(BaseModel):
 
 
 class MaterialUpdate(BaseModel):
-    name: str | None = Field(
-        default=None,
-        min_length=1,
-        max_length=200,
-    )
+    """PATCH /materials/{id}: metadata only.
 
+    * Omitted keys are left unchanged; ``description``/``institution`` may be
+      cleared with null or "".
+    * ``slug`` is immutable (it is the stable identifier); physical values live
+      in immutable versions -> POST /materials/{id}/versions.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = None
-    institution: str | None = None
+    institution: str | None = Field(default=None, max_length=255)
     is_archived: bool | None = None
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def _strip_name(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("description", "institution", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value):
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
+
+    @model_validator(mode="after")
+    def _reject_null_for_required(self) -> "MaterialUpdate":
+        for field in self.model_fields_set & _NON_NULLABLE_UPDATE_FIELDS:
+            if getattr(self, field) is None:
+                raise ValueError(f"'{field}' cannot be null")
+        return self
 
 
 class SpectrumSummary(BaseModel):
@@ -176,6 +214,8 @@ class MaterialVersionResponse(BaseModel):
     source_type: str
     source_reference: str | None
     notes: str | None
+
+    clothing_area_factor: float | None = None
 
     created_at: datetime
     spectra: list[SpectrumSummary] = []
@@ -225,3 +265,32 @@ class SpectrumPoint(BaseModel):
 class SpectrumResponse(BaseModel):
     summary: SpectrumSummary
     points: list[SpectrumPoint]
+
+class MaterialVersionListItem(BaseModel):
+    """Flat row for version pickers: one line per material version."""
+
+    id: str
+    material_id: str
+    material_name: str
+    material_slug: str
+    version_number: int
+    mode: str
+
+    clothing_insulation_clo: float
+    evaporative_resistance_m2pa_w: float | None
+    clothing_area_factor: float | None
+    solar_reflectance: float
+    solar_transmittance: float
+    infrared_emissivity: float
+    infrared_transmittance: float
+
+    source_type: str
+    is_archived: bool
+    created_at: datetime
+
+
+class MaterialVersionListResponse(BaseModel):
+    items: list[MaterialVersionListItem]
+    total: int
+    limit: int
+    offset: int

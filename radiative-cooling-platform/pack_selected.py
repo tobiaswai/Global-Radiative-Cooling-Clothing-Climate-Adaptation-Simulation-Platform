@@ -5,8 +5,9 @@ TARGET_DIR = "backend"
 
 # 1. 忽略的子目錄名稱（包含 data 目錄、快取、虛擬環境等）
 IGNORE_DIRS = {
-    'data', '__pycache__', '.pytest_cache', '.venv', 'venv', 
-    'dist', 'build', '.mypy_cache', '.coverage', 'htmlcov'
+    'data', '__pycache__', '.numba_cache','.pytest_cache', '.venv', 'venv', 
+    'dist', 'build', '.mypy_cache', '.coverage', 'htmlcov','htmlcov',
+    'node_modules', 
 }
 
 # 2. 忽略的大型檔案、二進位檔與編譯檔
