@@ -2,6 +2,7 @@
  -------------- celery@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
 <<<<<<< HEAD
+<<<<<<< HEAD
 -- ******* ---- Windows-11-10.0.26200-SP0 2026-11-11 16:29:58
 - *** --- * --- 
 - ** ---------- [config]
@@ -12,6 +13,12 @@
 - ** ---------- [config]
 - ** ---------- .> app:         radiative_cooling_worker:0x1c75d4acd10
 >>>>>>> refs/remotes/origin/main
+=======
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-10 15:57:39
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         radiative_cooling_worker:0x1c75d4acd10
+>>>>>>> 42fd7b396cae67d35ab67149e05c752da5104c6c
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -32,11 +39,14 @@
   . simulation.run_weather
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 [2026-11-11 16:29:59,037: INFO/MainProcess] Connected to redis://localhost:6379/0
 [2026-11-11 16:29:59,047: INFO/MainProcess] mingle: searching for neighbors
 [2026-11-11 16:30:00,068: INFO/MainProcess] mingle: all alone
 [2026-11-11 16:30:00,093: INFO/MainProcess] celery@p2104180 ready.
 =======
+=======
+>>>>>>> 42fd7b396cae67d35ab67149e05c752da5104c6c
 [2026-11-10 15:57:39,201: INFO/MainProcess] Connected to redis://localhost:6379/0
 [2026-11-10 15:57:39,207: INFO/MainProcess] mingle: searching for neighbors
 [2026-11-10 15:57:40,244: INFO/MainProcess] mingle: all alone
@@ -301,4 +311,7 @@
 [2026-11-10 16:42:44,451: INFO/MainProcess] Task global_batch.reap_expired_leases[f3de26aa-e671-401a-ab3b-7e0f63545d8f] succeeded in 0.0s: {'requeued': [], 'batches': []}
 [2026-11-10 16:43:15,836: INFO/MainProcess] Task global_batch.reap_expired_leases[09ee6a5d-f699-4461-8f8e-33b633b0672f] received
 [2026-11-10 16:43:15,841: INFO/MainProcess] Task global_batch.reap_expired_leases[09ee6a5d-f699-4461-8f8e-33b633b0672f] succeeded in 0.0s: {'requeued': [], 'batches': []}
+<<<<<<< HEAD
 >>>>>>> refs/remotes/origin/main
+=======
+>>>>>>> 42fd7b396cae67d35ab67149e05c752da5104c6c
