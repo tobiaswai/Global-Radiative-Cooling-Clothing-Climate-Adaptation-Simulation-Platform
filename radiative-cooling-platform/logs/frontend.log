@@ -2,20 +2,60 @@
 > frontend@0.1.0 dev
 > next dev
 
-⚠ Port 3000 is in use by process 1136, using available port 3001 instead.
 ▲ Next.js 16.3.7 (Turbopack)
-- Local:         http://localhost:3001
-- Network:       http://192.168.240.17:3001
+- Local:         http://localhost:3000
+- Network:       http://192.168.240.17:3000
 - Environments: .env.local
-✓ Ready in 999ms
-✓ Running next.config.ts took 43ms
-⨯ Another next dev server is already running.
+✓ Ready in 1489ms
+✓ Running next.config.ts took 184ms
 
-- Local:        http://localhost:3000
-- PID:          1136
-- Dir:          C:\Users\lenovo\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\radiative-cooling-platform\frontend
-- Log:          .next\dev\logs\next-development.log
-
-You can access the existing server at http://localhost:3000,
-or run taskkill /PID 1136 /F to stop it and start a new one.
+ GET /simulations/new 200 in 622ms (next.js: 361ms, application-code: 260ms)
+ GET /optimizations 200 in 90ms (next.js: 54ms, application-code: 37ms)
+ GET /optimizations/new 200 in 79ms (next.js: 49ms, application-code: 30ms)
+ GET /optimizations/314795f8-55d3-44fc-a29b-3c9cab71d271 200 in 924ms (next.js: 886ms, application-code: 38ms)
+ GET /optimizations 200 in 39ms (next.js: 12ms, application-code: 27ms)
+ GET /optimizations/new 200 in 30ms (next.js: 9ms, application-code: 21ms)
+ GET /optimizations/b25a5038-2403-47f9-90a7-49471db64b00 200 in 46ms (next.js: 18ms, application-code: 28ms)
+ GET /optimizations 200 in 31ms (next.js: 9ms, application-code: 23ms)
+ GET /optimizations/new 200 in 32ms (next.js: 9ms, application-code: 23ms)
+ GET /optimizations/f99754dc-f108-4506-bc38-8cd2fb20ed88 200 in 49ms (next.js: 19ms, application-code: 30ms)
+ GET /optimizations 200 in 29ms (next.js: 7ms, application-code: 22ms)
+ GET /optimizations/new 200 in 34ms (next.js: 7ms, application-code: 27ms)
+ GET /optimizations/455d0022-a076-4771-9a15-ed9bca1bb2e0 200 in 48ms (next.js: 19ms, application-code: 29ms)
+ GET /optimizations 200 in 28ms (next.js: 8ms, application-code: 20ms)
+ GET /optimizations/new 200 in 30ms (next.js: 9ms, application-code: 21ms)
+ GET /optimizations/c1f10bd8-31be-4ff8-8aae-588ea2461a3a 200 in 44ms (next.js: 17ms, application-code: 27ms)
+ GET /optimizations 200 in 29ms (next.js: 9ms, application-code: 20ms)
+ GET /optimizations/new 200 in 27ms (next.js: 6ms, application-code: 21ms)
+ GET /optimizations/d8f0070d-fc20-45fc-91c1-52e363c916f9 200 in 46ms (next.js: 20ms, application-code: 26ms)
+ GET /optimizations 200 in 30ms (next.js: 7ms, application-code: 23ms)
+ GET /optimizations/new 200 in 33ms (next.js: 9ms, application-code: 25ms)
+ GET /optimizations/9f03fcea-8017-44b5-8fdc-bc96e9208799 200 in 72ms (next.js: 39ms, application-code: 33ms)
+ GET /optimizations 200 in 31ms (next.js: 8ms, application-code: 23ms)
+ GET /optimizations/new 200 in 31ms (next.js: 8ms, application-code: 23ms)
+ GET /optimizations/e5877c0f-8e41-4e41-b816-d28c7145de23 200 in 47ms (next.js: 20ms, application-code: 27ms)
+ GET /optimizations 200 in 30ms (next.js: 10ms, application-code: 21ms)
+ GET /optimizations/new 200 in 32ms (next.js: 9ms, application-code: 23ms)
+ GET /optimizations/98519f18-66b0-4d17-a5af-9cb9ae921c19 200 in 47ms (next.js: 20ms, application-code: 27ms)
+ GET /optimizations 200 in 32ms (next.js: 11ms, application-code: 21ms)
+ GET /optimizations/new 200 in 31ms (next.js: 9ms, application-code: 22ms)
+ GET /optimizations/66f1f154-7aa5-45b1-b871-d89a641a6382 200 in 52ms (next.js: 20ms, application-code: 32ms)
+ GET /optimizations 200 in 28ms (next.js: 8ms, application-code: 20ms)
+ GET /optimizations/new 200 in 31ms (next.js: 8ms, application-code: 23ms)
+ GET /optimizations/54d8da07-270d-4ca4-af90-e81ead5b1244 200 in 46ms (next.js: 18ms, application-code: 28ms)
+ GET /optimizations 200 in 32ms (next.js: 8ms, application-code: 25ms)
+ GET /optimizations/new 200 in 33ms (next.js: 7ms, application-code: 26ms)
+ GET /optimizations/e73cb312-4585-403a-8689-476918f29c4e 200 in 47ms (next.js: 20ms, application-code: 27ms)
+ GET /optimizations 200 in 26ms (next.js: 8ms, application-code: 19ms)
+ GET /optimizations/c1f10bd8-31be-4ff8-8aae-588ea2461a3a 200 in 42ms (next.js: 17ms, application-code: 26ms)
+ GET /optimizations 200 in 32ms (next.js: 8ms, application-code: 24ms)
+ GET /optimizations/d8f0070d-fc20-45fc-91c1-52e363c916f9 200 in 44ms (next.js: 18ms, application-code: 26ms)
+ GET /optimizations 200 in 27ms (next.js: 8ms, application-code: 19ms)
+ GET /optimizations/9f03fcea-8017-44b5-8fdc-bc96e9208799 200 in 44ms (next.js: 19ms, application-code: 25ms)
+ GET /optimizations/e5877c0f-8e41-4e41-b816-d28c7145de23 200 in 49ms (next.js: 22ms, application-code: 27ms)
+ GET /optimizations/98519f18-66b0-4d17-a5af-9cb9ae921c19 200 in 48ms (next.js: 21ms, application-code: 27ms)
+ GET /optimizations/66f1f154-7aa5-45b1-b871-d89a641a6382 200 in 45ms (next.js: 19ms, application-code: 26ms)
+ GET /optimizations/54d8da07-270d-4ca4-af90-e81ead5b1244 200 in 65ms (next.js: 36ms, application-code: 29ms)
+ GET /optimizations/e73cb312-4585-403a-8689-476918f29c4e 200 in 44ms (next.js: 20ms, application-code: 24ms)
+ GET /optimizations/b25a5038-2403-47f9-90a7-49471db64b00 200 in 57ms (next.js: 20ms, application-code: 37ms)
 [?25h
