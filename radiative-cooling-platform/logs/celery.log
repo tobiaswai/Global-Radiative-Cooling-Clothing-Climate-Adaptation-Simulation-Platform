@@ -1,10 +1,10 @@
  
  -------------- celery@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
--- ******* ---- Windows-11-10.0.26200-SP0 2026-09-17 20:40:35
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-11 16:29:58
 - *** --- * --- 
 - ** ---------- [config]
-- ** ---------- .> app:         radiative_cooling_worker:0x2544b806e70
+- ** ---------- .> app:         radiative_cooling_worker:0x250d48eff20
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -19,7 +19,7 @@
   . global_batch.run_city
   . simulation.run_weather
 
-[2026-09-17 20:40:35,701: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2026-09-17 20:40:35,704: INFO/MainProcess] mingle: searching for neighbors
-[2026-09-17 20:40:36,736: INFO/MainProcess] mingle: all alone
-[2026-09-17 20:40:36,802: INFO/MainProcess] celery@p2104180 ready.
+[2026-11-11 16:29:59,037: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-11 16:29:59,047: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-11 16:30:00,068: INFO/MainProcess] mingle: all alone
+[2026-11-11 16:30:00,093: INFO/MainProcess] celery@p2104180 ready.
