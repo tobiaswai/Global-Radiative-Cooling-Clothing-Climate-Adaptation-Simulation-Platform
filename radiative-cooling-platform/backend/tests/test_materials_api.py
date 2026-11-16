@@ -13,11 +13,13 @@ def test_material_library_round_trip(client, monkeypatch, simulation_request):
             "name": "PR-4 Test Fabric",
             "slug": "pr-4-test-fabric",
             "institution": "Test Lab",
+            # 刪掉外層的 infrared_emissivity_window
             "initial_version": {
                 "clothing_insulation_clo": 0.4,
                 "evaporative_resistance_m2pa_w": 18.0,
                 "solar_reflectance": 0.92,
                 "infrared_emissivity": 0.95,
+                "infrared_emissivity_window": 0.97,  # ← 放這裡
                 "source_type": "measured",
                 "parameter_sources": {
                     "solar_reflectance": {
@@ -39,6 +41,7 @@ def test_material_library_round_trip(client, monkeypatch, simulation_request):
     ).json()
     assert simulation_input["name"] == "PR-4 Test Fabric v1"
     assert simulation_input["material_version_id"] == version_id
+    assert simulation_input["infrared_emissivity_window"] == pytest.approx(0.97)
 
     # Hydration: only the id is sent.
     body = simulation_request.model_dump(mode="json")

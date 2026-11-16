@@ -2,6 +2,7 @@
 
 import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
+import { checkSpectralEmissivity } from "@/lib/planck";
 import type { MaterialMode, MaterialVersionInput } from "@/types/material";
 
 const MODE_OPTIONS: { value: MaterialMode; label: string }[] = [
@@ -25,6 +26,15 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
   const solarSumTooHigh = value.solar_reflectance + value.solar_transmittance > 1 + 1e-6;
   const infraredSumTooHigh =
     value.infrared_emissivity + value.infrared_transmittance > 1 + 1e-6;
+
+  const spectral =
+    value.infrared_emissivity_window == null
+      ? null
+      : checkSpectralEmissivity(
+          value.infrared_emissivity,
+          value.infrared_emissivity_window,
+          value.infrared_transmittance,
+        );
 
   return (
     <div className="space-y-4">
@@ -84,11 +94,19 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
           onChange={(v) => onChange("solar_transmittance", v)}
         />
         <NumberField
-          label="Infrared Emissivity"
+          label="Infrared Emissivity (broadband ε)"
           value={value.infrared_emissivity}
           min={0} max={1} step={0.01}
           disabled={disabled}
           onChange={(v) => onChange("infrared_emissivity", v)}
+        />
+        <OptionalNumberField
+          label="IR Emissivity, 8–13 µm window (ε_W)"
+          value={value.infrared_emissivity_window ?? null}
+          placeholder="Gray emitter (= ε)"
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("infrared_emissivity_window", v)}
         />
         <NumberField
           label="Infrared Transmittance"
@@ -121,6 +139,11 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
         <p role="alert" className="text-sm text-amber-300">
           {solarSumTooHigh && "Solar reflectance + transmittance must not exceed 1. "}
           {infraredSumTooHigh && "Infrared emissivity + transmittance must not exceed 1."}
+        </p>
+      )}
+      {spectral && (
+        <p className={`text-sm ${spectral.error ? "text-amber-300" : "text-slate-400"}`}>
+          {spectral.error ?? `Derived ε_N = ${spectral.outside.toFixed(3)}`}
         </p>
       )}
     </div>

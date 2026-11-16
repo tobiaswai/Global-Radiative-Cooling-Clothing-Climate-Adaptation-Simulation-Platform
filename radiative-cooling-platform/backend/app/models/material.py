@@ -109,6 +109,17 @@ class MaterialVersion(Base):
             "(evaporative_resistance_m2pa_w >= 0 AND evaporative_resistance_m2pa_w <= 1000)",
             name="ck_material_evaporative_resistance",
         ),
+        # Stage 10 (migration d7e1f3a9b2c4).
+        CheckConstraint(
+            "infrared_emissivity_window IS NULL OR "
+            "(infrared_emissivity_window >= 0 AND infrared_emissivity_window <= 1)",
+            name="ck_material_ir_emissivity_window",
+        ),
+        CheckConstraint(
+            "infrared_emissivity_window IS NULL OR "
+            "infrared_emissivity_window + infrared_transmittance <= 1.000001",
+            name="ck_material_ir_window_energy_sum",
+        ),
     )
 
     id: Mapped[str] = mapped_column(
@@ -169,8 +180,12 @@ class MaterialVersion(Base):
     infrared_emissivity: Mapped[float] = mapped_column(
         Float,
         nullable=False,
+        
     )
 
+    # Stage 10. Atmospheric-window emissivity; None -> gray emitter.
+    infrared_emissivity_window: Mapped[float | None] = mapped_column(Float, nullable=True)
+    
     infrared_transmittance: Mapped[float] = mapped_column(
         Float,
         nullable=False,

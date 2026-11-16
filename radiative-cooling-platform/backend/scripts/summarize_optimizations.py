@@ -68,6 +68,11 @@ def summarize(detail: dict) -> dict:
         "evaluations": res["evaluation_count"], "generations": res["generations"],
         "seconds": res["elapsed_seconds"],
         "plateau_fraction": plateau_fraction(rmap),
+        "warnings": res.get("warnings", []),
+        "sensitivities": res.get("sensitivities", []),
+        "required_x_at_best_y": (rmap or {}).get("required_x_at_best_y"),
+        "required_y_at_best_x": (rmap or {}).get("required_y_at_best_x"),
+        "objective_trend": [(rmap or {}).get("objective_trend_x"), (rmap or {}).get("objective_trend_y")],
     }
     if rmap:
         cells = [c for r in rmap["cells"] for c in r if c]

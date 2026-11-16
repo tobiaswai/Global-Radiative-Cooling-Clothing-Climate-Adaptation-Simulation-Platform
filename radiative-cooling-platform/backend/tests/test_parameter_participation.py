@@ -29,6 +29,7 @@ MATERIAL_PERTURBATIONS = {
     "infrared_emissivity": 0.5,
     "infrared_transmittance": 0.15,
     "projected_solar_area_factor": 0.4,
+    "infrared_emissivity_window": 0.95,
 }
 
 

@@ -93,6 +93,8 @@ export type MaterialInput = {
   parameter_sources?: Record<string, ParameterSource> | null;
   source_type?: string | null;
   source_reference?: string | null;
+  /** Stage 10: emissivity in 8–13 µm. null/absent = gray emitter. */
+  infrared_emissivity_window?: number | null;
 };
 
 export type SimulationRequest = {
@@ -127,6 +129,7 @@ export type TimeSeriesPoint = {
   solar_incident_w_m2?: number | null; 
   solar_absorbed_by_textile_w_m2?: number | null; 
   solar_transmitted_w_m2?: number | null;
+  longwave_window_w_m2?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -148,6 +151,8 @@ export type ClothingSummary = {
   clothing_area_factor?: number | null;
   /** Stage 3 */
   clothing_area_factor_source?: ResolvedParameterSource | null;
+  infrared_emissivity_window?: number | null;
+  infrared_emissivity_outside_window?: number | null;
 };
 
 /** Stage 3 (ADR 0001): heat capacities derived from PersonInput. */

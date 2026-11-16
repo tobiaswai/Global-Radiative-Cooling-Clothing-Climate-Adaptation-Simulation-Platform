@@ -45,6 +45,9 @@ from app.services.spectrum_parser import (
     parse_spectrum_csv,
 )
 
+from app.schemas.material import SpectrumBandSummary
+from app.services.planck import EMISSIVITY_REFERENCE_K
+from app.services.spectral_summary import summarize_ir_spectrum
 
 router = APIRouter(
     prefix="/api/v1/materials",
@@ -131,6 +134,7 @@ def list_material_versions(
                 source_type=version.source_type,
                 is_archived=version.material.is_archived,
                 created_at=version.created_at,
+                infrared_emissivity_window=version.infrared_emissivity_window,
             )
             for version in versions
         ],
@@ -612,3 +616,28 @@ def get_material_spectrum(
         points=spectrum.points_json,
     )
 
+@router.get(
+    "/versions/{version_id}/spectra/{spectrum_type}/band-summary",
+    response_model=SpectrumBandSummary,
+)
+def get_spectrum_band_summary(
+    version_id: str,
+    spectrum_type: str,
+    temperature_k: float = Query(default=EMISSIVITY_REFERENCE_K, ge=200.0, le=400.0),
+    session: Session = Depends(get_db),
+) -> SpectrumBandSummary:
+    if spectrum_type not in {"mir_emissivity", "mir_transmittance"}:
+        raise HTTPException(status_code=422, detail="Band summary is defined for IR spectra only")
+
+    spectrum = session.scalar(
+        select(MaterialSpectrum).where(
+            MaterialSpectrum.material_version_id == version_id,
+            MaterialSpectrum.spectrum_type == spectrum_type,
+        )
+    )
+    if spectrum is None:
+        raise HTTPException(status_code=404, detail="Spectrum data not found")
+
+    return summarize_ir_spectrum(
+        spectrum.points_json, spectrum_type=spectrum_type, temperature_k=temperature_k
+    )

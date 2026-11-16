@@ -65,6 +65,8 @@ class MaterialVersionCreate(BaseModel):
         le=1,
     )
 
+    infrared_emissivity_window: float | None = Field(default=None, ge=0, le=1)
+    
     infrared_transmittance: float = Field(
         default=0,
         ge=0,
@@ -116,6 +118,13 @@ class MaterialVersionCreate(BaseModel):
         if self.infrared_emissivity + self.infrared_transmittance > 1.0 + 1e-6:
             raise ValueError(
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
+            )
+        if self.infrared_emissivity_window is not None:
+            from app.schemas.simulation import _check_spectral_emissivity
+            _check_spectral_emissivity(
+                self.infrared_emissivity,
+                self.infrared_emissivity_window,
+                self.infrared_transmittance,
             )
         validate_parameter_source_keys(self.parameter_sources)
         return self
@@ -223,6 +232,7 @@ class MaterialVersionResponse(BaseModel):
         default=None,
         validation_alias="parameter_sources_json",
     )
+    infrared_emissivity_window: float | None = None
 
 
 class MaterialResponse(BaseModel):
@@ -287,6 +297,7 @@ class MaterialVersionListItem(BaseModel):
     source_type: str
     is_archived: bool
     created_at: datetime
+    infrared_emissivity_window: float | None = None
 
 
 class MaterialVersionListResponse(BaseModel):
@@ -294,3 +305,18 @@ class MaterialVersionListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+class SpectrumBandSummary(BaseModel):
+    """Planck-weighted band averages of one IR spectrum (Stage 10)."""
+
+    spectrum_type: str
+    temperature_k: float
+    window_lower_um: float
+    window_upper_um: float
+    measured_lower_um: float
+    measured_upper_um: float
+    window_average: float | None
+    window_coverage: float            # share of the window's blackbody emission covered
+    broadband_average: float | None   # over the measured range
+    broadband_coverage: float         # share of total blackbody emission covered
+    outside_window_average: float | None

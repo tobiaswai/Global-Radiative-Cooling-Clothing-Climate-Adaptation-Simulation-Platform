@@ -17,6 +17,7 @@ from app.schemas.simulation import MaterialInput, ScenarioResult
 from app.services.annual_sampling import build_weighted_sample_days
 from app.services.climate_adaptation import get_next_month_start
 from app.services.optimization.metrics import compute_metrics
+from app.services.optimization.variables import candidate_material, variable_value
 from app.services.two_node import simulate_material_with_interpolator
 from app.services.weather import get_historical_weather_range, slice_weather_time_series
 from app.services.weather_interpolation import WeatherInterpolator
@@ -24,7 +25,6 @@ from app.services.weather_quality import WeatherDataError
 
 
 CACHE_DECIMALS = 6
-OPTICAL_SUM_TOLERANCE = 1e-6
 
 
 @dataclass(frozen=True)
@@ -120,40 +120,34 @@ class MaterialEvaluator:
         self.simulation_count = 0
         self._cache: dict[tuple[float, ...], EvaluationMetrics | None] = {}
 
+    # --- vector <-> parameters -------------------------------------------
+    def key(self, x: Sequence[float]) -> tuple[float, ...]:
+        return tuple(round(float(v), CACHE_DECIMALS) for v in x)
+
     def parameters(self, x: Sequence[float]) -> dict[str, float]:
         return {name: float(value) for name, value in zip(self.names, x, strict=True)}
 
     def vector(self, parameters: dict[str, float]) -> list[float]:
         return [float(parameters[name]) for name in self.names]
 
-    def material_for(self, parameters: dict[str, float]) -> MaterialInput:
-        # model_copy does not re-validate; optical sums are checked explicitly.
-        # The candidate is a modified garment: drop library linkage.
-        return self.request.base_material.model_copy(
-            update={
-                **parameters,
-                "material_version_id": None,
-                "parameter_sources": None,
-                "source_type": "derived",
-                "source_reference": "optimization candidate",
-            }
-        )
+    def base_parameters(self) -> dict[str, float]:
+        return {name: variable_value(self.request.base_material, name) for name in self.names}
 
-    @staticmethod
-    def physically_valid(material: MaterialInput) -> bool:
-        return (
-            material.solar_reflectance + material.solar_transmittance <= 1.0 + OPTICAL_SUM_TOLERANCE
-            and material.infrared_emissivity + material.infrared_transmittance
-            <= 1.0 + OPTICAL_SUM_TOLERANCE
-        )
+    def material_for(self, parameters: dict[str, float]) -> MaterialInput | None:
+        """Validated candidate, or None when it is physically impossible."""
+        try:
+            return candidate_material(self.request.base_material, parameters)
+        except ValueError:  # pydantic.ValidationError is a ValueError
+            return None
 
+    # --- evaluation -------------------------------------------------------
     def evaluate(self, x: Sequence[float]) -> EvaluationMetrics | None:
-        key = tuple(round(float(v), CACHE_DECIMALS) for v in x)
+        key = self.key(x)
         if key in self._cache:
             return self._cache[key]
 
         material = self.material_for(self.parameters(key))
-        if not self.physically_valid(material):
+        if material is None:
             self._cache[key] = None
             return None
 
@@ -180,3 +174,11 @@ class MaterialEvaluator:
             self.on_evaluation(self.evaluation_count)  # may raise (cancel / lease lost)
 
         return metrics
+
+    def cached_points(self) -> list[tuple[dict[str, float], EvaluationMetrics]]:
+        """Every successfully evaluated point (parameters rounded to the cache key)."""
+        return [
+            (self.parameters(key), metrics)
+            for key, metrics in self._cache.items()
+            if metrics is not None
+        ]

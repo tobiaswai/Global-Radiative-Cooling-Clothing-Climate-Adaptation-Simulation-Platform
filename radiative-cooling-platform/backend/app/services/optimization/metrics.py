@@ -13,9 +13,7 @@ from app.services.scenario_summary import pair_scenarios
 
 
 def fraction_above(minutes: Sequence[float], values: Sequence[float], threshold: float) -> float:
-    """Exact time fraction a piecewise-linear series spends strictly above
-    ``threshold``. Continuous in the data, so the optimizer sees a smooth-ish
-    landscape instead of a step count."""
+    """Exact time fraction a piecewise-linear series spends above ``threshold``."""
     t = np.asarray(minutes, dtype=float)
     y = np.asarray(values, dtype=float)
 
@@ -32,10 +30,26 @@ def fraction_above(minutes: Sequence[float], values: Sequence[float], threshold:
         elif y0 <= threshold and y1 <= threshold:
             continue
         else:
-            crossing = (threshold - y0) / (y1 - y0)  # in [0, 1]
+            crossing = (threshold - y0) / (y1 - y0)
             above += dt * (1.0 - crossing) if y1 > threshold else dt * crossing
 
     return float(above / (t[-1] - t[0]))
+
+
+def excess_integral(minutes: Sequence[float], values: Sequence[float], threshold: float) -> float:
+    """Exact integral of max(0, y - threshold) dt for a piecewise-linear series (K*min)."""
+    total = 0.0
+    for t0, t1, y0, y1 in zip(minutes[:-1], minutes[1:], values[:-1], values[1:]):
+        dt = float(t1) - float(t0)
+        a, b = float(y0) - threshold, float(y1) - threshold
+        if a >= 0.0 and b >= 0.0:
+            total += dt * (a + b) / 2.0
+        elif a <= 0.0 and b <= 0.0:
+            continue
+        else:
+            crossing = a / (a - b)
+            total += dt * crossing * a / 2.0 if a > 0.0 else dt * (1.0 - crossing) * b / 2.0
+    return total
 
 
 def compute_metrics(
@@ -49,7 +63,8 @@ def compute_metrics(
         raise ValueError("compute_metrics requires at least one sample")
 
     weights = np.asarray([w for w, _, _ in pairs], dtype=float)
-    mean_skin, skin_exc, core_exc, cooling_skin, cooling_core = [], [], [], [], []
+    mean_skin, skin_exc, core_exc = [], [], []
+    skin_dh, core_dh, cooling_skin, cooling_core = [], [], [], []
     peak_skin = peak_core = -np.inf
 
     for _, control, candidate in pairs:
@@ -60,6 +75,8 @@ def compute_metrics(
         mean_skin.append(time_weighted_mean(minutes, skin))
         skin_exc.append(fraction_above(minutes, skin, skin_threshold_c))
         core_exc.append(fraction_above(minutes, core, core_threshold_c))
+        skin_dh.append(excess_integral(minutes, skin, skin_threshold_c) / 60.0)
+        core_dh.append(excess_integral(minutes, core, core_threshold_c) / 60.0)
 
         paired = pair_scenarios(control, candidate)
         cooling_skin.append(paired.average_skin_c)
@@ -78,6 +95,8 @@ def compute_metrics(
         peak_core_temperature_c=round(float(peak_core), 5),
         skin_exceedance_fraction=round(weighted(skin_exc), 6),
         core_exceedance_fraction=round(weighted(core_exc), 6),
+        skin_excess_degree_hours=round(weighted(skin_dh), 6),
+        core_excess_degree_hours=round(weighted(core_dh), 6),
         mean_skin_cooling_c=round(weighted(cooling_skin), 5),
         mean_core_cooling_c=round(weighted(cooling_core), 5),
     )

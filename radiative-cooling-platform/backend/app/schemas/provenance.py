@@ -29,6 +29,7 @@ MATERIAL_PHYSICAL_FIELD_ORDER: tuple[str, ...] = (
     "solar_reflectance",
     "solar_transmittance",
     "infrared_emissivity",
+    "infrared_emissivity_window",   # Stage 10
     "infrared_transmittance",
     "projected_solar_area_factor",
 )

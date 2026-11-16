@@ -38,7 +38,7 @@ from app.schemas.provenance import (
 )
 
 
-MODEL_PARAMETER_SET_VERSION = "4.0.0"
+MODEL_PARAMETER_SET_VERSION = "5.0.0"
 
 GAGGE_1986 = (
     "Gagge, Fobelets & Berglund (1986). A standard predictive index of "
@@ -122,7 +122,24 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
        "ASHRAE Standard 55-2020, Normative Appendix C (Arens et al. 2015): "
        "ERF = [0.5 f_eff f_svv (I_diff + I_TH R_floor) + f_p f_bes I_dir] "
        "alpha_SW / alpha_LW"),
-    
+   # --- longwave spectral bands (Stage 10, ADR 0007) -----------------------
+    _p("second_radiation_constant", 14387.768775, "um K",
+       "Planck second radiation constant c2 = h c / k_B",
+       "standard", "CODATA 2018"),
+    _p("atmospheric_window_lower_um", 8.0, "um",
+       "Lower edge of the atmospheric transparency window",
+       "literature",
+       "Granqvist & Hjortsberg (1981) J. Appl. Phys. 52:4205-4220"),
+    _p("atmospheric_window_upper_um", 13.0, "um",
+       "Upper edge of the atmospheric transparency window",
+       "literature",
+       "Granqvist & Hjortsberg (1981) J. Appl. Phys. 52:4205-4220"),
+    _p("emissivity_reference_temperature", 305.0, "K",
+       "Temperature at which a broadband emissivity is Planck-weighted when it "
+       "is split into window and out-of-window bands",
+       "assumed", PROTOTYPE,
+       "Typical clothing surface temperature outdoors; affects only the "
+       "split of selective materials, never gray ones."),
     # --- clothing -----------------------------------------------------------
     _p("clo_to_si", 0.155, "m^2 K/(W clo)", "1 clo = 0.155 m^2 K/W",
        "standard", "ISO 9920:2007"),

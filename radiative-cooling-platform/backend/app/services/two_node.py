@@ -46,11 +46,19 @@ from app.services.clothing import (
 from app.services.model_parameters import get_parameter_value as _param
 from app.services.solar import solar_load
 from app.services.weather_interpolation import WeatherInterpolator
+from app.services.longwave import (
+    LongwaveOptics,
+    RadiantField,
+    longwave_notes,
+    net_exchange_k4,
+    radiant_field,
+    resolve_longwave_optics,
+)
 
 
 # Version of the physics engine written into every response. Bump together
 # with MODEL_PARAMETER_SET_VERSION whenever results change.
-MODEL_VERSION = "0.7.0"  # Stage 6: shared time-weighted summary, audit grid, radiation convention key
+MODEL_VERSION = "0.8.0"  # Stage 6: shared time-weighted summary, audit grid, radiation convention key
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
@@ -127,6 +135,9 @@ class HeatFluxes:
     skin_blood_flow: float
     clothing_surface_temperature_c: float
     radiation_area_ratio: float
+    # Stage 10 (selective emitters only)
+    longwave_window: float | None = None
+    sky_window_emissivity: float | None = None
 
     @property
     def net_body_gain(self) -> float:
@@ -175,7 +186,6 @@ def environment_radiant_fourth_power_k4(environment: EnvironmentInput) -> float:
 
     return f * sky_k**4 + (1.0 - f) * radiant_k**4
 
-
 def clothing_surface_temperature_c(
     *,
     skin_temperature_c: float,
@@ -186,38 +196,44 @@ def clothing_surface_temperature_c(
     emissivity: float,
     radiation_area_ratio: float,
     absorbed_solar_w_m2: float = 0.0,
+    optics: LongwaveOptics | None = None,
+    field: RadiantField | None = None,
 ) -> float:
-    """Solve the clothing surface balance (ADR 0003 + ADR 0005)
+    """Solve the clothing surface balance (ADR 0003 + 0005 + 0007).
 
-        (T_sk - T_cl)/R_cl + S_abs
-            = f_cl [h_c (T_cl - T_a) + (A_r/A_D) eps sigma (T_cl^4 - T_env^4)]
-
-    S_abs (solar absorbed by the textile, per unit A_D) does not depend on
-    T_cl, so the residual stays strictly decreasing and concave. Newton from
-    T_sk lands at or below the root after the first step and then converges
-    monotonically.
+    Gray path: (A_r/A_D) eps sigma (T_cl^4 - T_env^4). Selective path: the
+    same balance with window and out-of-window bands. Both emission terms
+    increase with T_cl, so the residual stays strictly decreasing.
     """
     if clothing.dry_resistance_m2k_w < NUDE_RESISTANCE_THRESHOLD_M2K_W:
         return skin_temperature_c
+
+    selective = optics is not None and optics.selective and field is not None
 
     resistance = clothing.dry_resistance_m2k_w
     area_factor = clothing.area_factor
     skin_k = skin_temperature_c + KELVIN_OFFSET
     air_k = air_temperature_c + KELVIN_OFFSET
+    gray_factor = radiation_area_ratio * emissivity * SIGMA
 
     t = skin_k
 
-    radiative_factor = radiation_area_ratio * emissivity * SIGMA
-
     for _ in range(SURFACE_TEMPERATURE_MAX_ITERATIONS):
-        emission = radiative_factor * (t**4 - environment_fourth_k4)
+        if selective:
+            net, net_slope, _ = net_exchange_k4(optics, field, t)
+            emission = radiation_area_ratio * SIGMA * net
+            emission_slope = radiation_area_ratio * SIGMA * net_slope
+        else:
+            emission = gray_factor * (t**4 - environment_fourth_k4)
+            emission_slope = 4.0 * gray_factor * t**3
+
         residual = (
             (skin_k - t) / resistance
             + absorbed_solar_w_m2
             - area_factor * (convection_coefficient * (t - air_k) + emission)
         )
         derivative = -1.0 / resistance - area_factor * (
-            convection_coefficient + 4.0 * radiative_factor * t**3
+            convection_coefficient + emission_slope
         )
         step = residual / derivative
         t -= step
@@ -230,7 +246,6 @@ def clothing_surface_temperature_c(
         f"(T_sk = {skin_temperature_c:.3f} C, T_a = {air_temperature_c:.3f} C, "
         f"S_abs = {absorbed_solar_w_m2:.1f} W/m^2)"
     )
-
 
 def maximum_skin_wettedness(wind_speed_m_s: float, clothing: ClothingResistances) -> float:
     v = max(wind_speed_m_s, MINIMUM_WIND_FOR_WETTEDNESS_M_S)
@@ -248,9 +263,12 @@ def calculate_fluxes(
     person: PersonInput,
     material: MaterialInput,
     clothing: ClothingResistances | None = None,
+    optics: LongwaveOptics | None = None,
 ) -> HeatFluxes:
     if clothing is None:
         clothing = resolve_clothing(material)
+    if optics is None:
+        optics = resolve_longwave_optics(material)
 
     air_temperature_c = environment.air_temperature_c
     area_ratio = effective_radiation_area_ratio(person.position)
@@ -272,7 +290,13 @@ def calculate_fluxes(
 
     # --- dry heat: clothing surface balance with the solar source -----------
     convection_coefficient = convection_coefficient_w_m2k(environment.wind_speed_m_s)
-    environment_fourth = environment_radiant_fourth_power_k4(environment)
+
+    if optics.selective:
+        field = radiant_field(environment)
+        environment_fourth = field.total_k4
+    else:
+        field = None
+        environment_fourth = environment_radiant_fourth_power_k4(environment)
 
     surface_c = clothing_surface_temperature_c(
         skin_temperature_c=skin_temperature_c,
@@ -283,6 +307,8 @@ def calculate_fluxes(
         emissivity=material.infrared_emissivity,
         radiation_area_ratio=area_ratio,
         absorbed_solar_w_m2=solar.absorbed_by_textile_w_m2,
+        optics=optics,
+        field=field,
     )
     surface_k = surface_c + KELVIN_OFFSET
     skin_k = skin_temperature_c + KELVIN_OFFSET
@@ -291,15 +317,22 @@ def calculate_fluxes(
         surface_c - air_temperature_c
     )
 
-    longwave_surface = (
-        clothing.area_factor
-        * area_ratio
-        * material.infrared_emissivity
-        * SIGMA
-        * (surface_k**4 - environment_fourth)
-    )
+    longwave_window: float | None = None
+    if field is not None:
+        net, _, net_window = net_exchange_k4(optics, field, surface_k)
+        longwave_surface = clothing.area_factor * area_ratio * SIGMA * net
+        longwave_window = clothing.area_factor * area_ratio * SIGMA * net_window
+    else:
+        longwave_surface = (
+            clothing.area_factor
+            * area_ratio
+            * material.infrared_emissivity
+            * SIGMA
+            * (surface_k**4 - environment_fourth)
+        )
 
-    # Skin emission transmitted directly through an IR-transparent textile.
+    # Skin emission transmitted directly through an IR-transparent textile
+    # (skin and transmittance are gray).
     longwave_transmitted = (
         area_ratio
         * clothing.infrared_transmittance
@@ -396,6 +429,8 @@ def calculate_fluxes(
         skin_blood_flow=skin_blood_flow,
         clothing_surface_temperature_c=surface_c,
         radiation_area_ratio=area_ratio,
+        longwave_window=longwave_window,
+        sky_window_emissivity=None if field is None else field.sky_window_emissivity,
     )
 
 
@@ -449,6 +484,7 @@ def _integrate(
     failure_label: str,
 ) -> ScenarioResult:
     clothing = resolve_clothing(material)
+    optics = resolve_longwave_optics(material)
     capacities = body_heat_capacities(person)
     area_ratio = effective_radiation_area_ratio(person.position)
     solar_split_available = environment_at(0.0).has_solar_split
@@ -465,6 +501,7 @@ def _integrate(
             person=person,
             material=material,
             clothing=clothing,
+            optics=optics,
         )
 
         core_storage = fluxes.metabolism - fluxes.respiration - fluxes.core_to_skin
@@ -482,7 +519,23 @@ def _integrate(
             core_storage / capacities.core_j_m2k,
             skin_storage / capacities.skin_j_m2k,
         ]
+        
+    # in the output loop: pass optics=optics to calculate_fluxes and add
+    #     longwave_window_w_m2=(
+    #         None if fluxes.longwave_window is None
+    #         else round(fluxes.longwave_window, 4)
+    #     ),
+    # to the TimeSeriesPoint(...) call.
 
+    # in ClothingSummary(...):
+    #     infrared_emissivity_window=optics.window if optics.selective else None,
+    #     infrared_emissivity_outside_window=round(optics.outside, 6) if optics.selective else None,
+
+    # in ScenarioResult(...):
+    #     assumptions_applied=assumptions_applied(
+    #         clothing, solar_split_available=solar_split_available
+    #     ) + longwave_notes(optics),
+    
     solution = solve_ivp(
         fun=derivatives,
         t_span=(0.0, duration_seconds),
@@ -563,6 +616,7 @@ def _integrate(
             evaporative_resistance_m2pa_w=round(clothing.evaporative_resistance_m2pa_w, 4),
             evaporative_resistance_source=clothing.evaporative_resistance_source,
             infrared_transmittance=clothing.infrared_transmittance,
+            infrared_emissivity_window=material.infrared_emissivity_window,
             clothing_area_factor=round(clothing.area_factor, 6),
             clothing_area_factor_source=clothing.area_factor_source,
         ),

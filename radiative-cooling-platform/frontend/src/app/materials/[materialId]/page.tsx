@@ -13,6 +13,7 @@ import type {
   Material,
 } from "@/types/material";
 import { MaterialHeader } from "@/components/materials/material-header";
+import { SpectrumBandPanel } from "@/components/materials/spectrum-band-panel";
 
 type SpectrumType =
   | "solar_reflectance"
@@ -235,6 +236,11 @@ function MaterialDetailContent({
                     fallback="Derived from clo"
                     digits={1}
                   />
+                  <Metric
+                    label="IR emissivity, 8–13 µm"
+                    value={version.infrared_emissivity_window}
+                    fallback="Gray"
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -275,6 +281,13 @@ function MaterialDetailContent({
                               }{" "}
                               μm
                             </span>
+                            {spectrum.spectrum_type === "mir_emissivity" && (
+                              <SpectrumBandPanel
+                                materialId={material.id}
+                                versionId={version.id}
+                                versionNumber={version.version_number}
+                              />
+                            )}
                           </li>
                         ),
                       )}

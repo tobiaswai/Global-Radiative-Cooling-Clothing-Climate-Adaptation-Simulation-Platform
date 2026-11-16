@@ -8,7 +8,8 @@ export type OptionalSeriesKey =
   | "skin_blood_flow_kg_h_m2"
   | "solar_incident_w_m2"
   | "solar_absorbed_by_textile_w_m2"
-  | "solar_transmitted_w_m2";
+  | "solar_transmitted_w_m2"
+  | "longwave_window_w_m2";
 
 export function hasOptionalSeries(
   points: TimeSeriesPoint[],

@@ -1,18 +1,53 @@
-import type { EnvironmentAssumptions, MaterialInput, PersonInput, LeaseState } from "@/types/simulation";
+import type { EnvironmentAssumptions, LeaseState, MaterialInput, PersonInput } from "@/types/simulation";
 
 export type DecisionVariableName =
-  | "solar_reflectance" | "solar_transmittance" | "infrared_emissivity"
-  | "infrared_transmittance" | "clothing_insulation_clo" | "evaporative_resistance_m2pa_w";
+  | "solar_reflectance"
+  | "solar_transmittance"
+  | "infrared_emissivity"
+  | "infrared_emissivity_window"
+  | "infrared_emissivity_outside_window"
+  | "infrared_transmittance"
+  | "clothing_insulation_clo"
+  | "evaporative_resistance_m2pa_w";
 
 export type MetricName =
-  | "mean_skin_temperature_c" | "peak_skin_temperature_c" | "peak_core_temperature_c"
-  | "skin_exceedance_fraction" | "core_exceedance_fraction"
-  | "mean_skin_cooling_c" | "mean_core_cooling_c";
+  | "mean_skin_temperature_c"
+  | "peak_skin_temperature_c"
+  | "peak_core_temperature_c"
+  | "skin_exceedance_fraction"
+  | "core_exceedance_fraction"
+  | "skin_excess_degree_hours"
+  | "core_excess_degree_hours"
+  | "mean_skin_cooling_c"
+  | "mean_core_cooling_c";
 
-export type DecisionVariable = { name: DecisionVariableName; lower: number; upper: number };
-export type MetricConstraint = { metric: MetricName; operator: "<=" | ">="; threshold: number };
-export type OptimizationObjective = { metric: MetricName; sense: "minimize" | "maximize" };
-export type RequirementMapSpec = { x_variable: DecisionVariableName; y_variable: DecisionVariableName; resolution: number };
+export type ObjectiveName = MetricName | "material_demand";
+export type DemandDirection = "increasing" | "decreasing";
+export type ObjectiveTrend = "improves" | "worsens" | "flat" | "mixed";
+export type Sense = "minimize" | "maximize";
+
+export type DecisionVariable = {
+  name: DecisionVariableName;
+  lower: number;
+  upper: number;
+  demand_direction?: DemandDirection | null;
+  demand_weight?: number;
+};
+
+export type MetricConstraint = {
+  metric: MetricName;
+  operator: "<=" | ">=";
+  threshold: number;
+  scale?: number | null;
+};
+
+export type OptimizationObjective = { metric: ObjectiveName; sense: Sense };
+
+export type RequirementMapSpec = {
+  x_variable: DecisionVariableName;
+  y_variable: DecisionVariableName;
+  resolution: number;
+};
 
 export type OptimizationCreate = {
   name: string;
@@ -36,6 +71,8 @@ export type OptimizationCreate = {
   population_multiplier: number;
   max_generations: number;
   seed: number | null;
+  secondary_demand_weight: number;
+  convergence_tolerance: number;
   requirement_map: RequirementMapSpec | null;
 };
 
@@ -47,9 +84,11 @@ export type OptimizationEstimate = {
   sample_count: number;
   thermal_simulation_budget: number;
   weather_requests: number;
+  corner_evaluations: number;
+  sensitivity_evaluations: number;
 };
 
-export type EvaluationMetrics = { sample_count: number } & Record<MetricName, number>;
+export type EvaluationMetrics = { sample_count: number } & Record<MetricName, number | null>;
 
 export type CandidateEvaluation = {
   parameters: Record<string, number>;
@@ -57,6 +96,8 @@ export type CandidateEvaluation = {
   objective_value: number | null;
   constraint_violation: number | null;
   feasible: boolean;
+  constraint_excess: Record<string, number>;
+  material_demand: number | null;
 };
 
 export type GenerationRecord = {
@@ -68,7 +109,15 @@ export type GenerationRecord = {
   evaluation_count: number;
 };
 
-export type RequirementCell = { x: number; y: number; metric_value: number; constraint_violation: number; feasible: boolean };
+export type RequirementCell = {
+  x: number;
+  y: number;
+  metric_value: number;
+  constraint_violation: number;
+  feasible: boolean;
+};
+
+export type FrontierPoint = { y: number; minimum_x: number | null; required_x?: number | null };
 
 export type RequirementMapResult = {
   x_variable: DecisionVariableName;
@@ -76,10 +125,26 @@ export type RequirementMapResult = {
   x_values: number[];
   y_values: number[];
   cells: (RequirementCell | null)[][];
-  frontier: { y: number; minimum_x: number | null }[];
+  frontier: FrontierPoint[];
   minimum_x_at_max_y: number | null;
   minimum_y_at_max_x: number | null;
   fixed_parameters: Record<string, number>;
+  x_demand_direction?: DemandDirection;
+  y_demand_direction?: DemandDirection;
+  required_x_at_best_y?: number | null;
+  required_y_at_best_x?: number | null;
+  objective_trend_x?: ObjectiveTrend | null;
+  objective_trend_y?: ObjectiveTrend | null;
+  plateau_fraction?: number | null;
+  metric_min?: number | null;
+  metric_max?: number | null;
+};
+
+export type ParameterSensitivity = {
+  name: DecisionVariableName;
+  probe_low: number;
+  probe_high: number;
+  full_range_effects: Partial<Record<MetricName, number>>;
 };
 
 export type OptimizationResult = {
@@ -90,6 +155,7 @@ export type OptimizationResult = {
   best: CandidateEvaluation;
   baseline: CandidateEvaluation;
   optical_upper_bound: CandidateEvaluation | null;
+  best_corner?: CandidateEvaluation | null;
   requirement_map: RequirementMapResult | null;
   sample_count: number;
   skipped_samples: { sample_date_local: string; reason_code: string; message: string }[];
@@ -102,6 +168,10 @@ export type OptimizationResult = {
   elapsed_seconds: number;
   model_version: string;
   parameter_fingerprint: string;
+  warnings?: string[];
+  sensitivities?: ParameterSensitivity[];
+  objective_reference?: number | null;
+  objective_scale?: number | null;
 };
 
 export type OptimizationStatus = "queued" | "running" | "cancelling" | "cancelled" | "completed" | "failed";
@@ -126,6 +196,8 @@ export type OptimizationJob = {
   last_heartbeat_at: string | null;
   lease_state: LeaseState;
   cancel_requested_at: string | null;
+  control_material_version_id?: string | null;
+  base_material_version_id?: string | null;
 };
 
 export type OptimizationJobDetail = OptimizationJob & {

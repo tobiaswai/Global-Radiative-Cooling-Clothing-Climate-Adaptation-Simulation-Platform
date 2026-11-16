@@ -90,9 +90,11 @@ def test_estimate_counts(person, control_material, rc_material):
     request = make_request(person, control_material, rc_material, sample_days_per_month=3)
     estimate = estimate_optimization(request)
     assert estimate.population_size == 8
-    assert estimate.optimizer_evaluation_budget == 8 * 3
+    assert estimate.optimizer_evaluation_budget == 24
     assert estimate.requirement_map_evaluations == 9
-    assert estimate.thermal_simulation_budget == (24 + 9 + 3) * 3
+    assert estimate.corner_evaluations == 4
+    assert estimate.sensitivity_evaluations == 4
+    assert estimate.thermal_simulation_budget == (24 + 9 + 4 + 4 + 2) * 3 + 3   # = 132
 
 
 # --- evaluator (real physics on the fixture window) ------------------------
@@ -150,11 +152,12 @@ class AnalyticEvaluator:
     def evaluate(self, x):
         self.evaluation_count += 1
         rho, eps = float(x[0]), float(x[1])
+        distance = (rho - 0.8) ** 2 + (eps - 0.9) ** 2
         return EvaluationMetrics(
             sample_count=1, mean_skin_temperature_c=35.0, peak_skin_temperature_c=36.0,
             peak_core_temperature_c=37.5,
-            skin_exceedance_fraction=(rho - 0.8) ** 2 + (eps - 0.9) ** 2,
-            core_exceedance_fraction=0.0,
+            skin_exceedance_fraction=distance, core_exceedance_fraction=0.0,
+            skin_excess_degree_hours=distance, core_excess_degree_hours=0.0,
             mean_skin_cooling_c=rho + eps, mean_core_cooling_c=0.0,
         )
 
@@ -203,7 +206,9 @@ def test_requirement_frontier(person, control_material, rc_material):
     assert frontier[0.5] is None
     assert result.minimum_x_at_max_y == pytest.approx(0.6)
     assert result.minimum_y_at_max_x == pytest.approx(0.6)
-
+    assert result.required_x_at_best_y == pytest.approx(0.6)
+    assert result.x_demand_direction == "increasing"
+    assert result.frontier[-1].required_x == pytest.approx(0.6)
 
 # --- API -------------------------------------------------------------------
 

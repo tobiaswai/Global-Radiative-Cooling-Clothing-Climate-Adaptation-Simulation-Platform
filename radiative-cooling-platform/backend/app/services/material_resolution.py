@@ -92,6 +92,7 @@ def material_input_from_version(version: MaterialVersion) -> MaterialInput:
             source_type=version.source_type,
             source_reference=version.source_reference,
             parameter_sources=version.parameter_sources_json,
+            infrared_emissivity_window=getattr(version, "infrared_emissivity_window", None),
         )
     except ValidationError as error:
         first = error.errors()[0]

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 
+import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
 import type { SimulationResponse } from "@/types/simulation";
 
 const Plot = dynamic(
@@ -18,11 +19,6 @@ export function HeatFluxChart({
 }: HeatFluxChartProps) {
   const points =
     result.radiative_cooling.time_series;
-
-  // 檢查時間序列的第一個點是否包含 solar_incident_w_m2 屬性
-  const hasOptionalSeries =
-    points.length > 0 &&
-    "solar_incident_w_m2" in points[0];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
@@ -69,19 +65,27 @@ export function HeatFluxChart({
             mode: "lines",
             name: "Absorbed Solar Radiation",
           },
-          ...(hasOptionalSeries
+          ...(hasOptionalSeries(points, "solar_incident_w_m2")
             ? [
                 {
                   x: points.map((point) => point.minute),
-                  y: points.map(
-                    (point) =>
-                      (point as { solar_incident_w_m2?: number })
-                        .solar_incident_w_m2 ?? 0,
-                  ),
+                  y: pluckOptionalSeries(points, "solar_incident_w_m2"),
                   type: "scatter" as const,
                   mode: "lines" as const,
                   name: "Incident Solar (per A_D)",
                   visible: "legendonly" as const,
+                },
+              ]
+            : []),
+          ...(hasOptionalSeries(points, "longwave_window_w_m2")
+            ? [
+                {
+                  x: points.map((point) => point.minute),
+                  y: pluckOptionalSeries(points, "longwave_window_w_m2"),
+                  type: "scatter" as const,
+                  mode: "lines" as const,
+                  name: "Longwave, 8–13 µm window",
+                  line: { dash: "dot" as const },
                 },
               ]
             : []),
@@ -132,4 +136,3 @@ export function HeatFluxChart({
     </div>
   );
 }
-

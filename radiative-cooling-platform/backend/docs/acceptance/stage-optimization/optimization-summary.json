@@ -1,0 +1,4175 @@
+{
+  "runs": [
+    {
+      "name": "Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "id": "f99754dc",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979956,
+        "infrared_emissivity": 0.500439
+      },
+      "best_objective": 0.969569,
+      "best_violation": 2.150069000000004,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.188,
+        "skin_exceedance_fraction": 0.969569,
+        "peak_core_temperature_c": 39.2805,
+        "mean_skin_cooling_c": 1.70892
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.969569,
+          "excess": 0.869569
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 39.2805,
+          "excess": 1.2805000000000035
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "lower"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 2.463095000000001,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 2.2187320000000015,
+      "best_corner_params": null,
+      "evaluations": 621,
+      "generations": 24,
+      "seconds": 89.03,
+      "baseline_exceedance": 0.972095,
+      "baseline_peak_skin": 38.5221,
+      "baseline_peak_core": 39.591,
+      "best_exceedance": 0.969569,
+      "best_peak_skin": 38.188,
+      "best_peak_core": 39.2805,
+      "upper_exceedance": 0.970232,
+      "upper_peak_skin": 38.2597,
+      "upper_peak_core": 39.3485,
+      "best_cooling": 1.70892,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.969568,
+      "map_max": 0.980992,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "mixed",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its lower bound (0.5); the optimum may lie outside the searched range",
+        "best beats the optical upper-bound corner: performance is non-monotone in at least one parameter",
+        "violation is an unweighted sum across constraints with different units: skin_exceedance_fraction <= 0.1 (+0.8696); peak_core_temperature_c <= 38.0 (+1.281)",
+        "map metric is non-monotone along ε; 'minimum requirement' readings assume monotonicity"
+      ]
+    },
+    {
+      "name": "H Dubai peak_core min, ε [0.05,0.99]",
+      "id": "d93fc6a6",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? peak_core_temperature_c minimize",
+      "bounds": "ε[0.05,0.99]",
+      "constraints": "—",
+      "verdict": "unconstrained",
+      "best_params": {
+        "infrared_emissivity": 0.05
+      },
+      "best_objective": 39.4968,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.4243,
+        "skin_exceedance_fraction": 0.971222,
+        "peak_core_temperature_c": 39.4968,
+        "mean_skin_cooling_c": 1.55468
+      },
+      "best_constraint_excess": {},
+      "best_at_bound": {
+        "infrared_emissivity": "lower"
+      },
+      "baseline_params": {
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "infrared_emissivity": 0.05
+      },
+      "evaluations": 23,
+      "generations": 1,
+      "seconds": 3.075,
+      "baseline_exceedance": 0.972095,
+      "baseline_peak_skin": 38.5221,
+      "baseline_peak_core": 39.591,
+      "best_exceedance": 0.971222,
+      "best_peak_skin": 38.4243,
+      "best_peak_core": 39.4968,
+      "upper_exceedance": 0.972127,
+      "upper_peak_skin": 38.5257,
+      "upper_peak_core": 39.5945,
+      "best_cooling": 1.55468,
+      "warnings": [
+        "best ε sits at its lower bound (0.05); the optimum may lie outside the searched range",
+        "best beats the optical upper-bound corner: performance is non-monotone in at least one parameter",
+        "best corner is ε=0.0500, not the upper bound"
+      ]
+    },
+    {
+      "name": "Exp-A Guangzhou peak_skin ≤ 33",
+      "id": "314795f8",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "mean_skin_temperature_c <= 33.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979824,
+        "infrared_emissivity": 0.988588
+      },
+      "best_objective": 0.931456,
+      "best_violation": 3.0220899999999986,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7789,
+        "skin_exceedance_fraction": 0.931456,
+        "peak_core_temperature_c": 37.9975,
+        "mean_skin_cooling_c": 1.53397
+      },
+      "best_constraint_excess": {
+        "mean_skin_temperature_c <= 33.0": {
+          "value": 36.02209,
+          "excess": 3.0220899999999986
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 3.1865299999999976,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 3.021630000000002,
+      "best_corner_params": null,
+      "evaluations": 500,
+      "generations": 18,
+      "seconds": 68.218,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931456,
+      "best_peak_skin": 36.7789,
+      "best_peak_core": 37.9975,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53397,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "id": "b25a5038",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979926,
+        "infrared_emissivity": 0.987599
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931447,
+          "excess": 0.831447
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9972,
+          "excess": -0.00280000000000058
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.203,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931447,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9972,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53411,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=1",
+      "id": "c1f10bd8",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 1,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979931,
+        "infrared_emissivity": 0.9842
+      },
+      "best_objective": 0.93145,
+      "best_violation": 0.83145,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.779,
+        "skin_exceedance_fraction": 0.93145,
+        "peak_core_temperature_c": 37.9975,
+        "mean_skin_cooling_c": 1.53389
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.93145,
+          "excess": 0.83145
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9975,
+          "excess": -0.0024999999999977263
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 462,
+      "generations": 16,
+      "seconds": 64.497,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.93145,
+      "best_peak_skin": 36.779,
+      "best_peak_core": 37.9975,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53389,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=2",
+      "id": "d8f0070d",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 2,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979987,
+        "infrared_emissivity": 0.985296
+      },
+      "best_objective": 0.931443,
+      "best_violation": 0.831443,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931443,
+        "peak_core_temperature_c": 37.9973,
+        "mean_skin_cooling_c": 1.53408
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931443,
+          "excess": 0.831443
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9973,
+          "excess": -0.00269999999999726
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 522,
+      "generations": 19,
+      "seconds": 70.077,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931443,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9973,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53408,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=3",
+      "id": "9f03fcea",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 3,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979935,
+        "infrared_emissivity": 0.989883
+      },
+      "best_objective": 0.931444,
+      "best_violation": 0.8314440000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.931444,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.53428
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931444,
+          "excess": 0.8314440000000001
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.997,
+          "excess": -0.0030000000000001137
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 520,
+      "generations": 19,
+      "seconds": 73.434,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931444,
+      "best_peak_skin": 36.7784,
+      "best_peak_core": 37.997,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53428,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=4",
+      "id": "e5877c0f",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 4,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979985,
+        "infrared_emissivity": 0.987318
+      },
+      "best_objective": 0.931442,
+      "best_violation": 0.831442,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7785,
+        "skin_exceedance_fraction": 0.931442,
+        "peak_core_temperature_c": 37.9971,
+        "mean_skin_cooling_c": 1.53421
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931442,
+          "excess": 0.831442
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9971,
+          "excess": -0.002899999999996794
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.227,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931442,
+      "best_peak_skin": 36.7785,
+      "best_peak_core": 37.9971,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53421,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=5",
+      "id": "98519f18",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 5,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979965,
+        "infrared_emissivity": 0.989419
+      },
+      "best_objective": 0.93144,
+      "best_violation": 0.8314400000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.93144,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.53431
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.93144,
+          "excess": 0.8314400000000001
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.997,
+          "excess": -0.0030000000000001137
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 501,
+      "generations": 18,
+      "seconds": 71.1,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.93144,
+      "best_peak_skin": 36.7784,
+      "best_peak_core": 37.997,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53431,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=10",
+      "id": "54d8da07",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979926,
+        "infrared_emissivity": 0.987599
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931447,
+          "excess": 0.831447
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9972,
+          "excess": -0.00280000000000058
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.705,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931447,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9972,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53411,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=20",
+      "id": "e73cb312",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 20,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979993,
+        "infrared_emissivity": 0.988499
+      },
+      "best_objective": 0.93144,
+      "best_violation": 0.8314400000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.93144,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.5343
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.93144,
+          "excess": 0.8314400000000001
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.997,
+          "excess": -0.0030000000000001137
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 1042,
+      "generations": 22,
+      "seconds": 142.371,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.93144,
+      "best_peak_skin": 36.7784,
+      "best_peak_core": 37.997,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.5343,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=5",
+      "id": "66f1f154",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 5,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979973,
+        "infrared_emissivity": 0.952376
+      },
+      "best_objective": 0.931483,
+      "best_violation": 0.831483,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7819,
+        "skin_exceedance_fraction": 0.931483,
+        "peak_core_temperature_c": 37.9998,
+        "mean_skin_cooling_c": 1.53179
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931483,
+          "excess": 0.831483
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9998,
+          "excess": -0.00019999999999953388
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 340,
+      "generations": 21,
+      "seconds": 45.3,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931483,
+      "best_peak_skin": 36.7819,
+      "best_peak_core": 37.9998,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53179,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Guangzhou August requirement search",
+      "id": "d2d9cca2",
+      "city": "guangzhou",
+      "months": [
+        9
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979985,
+        "infrared_emissivity": 0.986573
+      },
+      "best_objective": 0.803111,
+      "best_violation": 0.703111,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.6638,
+        "skin_exceedance_fraction": 0.803111,
+        "peak_core_temperature_c": 37.9028,
+        "mean_skin_cooling_c": 1.54986
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.803111,
+          "excess": 0.703111
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9028,
+          "excess": -0.09720000000000084
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 0.9301509999999984,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.702697,
+      "best_corner_params": null,
+      "evaluations": 481,
+      "generations": 17,
+      "seconds": 64.969,
+      "baseline_exceedance": 0.860251,
+      "baseline_peak_skin": 36.9582,
+      "baseline_peak_core": 38.1699,
+      "best_exceedance": 0.803111,
+      "best_peak_skin": 36.6638,
+      "best_peak_core": 37.9028,
+      "upper_exceedance": 0.802697,
+      "upper_peak_skin": 36.6635,
+      "upper_peak_core": 37.9025,
+      "best_cooling": 1.54986,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.802697,
+      "map_max": 0.94765,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Guangzhou August requirement search",
+      "id": "6300b97f",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979926,
+        "infrared_emissivity": 0.987599
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931447,
+          "excess": 0.831447
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9972,
+          "excess": -0.00280000000000058
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 67.048,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931447,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9972,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53411,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "id": "455d0022",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.826953,
+        "infrared_emissivity": 0.77513
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.5537,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0906,
+        "mean_skin_cooling_c": 1.49506
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0906,
+          "excess": -0.909399999999998
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": null,
+      "evaluations": 200,
+      "generations": 3,
+      "seconds": 27.69,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.5537,
+      "best_peak_core": 37.0906,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.49506,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）",
+      "id": "d72418b5",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.1,0.98] ε[0.05,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.05
+      },
+      "evaluations": 242,
+      "generations": 5,
+      "seconds": 31.319,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.628,
+      "min_y_at_max_x": 0.05,
+      "frontier": [
+        {
+          "y": 0.05,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.144,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.238,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.332,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.426,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.52,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.614,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.708,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.802,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.896,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.628
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.910188,
+      "plateau_fraction": 0.2809917355371901,
+      "feasible_cell_share": 0.35537190082644626,
+      "x_step": 0.088,
+      "y_step": 0.094,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.05: the true requirement lies below the searched range",
+        "28% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1",
+      "id": "dd922952",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 1,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.1,0.98] ε[0.55,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.55
+      },
+      "evaluations": 281,
+      "generations": 7,
+      "seconds": 36.664,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.628,
+      "min_y_at_max_x": 0.55,
+      "frontier": [
+        {
+          "y": 0.55,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.594,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.638,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.682,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.726,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.77,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.814,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.858,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.902,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.946,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.628
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.858187,
+      "plateau_fraction": 0.3305785123966942,
+      "feasible_cell_share": 0.4132231404958678,
+      "x_step": 0.088,
+      "y_step": 0.044,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.55: the true requirement lies below the searched range",
+        "33% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2",
+      "id": "f0897399",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 2,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 28.744,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3",
+      "id": "3ebaa2be",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 3,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 29.239,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4",
+      "id": "3d83bbf7",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 4,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 29.775,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5",
+      "id": "caffdcbc",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 5,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 202,
+      "generations": 3,
+      "seconds": 27.078,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L-W 拉薩權重 2:1 / 1:2",
+      "id": "8ba7a747",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.05,0.99] ε[0.1,0.98]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.99,
+        "infrared_emissivity": 0.98
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.99,
+        "infrared_emissivity": 0.1
+      },
+      "evaluations": 242,
+      "generations": 5,
+      "seconds": 31.655,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7243,
+      "upper_peak_core": 37.0362,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.614,
+      "min_y_at_max_x": 0.1,
+      "frontier": [
+        {
+          "y": 0.1,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.188,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.276,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.364,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.452,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.54,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.628,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.716,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.804,
+          "minimum_x": 0.614
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.614
+        },
+        {
+          "y": 0.98,
+          "minimum_x": 0.614
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.913965,
+      "plateau_fraction": 0.2727272727272727,
+      "feasible_cell_share": 0.35537190082644626,
+      "x_step": 0.094,
+      "y_step": 0.088,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.1: the true requirement lies below the searched range",
+        "27% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    }
+  ],
+  "seed_groups": [
+    {
+      "names": [
+        "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "Exp-D Guangzhou seed=1",
+        "Exp-D Guangzhou seed=2",
+        "Exp-D Guangzhou seed=3",
+        "Exp-D Guangzhou seed=4",
+        "Exp-D Guangzhou seed=5",
+        "Exp-E Guangzhou mult=10",
+        "Guangzhou August requirement search"
+      ],
+      "seeds": [
+        42,
+        1,
+        2,
+        3,
+        4,
+        5,
+        42,
+        42
+      ],
+      "n": 8,
+      "distinct_results": 6,
+      "params": {
+        "infrared_emissivity": "0.9874 ± 0.0019",
+        "solar_reflectance": "0.9799 ± 0.0000"
+      },
+      "objective": "0.9314 ± 0.0000",
+      "evaluations": "510.1250 ± 20.5387"
+    },
+    {
+      "names": [
+        "Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5"
+      ],
+      "seeds": [
+        42,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n": 5,
+      "distinct_results": 2,
+      "params": {
+        "infrared_emissivity": "0.9150 ± 0.0782",
+        "solar_reflectance": "0.8854 ± 0.0327"
+      },
+      "objective": "0.0000 ± 0.0000",
+      "evaluations": "213.6000 ± 11.5239"
+    }
+  ],
+  "duplicates": [
+    [
+      "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "Exp-E Guangzhou mult=10",
+      "Guangzhou August requirement search"
+    ]
+  ],
+  "curves": [
+    [
+      {
+        "name": "Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            2208.255085000003
+          ],
+          [
+            61,
+            2208.255085000003
+          ],
+          [
+            81,
+            2178.0948249999983
+          ],
+          [
+            101,
+            2161.7336640000003
+          ],
+          [
+            121,
+            2161.7336640000003
+          ],
+          [
+            141,
+            2161.7336640000003
+          ],
+          [
+            161,
+            2158.2036339999977
+          ],
+          [
+            181,
+            2157.297628000003
+          ],
+          [
+            201,
+            2154.674605000002
+          ],
+          [
+            221,
+            2154.572602999999
+          ],
+          [
+            241,
+            2154.572602999999
+          ],
+          [
+            261,
+            2154.572602999999
+          ],
+          [
+            281,
+            2152.5525829999965
+          ],
+          [
+            300,
+            2152.5525829999965
+          ],
+          [
+            320,
+            2152.2495800000006
+          ],
+          [
+            340,
+            2152.2495800000006
+          ],
+          [
+            360,
+            2152.2495800000006
+          ],
+          [
+            380,
+            2151.9475779999984
+          ],
+          [
+            400,
+            2151.8465770000016
+          ],
+          [
+            420,
+            2151.3405709999993
+          ],
+          [
+            440,
+            2151.3405709999993
+          ],
+          [
+            460,
+            2151.3405709999993
+          ],
+          [
+            480,
+            2151.140571
+          ],
+          [
+            500,
+            2151.0385690000035
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "H Dubai peak_core min, ε [0.05,0.99]",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            39.4982
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-A Guangzhou peak_skin ≤ 33",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            3083.594161999997
+          ],
+          [
+            61,
+            3044.3620770000007
+          ],
+          [
+            80,
+            3044.3620770000007
+          ],
+          [
+            100,
+            3027.921551999998
+          ],
+          [
+            119,
+            3027.921551999998
+          ],
+          [
+            139,
+            3027.921551999998
+          ],
+          [
+            159,
+            3027.921551999998
+          ],
+          [
+            179,
+            3027.921551999998
+          ],
+          [
+            199,
+            3027.921551999998
+          ],
+          [
+            219,
+            3027.921551999998
+          ],
+          [
+            239,
+            3027.5515950000013
+          ],
+          [
+            259,
+            3024.7315060000014
+          ],
+          [
+            279,
+            3024.7315060000014
+          ],
+          [
+            299,
+            3024.7315060000014
+          ],
+          [
+            319,
+            3024.7315060000014
+          ],
+          [
+            339,
+            3024.5815050000033
+          ],
+          [
+            359,
+            3023.0214559999986
+          ],
+          [
+            379,
+            3023.0214559999986
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            885.1262929999987
+          ],
+          [
+            61,
+            855.9562239999967
+          ],
+          [
+            81,
+            851.8961639999987
+          ],
+          [
+            101,
+            845.8408090000015
+          ],
+          [
+            121,
+            843.4737420000032
+          ],
+          [
+            141,
+            837.6216900000026
+          ],
+          [
+            161,
+            837.6216900000026
+          ],
+          [
+            181,
+            832.3944630000001
+          ],
+          [
+            201,
+            832.3944630000001
+          ],
+          [
+            221,
+            832.3944630000001
+          ],
+          [
+            241,
+            832.3944630000001
+          ],
+          [
+            261,
+            832.3944630000001
+          ],
+          [
+            281,
+            832.3944630000001
+          ],
+          [
+            301,
+            832.387456
+          ],
+          [
+            321,
+            832.3814500000001
+          ],
+          [
+            341,
+            832.3814500000001
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            885.0625300000006
+          ],
+          [
+            61,
+            866.7189869999995
+          ],
+          [
+            81,
+            855.6209890000005
+          ],
+          [
+            101,
+            855.6209890000005
+          ],
+          [
+            121,
+            855.6209890000005
+          ],
+          [
+            141,
+            855.6209890000005
+          ],
+          [
+            161,
+            855.6209890000005
+          ],
+          [
+            181,
+            843.3087769999967
+          ],
+          [
+            201,
+            839.2487169999989
+          ],
+          [
+            221,
+            839.0046729999993
+          ],
+          [
+            241,
+            832.387456
+          ],
+          [
+            261,
+            832.387456
+          ],
+          [
+            281,
+            832.387456
+          ],
+          [
+            301,
+            832.387456
+          ],
+          [
+            321,
+            832.387456
+          ],
+          [
+            341,
+            832.387456
+          ],
+          [
+            361,
+            832.387456
+          ],
+          [
+            381,
+            832.3854540000001
+          ],
+          [
+            401,
+            832.374443
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            847.444713000001
+          ],
+          [
+            61,
+            847.444713000001
+          ],
+          [
+            81,
+            847.444713000001
+          ],
+          [
+            101,
+            836.2016699999988
+          ],
+          [
+            121,
+            836.2016699999988
+          ],
+          [
+            141,
+            836.2016699999988
+          ],
+          [
+            161,
+            836.2016699999988
+          ],
+          [
+            181,
+            834.713582000002
+          ],
+          [
+            201,
+            834.713582000002
+          ],
+          [
+            221,
+            834.713582000002
+          ],
+          [
+            241,
+            832.4254940000001
+          ],
+          [
+            261,
+            832.4254940000001
+          ],
+          [
+            281,
+            832.413482
+          ],
+          [
+            301,
+            832.413482
+          ],
+          [
+            321,
+            832.404473
+          ],
+          [
+            341,
+            832.397466
+          ],
+          [
+            361,
+            832.3894580000001
+          ],
+          [
+            380,
+            832.3754440000001
+          ],
+          [
+            399,
+            832.3754440000001
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            880.2294969999975
+          ],
+          [
+            61,
+            880.2294969999975
+          ],
+          [
+            81,
+            880.2294969999975
+          ],
+          [
+            101,
+            837.4636319999993
+          ],
+          [
+            121,
+            837.4376059999993
+          ],
+          [
+            141,
+            837.4376059999993
+          ],
+          [
+            161,
+            837.4376059999993
+          ],
+          [
+            181,
+            834.4175859999992
+          ],
+          [
+            201,
+            833.0965649999986
+          ],
+          [
+            221,
+            832.5725410000033
+          ],
+          [
+            240,
+            832.387456
+          ],
+          [
+            259,
+            832.387456
+          ],
+          [
+            279,
+            832.387456
+          ],
+          [
+            298,
+            832.387456
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.3854540000001
+          ],
+          [
+            378,
+            832.3814500000001
+          ],
+          [
+            398,
+            832.373442
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            40,
+            896.7895560000005
+          ],
+          [
+            60,
+            847.1709389999987
+          ],
+          [
+            80,
+            846.0388070000012
+          ],
+          [
+            100,
+            845.3557240000024
+          ],
+          [
+            120,
+            832.465534
+          ],
+          [
+            140,
+            832.465534
+          ],
+          [
+            160,
+            832.465534
+          ],
+          [
+            180,
+            832.413482
+          ],
+          [
+            200,
+            832.413482
+          ],
+          [
+            220,
+            832.3854540000001
+          ],
+          [
+            240,
+            832.3854540000001
+          ],
+          [
+            260,
+            832.3854540000001
+          ],
+          [
+            280,
+            832.376445
+          ],
+          [
+            300,
+            832.37144
+          ],
+          [
+            320,
+            832.37144
+          ],
+          [
+            340,
+            832.37144
+          ],
+          [
+            360,
+            832.37144
+          ],
+          [
+            380,
+            832.37144
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=10",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=20",
+        "multiplier": 20,
+        "seed": 42,
+        "curve": [
+          [
+            81,
+            856.0663339999966
+          ],
+          [
+            121,
+            856.0663339999966
+          ],
+          [
+            161,
+            851.7379060000022
+          ],
+          [
+            201,
+            851.7379060000022
+          ],
+          [
+            241,
+            835.100569000001
+          ],
+          [
+            281,
+            834.3505189999992
+          ],
+          [
+            321,
+            834.3505189999992
+          ],
+          [
+            361,
+            832.4575259999999
+          ],
+          [
+            401,
+            832.4575259999999
+          ],
+          [
+            441,
+            832.4575259999999
+          ],
+          [
+            481,
+            832.4575259999999
+          ],
+          [
+            521,
+            832.3944630000001
+          ],
+          [
+            561,
+            832.3944630000001
+          ],
+          [
+            601,
+            832.3944630000001
+          ],
+          [
+            641,
+            832.3854540000001
+          ],
+          [
+            681,
+            832.37144
+          ],
+          [
+            721,
+            832.37144
+          ],
+          [
+            761,
+            832.37144
+          ],
+          [
+            801,
+            832.37144
+          ],
+          [
+            841,
+            832.37144
+          ],
+          [
+            881,
+            832.37144
+          ],
+          [
+            921,
+            832.37144
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=5",
+        "multiplier": 5,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            889.8420090000011
+          ],
+          [
+            31,
+            877.0468140000022
+          ],
+          [
+            40,
+            877.0468140000022
+          ],
+          [
+            50,
+            877.0468140000022
+          ],
+          [
+            60,
+            877.0468140000022
+          ],
+          [
+            70,
+            877.0468140000022
+          ],
+          [
+            80,
+            877.0468140000022
+          ],
+          [
+            90,
+            834.9655339999978
+          ],
+          [
+            100,
+            834.9655339999978
+          ],
+          [
+            110,
+            833.3325010000016
+          ],
+          [
+            120,
+            833.3325010000016
+          ],
+          [
+            130,
+            833.3325010000016
+          ],
+          [
+            140,
+            833.3325010000016
+          ],
+          [
+            150,
+            833.3325010000016
+          ],
+          [
+            159,
+            833.3325010000016
+          ],
+          [
+            169,
+            833.3325010000016
+          ],
+          [
+            179,
+            833.3325010000016
+          ],
+          [
+            189,
+            832.419488
+          ],
+          [
+            199,
+            832.4144829999999
+          ],
+          [
+            209,
+            832.4144829999999
+          ],
+          [
+            219,
+            832.4144829999999
+          ]
+        ]
+      },
+      {
+        "name": "Guangzhou August requirement search",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Guangzhou August requirement search",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            734.067234
+          ],
+          [
+            61,
+            728.749922
+          ],
+          [
+            81,
+            720.40959
+          ],
+          [
+            101,
+            706.588783
+          ],
+          [
+            121,
+            706.588783
+          ],
+          [
+            141,
+            706.588783
+          ],
+          [
+            161,
+            706.588783
+          ],
+          [
+            181,
+            706.588783
+          ],
+          [
+            200,
+            706.588783
+          ],
+          [
+            220,
+            704.742939
+          ],
+          [
+            240,
+            704.742939
+          ],
+          [
+            260,
+            704.4246210000001
+          ],
+          [
+            280,
+            704.4246210000001
+          ],
+          [
+            300,
+            704.312509
+          ],
+          [
+            320,
+            704.214411
+          ],
+          [
+            340,
+            704.151348
+          ],
+          [
+            360,
+            703.9141109999999
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            40,
+            0.0
+          ],
+          [
+            59,
+            0.0
+          ],
+          [
+            79,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ],
+          [
+            121,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            100,
+            0.0
+          ],
+          [
+            120,
+            0.0
+          ],
+          [
+            140,
+            0.0
+          ],
+          [
+            160,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L-W 拉薩權重 2:1 / 1:2",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ],
+          [
+            121,
+            0.0
+          ]
+        ]
+      }
+    ]
+  ],
+  "skipped": []
+}

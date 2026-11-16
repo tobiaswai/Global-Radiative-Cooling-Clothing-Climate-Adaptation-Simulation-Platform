@@ -1,0 +1,1228 @@
+ 
+ -------------- celery@p2104180 v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-12 15:19:55
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         radiative_cooling_worker:0x292731ea540
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/1
+- *** --- * --- .> concurrency: 1 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> default          exchange=default(direct) key=default
+                .> global_large     exchange=default(direct) key=default
+                .> global_standard  exchange=default(direct) key=default
+                .> optimization     exchange=default(direct) key=default
+
+[tasks]
+  . global_batch.reap_expired_leases
+  . global_batch.run_city
+  . optimization.reap_expired_leases
+  . optimization.run
+  . simulation.reap_expired_leases
+  . simulation.run_weather
+
+[2026-11-12 15:19:55,750: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-12 15:19:55,756: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-12 15:19:56,789: INFO/MainProcess] mingle: all alone
+[2026-11-12 15:19:56,818: INFO/MainProcess] celery@p2104180 ready.
+[2026-11-12 15:21:00,656: INFO/MainProcess] Task optimization.reap_expired_leases[511c7424-21cf-437e-8398-c8efdf291ea2] received
+[2026-11-12 15:21:00,723: INFO/MainProcess] Task optimization.reap_expired_leases[511c7424-21cf-437e-8398-c8efdf291ea2] succeeded in 0.06299999999828287s: {'requeued': [], 'failed': []}
+[2026-11-12 15:21:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[75cba290-9cc5-446d-9f1f-fdee51834d3b] received
+[2026-11-12 15:21:00,738: INFO/MainProcess] Task global_batch.reap_expired_leases[75cba290-9cc5-446d-9f1f-fdee51834d3b] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 15:21:00,740: INFO/MainProcess] Task simulation.reap_expired_leases[5ff4198e-ac0f-48a7-baa3-141a4fafad3b] received
+[2026-11-12 15:21:00,749: INFO/MainProcess] Task simulation.reap_expired_leases[5ff4198e-ac0f-48a7-baa3-141a4fafad3b] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:22:00,611: INFO/MainProcess] Task optimization.reap_expired_leases[1eae4f7c-796a-4732-a437-27af108f6e30] received
+[2026-11-12 15:22:00,617: INFO/MainProcess] Task optimization.reap_expired_leases[1eae4f7c-796a-4732-a437-27af108f6e30] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:22:00,657: INFO/MainProcess] Task global_batch.reap_expired_leases[8fd09039-1359-4b3b-b732-7f70107993f9] received
+[2026-11-12 15:22:00,662: INFO/MainProcess] Task global_batch.reap_expired_leases[8fd09039-1359-4b3b-b732-7f70107993f9] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:22:00,664: INFO/MainProcess] Task simulation.reap_expired_leases[0342fcb1-fa9b-479f-815d-910986fa8fb6] received
+[2026-11-12 15:22:00,670: INFO/MainProcess] Task simulation.reap_expired_leases[0342fcb1-fa9b-479f-815d-910986fa8fb6] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:23:00,612: INFO/MainProcess] Task optimization.reap_expired_leases[df0879f0-6d1f-4f9c-9181-0c6c7697f9a0] received
+[2026-11-12 15:23:00,618: INFO/MainProcess] Task optimization.reap_expired_leases[df0879f0-6d1f-4f9c-9181-0c6c7697f9a0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:23:00,656: INFO/MainProcess] Task global_batch.reap_expired_leases[3475583e-72c8-4771-967d-611b16623bea] received
+[2026-11-12 15:23:00,665: INFO/MainProcess] Task global_batch.reap_expired_leases[3475583e-72c8-4771-967d-611b16623bea] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:23:00,666: INFO/MainProcess] Task simulation.reap_expired_leases[c5ba91ca-ba10-4515-be55-d4a10d6b0479] received
+[2026-11-12 15:23:00,672: INFO/MainProcess] Task simulation.reap_expired_leases[c5ba91ca-ba10-4515-be55-d4a10d6b0479] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:24:00,613: INFO/MainProcess] Task optimization.reap_expired_leases[0a1d3e20-f15a-4f04-b4cd-f6f7e5690ab4] received
+[2026-11-12 15:24:00,620: INFO/MainProcess] Task optimization.reap_expired_leases[0a1d3e20-f15a-4f04-b4cd-f6f7e5690ab4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:24:00,658: INFO/MainProcess] Task global_batch.reap_expired_leases[5141d6d4-fd55-43e8-99ea-8d89dfa5a503] received
+[2026-11-12 15:24:00,662: INFO/MainProcess] Task global_batch.reap_expired_leases[5141d6d4-fd55-43e8-99ea-8d89dfa5a503] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:24:00,664: INFO/MainProcess] Task simulation.reap_expired_leases[3a9d08d7-be48-4099-aca6-7b58b2dfa8f5] received
+[2026-11-12 15:24:00,668: INFO/MainProcess] Task simulation.reap_expired_leases[3a9d08d7-be48-4099-aca6-7b58b2dfa8f5] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:25:00,613: INFO/MainProcess] Task optimization.reap_expired_leases[82d20158-cf08-460f-9727-1e1a2893d88a] received
+[2026-11-12 15:25:00,620: INFO/MainProcess] Task optimization.reap_expired_leases[82d20158-cf08-460f-9727-1e1a2893d88a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:25:00,659: INFO/MainProcess] Task global_batch.reap_expired_leases[3f43d35d-9f4f-4ea7-803e-3cd37a1570a0] received
+[2026-11-12 15:25:00,665: INFO/MainProcess] Task global_batch.reap_expired_leases[3f43d35d-9f4f-4ea7-803e-3cd37a1570a0] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:25:00,668: INFO/MainProcess] Task simulation.reap_expired_leases[99a2559f-b50e-45e6-b0f4-c1b284bf2c39] received
+[2026-11-12 15:25:00,676: INFO/MainProcess] Task simulation.reap_expired_leases[99a2559f-b50e-45e6-b0f4-c1b284bf2c39] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:26:00,613: INFO/MainProcess] Task optimization.reap_expired_leases[c7626a42-8cfc-496e-b71b-1b1beb0ac41f] received
+[2026-11-12 15:26:00,625: INFO/MainProcess] Task optimization.reap_expired_leases[c7626a42-8cfc-496e-b71b-1b1beb0ac41f] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:26:00,660: INFO/MainProcess] Task global_batch.reap_expired_leases[83c29eab-7c21-431e-a845-91031f1ac1cf] received
+[2026-11-12 15:26:00,665: INFO/MainProcess] Task global_batch.reap_expired_leases[83c29eab-7c21-431e-a845-91031f1ac1cf] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:26:00,668: INFO/MainProcess] Task simulation.reap_expired_leases[4a7ffb17-f48c-426a-9128-29e3cdb82a42] received
+[2026-11-12 15:26:00,674: INFO/MainProcess] Task simulation.reap_expired_leases[4a7ffb17-f48c-426a-9128-29e3cdb82a42] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:27:00,614: INFO/MainProcess] Task optimization.reap_expired_leases[e1fd7d75-faf0-493f-b99d-dbfc79fe30cd] received
+[2026-11-12 15:27:00,620: INFO/MainProcess] Task optimization.reap_expired_leases[e1fd7d75-faf0-493f-b99d-dbfc79fe30cd] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:27:00,678: INFO/MainProcess] Task global_batch.reap_expired_leases[8a60893f-16f5-49da-b077-2695b577e257] received
+[2026-11-12 15:27:00,682: INFO/MainProcess] Task global_batch.reap_expired_leases[8a60893f-16f5-49da-b077-2695b577e257] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:27:00,684: INFO/MainProcess] Task simulation.reap_expired_leases[86d3ca96-99f7-4c33-9994-952d5fdcaa36] received
+[2026-11-12 15:27:00,690: INFO/MainProcess] Task simulation.reap_expired_leases[86d3ca96-99f7-4c33-9994-952d5fdcaa36] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:28:00,615: INFO/MainProcess] Task optimization.reap_expired_leases[660a7d4e-1cf9-4658-9d18-d1cdb49834cf] received
+[2026-11-12 15:28:00,622: INFO/MainProcess] Task optimization.reap_expired_leases[660a7d4e-1cf9-4658-9d18-d1cdb49834cf] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:28:00,679: INFO/MainProcess] Task global_batch.reap_expired_leases[fddeb0e8-32bd-4dd0-bf35-f5421903d86d] received
+[2026-11-12 15:28:00,686: INFO/MainProcess] Task global_batch.reap_expired_leases[fddeb0e8-32bd-4dd0-bf35-f5421903d86d] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 15:28:00,688: INFO/MainProcess] Task simulation.reap_expired_leases[f080d8d4-c801-469c-ab51-53c0b57e7930] received
+[2026-11-12 15:28:00,693: INFO/MainProcess] Task simulation.reap_expired_leases[f080d8d4-c801-469c-ab51-53c0b57e7930] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:29:00,614: INFO/MainProcess] Task optimization.reap_expired_leases[4511f4a9-baa6-474e-aef0-13a1c0a91618] received
+[2026-11-12 15:29:00,619: INFO/MainProcess] Task optimization.reap_expired_leases[4511f4a9-baa6-474e-aef0-13a1c0a91618] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:29:00,678: INFO/MainProcess] Task global_batch.reap_expired_leases[04419fa0-c7a8-4d18-aa48-080111666fb2] received
+[2026-11-12 15:29:00,684: INFO/MainProcess] Task global_batch.reap_expired_leases[04419fa0-c7a8-4d18-aa48-080111666fb2] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 15:29:00,702: INFO/MainProcess] Task simulation.reap_expired_leases[43a666ab-194b-45bd-ab8a-afbc95da5795] received
+[2026-11-12 15:29:00,707: INFO/MainProcess] Task simulation.reap_expired_leases[43a666ab-194b-45bd-ab8a-afbc95da5795] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:30:00,615: INFO/MainProcess] Task optimization.reap_expired_leases[3e93d9ad-fc05-499c-94e2-1e6833c1410d] received
+[2026-11-12 15:30:00,622: INFO/MainProcess] Task optimization.reap_expired_leases[3e93d9ad-fc05-499c-94e2-1e6833c1410d] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:30:00,684: INFO/MainProcess] Task global_batch.reap_expired_leases[d7043f8c-d2d0-4634-afa1-466316da3be8] received
+[2026-11-12 15:30:00,692: INFO/MainProcess] Task global_batch.reap_expired_leases[d7043f8c-d2d0-4634-afa1-466316da3be8] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:30:00,694: INFO/MainProcess] Task simulation.reap_expired_leases[66bdcb4e-0f0f-42ac-a352-14ee96e6ed48] received
+[2026-11-12 15:30:00,699: INFO/MainProcess] Task simulation.reap_expired_leases[66bdcb4e-0f0f-42ac-a352-14ee96e6ed48] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:31:00,615: INFO/MainProcess] Task optimization.reap_expired_leases[f60293ff-065d-4477-b71d-ebd48f2c21f7] received
+[2026-11-12 15:31:00,621: INFO/MainProcess] Task optimization.reap_expired_leases[f60293ff-065d-4477-b71d-ebd48f2c21f7] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:31:00,684: INFO/MainProcess] Task global_batch.reap_expired_leases[a3dafa0c-33d3-4c9d-a75d-5d8e6d5e2d03] received
+[2026-11-12 15:31:00,688: INFO/MainProcess] Task global_batch.reap_expired_leases[a3dafa0c-33d3-4c9d-a75d-5d8e6d5e2d03] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:31:00,690: INFO/MainProcess] Task simulation.reap_expired_leases[588ba230-832d-4185-91dd-388f9105b44f] received
+[2026-11-12 15:31:00,696: INFO/MainProcess] Task simulation.reap_expired_leases[588ba230-832d-4185-91dd-388f9105b44f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:32:00,620: INFO/MainProcess] Task optimization.reap_expired_leases[19edb5d2-6f0a-4a7c-a720-51c2b44f3a69] received
+[2026-11-12 15:32:00,628: INFO/MainProcess] Task optimization.reap_expired_leases[19edb5d2-6f0a-4a7c-a720-51c2b44f3a69] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:32:00,685: INFO/MainProcess] Task global_batch.reap_expired_leases[ffef1667-c54f-4f81-957f-dc9782f4c64b] received
+[2026-11-12 15:32:00,692: INFO/MainProcess] Task global_batch.reap_expired_leases[ffef1667-c54f-4f81-957f-dc9782f4c64b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:32:00,694: INFO/MainProcess] Task simulation.reap_expired_leases[a610add8-ba89-4643-af95-60f91701b437] received
+[2026-11-12 15:32:00,702: INFO/MainProcess] Task simulation.reap_expired_leases[a610add8-ba89-4643-af95-60f91701b437] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:33:00,619: INFO/MainProcess] Task optimization.reap_expired_leases[b8fff17a-9991-4cbb-a6e9-a651b157bebc] received
+[2026-11-12 15:33:00,625: INFO/MainProcess] Task optimization.reap_expired_leases[b8fff17a-9991-4cbb-a6e9-a651b157bebc] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:33:00,684: INFO/MainProcess] Task global_batch.reap_expired_leases[75043da2-a43e-4f25-90cd-59176131a53b] received
+[2026-11-12 15:33:00,693: INFO/MainProcess] Task global_batch.reap_expired_leases[75043da2-a43e-4f25-90cd-59176131a53b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:33:00,696: INFO/MainProcess] Task simulation.reap_expired_leases[dc64fc94-6e7a-4038-9952-4c95aa812147] received
+[2026-11-12 15:33:00,701: INFO/MainProcess] Task simulation.reap_expired_leases[dc64fc94-6e7a-4038-9952-4c95aa812147] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:34:00,620: INFO/MainProcess] Task optimization.reap_expired_leases[a5cd8ee4-5674-4434-a397-7505adda4b3a] received
+[2026-11-12 15:34:00,625: INFO/MainProcess] Task optimization.reap_expired_leases[a5cd8ee4-5674-4434-a397-7505adda4b3a] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:34:00,685: INFO/MainProcess] Task global_batch.reap_expired_leases[55c31204-2a68-409c-b5d7-d11b2f331a8f] received
+[2026-11-12 15:34:00,691: INFO/MainProcess] Task global_batch.reap_expired_leases[55c31204-2a68-409c-b5d7-d11b2f331a8f] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:34:00,697: INFO/MainProcess] Task simulation.reap_expired_leases[1541a72c-f3dc-4f8a-b3b8-f3f09ff3cc16] received
+[2026-11-12 15:34:00,704: INFO/MainProcess] Task simulation.reap_expired_leases[1541a72c-f3dc-4f8a-b3b8-f3f09ff3cc16] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:35:00,619: INFO/MainProcess] Task optimization.reap_expired_leases[dd0f2f80-2e36-462d-a3c1-f708f3ad84f9] received
+[2026-11-12 15:35:00,624: INFO/MainProcess] Task optimization.reap_expired_leases[dd0f2f80-2e36-462d-a3c1-f708f3ad84f9] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:35:00,687: INFO/MainProcess] Task global_batch.reap_expired_leases[24a2f820-0604-4e24-993a-0e5f5feef5b2] received
+[2026-11-12 15:35:00,693: INFO/MainProcess] Task global_batch.reap_expired_leases[24a2f820-0604-4e24-993a-0e5f5feef5b2] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:35:00,698: INFO/MainProcess] Task simulation.reap_expired_leases[3bbe64e7-1264-441b-baea-5258aec9a67e] received
+[2026-11-12 15:35:00,704: INFO/MainProcess] Task simulation.reap_expired_leases[3bbe64e7-1264-441b-baea-5258aec9a67e] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:36:00,620: INFO/MainProcess] Task optimization.reap_expired_leases[5059d305-d2f2-42c3-b16d-d8f4a4278ae8] received
+[2026-11-12 15:36:00,626: INFO/MainProcess] Task optimization.reap_expired_leases[5059d305-d2f2-42c3-b16d-d8f4a4278ae8] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:36:00,686: INFO/MainProcess] Task global_batch.reap_expired_leases[18dec462-af4d-4ba8-bff9-9366357cb7ea] received
+[2026-11-12 15:36:00,691: INFO/MainProcess] Task global_batch.reap_expired_leases[18dec462-af4d-4ba8-bff9-9366357cb7ea] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:36:00,698: INFO/MainProcess] Task simulation.reap_expired_leases[9aaa8d90-5560-442d-b9c0-0226c273ac5b] received
+[2026-11-12 15:36:00,702: INFO/MainProcess] Task simulation.reap_expired_leases[9aaa8d90-5560-442d-b9c0-0226c273ac5b] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:37:00,626: INFO/MainProcess] Task optimization.reap_expired_leases[d8a8db56-adaa-486f-a94f-da5b76d47e18] received
+[2026-11-12 15:37:00,636: INFO/MainProcess] Task optimization.reap_expired_leases[d8a8db56-adaa-486f-a94f-da5b76d47e18] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:37:00,687: INFO/MainProcess] Task global_batch.reap_expired_leases[d9fff12f-841e-4c6b-b935-c910a9d54d62] received
+[2026-11-12 15:37:00,697: INFO/MainProcess] Task global_batch.reap_expired_leases[d9fff12f-841e-4c6b-b935-c910a9d54d62] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:37:00,702: INFO/MainProcess] Task simulation.reap_expired_leases[7425e6c6-092d-41cf-b4e1-bd787ec92e18] received
+[2026-11-12 15:37:00,716: INFO/MainProcess] Task simulation.reap_expired_leases[7425e6c6-092d-41cf-b4e1-bd787ec92e18] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:38:00,623: INFO/MainProcess] Task optimization.reap_expired_leases[0a235ddb-f6d0-4589-8796-e9749d9b3315] received
+[2026-11-12 15:38:00,631: INFO/MainProcess] Task optimization.reap_expired_leases[0a235ddb-f6d0-4589-8796-e9749d9b3315] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:38:00,687: INFO/MainProcess] Task global_batch.reap_expired_leases[b3b0d304-9db7-4d7a-8a46-796a8cb9d893] received
+[2026-11-12 15:38:00,694: INFO/MainProcess] Task global_batch.reap_expired_leases[b3b0d304-9db7-4d7a-8a46-796a8cb9d893] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:38:00,698: INFO/MainProcess] Task simulation.reap_expired_leases[52baea8f-08c6-4092-9c29-66972e3ec693] received
+[2026-11-12 15:38:00,706: INFO/MainProcess] Task simulation.reap_expired_leases[52baea8f-08c6-4092-9c29-66972e3ec693] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:39:00,625: INFO/MainProcess] Task optimization.reap_expired_leases[3b30fca3-a3a0-4957-b701-2bb1c3aeb983] received
+[2026-11-12 15:39:00,633: INFO/MainProcess] Task optimization.reap_expired_leases[3b30fca3-a3a0-4957-b701-2bb1c3aeb983] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:39:00,688: INFO/MainProcess] Task global_batch.reap_expired_leases[9edf98d3-9f0a-4b52-879e-38ef53d8c0d7] received
+[2026-11-12 15:39:00,695: INFO/MainProcess] Task global_batch.reap_expired_leases[9edf98d3-9f0a-4b52-879e-38ef53d8c0d7] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:39:00,700: INFO/MainProcess] Task simulation.reap_expired_leases[cc157154-02b2-4dee-bb2f-3f72eaa625a0] received
+[2026-11-12 15:39:00,709: INFO/MainProcess] Task simulation.reap_expired_leases[cc157154-02b2-4dee-bb2f-3f72eaa625a0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:40:00,626: INFO/MainProcess] Task optimization.reap_expired_leases[7254b1ae-e981-4d2d-a77c-531ade301d73] received
+[2026-11-12 15:40:00,634: INFO/MainProcess] Task optimization.reap_expired_leases[7254b1ae-e981-4d2d-a77c-531ade301d73] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:40:00,690: INFO/MainProcess] Task global_batch.reap_expired_leases[095f25a9-5873-487c-8a87-5bc9e14328d5] received
+[2026-11-12 15:40:00,696: INFO/MainProcess] Task global_batch.reap_expired_leases[095f25a9-5873-487c-8a87-5bc9e14328d5] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:40:00,700: INFO/MainProcess] Task simulation.reap_expired_leases[4dd3613c-df2e-4203-bb56-e59c9648535f] received
+[2026-11-12 15:40:00,706: INFO/MainProcess] Task simulation.reap_expired_leases[4dd3613c-df2e-4203-bb56-e59c9648535f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:41:00,625: INFO/MainProcess] Task optimization.reap_expired_leases[61d72e20-da31-4860-a740-aadfb18b5fd8] received
+[2026-11-12 15:41:00,630: INFO/MainProcess] Task optimization.reap_expired_leases[61d72e20-da31-4860-a740-aadfb18b5fd8] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:41:00,706: INFO/MainProcess] Task global_batch.reap_expired_leases[349df7f6-8184-4b40-9bc8-0e08c91e0511] received
+[2026-11-12 15:41:00,713: INFO/MainProcess] Task global_batch.reap_expired_leases[349df7f6-8184-4b40-9bc8-0e08c91e0511] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:41:00,716: INFO/MainProcess] Task simulation.reap_expired_leases[49b60019-4d54-4b7a-8868-40dbca65121d] received
+[2026-11-12 15:41:00,722: INFO/MainProcess] Task simulation.reap_expired_leases[49b60019-4d54-4b7a-8868-40dbca65121d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:42:00,625: INFO/MainProcess] Task optimization.reap_expired_leases[22585192-6117-42e5-b1b8-38c89106f1d9] received
+[2026-11-12 15:42:00,633: INFO/MainProcess] Task optimization.reap_expired_leases[22585192-6117-42e5-b1b8-38c89106f1d9] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:42:00,689: INFO/MainProcess] Task global_batch.reap_expired_leases[1d01546b-ecd9-485d-8ae4-799bd39c6530] received
+[2026-11-12 15:42:00,695: INFO/MainProcess] Task global_batch.reap_expired_leases[1d01546b-ecd9-485d-8ae4-799bd39c6530] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:42:00,708: INFO/MainProcess] Task simulation.reap_expired_leases[ccaf2936-a58f-4e39-b4b7-c6617a821cbe] received
+[2026-11-12 15:42:00,713: INFO/MainProcess] Task simulation.reap_expired_leases[ccaf2936-a58f-4e39-b4b7-c6617a821cbe] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:43:00,626: INFO/MainProcess] Task optimization.reap_expired_leases[d7330ee6-22d8-48ce-87e3-49d4edb0f395] received
+[2026-11-12 15:43:00,634: INFO/MainProcess] Task optimization.reap_expired_leases[d7330ee6-22d8-48ce-87e3-49d4edb0f395] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:43:00,694: INFO/MainProcess] Task global_batch.reap_expired_leases[e12d5e43-b376-48cc-b836-fdf97fabf935] received
+[2026-11-12 15:43:01,011: INFO/MainProcess] Task global_batch.reap_expired_leases[e12d5e43-b376-48cc-b836-fdf97fabf935] succeeded in 0.3279999999977008s: {'requeued': [], 'batches': []}
+[2026-11-12 15:43:01,015: INFO/MainProcess] Task simulation.reap_expired_leases[66f6beba-cf4e-4fad-8b9f-2390692993fc] received
+[2026-11-12 15:43:01,022: INFO/MainProcess] Task simulation.reap_expired_leases[66f6beba-cf4e-4fad-8b9f-2390692993fc] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:44:00,627: INFO/MainProcess] Task optimization.reap_expired_leases[3b29038a-0d28-4bd2-ac23-d22a79143784] received
+[2026-11-12 15:44:00,632: INFO/MainProcess] Task optimization.reap_expired_leases[3b29038a-0d28-4bd2-ac23-d22a79143784] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:44:00,694: INFO/MainProcess] Task global_batch.reap_expired_leases[458dd794-9cd9-45e7-bc54-22ace96e9867] received
+[2026-11-12 15:44:00,701: INFO/MainProcess] Task global_batch.reap_expired_leases[458dd794-9cd9-45e7-bc54-22ace96e9867] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:44:00,709: INFO/MainProcess] Task simulation.reap_expired_leases[98c4733f-6aa0-40e2-a9d0-b9421a833790] received
+[2026-11-12 15:44:00,716: INFO/MainProcess] Task simulation.reap_expired_leases[98c4733f-6aa0-40e2-a9d0-b9421a833790] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:45:00,628: INFO/MainProcess] Task optimization.reap_expired_leases[96efbaae-76bc-4b52-b7c6-3e16912eda83] received
+[2026-11-12 15:45:00,636: INFO/MainProcess] Task optimization.reap_expired_leases[96efbaae-76bc-4b52-b7c6-3e16912eda83] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:45:00,694: INFO/MainProcess] Task global_batch.reap_expired_leases[a29c86a9-05c0-40c1-b169-05cf8eda24a8] received
+[2026-11-12 15:45:00,701: INFO/MainProcess] Task global_batch.reap_expired_leases[a29c86a9-05c0-40c1-b169-05cf8eda24a8] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:45:00,708: INFO/MainProcess] Task simulation.reap_expired_leases[cc5d1804-ba94-4d0e-9a53-9d79064274b2] received
+[2026-11-12 15:45:00,714: INFO/MainProcess] Task simulation.reap_expired_leases[cc5d1804-ba94-4d0e-9a53-9d79064274b2] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:46:00,629: INFO/MainProcess] Task optimization.reap_expired_leases[eea1dd83-4fd9-44a1-9a1b-8516320cf720] received
+[2026-11-12 15:46:00,634: INFO/MainProcess] Task optimization.reap_expired_leases[eea1dd83-4fd9-44a1-9a1b-8516320cf720] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:46:00,694: INFO/MainProcess] Task global_batch.reap_expired_leases[028c0f44-2b32-4306-83f4-756556762996] received
+[2026-11-12 15:46:00,703: INFO/MainProcess] Task global_batch.reap_expired_leases[028c0f44-2b32-4306-83f4-756556762996] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:46:00,712: INFO/MainProcess] Task simulation.reap_expired_leases[b9964bbb-9241-462e-8a06-903339cee2c1] received
+[2026-11-12 15:46:00,718: INFO/MainProcess] Task simulation.reap_expired_leases[b9964bbb-9241-462e-8a06-903339cee2c1] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:47:00,631: INFO/MainProcess] Task optimization.reap_expired_leases[4dd4f7eb-f25f-4b22-b2b5-d59b269c1d8a] received
+[2026-11-12 15:47:00,638: INFO/MainProcess] Task optimization.reap_expired_leases[4dd4f7eb-f25f-4b22-b2b5-d59b269c1d8a] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:47:00,695: INFO/MainProcess] Task global_batch.reap_expired_leases[c96dbbb0-6a27-4ee3-8249-0a546e912168] received
+[2026-11-12 15:47:00,705: INFO/MainProcess] Task global_batch.reap_expired_leases[c96dbbb0-6a27-4ee3-8249-0a546e912168] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:47:00,712: INFO/MainProcess] Task simulation.reap_expired_leases[84d41b6e-e8b2-4954-8896-8fdd8956fd98] received
+[2026-11-12 15:47:00,719: INFO/MainProcess] Task simulation.reap_expired_leases[84d41b6e-e8b2-4954-8896-8fdd8956fd98] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:48:00,629: INFO/MainProcess] Task optimization.reap_expired_leases[cdab130a-770e-43c5-8d06-d37b49a336b8] received
+[2026-11-12 15:48:00,635: INFO/MainProcess] Task optimization.reap_expired_leases[cdab130a-770e-43c5-8d06-d37b49a336b8] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:48:00,695: INFO/MainProcess] Task global_batch.reap_expired_leases[46a8fb1f-bc18-4811-a75a-b9e4f8aad54f] received
+[2026-11-12 15:48:00,700: INFO/MainProcess] Task global_batch.reap_expired_leases[46a8fb1f-bc18-4811-a75a-b9e4f8aad54f] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:48:00,711: INFO/MainProcess] Task simulation.reap_expired_leases[b79ec9a4-ded5-4990-b56c-6db7e6abf572] received
+[2026-11-12 15:48:00,718: INFO/MainProcess] Task simulation.reap_expired_leases[b79ec9a4-ded5-4990-b56c-6db7e6abf572] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 15:49:00,657: INFO/MainProcess] Task optimization.reap_expired_leases[6669a36a-5e65-4be7-9ac0-1c6314b6f42d] received
+[2026-11-12 15:49:00,665: INFO/MainProcess] Task optimization.reap_expired_leases[6669a36a-5e65-4be7-9ac0-1c6314b6f42d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:49:00,714: INFO/MainProcess] Task global_batch.reap_expired_leases[1f777418-49e8-4fd5-b76e-578d493776fc] received
+[2026-11-12 15:49:00,720: INFO/MainProcess] Task global_batch.reap_expired_leases[1f777418-49e8-4fd5-b76e-578d493776fc] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:49:00,771: INFO/MainProcess] Task simulation.reap_expired_leases[d6f47079-750b-4c8d-adb1-941a7a00120e] received
+[2026-11-12 15:49:00,779: INFO/MainProcess] Task simulation.reap_expired_leases[d6f47079-750b-4c8d-adb1-941a7a00120e] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 15:50:00,630: INFO/MainProcess] Task optimization.reap_expired_leases[06fff8df-47d1-4478-bfcf-3e7ff62b544c] received
+[2026-11-12 15:50:00,635: INFO/MainProcess] Task optimization.reap_expired_leases[06fff8df-47d1-4478-bfcf-3e7ff62b544c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:50:00,697: INFO/MainProcess] Task global_batch.reap_expired_leases[8ee20063-2c4d-4f09-8c7c-2d01ecb3bfad] received
+[2026-11-12 15:50:00,705: INFO/MainProcess] Task global_batch.reap_expired_leases[8ee20063-2c4d-4f09-8c7c-2d01ecb3bfad] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:50:00,746: INFO/MainProcess] Task simulation.reap_expired_leases[d4e522ae-27a9-4f47-aca7-da57c77b3be3] received
+[2026-11-12 15:50:00,753: INFO/MainProcess] Task simulation.reap_expired_leases[d4e522ae-27a9-4f47-aca7-da57c77b3be3] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:51:00,631: INFO/MainProcess] Task optimization.reap_expired_leases[775368b2-a21c-434d-aa22-4f4a1957cfcd] received
+[2026-11-12 15:51:00,637: INFO/MainProcess] Task optimization.reap_expired_leases[775368b2-a21c-434d-aa22-4f4a1957cfcd] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:51:00,699: INFO/MainProcess] Task global_batch.reap_expired_leases[beed2f9d-6833-442e-9be7-a12046564a04] received
+[2026-11-12 15:51:00,704: INFO/MainProcess] Task global_batch.reap_expired_leases[beed2f9d-6833-442e-9be7-a12046564a04] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:51:00,746: INFO/MainProcess] Task simulation.reap_expired_leases[0df11be7-e69d-44eb-9284-90cd4839c5f6] received
+[2026-11-12 15:51:00,753: INFO/MainProcess] Task simulation.reap_expired_leases[0df11be7-e69d-44eb-9284-90cd4839c5f6] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:52:00,631: INFO/MainProcess] Task optimization.reap_expired_leases[4ec1018c-5b11-46bd-97e9-2409b8e5adbf] received
+[2026-11-12 15:52:00,639: INFO/MainProcess] Task optimization.reap_expired_leases[4ec1018c-5b11-46bd-97e9-2409b8e5adbf] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:52:00,699: INFO/MainProcess] Task global_batch.reap_expired_leases[4f2a6f59-bf8b-4bfd-9453-4cbaf4081b64] received
+[2026-11-12 15:52:00,706: INFO/MainProcess] Task global_batch.reap_expired_leases[4f2a6f59-bf8b-4bfd-9453-4cbaf4081b64] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:52:00,752: INFO/MainProcess] Task simulation.reap_expired_leases[f8ad830a-b5ea-4672-a63c-fd91b0fe3fc7] received
+[2026-11-12 15:52:00,758: INFO/MainProcess] Task simulation.reap_expired_leases[f8ad830a-b5ea-4672-a63c-fd91b0fe3fc7] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:53:00,632: INFO/MainProcess] Task optimization.reap_expired_leases[d63bfafa-ac8b-4f1a-b3b0-d0c75443457c] received
+[2026-11-12 15:53:00,638: INFO/MainProcess] Task optimization.reap_expired_leases[d63bfafa-ac8b-4f1a-b3b0-d0c75443457c] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:53:00,699: INFO/MainProcess] Task global_batch.reap_expired_leases[e5095c7b-3fec-4b97-8d1f-aeb51733ab7a] received
+[2026-11-12 15:53:00,704: INFO/MainProcess] Task global_batch.reap_expired_leases[e5095c7b-3fec-4b97-8d1f-aeb51733ab7a] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:53:00,752: INFO/MainProcess] Task simulation.reap_expired_leases[3ed394e0-0877-4940-ad17-6f848a05f7db] received
+[2026-11-12 15:53:00,761: INFO/MainProcess] Task simulation.reap_expired_leases[3ed394e0-0877-4940-ad17-6f848a05f7db] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:54:00,633: INFO/MainProcess] Task optimization.reap_expired_leases[a4a6b499-cfb3-445c-b112-192c2d1c92f7] received
+[2026-11-12 15:54:00,641: INFO/MainProcess] Task optimization.reap_expired_leases[a4a6b499-cfb3-445c-b112-192c2d1c92f7] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:54:00,709: INFO/MainProcess] Task global_batch.reap_expired_leases[92b527e3-6fe0-4ae9-9f2a-6c89cac2df3e] received
+[2026-11-12 15:54:00,715: INFO/MainProcess] Task global_batch.reap_expired_leases[92b527e3-6fe0-4ae9-9f2a-6c89cac2df3e] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:54:00,752: INFO/MainProcess] Task simulation.reap_expired_leases[694cbb59-c283-4058-a8bd-9f85cccfcea1] received
+[2026-11-12 15:54:00,756: INFO/MainProcess] Task simulation.reap_expired_leases[694cbb59-c283-4058-a8bd-9f85cccfcea1] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:55:00,634: INFO/MainProcess] Task optimization.reap_expired_leases[38b41f88-4801-4893-8373-885d4279f976] received
+[2026-11-12 15:55:00,642: INFO/MainProcess] Task optimization.reap_expired_leases[38b41f88-4801-4893-8373-885d4279f976] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:55:00,706: INFO/MainProcess] Task global_batch.reap_expired_leases[276991f9-2de1-4a24-bdee-2fd39d65b444] received
+[2026-11-12 15:55:00,712: INFO/MainProcess] Task global_batch.reap_expired_leases[276991f9-2de1-4a24-bdee-2fd39d65b444] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:55:00,754: INFO/MainProcess] Task simulation.reap_expired_leases[36b2fafc-dedb-4bb1-893c-4c0cfc9bd599] received
+[2026-11-12 15:55:00,763: INFO/MainProcess] Task simulation.reap_expired_leases[36b2fafc-dedb-4bb1-893c-4c0cfc9bd599] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:56:00,636: INFO/MainProcess] Task optimization.reap_expired_leases[ab08bf15-1543-4ca4-8bb2-7910e0aa98b8] received
+[2026-11-12 15:56:00,644: INFO/MainProcess] Task optimization.reap_expired_leases[ab08bf15-1543-4ca4-8bb2-7910e0aa98b8] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:56:00,708: INFO/MainProcess] Task global_batch.reap_expired_leases[fad2a9cc-4c35-47ca-a37c-4a5e0f6fd442] received
+[2026-11-12 15:56:00,714: INFO/MainProcess] Task global_batch.reap_expired_leases[fad2a9cc-4c35-47ca-a37c-4a5e0f6fd442] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:56:00,753: INFO/MainProcess] Task simulation.reap_expired_leases[7e282490-2f6d-47af-8aa8-86c8d33f0030] received
+[2026-11-12 15:56:00,758: INFO/MainProcess] Task simulation.reap_expired_leases[7e282490-2f6d-47af-8aa8-86c8d33f0030] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:57:00,635: INFO/MainProcess] Task optimization.reap_expired_leases[59afda7e-27f4-4818-ade0-8ec460419cf7] received
+[2026-11-12 15:57:00,641: INFO/MainProcess] Task optimization.reap_expired_leases[59afda7e-27f4-4818-ade0-8ec460419cf7] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:57:00,708: INFO/MainProcess] Task global_batch.reap_expired_leases[c24fed81-3cd2-4770-9baf-a3e1e1ca3eb3] received
+[2026-11-12 15:57:00,713: INFO/MainProcess] Task global_batch.reap_expired_leases[c24fed81-3cd2-4770-9baf-a3e1e1ca3eb3] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 15:57:00,752: INFO/MainProcess] Task simulation.reap_expired_leases[2f56c0e2-a233-4ef5-9c15-5d2c802e31e8] received
+[2026-11-12 15:57:00,758: INFO/MainProcess] Task simulation.reap_expired_leases[2f56c0e2-a233-4ef5-9c15-5d2c802e31e8] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:58:00,636: INFO/MainProcess] Task optimization.reap_expired_leases[af48fc4b-5408-486c-b42c-5e14c98ebaf7] received
+[2026-11-12 15:58:00,642: INFO/MainProcess] Task optimization.reap_expired_leases[af48fc4b-5408-486c-b42c-5e14c98ebaf7] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 15:58:00,709: INFO/MainProcess] Task global_batch.reap_expired_leases[0cbc08dc-87ba-4ebd-bea7-be6f1e245911] received
+[2026-11-12 15:58:00,716: INFO/MainProcess] Task global_batch.reap_expired_leases[0cbc08dc-87ba-4ebd-bea7-be6f1e245911] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:58:00,753: INFO/MainProcess] Task simulation.reap_expired_leases[ee1ce425-f3a0-425e-86d9-5ee3082ad714] received
+[2026-11-12 15:58:00,758: INFO/MainProcess] Task simulation.reap_expired_leases[ee1ce425-f3a0-425e-86d9-5ee3082ad714] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:59:00,641: INFO/MainProcess] Task optimization.reap_expired_leases[2ae03b84-2f1d-4837-900c-7c865a365746] received
+[2026-11-12 15:59:00,646: INFO/MainProcess] Task optimization.reap_expired_leases[2ae03b84-2f1d-4837-900c-7c865a365746] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 15:59:00,709: INFO/MainProcess] Task global_batch.reap_expired_leases[e078f865-62ac-49d4-a0be-6951303ea1fa] received
+[2026-11-12 15:59:00,718: INFO/MainProcess] Task global_batch.reap_expired_leases[e078f865-62ac-49d4-a0be-6951303ea1fa] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 15:59:00,754: INFO/MainProcess] Task simulation.reap_expired_leases[6e8e4124-5144-4605-a206-5254c1ae30b6] received
+[2026-11-12 15:59:00,764: INFO/MainProcess] Task simulation.reap_expired_leases[6e8e4124-5144-4605-a206-5254c1ae30b6] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:00:00,642: INFO/MainProcess] Task optimization.reap_expired_leases[4cfddda8-2e02-4640-8a8f-ccf4362da2b6] received
+[2026-11-12 16:00:00,646: INFO/MainProcess] Task optimization.reap_expired_leases[4cfddda8-2e02-4640-8a8f-ccf4362da2b6] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:00:00,710: INFO/MainProcess] Task global_batch.reap_expired_leases[3ce2c0c6-19ce-4d5f-95c9-e408a068e834] received
+[2026-11-12 16:00:00,715: INFO/MainProcess] Task global_batch.reap_expired_leases[3ce2c0c6-19ce-4d5f-95c9-e408a068e834] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:00:00,755: INFO/MainProcess] Task simulation.reap_expired_leases[a3296fa6-4d72-4387-836e-99cd608e87ad] received
+[2026-11-12 16:00:00,760: INFO/MainProcess] Task simulation.reap_expired_leases[a3296fa6-4d72-4387-836e-99cd608e87ad] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:01:00,642: INFO/MainProcess] Task optimization.reap_expired_leases[9a07dc32-c768-40bf-87c9-2b22b9bf921c] received
+[2026-11-12 16:01:00,647: INFO/MainProcess] Task optimization.reap_expired_leases[9a07dc32-c768-40bf-87c9-2b22b9bf921c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:01:00,710: INFO/MainProcess] Task global_batch.reap_expired_leases[e8acbd8f-3988-440c-8b95-c73a955c404c] received
+[2026-11-12 16:01:00,714: INFO/MainProcess] Task global_batch.reap_expired_leases[e8acbd8f-3988-440c-8b95-c73a955c404c] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:01:00,755: INFO/MainProcess] Task simulation.reap_expired_leases[211c74b7-ae6f-4f9d-85a3-421cc68cde0d] received
+[2026-11-12 16:01:00,764: INFO/MainProcess] Task simulation.reap_expired_leases[211c74b7-ae6f-4f9d-85a3-421cc68cde0d] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:02:00,643: INFO/MainProcess] Task optimization.reap_expired_leases[00215e3e-b0ef-4d55-82be-d27252d4453e] received
+[2026-11-12 16:02:00,648: INFO/MainProcess] Task optimization.reap_expired_leases[00215e3e-b0ef-4d55-82be-d27252d4453e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:02:00,710: INFO/MainProcess] Task global_batch.reap_expired_leases[27a0ff5d-e16d-4df7-afc9-0d5e31b33153] received
+[2026-11-12 16:02:00,716: INFO/MainProcess] Task global_batch.reap_expired_leases[27a0ff5d-e16d-4df7-afc9-0d5e31b33153] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:02:00,756: INFO/MainProcess] Task simulation.reap_expired_leases[f4f5ba91-90e6-4e9b-87b0-626dbce502d9] received
+[2026-11-12 16:02:00,763: INFO/MainProcess] Task simulation.reap_expired_leases[f4f5ba91-90e6-4e9b-87b0-626dbce502d9] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:03:00,643: INFO/MainProcess] Task optimization.reap_expired_leases[c32ead87-740d-4037-ae23-782c7d795806] received
+[2026-11-12 16:03:00,651: INFO/MainProcess] Task optimization.reap_expired_leases[c32ead87-740d-4037-ae23-782c7d795806] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:03:00,712: INFO/MainProcess] Task global_batch.reap_expired_leases[97f99714-711b-497e-9cd2-0db711add872] received
+[2026-11-12 16:03:00,722: INFO/MainProcess] Task global_batch.reap_expired_leases[97f99714-711b-497e-9cd2-0db711add872] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:03:00,756: INFO/MainProcess] Task simulation.reap_expired_leases[f99dc120-ddec-434b-9f4b-ae825d8c96f0] received
+[2026-11-12 16:03:00,763: INFO/MainProcess] Task simulation.reap_expired_leases[f99dc120-ddec-434b-9f4b-ae825d8c96f0] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:04:00,643: INFO/MainProcess] Task optimization.reap_expired_leases[385bfdd2-bdfd-4553-89c7-23e2edd4ca5d] received
+[2026-11-12 16:04:00,648: INFO/MainProcess] Task optimization.reap_expired_leases[385bfdd2-bdfd-4553-89c7-23e2edd4ca5d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:04:00,712: INFO/MainProcess] Task global_batch.reap_expired_leases[2c0778ec-74d4-4df6-9a65-c09f1094598b] received
+[2026-11-12 16:04:00,718: INFO/MainProcess] Task global_batch.reap_expired_leases[2c0778ec-74d4-4df6-9a65-c09f1094598b] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:04:00,756: INFO/MainProcess] Task simulation.reap_expired_leases[76740f94-fc2f-4b36-ad51-0f2a226072ae] received
+[2026-11-12 16:04:00,762: INFO/MainProcess] Task simulation.reap_expired_leases[76740f94-fc2f-4b36-ad51-0f2a226072ae] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:05:00,644: INFO/MainProcess] Task optimization.reap_expired_leases[076e64bf-6ba7-4cb7-ad6f-aa4ed185f36b] received
+[2026-11-12 16:05:00,651: INFO/MainProcess] Task optimization.reap_expired_leases[076e64bf-6ba7-4cb7-ad6f-aa4ed185f36b] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:05:00,718: INFO/MainProcess] Task global_batch.reap_expired_leases[3ecaf6a9-c3b4-4a11-a7bd-d39f2ce2df79] received
+[2026-11-12 16:05:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[3ecaf6a9-c3b4-4a11-a7bd-d39f2ce2df79] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:05:00,757: INFO/MainProcess] Task simulation.reap_expired_leases[41e24480-8d79-4d24-9d4b-c896623822c5] received
+[2026-11-12 16:05:00,764: INFO/MainProcess] Task simulation.reap_expired_leases[41e24480-8d79-4d24-9d4b-c896623822c5] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:06:00,645: INFO/MainProcess] Task optimization.reap_expired_leases[afb2cac3-1822-49be-80c3-3879f93a2cf6] received
+[2026-11-12 16:06:00,649: INFO/MainProcess] Task optimization.reap_expired_leases[afb2cac3-1822-49be-80c3-3879f93a2cf6] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:06:00,719: INFO/MainProcess] Task global_batch.reap_expired_leases[f54c07fa-b697-45f1-b4f5-67388cd1ecf1] received
+[2026-11-12 16:06:00,725: INFO/MainProcess] Task global_batch.reap_expired_leases[f54c07fa-b697-45f1-b4f5-67388cd1ecf1] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:06:00,757: INFO/MainProcess] Task simulation.reap_expired_leases[fd20c0c3-b1f9-4296-9fd6-b37a6fe4b314] received
+[2026-11-12 16:06:00,763: INFO/MainProcess] Task simulation.reap_expired_leases[fd20c0c3-b1f9-4296-9fd6-b37a6fe4b314] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:07:00,646: INFO/MainProcess] Task optimization.reap_expired_leases[b5118577-e183-4403-ab89-d0238ab83ba5] received
+[2026-11-12 16:07:00,652: INFO/MainProcess] Task optimization.reap_expired_leases[b5118577-e183-4403-ab89-d0238ab83ba5] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:07:00,719: INFO/MainProcess] Task global_batch.reap_expired_leases[8fa53d92-ec16-42a1-abd9-1bb803e11e18] received
+[2026-11-12 16:07:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[8fa53d92-ec16-42a1-abd9-1bb803e11e18] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:07:00,756: INFO/MainProcess] Task simulation.reap_expired_leases[b91300f8-256e-423e-a9d9-1d142ebc78e5] received
+[2026-11-12 16:07:00,765: INFO/MainProcess] Task simulation.reap_expired_leases[b91300f8-256e-423e-a9d9-1d142ebc78e5] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:08:00,647: INFO/MainProcess] Task optimization.reap_expired_leases[0e2ad4f0-ab1c-427f-b9e8-48af2b60798d] received
+[2026-11-12 16:08:00,651: INFO/MainProcess] Task optimization.reap_expired_leases[0e2ad4f0-ab1c-427f-b9e8-48af2b60798d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:08:00,719: INFO/MainProcess] Task global_batch.reap_expired_leases[50f83c46-38d6-46bf-ac33-5d5e30c9fbd6] received
+[2026-11-12 16:08:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[50f83c46-38d6-46bf-ac33-5d5e30c9fbd6] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:08:00,758: INFO/MainProcess] Task simulation.reap_expired_leases[eea60e8f-72e7-4b07-8db6-8f4cba64adbf] received
+[2026-11-12 16:08:00,765: INFO/MainProcess] Task simulation.reap_expired_leases[eea60e8f-72e7-4b07-8db6-8f4cba64adbf] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:09:00,648: INFO/MainProcess] Task optimization.reap_expired_leases[83c2ae55-f7e8-4b17-b2b0-1289b23139c6] received
+[2026-11-12 16:09:00,657: INFO/MainProcess] Task optimization.reap_expired_leases[83c2ae55-f7e8-4b17-b2b0-1289b23139c6] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:09:00,720: INFO/MainProcess] Task global_batch.reap_expired_leases[5856a18d-6cbb-407c-9f0d-b02ad4caf3f2] received
+[2026-11-12 16:09:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[5856a18d-6cbb-407c-9f0d-b02ad4caf3f2] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:09:00,758: INFO/MainProcess] Task simulation.reap_expired_leases[f39d1af0-10cb-481b-bd22-897d6ba06c9c] received
+[2026-11-12 16:09:00,763: INFO/MainProcess] Task simulation.reap_expired_leases[f39d1af0-10cb-481b-bd22-897d6ba06c9c] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:10:00,648: INFO/MainProcess] Task optimization.reap_expired_leases[fb37391f-1d1b-470f-9946-7f9afa02f919] received
+[2026-11-12 16:10:00,655: INFO/MainProcess] Task optimization.reap_expired_leases[fb37391f-1d1b-470f-9946-7f9afa02f919] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:10:00,721: INFO/MainProcess] Task global_batch.reap_expired_leases[97bfa3f9-b8c2-4491-b40f-98fa51c6afc8] received
+[2026-11-12 16:10:00,727: INFO/MainProcess] Task global_batch.reap_expired_leases[97bfa3f9-b8c2-4491-b40f-98fa51c6afc8] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:10:00,759: INFO/MainProcess] Task simulation.reap_expired_leases[1c4c0267-bfca-4838-8189-febc8766bc7e] received
+[2026-11-12 16:10:00,765: INFO/MainProcess] Task simulation.reap_expired_leases[1c4c0267-bfca-4838-8189-febc8766bc7e] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:11:00,648: INFO/MainProcess] Task optimization.reap_expired_leases[2ac11521-532f-4cc8-8c1c-63450e31a847] received
+[2026-11-12 16:11:00,655: INFO/MainProcess] Task optimization.reap_expired_leases[2ac11521-532f-4cc8-8c1c-63450e31a847] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:11:00,722: INFO/MainProcess] Task global_batch.reap_expired_leases[c6705774-1b47-4afd-9bc3-f9976f9f6856] received
+[2026-11-12 16:11:00,729: INFO/MainProcess] Task global_batch.reap_expired_leases[c6705774-1b47-4afd-9bc3-f9976f9f6856] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:11:00,786: INFO/MainProcess] Task simulation.reap_expired_leases[90e5e324-6cff-4ed9-b199-0dda24bcf09f] received
+[2026-11-12 16:11:00,793: INFO/MainProcess] Task simulation.reap_expired_leases[90e5e324-6cff-4ed9-b199-0dda24bcf09f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:12:00,649: INFO/MainProcess] Task optimization.reap_expired_leases[d01c9100-dba7-40ad-ae07-759c6f5f8049] received
+[2026-11-12 16:12:00,655: INFO/MainProcess] Task optimization.reap_expired_leases[d01c9100-dba7-40ad-ae07-759c6f5f8049] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:12:00,725: INFO/MainProcess] Task global_batch.reap_expired_leases[30a67d2c-72f4-4e47-8044-8c4f27e4095c] received
+[2026-11-12 16:12:00,734: INFO/MainProcess] Task global_batch.reap_expired_leases[30a67d2c-72f4-4e47-8044-8c4f27e4095c] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 16:12:00,784: INFO/MainProcess] Task simulation.reap_expired_leases[0191772b-2206-4c53-ae95-ec0dafbc640a] received
+[2026-11-12 16:12:00,790: INFO/MainProcess] Task simulation.reap_expired_leases[0191772b-2206-4c53-ae95-ec0dafbc640a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:13:00,649: INFO/MainProcess] Task optimization.reap_expired_leases[7aa8b579-162c-47b7-9327-2d15b937ee62] received
+[2026-11-12 16:13:00,655: INFO/MainProcess] Task optimization.reap_expired_leases[7aa8b579-162c-47b7-9327-2d15b937ee62] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:13:00,724: INFO/MainProcess] Task global_batch.reap_expired_leases[66bd8bd2-ea94-44aa-bb9d-5073fb0843db] received
+[2026-11-12 16:13:00,729: INFO/MainProcess] Task global_batch.reap_expired_leases[66bd8bd2-ea94-44aa-bb9d-5073fb0843db] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:13:00,783: INFO/MainProcess] Task simulation.reap_expired_leases[452e79df-4d97-438f-a10e-ecca3f50e150] received
+[2026-11-12 16:13:00,789: INFO/MainProcess] Task simulation.reap_expired_leases[452e79df-4d97-438f-a10e-ecca3f50e150] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:14:00,648: INFO/MainProcess] Task optimization.reap_expired_leases[d82f2e72-71cb-4ba9-a634-953c38972846] received
+[2026-11-12 16:14:00,654: INFO/MainProcess] Task optimization.reap_expired_leases[d82f2e72-71cb-4ba9-a634-953c38972846] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:14:00,724: INFO/MainProcess] Task global_batch.reap_expired_leases[f65a48f2-f383-47c4-a712-95b44a0c2f2d] received
+[2026-11-12 16:14:00,730: INFO/MainProcess] Task global_batch.reap_expired_leases[f65a48f2-f383-47c4-a712-95b44a0c2f2d] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 16:14:00,783: INFO/MainProcess] Task simulation.reap_expired_leases[ee85d87c-97f8-4b41-abf1-9611d6725025] received
+[2026-11-12 16:14:00,792: INFO/MainProcess] Task simulation.reap_expired_leases[ee85d87c-97f8-4b41-abf1-9611d6725025] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:15:00,651: INFO/MainProcess] Task optimization.reap_expired_leases[f7bff062-82a8-4693-b8d5-8bacbc08f2df] received
+[2026-11-12 16:15:00,659: INFO/MainProcess] Task optimization.reap_expired_leases[f7bff062-82a8-4693-b8d5-8bacbc08f2df] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:15:00,724: INFO/MainProcess] Task global_batch.reap_expired_leases[d6dfe4c0-5068-4c4a-bf4e-9e256e7f50e1] received
+[2026-11-12 16:15:00,731: INFO/MainProcess] Task global_batch.reap_expired_leases[d6dfe4c0-5068-4c4a-bf4e-9e256e7f50e1] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 16:15:00,785: INFO/MainProcess] Task simulation.reap_expired_leases[47665049-c879-41f4-95fe-bc42835b5584] received
+[2026-11-12 16:15:00,793: INFO/MainProcess] Task simulation.reap_expired_leases[47665049-c879-41f4-95fe-bc42835b5584] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:16:00,651: INFO/MainProcess] Task optimization.reap_expired_leases[07dac22e-eddf-49cb-8623-0a5530ffd42b] received
+[2026-11-12 16:16:00,658: INFO/MainProcess] Task optimization.reap_expired_leases[07dac22e-eddf-49cb-8623-0a5530ffd42b] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:16:00,724: INFO/MainProcess] Task global_batch.reap_expired_leases[59d053e8-8997-4c3b-9063-2f6cf20dfd05] received
+[2026-11-12 16:16:00,729: INFO/MainProcess] Task global_batch.reap_expired_leases[59d053e8-8997-4c3b-9063-2f6cf20dfd05] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:16:00,785: INFO/MainProcess] Task simulation.reap_expired_leases[809441a7-2f8d-401e-a1ed-377cd6b32a54] received
+[2026-11-12 16:16:00,790: INFO/MainProcess] Task simulation.reap_expired_leases[809441a7-2f8d-401e-a1ed-377cd6b32a54] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:17:00,649: INFO/MainProcess] Task optimization.reap_expired_leases[18e75ee1-2fe5-4019-b7fa-3ecaeae8bb5c] received
+[2026-11-12 16:17:00,656: INFO/MainProcess] Task optimization.reap_expired_leases[18e75ee1-2fe5-4019-b7fa-3ecaeae8bb5c] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 16:17:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[275f1505-3997-4c57-b6c9-7a4958f7de4f] received
+[2026-11-12 16:17:00,732: INFO/MainProcess] Task global_batch.reap_expired_leases[275f1505-3997-4c57-b6c9-7a4958f7de4f] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 16:17:00,786: INFO/MainProcess] Task simulation.reap_expired_leases[cb9e72d5-915c-407b-8438-e1e8c558a6ba] received
+[2026-11-12 16:17:00,792: INFO/MainProcess] Task simulation.reap_expired_leases[cb9e72d5-915c-407b-8438-e1e8c558a6ba] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:18:00,715: INFO/MainProcess] Task optimization.reap_expired_leases[56e48f1f-8c6f-4103-9ff5-4f823244dce0] received
+[2026-11-12 16:18:00,722: INFO/MainProcess] Task optimization.reap_expired_leases[56e48f1f-8c6f-4103-9ff5-4f823244dce0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:18:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[3cd86e46-272b-4482-ac72-1a21e61443e7] received
+[2026-11-12 16:18:00,732: INFO/MainProcess] Task global_batch.reap_expired_leases[3cd86e46-272b-4482-ac72-1a21e61443e7] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 16:18:00,786: INFO/MainProcess] Task simulation.reap_expired_leases[70d482f6-7042-43d3-a12b-2e37230177e0] received
+[2026-11-12 16:18:00,793: INFO/MainProcess] Task simulation.reap_expired_leases[70d482f6-7042-43d3-a12b-2e37230177e0] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:19:00,713: INFO/MainProcess] Task optimization.reap_expired_leases[c7f4e7f4-5b0d-4478-924b-b50b4b00d386] received
+[2026-11-12 16:19:00,774: INFO/MainProcess] Task optimization.reap_expired_leases[c7f4e7f4-5b0d-4478-924b-b50b4b00d386] succeeded in 0.06199999999807915s: {'requeued': [], 'failed': []}
+[2026-11-12 16:19:00,777: INFO/MainProcess] Task global_batch.reap_expired_leases[fe5dbd8d-895b-4237-954f-e7ca74293b94] received
+[2026-11-12 16:19:00,784: INFO/MainProcess] Task global_batch.reap_expired_leases[fe5dbd8d-895b-4237-954f-e7ca74293b94] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:19:00,787: INFO/MainProcess] Task simulation.reap_expired_leases[08967468-dd2d-47b3-a151-a57ecf84da4b] received
+[2026-11-12 16:19:00,795: INFO/MainProcess] Task simulation.reap_expired_leases[08967468-dd2d-47b3-a151-a57ecf84da4b] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:20:00,715: INFO/MainProcess] Task optimization.reap_expired_leases[42720707-00ae-46c3-a3ce-bc2e29e32bf5] received
+[2026-11-12 16:20:00,721: INFO/MainProcess] Task optimization.reap_expired_leases[42720707-00ae-46c3-a3ce-bc2e29e32bf5] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:20:00,726: INFO/MainProcess] Task global_batch.reap_expired_leases[2dc36686-c841-44e2-bacd-1a5e35bc28a4] received
+[2026-11-12 16:20:00,732: INFO/MainProcess] Task global_batch.reap_expired_leases[2dc36686-c841-44e2-bacd-1a5e35bc28a4] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 16:20:00,788: INFO/MainProcess] Task simulation.reap_expired_leases[503f6ab1-b2ad-4e5b-a668-e3dc7c3ae485] received
+[2026-11-12 16:20:00,793: INFO/MainProcess] Task simulation.reap_expired_leases[503f6ab1-b2ad-4e5b-a668-e3dc7c3ae485] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:21:00,733: INFO/MainProcess] Task optimization.reap_expired_leases[eef980b5-d758-418e-b157-c34e17c0a6e6] received
+[2026-11-12 16:21:00,738: INFO/MainProcess] Task optimization.reap_expired_leases[eef980b5-d758-418e-b157-c34e17c0a6e6] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:21:00,741: INFO/MainProcess] Task global_batch.reap_expired_leases[3b84687c-1eaf-4477-8b9e-1074ed51f770] received
+[2026-11-12 16:21:00,748: INFO/MainProcess] Task global_batch.reap_expired_leases[3b84687c-1eaf-4477-8b9e-1074ed51f770] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:21:00,789: INFO/MainProcess] Task simulation.reap_expired_leases[2a44625d-cb2b-420f-abda-b7dc3f7bc4bb] received
+[2026-11-12 16:21:00,796: INFO/MainProcess] Task simulation.reap_expired_leases[2a44625d-cb2b-420f-abda-b7dc3f7bc4bb] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:22:00,734: INFO/MainProcess] Task optimization.reap_expired_leases[4b9604c0-f917-4f0f-af1c-b17234153e50] received
+[2026-11-12 16:22:00,739: INFO/MainProcess] Task optimization.reap_expired_leases[4b9604c0-f917-4f0f-af1c-b17234153e50] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:22:00,740: INFO/MainProcess] Task global_batch.reap_expired_leases[87e0a508-d040-452b-9c67-49a516e4e6ae] received
+[2026-11-12 16:22:00,747: INFO/MainProcess] Task global_batch.reap_expired_leases[87e0a508-d040-452b-9c67-49a516e4e6ae] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:22:00,788: INFO/MainProcess] Task simulation.reap_expired_leases[f0631acb-6b6d-4f37-b94e-04871e58c421] received
+[2026-11-12 16:22:00,793: INFO/MainProcess] Task simulation.reap_expired_leases[f0631acb-6b6d-4f37-b94e-04871e58c421] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:23:00,734: INFO/MainProcess] Task optimization.reap_expired_leases[613a031f-953e-47f4-a71b-b7ce95b83d16] received
+[2026-11-12 16:23:00,738: INFO/MainProcess] Task optimization.reap_expired_leases[613a031f-953e-47f4-a71b-b7ce95b83d16] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:23:00,743: INFO/MainProcess] Task global_batch.reap_expired_leases[d5964b71-b9cb-4a72-8a04-1eb84957e6a9] received
+[2026-11-12 16:23:00,751: INFO/MainProcess] Task global_batch.reap_expired_leases[d5964b71-b9cb-4a72-8a04-1eb84957e6a9] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:23:00,789: INFO/MainProcess] Task simulation.reap_expired_leases[022c852f-e755-4bdb-b865-93edf37c9c66] received
+[2026-11-12 16:23:00,794: INFO/MainProcess] Task simulation.reap_expired_leases[022c852f-e755-4bdb-b865-93edf37c9c66] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:24:00,734: INFO/MainProcess] Task optimization.reap_expired_leases[5da04b72-034b-45d5-baff-36c1d04d5e97] received
+[2026-11-12 16:24:00,739: INFO/MainProcess] Task optimization.reap_expired_leases[5da04b72-034b-45d5-baff-36c1d04d5e97] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:24:00,767: INFO/MainProcess] Task global_batch.reap_expired_leases[50dd9f4e-de0d-4574-b32b-c7ce94874d92] received
+[2026-11-12 16:24:00,772: INFO/MainProcess] Task global_batch.reap_expired_leases[50dd9f4e-de0d-4574-b32b-c7ce94874d92] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:24:00,790: INFO/MainProcess] Task simulation.reap_expired_leases[133f8d52-9ab3-4abc-932b-d35ba17f37d4] received
+[2026-11-12 16:24:00,795: INFO/MainProcess] Task simulation.reap_expired_leases[133f8d52-9ab3-4abc-932b-d35ba17f37d4] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:25:00,735: INFO/MainProcess] Task optimization.reap_expired_leases[34d9afb1-a6dd-40bc-8202-a6be5eff140f] received
+[2026-11-12 16:25:00,740: INFO/MainProcess] Task optimization.reap_expired_leases[34d9afb1-a6dd-40bc-8202-a6be5eff140f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:25:00,769: INFO/MainProcess] Task global_batch.reap_expired_leases[24d60503-7705-47b8-a5c5-4975738ab031] received
+[2026-11-12 16:25:00,774: INFO/MainProcess] Task global_batch.reap_expired_leases[24d60503-7705-47b8-a5c5-4975738ab031] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:25:00,791: INFO/MainProcess] Task simulation.reap_expired_leases[ec0b6195-440b-460f-b5c0-8760f8564aad] received
+[2026-11-12 16:25:00,799: INFO/MainProcess] Task simulation.reap_expired_leases[ec0b6195-440b-460f-b5c0-8760f8564aad] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:26:00,735: INFO/MainProcess] Task optimization.reap_expired_leases[f3032f50-1855-46da-8510-835bf5cd4406] received
+[2026-11-12 16:26:00,741: INFO/MainProcess] Task optimization.reap_expired_leases[f3032f50-1855-46da-8510-835bf5cd4406] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:26:00,770: INFO/MainProcess] Task global_batch.reap_expired_leases[e1ef5176-15c7-4ce5-a290-de3b434a7153] received
+[2026-11-12 16:26:00,776: INFO/MainProcess] Task global_batch.reap_expired_leases[e1ef5176-15c7-4ce5-a290-de3b434a7153] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:26:00,791: INFO/MainProcess] Task simulation.reap_expired_leases[a9e3079d-03d3-4e2c-9deb-7976095b438d] received
+[2026-11-12 16:26:00,799: INFO/MainProcess] Task simulation.reap_expired_leases[a9e3079d-03d3-4e2c-9deb-7976095b438d] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:27:00,737: INFO/MainProcess] Task optimization.reap_expired_leases[105c6a43-520f-4fff-b9ce-e79c6a15ad1c] received
+[2026-11-12 16:27:00,743: INFO/MainProcess] Task optimization.reap_expired_leases[105c6a43-520f-4fff-b9ce-e79c6a15ad1c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:27:00,769: INFO/MainProcess] Task global_batch.reap_expired_leases[845daf52-5472-4112-a835-e22b535f0268] received
+[2026-11-12 16:27:00,775: INFO/MainProcess] Task global_batch.reap_expired_leases[845daf52-5472-4112-a835-e22b535f0268] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:27:00,799: INFO/MainProcess] Task simulation.reap_expired_leases[c1a40336-fb67-4bd2-bd43-506dea52e1bb] received
+[2026-11-12 16:27:00,805: INFO/MainProcess] Task simulation.reap_expired_leases[c1a40336-fb67-4bd2-bd43-506dea52e1bb] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:28:00,736: INFO/MainProcess] Task optimization.reap_expired_leases[1ff76806-984b-4ea6-910c-ea130094c2d9] received
+[2026-11-12 16:28:00,741: INFO/MainProcess] Task optimization.reap_expired_leases[1ff76806-984b-4ea6-910c-ea130094c2d9] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:28:00,770: INFO/MainProcess] Task global_batch.reap_expired_leases[1c494463-1330-4363-9363-08532d518af6] received
+[2026-11-12 16:28:00,774: INFO/MainProcess] Task global_batch.reap_expired_leases[1c494463-1330-4363-9363-08532d518af6] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:28:00,800: INFO/MainProcess] Task simulation.reap_expired_leases[261b847b-6673-4a86-87bb-826ca119549a] received
+[2026-11-12 16:28:00,806: INFO/MainProcess] Task simulation.reap_expired_leases[261b847b-6673-4a86-87bb-826ca119549a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:29:00,738: INFO/MainProcess] Task optimization.reap_expired_leases[4efaf711-6ac1-4106-9859-184c9ed38f1d] received
+[2026-11-12 16:29:00,744: INFO/MainProcess] Task optimization.reap_expired_leases[4efaf711-6ac1-4106-9859-184c9ed38f1d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:29:00,770: INFO/MainProcess] Task global_batch.reap_expired_leases[5ee8afb5-e62f-40c7-bd7f-f298589700e9] received
+[2026-11-12 16:29:00,776: INFO/MainProcess] Task global_batch.reap_expired_leases[5ee8afb5-e62f-40c7-bd7f-f298589700e9] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:29:00,799: INFO/MainProcess] Task simulation.reap_expired_leases[951c3a78-f6dc-4811-8e0c-57dbc1439b6f] received
+[2026-11-12 16:29:00,806: INFO/MainProcess] Task simulation.reap_expired_leases[951c3a78-f6dc-4811-8e0c-57dbc1439b6f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:30:00,738: INFO/MainProcess] Task optimization.reap_expired_leases[43fc243f-ab36-4d6d-b2ba-0de35be8ad28] received
+[2026-11-12 16:30:00,745: INFO/MainProcess] Task optimization.reap_expired_leases[43fc243f-ab36-4d6d-b2ba-0de35be8ad28] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:30:00,772: INFO/MainProcess] Task global_batch.reap_expired_leases[929c2c9f-df6b-411e-97d4-1bb52317d780] received
+[2026-11-12 16:30:00,778: INFO/MainProcess] Task global_batch.reap_expired_leases[929c2c9f-df6b-411e-97d4-1bb52317d780] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:30:00,801: INFO/MainProcess] Task simulation.reap_expired_leases[af9a70e9-17d8-403a-95b4-4c9cd5cf1694] received
+[2026-11-12 16:30:00,811: INFO/MainProcess] Task simulation.reap_expired_leases[af9a70e9-17d8-403a-95b4-4c9cd5cf1694] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:31:00,738: INFO/MainProcess] Task optimization.reap_expired_leases[fafef74b-1d60-44c9-b6a5-e99dd54e535c] received
+[2026-11-12 16:31:00,746: INFO/MainProcess] Task optimization.reap_expired_leases[fafef74b-1d60-44c9-b6a5-e99dd54e535c] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:31:00,771: INFO/MainProcess] Task global_batch.reap_expired_leases[b1077035-8a37-4cc8-acc8-9fb428bebd96] received
+[2026-11-12 16:31:00,778: INFO/MainProcess] Task global_batch.reap_expired_leases[b1077035-8a37-4cc8-acc8-9fb428bebd96] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:31:00,800: INFO/MainProcess] Task simulation.reap_expired_leases[ef2b33b5-2486-4bd2-86c4-158d4c0c437f] received
+[2026-11-12 16:31:00,806: INFO/MainProcess] Task simulation.reap_expired_leases[ef2b33b5-2486-4bd2-86c4-158d4c0c437f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:32:00,739: INFO/MainProcess] Task optimization.reap_expired_leases[9aee97e8-32b5-4e67-8ad6-33553321fc4a] received
+[2026-11-12 16:32:00,748: INFO/MainProcess] Task optimization.reap_expired_leases[9aee97e8-32b5-4e67-8ad6-33553321fc4a] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:32:00,771: INFO/MainProcess] Task global_batch.reap_expired_leases[f638460d-8b8f-4534-af8d-878acaa1f0fd] received
+[2026-11-12 16:32:00,779: INFO/MainProcess] Task global_batch.reap_expired_leases[f638460d-8b8f-4534-af8d-878acaa1f0fd] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:32:00,800: INFO/MainProcess] Task simulation.reap_expired_leases[ad237114-1098-4cd7-9b78-5de0240cacb4] received
+[2026-11-12 16:32:00,806: INFO/MainProcess] Task simulation.reap_expired_leases[ad237114-1098-4cd7-9b78-5de0240cacb4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:33:00,741: INFO/MainProcess] Task optimization.reap_expired_leases[d038c199-6f5c-4fa3-a790-f31b0bcf08de] received
+[2026-11-12 16:33:00,747: INFO/MainProcess] Task optimization.reap_expired_leases[d038c199-6f5c-4fa3-a790-f31b0bcf08de] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:33:00,773: INFO/MainProcess] Task global_batch.reap_expired_leases[dc874830-c67c-49eb-9c0a-763466885fe3] received
+[2026-11-12 16:33:00,780: INFO/MainProcess] Task global_batch.reap_expired_leases[dc874830-c67c-49eb-9c0a-763466885fe3] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:33:00,802: INFO/MainProcess] Task simulation.reap_expired_leases[e35d77ba-b180-4da4-b355-73aa135ebfc1] received
+[2026-11-12 16:33:00,808: INFO/MainProcess] Task simulation.reap_expired_leases[e35d77ba-b180-4da4-b355-73aa135ebfc1] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:34:00,747: INFO/MainProcess] Task optimization.reap_expired_leases[cfd46f22-e740-4193-9f28-0f625cee247e] received
+[2026-11-12 16:34:00,754: INFO/MainProcess] Task optimization.reap_expired_leases[cfd46f22-e740-4193-9f28-0f625cee247e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:34:00,773: INFO/MainProcess] Task global_batch.reap_expired_leases[67049749-3d09-4f15-b142-6ecf77af9344] received
+[2026-11-12 16:34:00,783: INFO/MainProcess] Task global_batch.reap_expired_leases[67049749-3d09-4f15-b142-6ecf77af9344] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:34:00,801: INFO/MainProcess] Task simulation.reap_expired_leases[49cdf61d-da38-44ad-b1fe-0cccd290c4e6] received
+[2026-11-12 16:34:00,807: INFO/MainProcess] Task simulation.reap_expired_leases[49cdf61d-da38-44ad-b1fe-0cccd290c4e6] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:35:00,741: INFO/MainProcess] Task optimization.reap_expired_leases[34c03bb0-c6ef-44c1-82bd-87dcb6ebeff3] received
+[2026-11-12 16:35:00,749: INFO/MainProcess] Task optimization.reap_expired_leases[34c03bb0-c6ef-44c1-82bd-87dcb6ebeff3] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:35:00,773: INFO/MainProcess] Task global_batch.reap_expired_leases[8849d231-379e-4ef2-8af5-2301595e9755] received
+[2026-11-12 16:35:00,780: INFO/MainProcess] Task global_batch.reap_expired_leases[8849d231-379e-4ef2-8af5-2301595e9755] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:35:00,803: INFO/MainProcess] Task simulation.reap_expired_leases[b7e9f113-c05b-4a83-b847-826d1179a72b] received
+[2026-11-12 16:35:00,810: INFO/MainProcess] Task simulation.reap_expired_leases[b7e9f113-c05b-4a83-b847-826d1179a72b] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:36:00,744: INFO/MainProcess] Task optimization.reap_expired_leases[8118bb13-9b56-49f5-86d4-73e453ca4d17] received
+[2026-11-12 16:36:00,749: INFO/MainProcess] Task optimization.reap_expired_leases[8118bb13-9b56-49f5-86d4-73e453ca4d17] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:36:00,773: INFO/MainProcess] Task global_batch.reap_expired_leases[9089e8b0-ca29-4a7a-9216-f0f40c7bd2b2] received
+[2026-11-12 16:36:00,778: INFO/MainProcess] Task global_batch.reap_expired_leases[9089e8b0-ca29-4a7a-9216-f0f40c7bd2b2] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:36:00,803: INFO/MainProcess] Task simulation.reap_expired_leases[d4ce94ca-2b84-46b1-b545-76596d94156b] received
+[2026-11-12 16:36:00,809: INFO/MainProcess] Task simulation.reap_expired_leases[d4ce94ca-2b84-46b1-b545-76596d94156b] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:37:00,744: INFO/MainProcess] Task optimization.reap_expired_leases[16d686b7-4def-46c9-ad70-1aed48ea917a] received
+[2026-11-12 16:37:00,749: INFO/MainProcess] Task optimization.reap_expired_leases[16d686b7-4def-46c9-ad70-1aed48ea917a] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:37:00,773: INFO/MainProcess] Task global_batch.reap_expired_leases[91bd5a2f-7932-4aea-850f-6f80f157e792] received
+[2026-11-12 16:37:00,780: INFO/MainProcess] Task global_batch.reap_expired_leases[91bd5a2f-7932-4aea-850f-6f80f157e792] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:37:00,803: INFO/MainProcess] Task simulation.reap_expired_leases[32793aa3-c9e7-46f9-95f8-080ddffa7ea2] received
+[2026-11-12 16:37:00,808: INFO/MainProcess] Task simulation.reap_expired_leases[32793aa3-c9e7-46f9-95f8-080ddffa7ea2] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:38:00,745: INFO/MainProcess] Task optimization.reap_expired_leases[47eddba9-c2f0-4f2e-8c5e-3f52f8321469] received
+[2026-11-12 16:38:00,752: INFO/MainProcess] Task optimization.reap_expired_leases[47eddba9-c2f0-4f2e-8c5e-3f52f8321469] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:38:00,775: INFO/MainProcess] Task global_batch.reap_expired_leases[19e8b15d-b1d8-4b39-832c-f04531c6eaac] received
+[2026-11-12 16:38:00,781: INFO/MainProcess] Task global_batch.reap_expired_leases[19e8b15d-b1d8-4b39-832c-f04531c6eaac] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:38:00,804: INFO/MainProcess] Task simulation.reap_expired_leases[457c64cc-77e4-4a5f-9ae9-5d45076f898d] received
+[2026-11-12 16:38:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[457c64cc-77e4-4a5f-9ae9-5d45076f898d] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:39:00,743: INFO/MainProcess] Task optimization.reap_expired_leases[f39dc182-fe81-456f-b90e-cfc27ab0a555] received
+[2026-11-12 16:39:00,748: INFO/MainProcess] Task optimization.reap_expired_leases[f39dc182-fe81-456f-b90e-cfc27ab0a555] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:39:00,774: INFO/MainProcess] Task global_batch.reap_expired_leases[160f72f9-7180-4f00-94f9-4541f6903425] received
+[2026-11-12 16:39:00,779: INFO/MainProcess] Task global_batch.reap_expired_leases[160f72f9-7180-4f00-94f9-4541f6903425] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 16:39:00,803: INFO/MainProcess] Task simulation.reap_expired_leases[7318d21e-138b-4e3f-8203-0866b15be46c] received
+[2026-11-12 16:39:00,810: INFO/MainProcess] Task simulation.reap_expired_leases[7318d21e-138b-4e3f-8203-0866b15be46c] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:40:00,745: INFO/MainProcess] Task optimization.reap_expired_leases[a20ffd2d-f064-4b10-916d-7c3d282ea8d5] received
+[2026-11-12 16:40:00,750: INFO/MainProcess] Task optimization.reap_expired_leases[a20ffd2d-f064-4b10-916d-7c3d282ea8d5] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 16:40:00,779: INFO/MainProcess] Task global_batch.reap_expired_leases[b6b09c33-3d5b-496f-839d-81ffe81ebaac] received
+[2026-11-12 16:40:00,784: INFO/MainProcess] Task global_batch.reap_expired_leases[b6b09c33-3d5b-496f-839d-81ffe81ebaac] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:40:00,805: INFO/MainProcess] Task simulation.reap_expired_leases[0fe307da-6cb6-441c-a782-b5dcb5002d2d] received
+[2026-11-12 16:40:00,811: INFO/MainProcess] Task simulation.reap_expired_leases[0fe307da-6cb6-441c-a782-b5dcb5002d2d] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:41:00,746: INFO/MainProcess] Task optimization.reap_expired_leases[8d5a9768-85e5-4352-ade8-b1a6ae852e8a] received
+[2026-11-12 16:41:00,752: INFO/MainProcess] Task optimization.reap_expired_leases[8d5a9768-85e5-4352-ade8-b1a6ae852e8a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:41:00,780: INFO/MainProcess] Task global_batch.reap_expired_leases[c2501c0e-31f4-4b2c-a0d6-8449abb3d519] received
+[2026-11-12 16:41:00,786: INFO/MainProcess] Task global_batch.reap_expired_leases[c2501c0e-31f4-4b2c-a0d6-8449abb3d519] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:41:00,804: INFO/MainProcess] Task simulation.reap_expired_leases[0db17710-b4c9-4f94-b7be-60fc23787427] received
+[2026-11-12 16:41:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[0db17710-b4c9-4f94-b7be-60fc23787427] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:42:00,748: INFO/MainProcess] Task optimization.reap_expired_leases[37b54764-4643-4f9f-bc25-6ce3cad9bd39] received
+[2026-11-12 16:42:00,754: INFO/MainProcess] Task optimization.reap_expired_leases[37b54764-4643-4f9f-bc25-6ce3cad9bd39] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:42:00,781: INFO/MainProcess] Task global_batch.reap_expired_leases[67794b94-72f8-46d5-a562-8a0a18c770ac] received
+[2026-11-12 16:42:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[67794b94-72f8-46d5-a562-8a0a18c770ac] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:42:00,805: INFO/MainProcess] Task simulation.reap_expired_leases[af2253b0-365b-4b77-ac97-22495dddef51] received
+[2026-11-12 16:42:00,811: INFO/MainProcess] Task simulation.reap_expired_leases[af2253b0-365b-4b77-ac97-22495dddef51] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:43:00,746: INFO/MainProcess] Task optimization.reap_expired_leases[662c0517-007e-4c34-bdc7-580535ea50e9] received
+[2026-11-12 16:43:00,756: INFO/MainProcess] Task optimization.reap_expired_leases[662c0517-007e-4c34-bdc7-580535ea50e9] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:43:00,780: INFO/MainProcess] Task global_batch.reap_expired_leases[55dccf9a-b177-4628-87ec-980ba5c2d5c0] received
+[2026-11-12 16:43:00,789: INFO/MainProcess] Task global_batch.reap_expired_leases[55dccf9a-b177-4628-87ec-980ba5c2d5c0] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:43:00,805: INFO/MainProcess] Task simulation.reap_expired_leases[91dfb995-a8ad-45c9-881e-1a0eba6d6da7] received
+[2026-11-12 16:43:00,813: INFO/MainProcess] Task simulation.reap_expired_leases[91dfb995-a8ad-45c9-881e-1a0eba6d6da7] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:44:00,748: INFO/MainProcess] Task optimization.reap_expired_leases[9c33695b-a483-451a-88cf-861c2c039e12] received
+[2026-11-12 16:44:00,756: INFO/MainProcess] Task optimization.reap_expired_leases[9c33695b-a483-451a-88cf-861c2c039e12] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:44:00,782: INFO/MainProcess] Task global_batch.reap_expired_leases[1b76f7c2-2f1c-4514-842d-fa50c4a33e6a] received
+[2026-11-12 16:44:00,789: INFO/MainProcess] Task global_batch.reap_expired_leases[1b76f7c2-2f1c-4514-842d-fa50c4a33e6a] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:44:00,805: INFO/MainProcess] Task simulation.reap_expired_leases[9e22e1e6-7782-4295-950f-6af1b71c173a] received
+[2026-11-12 16:44:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[9e22e1e6-7782-4295-950f-6af1b71c173a] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:45:00,750: INFO/MainProcess] Task optimization.reap_expired_leases[6ddeb284-ef75-473f-ab59-60ff30309ef2] received
+[2026-11-12 16:45:00,756: INFO/MainProcess] Task optimization.reap_expired_leases[6ddeb284-ef75-473f-ab59-60ff30309ef2] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:45:00,782: INFO/MainProcess] Task global_batch.reap_expired_leases[288fac81-4e19-4494-b9ed-dff26dadeb21] received
+[2026-11-12 16:45:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[288fac81-4e19-4494-b9ed-dff26dadeb21] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:45:00,806: INFO/MainProcess] Task simulation.reap_expired_leases[6281d036-999e-4192-a6db-7b0c2fd457e9] received
+[2026-11-12 16:45:00,813: INFO/MainProcess] Task simulation.reap_expired_leases[6281d036-999e-4192-a6db-7b0c2fd457e9] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:46:00,750: INFO/MainProcess] Task optimization.reap_expired_leases[61a20b0b-143a-4de7-8e9a-20c8e20b7c58] received
+[2026-11-12 16:46:00,756: INFO/MainProcess] Task optimization.reap_expired_leases[61a20b0b-143a-4de7-8e9a-20c8e20b7c58] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:46:00,783: INFO/MainProcess] Task global_batch.reap_expired_leases[dd38b554-f20b-4234-a31f-ccbff85035ae] received
+[2026-11-12 16:46:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[dd38b554-f20b-4234-a31f-ccbff85035ae] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:46:00,808: INFO/MainProcess] Task simulation.reap_expired_leases[bfa45bc8-3b12-41a1-8e3d-0ac6573a3837] received
+[2026-11-12 16:46:00,816: INFO/MainProcess] Task simulation.reap_expired_leases[bfa45bc8-3b12-41a1-8e3d-0ac6573a3837] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:47:00,751: INFO/MainProcess] Task optimization.reap_expired_leases[8d70d3c1-d201-4418-be00-45b87e938094] received
+[2026-11-12 16:47:00,755: INFO/MainProcess] Task optimization.reap_expired_leases[8d70d3c1-d201-4418-be00-45b87e938094] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:47:00,783: INFO/MainProcess] Task global_batch.reap_expired_leases[2265ba9d-ce43-4c69-bb27-b494032a11c7] received
+[2026-11-12 16:47:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[2265ba9d-ce43-4c69-bb27-b494032a11c7] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:47:00,808: INFO/MainProcess] Task simulation.reap_expired_leases[6475e656-2d11-480e-970e-2540b58fcabe] received
+[2026-11-12 16:47:00,815: INFO/MainProcess] Task simulation.reap_expired_leases[6475e656-2d11-480e-970e-2540b58fcabe] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:48:00,751: INFO/MainProcess] Task optimization.reap_expired_leases[ce3b3c78-13f2-45f6-9a04-c6fd0b1b7e5d] received
+[2026-11-12 16:48:00,759: INFO/MainProcess] Task optimization.reap_expired_leases[ce3b3c78-13f2-45f6-9a04-c6fd0b1b7e5d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:48:00,783: INFO/MainProcess] Task global_batch.reap_expired_leases[eeb28347-e3cf-4a8b-b159-bc57ddb53fa0] received
+[2026-11-12 16:48:00,791: INFO/MainProcess] Task global_batch.reap_expired_leases[eeb28347-e3cf-4a8b-b159-bc57ddb53fa0] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:48:00,808: INFO/MainProcess] Task simulation.reap_expired_leases[5adb6954-7200-4d16-8d1b-77299a070d83] received
+[2026-11-12 16:48:00,813: INFO/MainProcess] Task simulation.reap_expired_leases[5adb6954-7200-4d16-8d1b-77299a070d83] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:49:00,753: INFO/MainProcess] Task optimization.reap_expired_leases[ef71bb05-be21-41fc-90f0-ed7e7c379446] received
+[2026-11-12 16:49:00,759: INFO/MainProcess] Task optimization.reap_expired_leases[ef71bb05-be21-41fc-90f0-ed7e7c379446] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:49:00,785: INFO/MainProcess] Task global_batch.reap_expired_leases[45f0e5a2-862d-4c70-b54d-72dfd62dd728] received
+[2026-11-12 16:49:00,792: INFO/MainProcess] Task global_batch.reap_expired_leases[45f0e5a2-862d-4c70-b54d-72dfd62dd728] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:49:00,809: INFO/MainProcess] Task simulation.reap_expired_leases[154f64ec-2677-499c-b634-8f6d81cbea2c] received
+[2026-11-12 16:49:00,814: INFO/MainProcess] Task simulation.reap_expired_leases[154f64ec-2677-499c-b634-8f6d81cbea2c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:50:00,759: INFO/MainProcess] Task optimization.reap_expired_leases[f4dd259c-0d33-46b9-a40c-da21e55b3699] received
+[2026-11-12 16:50:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[f4dd259c-0d33-46b9-a40c-da21e55b3699] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:50:00,786: INFO/MainProcess] Task global_batch.reap_expired_leases[abeea71c-f94d-40ec-aadc-7199b8ac07fa] received
+[2026-11-12 16:50:00,792: INFO/MainProcess] Task global_batch.reap_expired_leases[abeea71c-f94d-40ec-aadc-7199b8ac07fa] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:50:00,809: INFO/MainProcess] Task simulation.reap_expired_leases[dec73773-4f4e-4ec6-97bf-45b7e209b311] received
+[2026-11-12 16:50:00,815: INFO/MainProcess] Task simulation.reap_expired_leases[dec73773-4f4e-4ec6-97bf-45b7e209b311] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:51:00,756: INFO/MainProcess] Task optimization.reap_expired_leases[01694fb5-db2f-4df5-8c6b-5879bfd68023] received
+[2026-11-12 16:51:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[01694fb5-db2f-4df5-8c6b-5879bfd68023] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:51:00,785: INFO/MainProcess] Task global_batch.reap_expired_leases[3f38948e-9de3-4092-a019-8b0378602f14] received
+[2026-11-12 16:51:00,791: INFO/MainProcess] Task global_batch.reap_expired_leases[3f38948e-9de3-4092-a019-8b0378602f14] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:51:00,810: INFO/MainProcess] Task simulation.reap_expired_leases[34923d4f-28e9-4652-b0ad-8c1d7c86c717] received
+[2026-11-12 16:51:00,817: INFO/MainProcess] Task simulation.reap_expired_leases[34923d4f-28e9-4652-b0ad-8c1d7c86c717] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:52:00,759: INFO/MainProcess] Task optimization.reap_expired_leases[6a1a5e1d-6225-4dce-9588-fd468c6f41c9] received
+[2026-11-12 16:52:00,766: INFO/MainProcess] Task optimization.reap_expired_leases[6a1a5e1d-6225-4dce-9588-fd468c6f41c9] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 16:52:00,787: INFO/MainProcess] Task global_batch.reap_expired_leases[4545f807-67ad-4959-8f14-4e6efe4c819c] received
+[2026-11-12 16:52:00,794: INFO/MainProcess] Task global_batch.reap_expired_leases[4545f807-67ad-4959-8f14-4e6efe4c819c] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:52:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[bbb50ba2-bee7-405f-b86f-1e08a20fe367] received
+[2026-11-12 16:52:00,821: INFO/MainProcess] Task simulation.reap_expired_leases[bbb50ba2-bee7-405f-b86f-1e08a20fe367] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:53:00,762: INFO/MainProcess] Task optimization.reap_expired_leases[d339f64a-ca8d-4469-98fd-97bb951bd11b] received
+[2026-11-12 16:53:00,767: INFO/MainProcess] Task optimization.reap_expired_leases[d339f64a-ca8d-4469-98fd-97bb951bd11b] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:53:00,786: INFO/MainProcess] Task global_batch.reap_expired_leases[0d0cb2ab-6615-449a-b694-06fbecb03f88] received
+[2026-11-12 16:53:00,791: INFO/MainProcess] Task global_batch.reap_expired_leases[0d0cb2ab-6615-449a-b694-06fbecb03f88] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:53:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[3f482dd9-320f-48c9-845f-671d0d4caf0b] received
+[2026-11-12 16:53:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[3f482dd9-320f-48c9-845f-671d0d4caf0b] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:54:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[b396dec4-95a9-42c5-a032-100134d6e61e] received
+[2026-11-12 16:54:00,768: INFO/MainProcess] Task optimization.reap_expired_leases[b396dec4-95a9-42c5-a032-100134d6e61e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:54:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[e0ef2201-6187-4b74-9414-890803ff49c0] received
+[2026-11-12 16:54:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[e0ef2201-6187-4b74-9414-890803ff49c0] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:54:00,811: INFO/MainProcess] Task simulation.reap_expired_leases[fc867950-2a08-4348-adbd-6d69ed7c61d9] received
+[2026-11-12 16:54:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[fc867950-2a08-4348-adbd-6d69ed7c61d9] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:55:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[58f0fd08-71f0-46ae-a18d-c3db569d19e5] received
+[2026-11-12 16:55:00,771: INFO/MainProcess] Task optimization.reap_expired_leases[58f0fd08-71f0-46ae-a18d-c3db569d19e5] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:55:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[a85a46ad-2c20-42cb-b7d6-60925ee95130] received
+[2026-11-12 16:55:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[a85a46ad-2c20-42cb-b7d6-60925ee95130] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:55:00,813: INFO/MainProcess] Task simulation.reap_expired_leases[e1001e1c-fa72-4244-b0fb-5f8d5d1b5770] received
+[2026-11-12 16:55:00,819: INFO/MainProcess] Task simulation.reap_expired_leases[e1001e1c-fa72-4244-b0fb-5f8d5d1b5770] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:56:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[4200ff2c-8bdd-4683-8b79-3155dd6704a7] received
+[2026-11-12 16:56:00,771: INFO/MainProcess] Task optimization.reap_expired_leases[4200ff2c-8bdd-4683-8b79-3155dd6704a7] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:56:00,787: INFO/MainProcess] Task global_batch.reap_expired_leases[7afe0379-e923-484c-8b86-b2601e377845] received
+[2026-11-12 16:56:00,794: INFO/MainProcess] Task global_batch.reap_expired_leases[7afe0379-e923-484c-8b86-b2601e377845] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:56:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[4d93244e-f363-481b-ab9e-6ea379697dda] received
+[2026-11-12 16:56:00,819: INFO/MainProcess] Task simulation.reap_expired_leases[4d93244e-f363-481b-ab9e-6ea379697dda] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:57:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[9ba20923-9eb6-4041-baa1-c5099146f213] received
+[2026-11-12 16:57:00,771: INFO/MainProcess] Task optimization.reap_expired_leases[9ba20923-9eb6-4041-baa1-c5099146f213] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:57:00,788: INFO/MainProcess] Task global_batch.reap_expired_leases[e1ea3f47-41ed-40d5-9544-95a5eaddb819] received
+[2026-11-12 16:57:00,793: INFO/MainProcess] Task global_batch.reap_expired_leases[e1ea3f47-41ed-40d5-9544-95a5eaddb819] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:57:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[f1822784-8c53-4fad-b88f-8a6637611330] received
+[2026-11-12 16:57:00,816: INFO/MainProcess] Task simulation.reap_expired_leases[f1822784-8c53-4fad-b88f-8a6637611330] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:58:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[27a8c34a-6165-4b1a-85b3-97719cbe7a50] received
+[2026-11-12 16:58:00,768: INFO/MainProcess] Task optimization.reap_expired_leases[27a8c34a-6165-4b1a-85b3-97719cbe7a50] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:58:00,789: INFO/MainProcess] Task global_batch.reap_expired_leases[e4450345-3475-4f52-9406-0843111dd9ca] received
+[2026-11-12 16:58:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[e4450345-3475-4f52-9406-0843111dd9ca] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 16:58:00,812: INFO/MainProcess] Task simulation.reap_expired_leases[fd0c50f4-1238-4a61-8b2a-2461d72794ec] received
+[2026-11-12 16:58:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[fd0c50f4-1238-4a61-8b2a-2461d72794ec] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:59:00,763: INFO/MainProcess] Task optimization.reap_expired_leases[89f35744-5862-49c7-b569-8c0c54d9cd0b] received
+[2026-11-12 16:59:00,771: INFO/MainProcess] Task optimization.reap_expired_leases[89f35744-5862-49c7-b569-8c0c54d9cd0b] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 16:59:00,797: INFO/MainProcess] Task global_batch.reap_expired_leases[45ad9021-c74b-42fd-bc4a-fd357cc5e760] received
+[2026-11-12 16:59:00,803: INFO/MainProcess] Task global_batch.reap_expired_leases[45ad9021-c74b-42fd-bc4a-fd357cc5e760] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 16:59:00,814: INFO/MainProcess] Task simulation.reap_expired_leases[3b1b35d9-c220-46d2-aa0d-4e02c5796f79] received
+[2026-11-12 16:59:00,822: INFO/MainProcess] Task simulation.reap_expired_leases[3b1b35d9-c220-46d2-aa0d-4e02c5796f79] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:00:00,764: INFO/MainProcess] Task optimization.reap_expired_leases[da9ee526-868f-4b0c-8de5-695e6bebd189] received
+[2026-11-12 17:00:00,770: INFO/MainProcess] Task optimization.reap_expired_leases[da9ee526-868f-4b0c-8de5-695e6bebd189] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:00:00,794: INFO/MainProcess] Task global_batch.reap_expired_leases[588d3e8d-1908-4a7e-bdac-cacf2c457d41] received
+[2026-11-12 17:00:00,799: INFO/MainProcess] Task global_batch.reap_expired_leases[588d3e8d-1908-4a7e-bdac-cacf2c457d41] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:00:00,814: INFO/MainProcess] Task simulation.reap_expired_leases[568b1dff-7b94-44f2-9344-9df9c592470b] received
+[2026-11-12 17:00:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[568b1dff-7b94-44f2-9344-9df9c592470b] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:01:00,764: INFO/MainProcess] Task optimization.reap_expired_leases[e3bfb4d7-8b25-4d24-be60-e16457165159] received
+[2026-11-12 17:01:00,772: INFO/MainProcess] Task optimization.reap_expired_leases[e3bfb4d7-8b25-4d24-be60-e16457165159] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:01:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[d2c48f27-61f3-4b79-b3c4-7d6f8a13fe6c] received
+[2026-11-12 17:01:00,803: INFO/MainProcess] Task global_batch.reap_expired_leases[d2c48f27-61f3-4b79-b3c4-7d6f8a13fe6c] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:01:00,814: INFO/MainProcess] Task simulation.reap_expired_leases[988e20ba-c13a-48c1-9c3c-95998874c12c] received
+[2026-11-12 17:01:00,820: INFO/MainProcess] Task simulation.reap_expired_leases[988e20ba-c13a-48c1-9c3c-95998874c12c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:02:00,765: INFO/MainProcess] Task optimization.reap_expired_leases[ed15d26a-1574-4704-a5c9-f86d95238fc5] received
+[2026-11-12 17:02:00,773: INFO/MainProcess] Task optimization.reap_expired_leases[ed15d26a-1574-4704-a5c9-f86d95238fc5] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:02:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[a74e0d33-95c3-4eef-b212-f201d868d261] received
+[2026-11-12 17:02:00,802: INFO/MainProcess] Task global_batch.reap_expired_leases[a74e0d33-95c3-4eef-b212-f201d868d261] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:02:00,815: INFO/MainProcess] Task simulation.reap_expired_leases[e13a24f8-550f-4731-af23-586d934df0bf] received
+[2026-11-12 17:02:00,823: INFO/MainProcess] Task simulation.reap_expired_leases[e13a24f8-550f-4731-af23-586d934df0bf] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:03:00,767: INFO/MainProcess] Task optimization.reap_expired_leases[cafcc444-6488-4686-a6c6-a1ee2376826e] received
+[2026-11-12 17:03:00,774: INFO/MainProcess] Task optimization.reap_expired_leases[cafcc444-6488-4686-a6c6-a1ee2376826e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:03:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[ec4ef375-f721-4f92-b4a3-0c07b293bfd3] received
+[2026-11-12 17:03:00,805: INFO/MainProcess] Task global_batch.reap_expired_leases[ec4ef375-f721-4f92-b4a3-0c07b293bfd3] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:03:00,816: INFO/MainProcess] Task simulation.reap_expired_leases[7f24682a-bd94-4148-817a-fb4668ba59c0] received
+[2026-11-12 17:03:00,821: INFO/MainProcess] Task simulation.reap_expired_leases[7f24682a-bd94-4148-817a-fb4668ba59c0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:04:00,766: INFO/MainProcess] Task optimization.reap_expired_leases[93df3f86-6a95-40ef-935e-a96d4bb577ee] received
+[2026-11-12 17:04:00,773: INFO/MainProcess] Task optimization.reap_expired_leases[93df3f86-6a95-40ef-935e-a96d4bb577ee] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:04:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[bb4e0b62-3a5f-433d-994c-394cab2f4abe] received
+[2026-11-12 17:04:00,802: INFO/MainProcess] Task global_batch.reap_expired_leases[bb4e0b62-3a5f-433d-994c-394cab2f4abe] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:04:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[11359cc1-2ff8-4e91-9ae6-145b9d16a672] received
+[2026-11-12 17:04:00,823: INFO/MainProcess] Task simulation.reap_expired_leases[11359cc1-2ff8-4e91-9ae6-145b9d16a672] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:05:00,766: INFO/MainProcess] Task optimization.reap_expired_leases[55ada798-629f-4c04-b18a-b00e2e82f800] received
+[2026-11-12 17:05:00,773: INFO/MainProcess] Task optimization.reap_expired_leases[55ada798-629f-4c04-b18a-b00e2e82f800] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:05:00,796: INFO/MainProcess] Task global_batch.reap_expired_leases[7ae4b7dc-26e1-4af7-b9a2-de8a6ec28747] received
+[2026-11-12 17:05:00,802: INFO/MainProcess] Task global_batch.reap_expired_leases[7ae4b7dc-26e1-4af7-b9a2-de8a6ec28747] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:05:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[daaf8a19-9d33-4299-baf5-1735d414f8f6] received
+[2026-11-12 17:05:00,827: INFO/MainProcess] Task simulation.reap_expired_leases[daaf8a19-9d33-4299-baf5-1735d414f8f6] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:06:00,768: INFO/MainProcess] Task optimization.reap_expired_leases[68e6484c-d32c-43e0-96bb-2dabc8cde2e0] received
+[2026-11-12 17:06:00,773: INFO/MainProcess] Task optimization.reap_expired_leases[68e6484c-d32c-43e0-96bb-2dabc8cde2e0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:06:00,798: INFO/MainProcess] Task global_batch.reap_expired_leases[0e8e9091-6920-47bf-9e28-10d860f5bd7d] received
+[2026-11-12 17:06:00,803: INFO/MainProcess] Task global_batch.reap_expired_leases[0e8e9091-6920-47bf-9e28-10d860f5bd7d] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:06:00,816: INFO/MainProcess] Task simulation.reap_expired_leases[228d1d37-7afd-4870-af5c-3ba193630e35] received
+[2026-11-12 17:06:00,824: INFO/MainProcess] Task simulation.reap_expired_leases[228d1d37-7afd-4870-af5c-3ba193630e35] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:07:00,769: INFO/MainProcess] Task optimization.reap_expired_leases[908e2c37-080a-489c-872e-8a9389e36cde] received
+[2026-11-12 17:07:00,776: INFO/MainProcess] Task optimization.reap_expired_leases[908e2c37-080a-489c-872e-8a9389e36cde] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:07:00,799: INFO/MainProcess] Task global_batch.reap_expired_leases[a517de46-dd33-4cd4-ac1b-9c8939020e53] received
+[2026-11-12 17:07:00,804: INFO/MainProcess] Task global_batch.reap_expired_leases[a517de46-dd33-4cd4-ac1b-9c8939020e53] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:07:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[e6ba14a8-240a-44df-a562-1af311872ab7] received
+[2026-11-12 17:07:00,822: INFO/MainProcess] Task simulation.reap_expired_leases[e6ba14a8-240a-44df-a562-1af311872ab7] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:08:00,771: INFO/MainProcess] Task optimization.reap_expired_leases[5c1864e1-86f7-41d5-b827-ba1bd480b93d] received
+[2026-11-12 17:08:00,778: INFO/MainProcess] Task optimization.reap_expired_leases[5c1864e1-86f7-41d5-b827-ba1bd480b93d] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:08:00,798: INFO/MainProcess] Task global_batch.reap_expired_leases[8921ccc0-c2dc-405e-8661-49cad40affaa] received
+[2026-11-12 17:08:00,805: INFO/MainProcess] Task global_batch.reap_expired_leases[8921ccc0-c2dc-405e-8661-49cad40affaa] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:08:00,818: INFO/MainProcess] Task simulation.reap_expired_leases[affe2c7b-e01f-4a67-a596-fb8d75d0894a] received
+[2026-11-12 17:08:00,824: INFO/MainProcess] Task simulation.reap_expired_leases[affe2c7b-e01f-4a67-a596-fb8d75d0894a] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:09:00,775: INFO/MainProcess] Task optimization.reap_expired_leases[58c52ba8-5932-471b-9006-d5eaf5dc3b86] received
+[2026-11-12 17:09:00,782: INFO/MainProcess] Task optimization.reap_expired_leases[58c52ba8-5932-471b-9006-d5eaf5dc3b86] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:09:00,798: INFO/MainProcess] Task global_batch.reap_expired_leases[58ada73d-80d1-4452-9fc0-5ad351865afa] received
+[2026-11-12 17:09:00,804: INFO/MainProcess] Task global_batch.reap_expired_leases[58ada73d-80d1-4452-9fc0-5ad351865afa] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:09:00,819: INFO/MainProcess] Task simulation.reap_expired_leases[f3d0a92b-0910-4002-b9d7-4ff1fc2d3ccd] received
+[2026-11-12 17:09:00,826: INFO/MainProcess] Task simulation.reap_expired_leases[f3d0a92b-0910-4002-b9d7-4ff1fc2d3ccd] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:10:00,774: INFO/MainProcess] Task optimization.reap_expired_leases[30cd6992-fd53-4ccb-9a4a-51eaaa6e9384] received
+[2026-11-12 17:10:00,779: INFO/MainProcess] Task optimization.reap_expired_leases[30cd6992-fd53-4ccb-9a4a-51eaaa6e9384] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:10:00,799: INFO/MainProcess] Task global_batch.reap_expired_leases[a191e0d1-83b0-4334-ba0c-bf137aa975fa] received
+[2026-11-12 17:10:00,804: INFO/MainProcess] Task global_batch.reap_expired_leases[a191e0d1-83b0-4334-ba0c-bf137aa975fa] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:10:00,823: INFO/MainProcess] Task simulation.reap_expired_leases[772927df-92b0-4d42-b24c-1bc54b4bc357] received
+[2026-11-12 17:10:00,828: INFO/MainProcess] Task simulation.reap_expired_leases[772927df-92b0-4d42-b24c-1bc54b4bc357] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:11:00,776: INFO/MainProcess] Task optimization.reap_expired_leases[31da7cb9-80b9-4b7c-b0da-4cdc409b0d79] received
+[2026-11-12 17:11:00,783: INFO/MainProcess] Task optimization.reap_expired_leases[31da7cb9-80b9-4b7c-b0da-4cdc409b0d79] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:11:00,800: INFO/MainProcess] Task global_batch.reap_expired_leases[60b486d7-5a36-453f-bf21-724cd402bc0c] received
+[2026-11-12 17:11:00,805: INFO/MainProcess] Task global_batch.reap_expired_leases[60b486d7-5a36-453f-bf21-724cd402bc0c] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:11:00,820: INFO/MainProcess] Task simulation.reap_expired_leases[17d75826-fa32-452d-b649-744ba7646e88] received
+[2026-11-12 17:11:00,825: INFO/MainProcess] Task simulation.reap_expired_leases[17d75826-fa32-452d-b649-744ba7646e88] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:12:00,791: INFO/MainProcess] Task optimization.reap_expired_leases[ce9a379c-d004-433d-8450-bdc089d7d834] received
+[2026-11-12 17:12:00,796: INFO/MainProcess] Task optimization.reap_expired_leases[ce9a379c-d004-433d-8450-bdc089d7d834] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:12:00,800: INFO/MainProcess] Task global_batch.reap_expired_leases[69eab348-c85d-4cce-8763-1848fbb1598b] received
+[2026-11-12 17:12:00,806: INFO/MainProcess] Task global_batch.reap_expired_leases[69eab348-c85d-4cce-8763-1848fbb1598b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:12:00,821: INFO/MainProcess] Task simulation.reap_expired_leases[2af513a5-f204-4aa2-872c-bdda36e056cc] received
+[2026-11-12 17:12:00,827: INFO/MainProcess] Task simulation.reap_expired_leases[2af513a5-f204-4aa2-872c-bdda36e056cc] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:13:00,793: INFO/MainProcess] Task optimization.reap_expired_leases[33d3efbb-c66b-4284-9a38-341f7d95daaf] received
+[2026-11-12 17:13:00,800: INFO/MainProcess] Task optimization.reap_expired_leases[33d3efbb-c66b-4284-9a38-341f7d95daaf] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:13:00,803: INFO/MainProcess] Task global_batch.reap_expired_leases[e49dde85-fe20-4270-b2a2-7263941df49a] received
+[2026-11-12 17:13:00,810: INFO/MainProcess] Task global_batch.reap_expired_leases[e49dde85-fe20-4270-b2a2-7263941df49a] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:13:00,821: INFO/MainProcess] Task simulation.reap_expired_leases[41f5142b-52bf-4e00-8a47-e45c627ac51c] received
+[2026-11-12 17:13:00,827: INFO/MainProcess] Task simulation.reap_expired_leases[41f5142b-52bf-4e00-8a47-e45c627ac51c] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:14:00,793: INFO/MainProcess] Task optimization.reap_expired_leases[5969d9ee-4db1-4d46-a5f2-0bb1f28dd614] received
+[2026-11-12 17:14:00,802: INFO/MainProcess] Task optimization.reap_expired_leases[5969d9ee-4db1-4d46-a5f2-0bb1f28dd614] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:14:00,805: INFO/MainProcess] Task global_batch.reap_expired_leases[2beed0d7-4625-45ec-b703-b6994edbab19] received
+[2026-11-12 17:14:00,810: INFO/MainProcess] Task global_batch.reap_expired_leases[2beed0d7-4625-45ec-b703-b6994edbab19] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:14:00,823: INFO/MainProcess] Task simulation.reap_expired_leases[127c46e0-1996-4a2e-93f2-fd2cdb84f6d2] received
+[2026-11-12 17:14:00,828: INFO/MainProcess] Task simulation.reap_expired_leases[127c46e0-1996-4a2e-93f2-fd2cdb84f6d2] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:15:00,810: INFO/MainProcess] Task optimization.reap_expired_leases[219b4b26-a0c6-46fa-aadb-e832f9cfe939] received
+[2026-11-12 17:15:00,818: INFO/MainProcess] Task optimization.reap_expired_leases[219b4b26-a0c6-46fa-aadb-e832f9cfe939] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:15:00,825: INFO/MainProcess] Task global_batch.reap_expired_leases[b9006f77-d9b4-406f-a552-f9aaec5f6a4b] received
+[2026-11-12 17:15:00,832: INFO/MainProcess] Task global_batch.reap_expired_leases[b9006f77-d9b4-406f-a552-f9aaec5f6a4b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:15:00,835: INFO/MainProcess] Task simulation.reap_expired_leases[817ecbc1-d326-48b4-b10a-ea8b0427d402] received
+[2026-11-12 17:15:00,839: INFO/MainProcess] Task simulation.reap_expired_leases[817ecbc1-d326-48b4-b10a-ea8b0427d402] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:16:00,794: INFO/MainProcess] Task optimization.reap_expired_leases[56ec8e54-bfa4-4be3-9f67-71bd5f92a1a1] received
+[2026-11-12 17:16:00,801: INFO/MainProcess] Task optimization.reap_expired_leases[56ec8e54-bfa4-4be3-9f67-71bd5f92a1a1] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:16:00,824: INFO/MainProcess] Task global_batch.reap_expired_leases[a1f20496-4f25-46d3-bb68-2dc8ad4b380c] received
+[2026-11-12 17:16:00,830: INFO/MainProcess] Task global_batch.reap_expired_leases[a1f20496-4f25-46d3-bb68-2dc8ad4b380c] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:16:00,833: INFO/MainProcess] Task simulation.reap_expired_leases[f82d9999-1052-4cf6-88ae-b687b94660b7] received
+[2026-11-12 17:16:00,839: INFO/MainProcess] Task simulation.reap_expired_leases[f82d9999-1052-4cf6-88ae-b687b94660b7] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:17:00,794: INFO/MainProcess] Task optimization.reap_expired_leases[768c6d40-64ad-4f15-b864-6de2ae8087e5] received
+[2026-11-12 17:17:00,802: INFO/MainProcess] Task optimization.reap_expired_leases[768c6d40-64ad-4f15-b864-6de2ae8087e5] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:17:00,824: INFO/MainProcess] Task global_batch.reap_expired_leases[0e811b65-aa70-439e-b657-0b656ee2ba26] received
+[2026-11-12 17:17:00,830: INFO/MainProcess] Task global_batch.reap_expired_leases[0e811b65-aa70-439e-b657-0b656ee2ba26] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:17:00,833: INFO/MainProcess] Task simulation.reap_expired_leases[81db7355-0b23-4979-9670-07def4b4a207] received
+[2026-11-12 17:17:00,839: INFO/MainProcess] Task simulation.reap_expired_leases[81db7355-0b23-4979-9670-07def4b4a207] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:18:00,793: INFO/MainProcess] Task optimization.reap_expired_leases[53f76495-beb0-4985-8cbc-df64884770d3] received
+[2026-11-12 17:18:00,799: INFO/MainProcess] Task optimization.reap_expired_leases[53f76495-beb0-4985-8cbc-df64884770d3] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:18:00,826: INFO/MainProcess] Task global_batch.reap_expired_leases[add9afdb-3b10-4563-8cfc-1014919dbd1d] received
+[2026-11-12 17:18:00,831: INFO/MainProcess] Task global_batch.reap_expired_leases[add9afdb-3b10-4563-8cfc-1014919dbd1d] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:18:00,833: INFO/MainProcess] Task simulation.reap_expired_leases[3c5256f0-0e19-455b-b997-09a303e73a99] received
+[2026-11-12 17:18:00,839: INFO/MainProcess] Task simulation.reap_expired_leases[3c5256f0-0e19-455b-b997-09a303e73a99] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:19:00,814: INFO/MainProcess] Task optimization.reap_expired_leases[7a2a6061-fe83-4301-b980-b942b83c0936] received
+[2026-11-12 17:19:00,820: INFO/MainProcess] Task optimization.reap_expired_leases[7a2a6061-fe83-4301-b980-b942b83c0936] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:19:00,825: INFO/MainProcess] Task global_batch.reap_expired_leases[601fcfe1-46ad-4dec-aa84-1b570a1d5d20] received
+[2026-11-12 17:19:00,832: INFO/MainProcess] Task global_batch.reap_expired_leases[601fcfe1-46ad-4dec-aa84-1b570a1d5d20] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:19:00,834: INFO/MainProcess] Task simulation.reap_expired_leases[7ab67e5f-b278-42f0-8f8f-c53bfa5849e8] received
+[2026-11-12 17:19:00,838: INFO/MainProcess] Task simulation.reap_expired_leases[7ab67e5f-b278-42f0-8f8f-c53bfa5849e8] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:20:00,817: INFO/MainProcess] Task optimization.reap_expired_leases[6ff79983-154c-42a8-9734-bb5c6813f530] received
+[2026-11-12 17:20:00,825: INFO/MainProcess] Task optimization.reap_expired_leases[6ff79983-154c-42a8-9734-bb5c6813f530] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:20:00,827: INFO/MainProcess] Task global_batch.reap_expired_leases[cc3b5f91-799d-4b87-922b-b799d9c3f4f1] received
+[2026-11-12 17:20:00,832: INFO/MainProcess] Task global_batch.reap_expired_leases[cc3b5f91-799d-4b87-922b-b799d9c3f4f1] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:20:00,834: INFO/MainProcess] Task simulation.reap_expired_leases[e0d59050-4231-4ff2-bd7c-c7597c0b5aab] received
+[2026-11-12 17:20:00,838: INFO/MainProcess] Task simulation.reap_expired_leases[e0d59050-4231-4ff2-bd7c-c7597c0b5aab] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:21:00,816: INFO/MainProcess] Task optimization.reap_expired_leases[7eec524c-f4fa-4860-847a-050164e4f250] received
+[2026-11-12 17:21:00,822: INFO/MainProcess] Task optimization.reap_expired_leases[7eec524c-f4fa-4860-847a-050164e4f250] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:21:00,827: INFO/MainProcess] Task global_batch.reap_expired_leases[9b5ad303-93e0-4c51-9cd1-f2f997ad0294] received
+[2026-11-12 17:21:00,832: INFO/MainProcess] Task global_batch.reap_expired_leases[9b5ad303-93e0-4c51-9cd1-f2f997ad0294] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:21:00,834: INFO/MainProcess] Task simulation.reap_expired_leases[47ab5d64-3e1d-452f-b43f-b33e52b00746] received
+[2026-11-12 17:21:00,840: INFO/MainProcess] Task simulation.reap_expired_leases[47ab5d64-3e1d-452f-b43f-b33e52b00746] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:22:00,817: INFO/MainProcess] Task optimization.reap_expired_leases[9a31c239-bc31-4d52-b226-32eea90491de] received
+[2026-11-12 17:22:00,827: INFO/MainProcess] Task optimization.reap_expired_leases[9a31c239-bc31-4d52-b226-32eea90491de] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:22:00,836: INFO/MainProcess] Task global_batch.reap_expired_leases[0e988b89-a5ae-4be5-a702-85d39d892555] received
+[2026-11-12 17:22:00,843: INFO/MainProcess] Task global_batch.reap_expired_leases[0e988b89-a5ae-4be5-a702-85d39d892555] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:22:00,846: INFO/MainProcess] Task simulation.reap_expired_leases[429c8005-925a-4267-afdd-eb2140953752] received
+[2026-11-12 17:22:00,854: INFO/MainProcess] Task simulation.reap_expired_leases[429c8005-925a-4267-afdd-eb2140953752] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:23:00,817: INFO/MainProcess] Task optimization.reap_expired_leases[547e424e-8aa0-4918-8dcc-3872e7200d06] received
+[2026-11-12 17:23:00,823: INFO/MainProcess] Task optimization.reap_expired_leases[547e424e-8aa0-4918-8dcc-3872e7200d06] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:23:00,834: INFO/MainProcess] Task global_batch.reap_expired_leases[5fd32361-2e8e-4c06-b6e1-1a6c011b169f] received
+[2026-11-12 17:23:00,854: INFO/MainProcess] Task global_batch.reap_expired_leases[5fd32361-2e8e-4c06-b6e1-1a6c011b169f] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:23:00,856: INFO/MainProcess] Task simulation.reap_expired_leases[8c3fcc47-83a0-41fa-aeba-d56e21ad8c26] received
+[2026-11-12 17:23:00,860: INFO/MainProcess] Task simulation.reap_expired_leases[8c3fcc47-83a0-41fa-aeba-d56e21ad8c26] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:24:00,818: INFO/MainProcess] Task optimization.reap_expired_leases[3e03807b-58ad-4003-93fb-67891f111d9a] received
+[2026-11-12 17:24:00,823: INFO/MainProcess] Task optimization.reap_expired_leases[3e03807b-58ad-4003-93fb-67891f111d9a] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:24:00,836: INFO/MainProcess] Task global_batch.reap_expired_leases[091b10b9-4b64-4182-b8ac-768d184c8f64] received
+[2026-11-12 17:24:00,842: INFO/MainProcess] Task global_batch.reap_expired_leases[091b10b9-4b64-4182-b8ac-768d184c8f64] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:24:00,852: INFO/MainProcess] Task simulation.reap_expired_leases[7de0240c-a67f-4c5d-82f9-36f2f68010b4] received
+[2026-11-12 17:24:00,858: INFO/MainProcess] Task simulation.reap_expired_leases[7de0240c-a67f-4c5d-82f9-36f2f68010b4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:25:00,817: INFO/MainProcess] Task optimization.reap_expired_leases[40e72532-87f3-4b1c-9582-fdbc0a3e3292] received
+[2026-11-12 17:25:00,822: INFO/MainProcess] Task optimization.reap_expired_leases[40e72532-87f3-4b1c-9582-fdbc0a3e3292] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:25:00,836: INFO/MainProcess] Task global_batch.reap_expired_leases[52d0be8c-5903-482e-acb5-83dbddf2b313] received
+[2026-11-12 17:25:00,842: INFO/MainProcess] Task global_batch.reap_expired_leases[52d0be8c-5903-482e-acb5-83dbddf2b313] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:25:00,853: INFO/MainProcess] Task simulation.reap_expired_leases[3542d416-7d42-44a4-ae1e-af92a99b0c17] received
+[2026-11-12 17:25:00,861: INFO/MainProcess] Task simulation.reap_expired_leases[3542d416-7d42-44a4-ae1e-af92a99b0c17] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:26:00,835: INFO/MainProcess] Task optimization.reap_expired_leases[39eec8b3-bef2-46ef-822c-fcd27b836035] received
+[2026-11-12 17:26:00,841: INFO/MainProcess] Task optimization.reap_expired_leases[39eec8b3-bef2-46ef-822c-fcd27b836035] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:26:00,843: INFO/MainProcess] Task global_batch.reap_expired_leases[9b680581-acd4-4487-97cf-98e4bb3faf6b] received
+[2026-11-12 17:26:00,847: INFO/MainProcess] Task global_batch.reap_expired_leases[9b680581-acd4-4487-97cf-98e4bb3faf6b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:26:00,853: INFO/MainProcess] Task simulation.reap_expired_leases[ae44fe3f-6a70-485d-86b3-ebfc05a972af] received
+[2026-11-12 17:26:00,857: INFO/MainProcess] Task simulation.reap_expired_leases[ae44fe3f-6a70-485d-86b3-ebfc05a972af] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:27:00,818: INFO/MainProcess] Task optimization.reap_expired_leases[55c7feaa-64f1-4544-9320-dd8cb87a59de] received
+[2026-11-12 17:27:00,823: INFO/MainProcess] Task optimization.reap_expired_leases[55c7feaa-64f1-4544-9320-dd8cb87a59de] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:27:00,837: INFO/MainProcess] Task global_batch.reap_expired_leases[019d38af-e5c5-4ed3-ba53-0c41bdd436a7] received
+[2026-11-12 17:27:00,844: INFO/MainProcess] Task global_batch.reap_expired_leases[019d38af-e5c5-4ed3-ba53-0c41bdd436a7] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:27:00,854: INFO/MainProcess] Task simulation.reap_expired_leases[a032243b-bdf9-408d-a5f2-b61d345ad46d] received
+[2026-11-12 17:27:00,859: INFO/MainProcess] Task simulation.reap_expired_leases[a032243b-bdf9-408d-a5f2-b61d345ad46d] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:28:00,836: INFO/MainProcess] Task optimization.reap_expired_leases[b4041f6e-369a-45c9-ad86-71a9e3fb78f3] received
+[2026-11-12 17:28:00,841: INFO/MainProcess] Task optimization.reap_expired_leases[b4041f6e-369a-45c9-ad86-71a9e3fb78f3] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:28:00,843: INFO/MainProcess] Task global_batch.reap_expired_leases[f19d9d89-8877-4e54-a119-375959ec523a] received
+[2026-11-12 17:28:00,847: INFO/MainProcess] Task global_batch.reap_expired_leases[f19d9d89-8877-4e54-a119-375959ec523a] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:28:00,854: INFO/MainProcess] Task simulation.reap_expired_leases[d487f803-1b01-4f55-8935-0afc2c8ec623] received
+[2026-11-12 17:28:00,862: INFO/MainProcess] Task simulation.reap_expired_leases[d487f803-1b01-4f55-8935-0afc2c8ec623] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:29:00,824: INFO/MainProcess] Task optimization.reap_expired_leases[49791442-e400-48c2-aa25-528eb0672523] received
+[2026-11-12 17:29:00,829: INFO/MainProcess] Task optimization.reap_expired_leases[49791442-e400-48c2-aa25-528eb0672523] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:29:00,836: INFO/MainProcess] Task global_batch.reap_expired_leases[34d01add-92ea-4f9b-84bf-50a33d187cce] received
+[2026-11-12 17:29:00,842: INFO/MainProcess] Task global_batch.reap_expired_leases[34d01add-92ea-4f9b-84bf-50a33d187cce] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:29:00,855: INFO/MainProcess] Task simulation.reap_expired_leases[9063314b-4538-4833-be88-792b2fc6e892] received
+[2026-11-12 17:29:00,859: INFO/MainProcess] Task simulation.reap_expired_leases[9063314b-4538-4833-be88-792b2fc6e892] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:30:00,825: INFO/MainProcess] Task optimization.reap_expired_leases[b7fe9185-dda0-49ef-92d0-63e0988e6929] received
+[2026-11-12 17:30:00,832: INFO/MainProcess] Task optimization.reap_expired_leases[b7fe9185-dda0-49ef-92d0-63e0988e6929] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:30:00,836: INFO/MainProcess] Task global_batch.reap_expired_leases[69178057-447f-4b2c-bfcd-57d0cc5d35c9] received
+[2026-11-12 17:30:00,842: INFO/MainProcess] Task global_batch.reap_expired_leases[69178057-447f-4b2c-bfcd-57d0cc5d35c9] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:30:00,855: INFO/MainProcess] Task simulation.reap_expired_leases[f430076e-742b-42a8-88a7-8619c8f69233] received
+[2026-11-12 17:30:00,863: INFO/MainProcess] Task simulation.reap_expired_leases[f430076e-742b-42a8-88a7-8619c8f69233] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:31:00,827: INFO/MainProcess] Task optimization.reap_expired_leases[72061615-12da-4fb6-b446-47726cae7c73] received
+[2026-11-12 17:31:00,833: INFO/MainProcess] Task optimization.reap_expired_leases[72061615-12da-4fb6-b446-47726cae7c73] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:31:00,836: INFO/MainProcess] Task global_batch.reap_expired_leases[e83d5fd5-f18d-424b-b822-dd926b4f5c94] received
+[2026-11-12 17:31:00,840: INFO/MainProcess] Task global_batch.reap_expired_leases[e83d5fd5-f18d-424b-b822-dd926b4f5c94] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:31:00,857: INFO/MainProcess] Task simulation.reap_expired_leases[0acb1007-e3d3-457f-882b-8cd4774545a1] received
+[2026-11-12 17:31:00,863: INFO/MainProcess] Task simulation.reap_expired_leases[0acb1007-e3d3-457f-882b-8cd4774545a1] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:32:00,827: INFO/MainProcess] Task optimization.reap_expired_leases[041ad787-0a60-4063-a956-851e65ea080c] received
+[2026-11-12 17:32:00,834: INFO/MainProcess] Task optimization.reap_expired_leases[041ad787-0a60-4063-a956-851e65ea080c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:32:00,838: INFO/MainProcess] Task global_batch.reap_expired_leases[560850fc-44ad-4bcc-a2d3-020111a358cd] received
+[2026-11-12 17:32:00,843: INFO/MainProcess] Task global_batch.reap_expired_leases[560850fc-44ad-4bcc-a2d3-020111a358cd] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:32:00,857: INFO/MainProcess] Task simulation.reap_expired_leases[eeb5a5cd-2958-46c5-9b94-fe819f7f5a27] received
+[2026-11-12 17:32:00,861: INFO/MainProcess] Task simulation.reap_expired_leases[eeb5a5cd-2958-46c5-9b94-fe819f7f5a27] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:33:00,829: INFO/MainProcess] Task optimization.reap_expired_leases[cbb786ee-cff8-4a3b-b6c6-3e87c7cc3c57] received
+[2026-11-12 17:33:00,837: INFO/MainProcess] Task optimization.reap_expired_leases[cbb786ee-cff8-4a3b-b6c6-3e87c7cc3c57] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:33:00,840: INFO/MainProcess] Task global_batch.reap_expired_leases[74eb7599-9d7c-469b-8a4e-595192836aaf] received
+[2026-11-12 17:33:00,845: INFO/MainProcess] Task global_batch.reap_expired_leases[74eb7599-9d7c-469b-8a4e-595192836aaf] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:33:00,857: INFO/MainProcess] Task simulation.reap_expired_leases[6f683935-dce6-4130-a20d-40ba6ca10385] received
+[2026-11-12 17:33:00,864: INFO/MainProcess] Task simulation.reap_expired_leases[6f683935-dce6-4130-a20d-40ba6ca10385] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:34:00,829: INFO/MainProcess] Task optimization.reap_expired_leases[b2aa1c2b-badd-460a-8a52-1f106aa8eba3] received
+[2026-11-12 17:34:00,835: INFO/MainProcess] Task optimization.reap_expired_leases[b2aa1c2b-badd-460a-8a52-1f106aa8eba3] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:34:00,838: INFO/MainProcess] Task global_batch.reap_expired_leases[1d92f407-a69d-4ec6-b43e-021bb3045a9f] received
+[2026-11-12 17:34:00,862: INFO/MainProcess] Task global_batch.reap_expired_leases[1d92f407-a69d-4ec6-b43e-021bb3045a9f] succeeded in 0.030999999999039574s: {'requeued': [], 'batches': []}
+[2026-11-12 17:34:00,866: INFO/MainProcess] Task simulation.reap_expired_leases[373716ef-dd27-4efd-b2e4-8e0d2cf06729] received
+[2026-11-12 17:34:00,872: INFO/MainProcess] Task simulation.reap_expired_leases[373716ef-dd27-4efd-b2e4-8e0d2cf06729] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:35:00,828: INFO/MainProcess] Task optimization.reap_expired_leases[62e01c90-aa72-4951-b8d3-4a2df23c8321] received
+[2026-11-12 17:35:00,833: INFO/MainProcess] Task optimization.reap_expired_leases[62e01c90-aa72-4951-b8d3-4a2df23c8321] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:35:00,840: INFO/MainProcess] Task global_batch.reap_expired_leases[1c774750-6d65-46fc-a8e1-ee3d125070b5] received
+[2026-11-12 17:35:00,844: INFO/MainProcess] Task global_batch.reap_expired_leases[1c774750-6d65-46fc-a8e1-ee3d125070b5] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:35:00,858: INFO/MainProcess] Task simulation.reap_expired_leases[082ef2fe-0298-4412-9d67-46a3e2da9c14] received
+[2026-11-12 17:35:00,862: INFO/MainProcess] Task simulation.reap_expired_leases[082ef2fe-0298-4412-9d67-46a3e2da9c14] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:36:00,841: INFO/MainProcess] Task optimization.reap_expired_leases[cfaf55ea-dfa8-448d-89a6-401d0623d3ac] received
+[2026-11-12 17:36:00,845: INFO/MainProcess] Task optimization.reap_expired_leases[cfaf55ea-dfa8-448d-89a6-401d0623d3ac] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:36:00,847: INFO/MainProcess] Task global_batch.reap_expired_leases[10f2c7a5-ec93-427f-ac52-a445a1e11486] received
+[2026-11-12 17:36:00,856: INFO/MainProcess] Task global_batch.reap_expired_leases[10f2c7a5-ec93-427f-ac52-a445a1e11486] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:36:00,858: INFO/MainProcess] Task simulation.reap_expired_leases[9fbeb1cc-5478-455e-a0cd-a673dda45b51] received
+[2026-11-12 17:36:00,864: INFO/MainProcess] Task simulation.reap_expired_leases[9fbeb1cc-5478-455e-a0cd-a673dda45b51] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:37:00,841: INFO/MainProcess] Task optimization.reap_expired_leases[2742d2a2-0496-4b6e-a3fd-95a7daccbfc4] received
+[2026-11-12 17:37:00,848: INFO/MainProcess] Task optimization.reap_expired_leases[2742d2a2-0496-4b6e-a3fd-95a7daccbfc4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:37:00,850: INFO/MainProcess] Task global_batch.reap_expired_leases[c0616152-a554-4fa9-aac9-b8f323f7b73c] received
+[2026-11-12 17:37:00,857: INFO/MainProcess] Task global_batch.reap_expired_leases[c0616152-a554-4fa9-aac9-b8f323f7b73c] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:37:00,859: INFO/MainProcess] Task simulation.reap_expired_leases[dcffd4fd-fd4d-44ac-9a74-b1a2dc4bdabb] received
+[2026-11-12 17:37:00,865: INFO/MainProcess] Task simulation.reap_expired_leases[dcffd4fd-fd4d-44ac-9a74-b1a2dc4bdabb] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:38:00,840: INFO/MainProcess] Task optimization.reap_expired_leases[dc52deee-5104-430c-90c8-babe065a4456] received
+[2026-11-12 17:38:00,863: INFO/MainProcess] Task optimization.reap_expired_leases[dc52deee-5104-430c-90c8-babe065a4456] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:38:00,865: INFO/MainProcess] Task global_batch.reap_expired_leases[1820ffcc-8026-4ffc-b312-4dd1c7b1b67d] received
+[2026-11-12 17:38:00,870: INFO/MainProcess] Task global_batch.reap_expired_leases[1820ffcc-8026-4ffc-b312-4dd1c7b1b67d] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:38:00,872: INFO/MainProcess] Task simulation.reap_expired_leases[f4e292e8-1de6-4a38-912d-1f771ff0fd5d] received
+[2026-11-12 17:38:00,876: INFO/MainProcess] Task simulation.reap_expired_leases[f4e292e8-1de6-4a38-912d-1f771ff0fd5d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:39:00,843: INFO/MainProcess] Task optimization.reap_expired_leases[70cf79a9-5a55-4fe4-b4c4-6a335608717f] received
+[2026-11-12 17:39:00,851: INFO/MainProcess] Task optimization.reap_expired_leases[70cf79a9-5a55-4fe4-b4c4-6a335608717f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:39:00,860: INFO/MainProcess] Task global_batch.reap_expired_leases[0109ba8d-426d-4193-a5d1-5d65589441a7] received
+[2026-11-12 17:39:00,866: INFO/MainProcess] Task global_batch.reap_expired_leases[0109ba8d-426d-4193-a5d1-5d65589441a7] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:39:00,867: INFO/MainProcess] Task simulation.reap_expired_leases[5a037c46-fef9-4329-92d8-c6386af739c8] received
+[2026-11-12 17:39:00,874: INFO/MainProcess] Task simulation.reap_expired_leases[5a037c46-fef9-4329-92d8-c6386af739c8] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:40:00,842: INFO/MainProcess] Task optimization.reap_expired_leases[622084e4-7866-4176-939f-07e62e55dd40] received
+[2026-11-12 17:40:00,849: INFO/MainProcess] Task optimization.reap_expired_leases[622084e4-7866-4176-939f-07e62e55dd40] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:40:00,862: INFO/MainProcess] Task global_batch.reap_expired_leases[6d5f9632-7bef-42bc-a6ce-8f6a3c38bd41] received
+[2026-11-12 17:40:00,872: INFO/MainProcess] Task global_batch.reap_expired_leases[6d5f9632-7bef-42bc-a6ce-8f6a3c38bd41] succeeded in 0.014999999999417923s: {'requeued': [], 'batches': []}
+[2026-11-12 17:40:00,875: INFO/MainProcess] Task simulation.reap_expired_leases[1e6b67de-8c68-476b-be60-899b66e82ae4] received
+[2026-11-12 17:40:00,881: INFO/MainProcess] Task simulation.reap_expired_leases[1e6b67de-8c68-476b-be60-899b66e82ae4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:41:00,843: INFO/MainProcess] Task optimization.reap_expired_leases[4a955f63-6942-45a2-8d6c-734754bbbabd] received
+[2026-11-12 17:41:00,851: INFO/MainProcess] Task optimization.reap_expired_leases[4a955f63-6942-45a2-8d6c-734754bbbabd] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:41:00,861: INFO/MainProcess] Task global_batch.reap_expired_leases[fbaa3c04-5055-4c43-80d2-f503ee7d3e67] received
+[2026-11-12 17:41:00,867: INFO/MainProcess] Task global_batch.reap_expired_leases[fbaa3c04-5055-4c43-80d2-f503ee7d3e67] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:41:00,869: INFO/MainProcess] Task simulation.reap_expired_leases[b2d2d02b-a5c6-464a-aa95-7fb9d1f190e4] received
+[2026-11-12 17:41:00,874: INFO/MainProcess] Task simulation.reap_expired_leases[b2d2d02b-a5c6-464a-aa95-7fb9d1f190e4] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:42:00,844: INFO/MainProcess] Task optimization.reap_expired_leases[c319341b-a6af-4ea7-a5c8-582a67351a9a] received
+[2026-11-12 17:42:00,850: INFO/MainProcess] Task optimization.reap_expired_leases[c319341b-a6af-4ea7-a5c8-582a67351a9a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:42:00,863: INFO/MainProcess] Task global_batch.reap_expired_leases[65bb6d1d-c3b5-43fd-ac55-4c3cdfdb82ae] received
+[2026-11-12 17:42:00,871: INFO/MainProcess] Task global_batch.reap_expired_leases[65bb6d1d-c3b5-43fd-ac55-4c3cdfdb82ae] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:42:00,886: INFO/MainProcess] Task simulation.reap_expired_leases[c2196a76-8873-4005-b01d-283f642f816c] received
+[2026-11-12 17:42:00,893: INFO/MainProcess] Task simulation.reap_expired_leases[c2196a76-8873-4005-b01d-283f642f816c] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 17:43:00,844: INFO/MainProcess] Task optimization.reap_expired_leases[fe05c5c3-da8b-4c36-837a-681c0d084bd3] received
+[2026-11-12 17:43:00,850: INFO/MainProcess] Task optimization.reap_expired_leases[fe05c5c3-da8b-4c36-837a-681c0d084bd3] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:43:00,862: INFO/MainProcess] Task global_batch.reap_expired_leases[0415ad2a-198e-49d0-b0cf-65583fcf265e] received
+[2026-11-12 17:43:00,868: INFO/MainProcess] Task global_batch.reap_expired_leases[0415ad2a-198e-49d0-b0cf-65583fcf265e] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:43:00,887: INFO/MainProcess] Task simulation.reap_expired_leases[58a9bedc-5176-43d3-9d15-45b2f6f0221c] received
+[2026-11-12 17:43:00,892: INFO/MainProcess] Task simulation.reap_expired_leases[58a9bedc-5176-43d3-9d15-45b2f6f0221c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:44:00,844: INFO/MainProcess] Task optimization.reap_expired_leases[840b4152-7d4d-4b90-a6d2-8a7488f11585] received
+[2026-11-12 17:44:00,850: INFO/MainProcess] Task optimization.reap_expired_leases[840b4152-7d4d-4b90-a6d2-8a7488f11585] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:44:00,863: INFO/MainProcess] Task global_batch.reap_expired_leases[fb0ec0bc-bb7c-4305-b55d-03fc481153d1] received
+[2026-11-12 17:44:00,868: INFO/MainProcess] Task global_batch.reap_expired_leases[fb0ec0bc-bb7c-4305-b55d-03fc481153d1] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:44:00,888: INFO/MainProcess] Task simulation.reap_expired_leases[35809f59-c9c3-46b8-9717-b1306bc0a84e] received
+[2026-11-12 17:44:00,893: INFO/MainProcess] Task simulation.reap_expired_leases[35809f59-c9c3-46b8-9717-b1306bc0a84e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:45:00,846: INFO/MainProcess] Task optimization.reap_expired_leases[5b64f20e-fed5-4571-b4c0-e446b50e0844] received
+[2026-11-12 17:45:00,854: INFO/MainProcess] Task optimization.reap_expired_leases[5b64f20e-fed5-4571-b4c0-e446b50e0844] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:45:00,864: INFO/MainProcess] Task global_batch.reap_expired_leases[bb3889d9-b22b-4a28-a9fb-8ed43c772e32] received
+[2026-11-12 17:45:00,869: INFO/MainProcess] Task global_batch.reap_expired_leases[bb3889d9-b22b-4a28-a9fb-8ed43c772e32] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:45:00,888: INFO/MainProcess] Task simulation.reap_expired_leases[ecf62b24-f209-4daf-8def-069cbcb6476e] received
+[2026-11-12 17:45:00,894: INFO/MainProcess] Task simulation.reap_expired_leases[ecf62b24-f209-4daf-8def-069cbcb6476e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:46:00,846: INFO/MainProcess] Task optimization.reap_expired_leases[df39afca-a5f1-4ce4-9925-55938bade90f] received
+[2026-11-12 17:46:00,854: INFO/MainProcess] Task optimization.reap_expired_leases[df39afca-a5f1-4ce4-9925-55938bade90f] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 17:46:00,866: INFO/MainProcess] Task global_batch.reap_expired_leases[c635016f-2c23-462a-b70e-9b0c581d9cf2] received
+[2026-11-12 17:46:00,871: INFO/MainProcess] Task global_batch.reap_expired_leases[c635016f-2c23-462a-b70e-9b0c581d9cf2] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:46:00,889: INFO/MainProcess] Task simulation.reap_expired_leases[e69fbea6-3519-491c-9e66-4674579db921] received
+[2026-11-12 17:46:00,896: INFO/MainProcess] Task simulation.reap_expired_leases[e69fbea6-3519-491c-9e66-4674579db921] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:47:00,846: INFO/MainProcess] Task optimization.reap_expired_leases[95eaf2f6-3493-4554-8b07-734b2f81181c] received
+[2026-11-12 17:47:00,851: INFO/MainProcess] Task optimization.reap_expired_leases[95eaf2f6-3493-4554-8b07-734b2f81181c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:47:00,865: INFO/MainProcess] Task global_batch.reap_expired_leases[9ea3e07f-166f-48bb-a35b-13aaf0ddee35] received
+[2026-11-12 17:47:00,871: INFO/MainProcess] Task global_batch.reap_expired_leases[9ea3e07f-166f-48bb-a35b-13aaf0ddee35] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:47:00,889: INFO/MainProcess] Task simulation.reap_expired_leases[34a7657c-94e5-444e-876e-5fb9fd801724] received
+[2026-11-12 17:47:00,896: INFO/MainProcess] Task simulation.reap_expired_leases[34a7657c-94e5-444e-876e-5fb9fd801724] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:48:00,846: INFO/MainProcess] Task optimization.reap_expired_leases[d3d8d8ec-ddd1-4c1f-8c82-3e1c973a00f1] received
+[2026-11-12 17:48:00,853: INFO/MainProcess] Task optimization.reap_expired_leases[d3d8d8ec-ddd1-4c1f-8c82-3e1c973a00f1] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:48:00,866: INFO/MainProcess] Task global_batch.reap_expired_leases[3858c72f-0aa8-4b83-8ab6-2aeb6a3ccf4d] received
+[2026-11-12 17:48:00,873: INFO/MainProcess] Task global_batch.reap_expired_leases[3858c72f-0aa8-4b83-8ab6-2aeb6a3ccf4d] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:48:00,889: INFO/MainProcess] Task simulation.reap_expired_leases[d63d0b69-884f-44af-8ca7-30b54152581d] received
+[2026-11-12 17:48:00,893: INFO/MainProcess] Task simulation.reap_expired_leases[d63d0b69-884f-44af-8ca7-30b54152581d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:49:00,851: INFO/MainProcess] Task optimization.reap_expired_leases[43f338b3-46e4-48f0-a9eb-c965f25290b9] received
+[2026-11-12 17:49:00,857: INFO/MainProcess] Task optimization.reap_expired_leases[43f338b3-46e4-48f0-a9eb-c965f25290b9] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:49:00,867: INFO/MainProcess] Task global_batch.reap_expired_leases[d2ed7b62-3482-43d9-84bc-e0fa96205102] received
+[2026-11-12 17:49:00,873: INFO/MainProcess] Task global_batch.reap_expired_leases[d2ed7b62-3482-43d9-84bc-e0fa96205102] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:49:00,890: INFO/MainProcess] Task simulation.reap_expired_leases[aaa4134a-6945-4a33-87a6-f0eb2c9254b4] received
+[2026-11-12 17:49:00,896: INFO/MainProcess] Task simulation.reap_expired_leases[aaa4134a-6945-4a33-87a6-f0eb2c9254b4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:50:00,852: INFO/MainProcess] Task optimization.reap_expired_leases[83f76094-17b2-41ed-b9d1-dc24e584d4af] received
+[2026-11-12 17:50:00,856: INFO/MainProcess] Task optimization.reap_expired_leases[83f76094-17b2-41ed-b9d1-dc24e584d4af] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:50:00,866: INFO/MainProcess] Task global_batch.reap_expired_leases[b11cd90d-250d-4812-b683-f8af113bf319] received
+[2026-11-12 17:50:00,872: INFO/MainProcess] Task global_batch.reap_expired_leases[b11cd90d-250d-4812-b683-f8af113bf319] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:50:00,890: INFO/MainProcess] Task simulation.reap_expired_leases[4e895720-77b5-44cb-9f6d-c7bd4c633e23] received
+[2026-11-12 17:50:00,895: INFO/MainProcess] Task simulation.reap_expired_leases[4e895720-77b5-44cb-9f6d-c7bd4c633e23] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:51:00,853: INFO/MainProcess] Task optimization.reap_expired_leases[25e318a6-556c-475b-95c3-a00e9f716a87] received
+[2026-11-12 17:51:00,859: INFO/MainProcess] Task optimization.reap_expired_leases[25e318a6-556c-475b-95c3-a00e9f716a87] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:51:00,867: INFO/MainProcess] Task global_batch.reap_expired_leases[0606f552-8b62-41d9-9189-92d035290ea8] received
+[2026-11-12 17:51:00,873: INFO/MainProcess] Task global_batch.reap_expired_leases[0606f552-8b62-41d9-9189-92d035290ea8] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:51:00,890: INFO/MainProcess] Task simulation.reap_expired_leases[1bfa5cbf-6381-4302-97d1-eac073c7b690] received
+[2026-11-12 17:51:00,896: INFO/MainProcess] Task simulation.reap_expired_leases[1bfa5cbf-6381-4302-97d1-eac073c7b690] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:52:00,854: INFO/MainProcess] Task optimization.reap_expired_leases[c26c7c18-4f7a-46e3-a913-75e8550cedc0] received
+[2026-11-12 17:52:00,861: INFO/MainProcess] Task optimization.reap_expired_leases[c26c7c18-4f7a-46e3-a913-75e8550cedc0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:52:00,882: INFO/MainProcess] Task global_batch.reap_expired_leases[d9190e2c-eb57-4c85-a25d-35793fdff71c] received
+[2026-11-12 17:52:00,887: INFO/MainProcess] Task global_batch.reap_expired_leases[d9190e2c-eb57-4c85-a25d-35793fdff71c] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:52:00,892: INFO/MainProcess] Task simulation.reap_expired_leases[68a40e32-3b26-4e0b-bc65-3a8029534101] received
+[2026-11-12 17:52:00,897: INFO/MainProcess] Task simulation.reap_expired_leases[68a40e32-3b26-4e0b-bc65-3a8029534101] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:53:00,854: INFO/MainProcess] Task optimization.reap_expired_leases[ce3db942-e78c-44cd-b986-7b3f88cca4b1] received
+[2026-11-12 17:53:00,861: INFO/MainProcess] Task optimization.reap_expired_leases[ce3db942-e78c-44cd-b986-7b3f88cca4b1] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:53:00,883: INFO/MainProcess] Task global_batch.reap_expired_leases[81185a92-1df8-4619-9091-da3aaa8706bd] received
+[2026-11-12 17:53:00,892: INFO/MainProcess] Task global_batch.reap_expired_leases[81185a92-1df8-4619-9091-da3aaa8706bd] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:53:00,896: INFO/MainProcess] Task simulation.reap_expired_leases[7cc7b8f1-733a-40f6-8bc6-ba9c4c6a9757] received
+[2026-11-12 17:53:00,902: INFO/MainProcess] Task simulation.reap_expired_leases[7cc7b8f1-733a-40f6-8bc6-ba9c4c6a9757] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:54:00,855: INFO/MainProcess] Task optimization.reap_expired_leases[8bbf0633-42d8-4727-b7a0-837c62f530be] received
+[2026-11-12 17:54:00,863: INFO/MainProcess] Task optimization.reap_expired_leases[8bbf0633-42d8-4727-b7a0-837c62f530be] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:54:00,883: INFO/MainProcess] Task global_batch.reap_expired_leases[8efc9987-2cd9-479e-96a6-4a5b4e45e396] received
+[2026-11-12 17:54:00,892: INFO/MainProcess] Task global_batch.reap_expired_leases[8efc9987-2cd9-479e-96a6-4a5b4e45e396] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:54:00,894: INFO/MainProcess] Task simulation.reap_expired_leases[eaf67a3c-218a-48e0-9b8b-2f964ed03b47] received
+[2026-11-12 17:54:00,900: INFO/MainProcess] Task simulation.reap_expired_leases[eaf67a3c-218a-48e0-9b8b-2f964ed03b47] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:55:00,855: INFO/MainProcess] Task optimization.reap_expired_leases[d7ff4833-dfb5-4dbe-9307-911cd59e2ccf] received
+[2026-11-12 17:55:00,861: INFO/MainProcess] Task optimization.reap_expired_leases[d7ff4833-dfb5-4dbe-9307-911cd59e2ccf] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:55:00,883: INFO/MainProcess] Task global_batch.reap_expired_leases[b8472f10-f0bc-4a75-b52d-a867c496fae3] received
+[2026-11-12 17:55:00,888: INFO/MainProcess] Task global_batch.reap_expired_leases[b8472f10-f0bc-4a75-b52d-a867c496fae3] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:55:00,893: INFO/MainProcess] Task simulation.reap_expired_leases[1c302283-7d2e-41b0-addd-b46866ed5351] received
+[2026-11-12 17:55:00,900: INFO/MainProcess] Task simulation.reap_expired_leases[1c302283-7d2e-41b0-addd-b46866ed5351] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:56:00,855: INFO/MainProcess] Task optimization.reap_expired_leases[dec8cb3f-a9dc-40ca-9a09-9f5415c438b1] received
+[2026-11-12 17:56:00,862: INFO/MainProcess] Task optimization.reap_expired_leases[dec8cb3f-a9dc-40ca-9a09-9f5415c438b1] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:56:00,884: INFO/MainProcess] Task global_batch.reap_expired_leases[9ea39be6-a96e-46cf-90c8-4973e49dfd85] received
+[2026-11-12 17:56:00,889: INFO/MainProcess] Task global_batch.reap_expired_leases[9ea39be6-a96e-46cf-90c8-4973e49dfd85] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 17:56:00,893: INFO/MainProcess] Task simulation.reap_expired_leases[fd960d25-1a12-48b9-b8fc-c67b229fd01c] received
+[2026-11-12 17:56:00,898: INFO/MainProcess] Task simulation.reap_expired_leases[fd960d25-1a12-48b9-b8fc-c67b229fd01c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:57:00,855: INFO/MainProcess] Task optimization.reap_expired_leases[aca3fbc8-0b9f-4304-8c73-8b2cc49c1a64] received
+[2026-11-12 17:57:00,860: INFO/MainProcess] Task optimization.reap_expired_leases[aca3fbc8-0b9f-4304-8c73-8b2cc49c1a64] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:57:00,884: INFO/MainProcess] Task global_batch.reap_expired_leases[28c5d02e-8948-46ee-be8d-50cc985f58f7] received
+[2026-11-12 17:57:00,889: INFO/MainProcess] Task global_batch.reap_expired_leases[28c5d02e-8948-46ee-be8d-50cc985f58f7] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:57:00,894: INFO/MainProcess] Task simulation.reap_expired_leases[eeee3dc5-ea16-4351-8a01-0410a900ba8a] received
+[2026-11-12 17:57:00,900: INFO/MainProcess] Task simulation.reap_expired_leases[eeee3dc5-ea16-4351-8a01-0410a900ba8a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:58:00,855: INFO/MainProcess] Task optimization.reap_expired_leases[464c23be-dc97-41b3-8dc3-0899e097b4bc] received
+[2026-11-12 17:58:00,860: INFO/MainProcess] Task optimization.reap_expired_leases[464c23be-dc97-41b3-8dc3-0899e097b4bc] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 17:58:00,885: INFO/MainProcess] Task global_batch.reap_expired_leases[b8d44777-e927-4c51-8a60-67127a26eeff] received
+[2026-11-12 17:58:00,890: INFO/MainProcess] Task global_batch.reap_expired_leases[b8d44777-e927-4c51-8a60-67127a26eeff] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:58:00,893: INFO/MainProcess] Task simulation.reap_expired_leases[4189b537-b13f-4a79-a30a-2af686675865] received
+[2026-11-12 17:58:00,899: INFO/MainProcess] Task simulation.reap_expired_leases[4189b537-b13f-4a79-a30a-2af686675865] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:59:00,859: INFO/MainProcess] Task optimization.reap_expired_leases[e4097ddf-1877-44ea-bdf1-6ed267ed8462] received
+[2026-11-12 17:59:00,866: INFO/MainProcess] Task optimization.reap_expired_leases[e4097ddf-1877-44ea-bdf1-6ed267ed8462] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 17:59:00,886: INFO/MainProcess] Task global_batch.reap_expired_leases[57ad60ac-9a8b-47ce-9423-355179ff3460] received
+[2026-11-12 17:59:00,891: INFO/MainProcess] Task global_batch.reap_expired_leases[57ad60ac-9a8b-47ce-9423-355179ff3460] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 17:59:00,895: INFO/MainProcess] Task simulation.reap_expired_leases[d476350a-c2fb-4cc8-b40d-a1cf77b92246] received
+[2026-11-12 17:59:00,902: INFO/MainProcess] Task simulation.reap_expired_leases[d476350a-c2fb-4cc8-b40d-a1cf77b92246] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:00:00,859: INFO/MainProcess] Task optimization.reap_expired_leases[427dfb6d-1d3f-40ef-a42c-134ae558e54a] received
+[2026-11-12 18:00:00,866: INFO/MainProcess] Task optimization.reap_expired_leases[427dfb6d-1d3f-40ef-a42c-134ae558e54a] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:00:00,885: INFO/MainProcess] Task global_batch.reap_expired_leases[c3fbcf6b-5ec0-494f-9108-bee26be87c83] received
+[2026-11-12 18:00:00,889: INFO/MainProcess] Task global_batch.reap_expired_leases[c3fbcf6b-5ec0-494f-9108-bee26be87c83] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:00:00,897: INFO/MainProcess] Task simulation.reap_expired_leases[d0f39a21-faa2-4779-b1f4-b5fe1d19cf73] received
+[2026-11-12 18:00:00,902: INFO/MainProcess] Task simulation.reap_expired_leases[d0f39a21-faa2-4779-b1f4-b5fe1d19cf73] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:01:00,861: INFO/MainProcess] Task optimization.reap_expired_leases[88c7a691-0b69-44bf-8725-f782b9c7051d] received
+[2026-11-12 18:01:00,867: INFO/MainProcess] Task optimization.reap_expired_leases[88c7a691-0b69-44bf-8725-f782b9c7051d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:01:00,886: INFO/MainProcess] Task global_batch.reap_expired_leases[65c18f47-3901-442b-aed4-24e31d6287d0] received
+[2026-11-12 18:01:00,893: INFO/MainProcess] Task global_batch.reap_expired_leases[65c18f47-3901-442b-aed4-24e31d6287d0] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 18:01:00,898: INFO/MainProcess] Task simulation.reap_expired_leases[6584a947-efe8-4c95-8e8b-cd7d8c01b866] received
+[2026-11-12 18:01:00,902: INFO/MainProcess] Task simulation.reap_expired_leases[6584a947-efe8-4c95-8e8b-cd7d8c01b866] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:02:00,859: INFO/MainProcess] Task optimization.reap_expired_leases[e393cf2d-d2d1-47ad-8512-601bb09fc3b5] received
+[2026-11-12 18:02:00,865: INFO/MainProcess] Task optimization.reap_expired_leases[e393cf2d-d2d1-47ad-8512-601bb09fc3b5] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:02:00,887: INFO/MainProcess] Task global_batch.reap_expired_leases[10e8a178-5956-46d9-a64f-cfd8e95ecc8d] received
+[2026-11-12 18:02:00,893: INFO/MainProcess] Task global_batch.reap_expired_leases[10e8a178-5956-46d9-a64f-cfd8e95ecc8d] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 18:02:00,898: INFO/MainProcess] Task simulation.reap_expired_leases[1a59500f-ead3-4f79-9cf8-4ef6dcfde18d] received
+[2026-11-12 18:02:00,906: INFO/MainProcess] Task simulation.reap_expired_leases[1a59500f-ead3-4f79-9cf8-4ef6dcfde18d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:03:00,859: INFO/MainProcess] Task optimization.reap_expired_leases[f0eb8ca6-ea73-4a56-b515-7d0553568d95] received
+[2026-11-12 18:03:00,863: INFO/MainProcess] Task optimization.reap_expired_leases[f0eb8ca6-ea73-4a56-b515-7d0553568d95] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:03:00,887: INFO/MainProcess] Task global_batch.reap_expired_leases[712a168e-5463-494d-8bb8-f64bcb841f92] received
+[2026-11-12 18:03:00,894: INFO/MainProcess] Task global_batch.reap_expired_leases[712a168e-5463-494d-8bb8-f64bcb841f92] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 18:03:00,898: INFO/MainProcess] Task simulation.reap_expired_leases[db8dcc74-4a52-449c-8e0a-38f5d1012d84] received
+[2026-11-12 18:03:00,903: INFO/MainProcess] Task simulation.reap_expired_leases[db8dcc74-4a52-449c-8e0a-38f5d1012d84] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:04:00,861: INFO/MainProcess] Task optimization.reap_expired_leases[9dda10f7-dcbd-4717-9532-253c3abf828b] received
+[2026-11-12 18:04:00,884: INFO/MainProcess] Task optimization.reap_expired_leases[9dda10f7-dcbd-4717-9532-253c3abf828b] succeeded in 0.031000000002677552s: {'requeued': [], 'failed': []}
+[2026-11-12 18:04:00,888: INFO/MainProcess] Task global_batch.reap_expired_leases[3ea0d8a2-2ff0-41e5-af5b-77e7503ac0d5] received
+[2026-11-12 18:04:00,894: INFO/MainProcess] Task global_batch.reap_expired_leases[3ea0d8a2-2ff0-41e5-af5b-77e7503ac0d5] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:04:00,899: INFO/MainProcess] Task simulation.reap_expired_leases[ad486e21-ec9a-4600-8373-189504dbcbec] received
+[2026-11-12 18:04:00,904: INFO/MainProcess] Task simulation.reap_expired_leases[ad486e21-ec9a-4600-8373-189504dbcbec] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:05:00,859: INFO/MainProcess] Task optimization.reap_expired_leases[7cd2f4c7-138b-4468-905a-fa730013a07f] received
+[2026-11-12 18:05:00,866: INFO/MainProcess] Task optimization.reap_expired_leases[7cd2f4c7-138b-4468-905a-fa730013a07f] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:05:00,889: INFO/MainProcess] Task global_batch.reap_expired_leases[02c96219-d489-4177-bfb2-9897b5e4d9c3] received
+[2026-11-12 18:05:00,896: INFO/MainProcess] Task global_batch.reap_expired_leases[02c96219-d489-4177-bfb2-9897b5e4d9c3] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:05:00,900: INFO/MainProcess] Task simulation.reap_expired_leases[a7ca9f02-de6f-4ee5-a8c9-af952bdea3f0] received
+[2026-11-12 18:05:00,907: INFO/MainProcess] Task simulation.reap_expired_leases[a7ca9f02-de6f-4ee5-a8c9-af952bdea3f0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:06:00,878: INFO/MainProcess] Task optimization.reap_expired_leases[9e350ebb-8606-45be-9d38-9c6b9b9954da] received
+[2026-11-12 18:06:00,887: INFO/MainProcess] Task optimization.reap_expired_leases[9e350ebb-8606-45be-9d38-9c6b9b9954da] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
+[2026-11-12 18:06:00,890: INFO/MainProcess] Task global_batch.reap_expired_leases[844bf7ff-f4ac-4846-87e2-32bd41c329f7] received
+[2026-11-12 18:06:00,895: INFO/MainProcess] Task global_batch.reap_expired_leases[844bf7ff-f4ac-4846-87e2-32bd41c329f7] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:06:00,900: INFO/MainProcess] Task simulation.reap_expired_leases[fbbacbe4-a38c-42cb-bcd3-5c66ef1784e5] received
+[2026-11-12 18:06:00,905: INFO/MainProcess] Task simulation.reap_expired_leases[fbbacbe4-a38c-42cb-bcd3-5c66ef1784e5] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:07:00,863: INFO/MainProcess] Task optimization.reap_expired_leases[e066a6d9-4b5e-4271-ad6c-f8b0270355b3] received
+[2026-11-12 18:07:00,869: INFO/MainProcess] Task optimization.reap_expired_leases[e066a6d9-4b5e-4271-ad6c-f8b0270355b3] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:07:00,890: INFO/MainProcess] Task global_batch.reap_expired_leases[82cf6bfd-e31b-4c21-a35c-517b11c02c6b] received
+[2026-11-12 18:07:00,896: INFO/MainProcess] Task global_batch.reap_expired_leases[82cf6bfd-e31b-4c21-a35c-517b11c02c6b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:07:00,901: INFO/MainProcess] Task simulation.reap_expired_leases[1b97996d-f1c5-4617-982f-ff3e048d520c] received
+[2026-11-12 18:07:00,905: INFO/MainProcess] Task simulation.reap_expired_leases[1b97996d-f1c5-4617-982f-ff3e048d520c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:08:00,863: INFO/MainProcess] Task optimization.reap_expired_leases[b3fce36a-fc5a-4ec6-9f93-c4de85ece6de] received
+[2026-11-12 18:08:00,868: INFO/MainProcess] Task optimization.reap_expired_leases[b3fce36a-fc5a-4ec6-9f93-c4de85ece6de] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:08:00,890: INFO/MainProcess] Task global_batch.reap_expired_leases[74bf3425-cd8b-415b-87d7-33d70d748b55] received
+[2026-11-12 18:08:00,896: INFO/MainProcess] Task global_batch.reap_expired_leases[74bf3425-cd8b-415b-87d7-33d70d748b55] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:08:00,900: INFO/MainProcess] Task simulation.reap_expired_leases[846d1907-5ba6-476e-8217-e9318e39f02c] received
+[2026-11-12 18:08:00,905: INFO/MainProcess] Task simulation.reap_expired_leases[846d1907-5ba6-476e-8217-e9318e39f02c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:09:00,866: INFO/MainProcess] Task optimization.reap_expired_leases[db8c44d5-274d-40ca-8cfc-50f21f83c700] received
+[2026-11-12 18:09:00,871: INFO/MainProcess] Task optimization.reap_expired_leases[db8c44d5-274d-40ca-8cfc-50f21f83c700] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:09:00,891: INFO/MainProcess] Task global_batch.reap_expired_leases[1a6fb247-afb2-4e4b-902d-e82dd57c4ca8] received
+[2026-11-12 18:09:00,898: INFO/MainProcess] Task global_batch.reap_expired_leases[1a6fb247-afb2-4e4b-902d-e82dd57c4ca8] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:09:00,901: INFO/MainProcess] Task simulation.reap_expired_leases[6cd8a2e9-0a9c-4ae6-9249-cd7181ab13e0] received
+[2026-11-12 18:09:00,906: INFO/MainProcess] Task simulation.reap_expired_leases[6cd8a2e9-0a9c-4ae6-9249-cd7181ab13e0] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:10:00,865: INFO/MainProcess] Task optimization.reap_expired_leases[8a93febd-7f7d-4013-a076-374b276b59a4] received
+[2026-11-12 18:10:00,871: INFO/MainProcess] Task optimization.reap_expired_leases[8a93febd-7f7d-4013-a076-374b276b59a4] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:10:00,892: INFO/MainProcess] Task global_batch.reap_expired_leases[04e3ed1d-9459-4302-ab35-8610a20e2b96] received
+[2026-11-12 18:10:00,897: INFO/MainProcess] Task global_batch.reap_expired_leases[04e3ed1d-9459-4302-ab35-8610a20e2b96] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:10:00,902: INFO/MainProcess] Task simulation.reap_expired_leases[577d8166-7b96-40be-acad-5932c01a4654] received
+[2026-11-12 18:10:00,908: INFO/MainProcess] Task simulation.reap_expired_leases[577d8166-7b96-40be-acad-5932c01a4654] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:11:00,867: INFO/MainProcess] Task optimization.reap_expired_leases[e8381fbc-5ea1-44d5-ba71-1064962b3283] received
+[2026-11-12 18:11:00,872: INFO/MainProcess] Task optimization.reap_expired_leases[e8381fbc-5ea1-44d5-ba71-1064962b3283] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:11:00,894: INFO/MainProcess] Task global_batch.reap_expired_leases[39f37f41-b692-48fd-aa0f-38700116e438] received
+[2026-11-12 18:11:00,903: INFO/MainProcess] Task global_batch.reap_expired_leases[39f37f41-b692-48fd-aa0f-38700116e438] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 18:11:00,905: INFO/MainProcess] Task simulation.reap_expired_leases[45488cbb-021e-40d8-a83d-c710983e85b1] received
+[2026-11-12 18:11:00,910: INFO/MainProcess] Task simulation.reap_expired_leases[45488cbb-021e-40d8-a83d-c710983e85b1] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:12:00,866: INFO/MainProcess] Task optimization.reap_expired_leases[efae5c6c-71d0-4473-8835-f9c97a5275d4] received
+[2026-11-12 18:12:00,872: INFO/MainProcess] Task optimization.reap_expired_leases[efae5c6c-71d0-4473-8835-f9c97a5275d4] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:12:00,898: INFO/MainProcess] Task global_batch.reap_expired_leases[f9b14a7e-be5c-4d99-aca0-4dae2f881eb1] received
+[2026-11-12 18:12:00,903: INFO/MainProcess] Task global_batch.reap_expired_leases[f9b14a7e-be5c-4d99-aca0-4dae2f881eb1] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:12:00,905: INFO/MainProcess] Task simulation.reap_expired_leases[03eb2bdb-df82-4739-b551-c810fc4ea519] received
+[2026-11-12 18:12:00,911: INFO/MainProcess] Task simulation.reap_expired_leases[03eb2bdb-df82-4739-b551-c810fc4ea519] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:13:00,867: INFO/MainProcess] Task optimization.reap_expired_leases[883cef29-1a91-41f3-816d-5dd2a47625ec] received
+[2026-11-12 18:13:00,874: INFO/MainProcess] Task optimization.reap_expired_leases[883cef29-1a91-41f3-816d-5dd2a47625ec] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:13:00,898: INFO/MainProcess] Task global_batch.reap_expired_leases[93c0ff9b-0e69-4f82-b8a1-e9d60511d305] received
+[2026-11-12 18:13:00,926: INFO/MainProcess] Task global_batch.reap_expired_leases[93c0ff9b-0e69-4f82-b8a1-e9d60511d305] succeeded in 0.030999999999039574s: {'requeued': [], 'batches': []}
+[2026-11-12 18:13:00,961: INFO/MainProcess] Task simulation.reap_expired_leases[2d8c613d-813e-4102-af16-9b8a5fc30493] received
+[2026-11-12 18:13:00,969: INFO/MainProcess] Task simulation.reap_expired_leases[2d8c613d-813e-4102-af16-9b8a5fc30493] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:14:00,866: INFO/MainProcess] Task optimization.reap_expired_leases[1eb73760-0a6d-41d1-a9bb-a900bcd39b3d] received
+[2026-11-12 18:14:00,871: INFO/MainProcess] Task optimization.reap_expired_leases[1eb73760-0a6d-41d1-a9bb-a900bcd39b3d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:14:00,898: INFO/MainProcess] Task global_batch.reap_expired_leases[7f97d715-caf2-46d9-9bc3-611d00586d06] received
+[2026-11-12 18:14:00,902: INFO/MainProcess] Task global_batch.reap_expired_leases[7f97d715-caf2-46d9-9bc3-611d00586d06] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:14:00,934: INFO/MainProcess] Task simulation.reap_expired_leases[db70e815-b70a-4d9e-a0d1-837800294bfc] received
+[2026-11-12 18:14:00,940: INFO/MainProcess] Task simulation.reap_expired_leases[db70e815-b70a-4d9e-a0d1-837800294bfc] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 18:15:00,868: INFO/MainProcess] Task optimization.reap_expired_leases[f93bc62d-c090-4b6c-b831-a4f403c0ef88] received
+[2026-11-12 18:15:00,875: INFO/MainProcess] Task optimization.reap_expired_leases[f93bc62d-c090-4b6c-b831-a4f403c0ef88] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:15:00,900: INFO/MainProcess] Task global_batch.reap_expired_leases[af589ea7-558f-4935-ac92-658c5cae911c] received
+[2026-11-12 18:15:00,908: INFO/MainProcess] Task global_batch.reap_expired_leases[af589ea7-558f-4935-ac92-658c5cae911c] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 18:15:00,936: INFO/MainProcess] Task simulation.reap_expired_leases[601980a9-07c3-42e7-9cda-41f7116a4e40] received
+[2026-11-12 18:15:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[601980a9-07c3-42e7-9cda-41f7116a4e40] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 18:16:00,869: INFO/MainProcess] Task optimization.reap_expired_leases[cbe04919-e035-4e32-a856-5f6a59f3c73c] received
+[2026-11-12 18:16:00,876: INFO/MainProcess] Task optimization.reap_expired_leases[cbe04919-e035-4e32-a856-5f6a59f3c73c] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:16:00,899: INFO/MainProcess] Task global_batch.reap_expired_leases[d1bf2758-ff35-4ae2-a81a-9836bb88b858] received
+[2026-11-12 18:16:00,907: INFO/MainProcess] Task global_batch.reap_expired_leases[d1bf2758-ff35-4ae2-a81a-9836bb88b858] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:16:00,936: INFO/MainProcess] Task simulation.reap_expired_leases[d7554ac1-9db7-41dc-9145-d2857066208b] received
+[2026-11-12 18:16:00,944: INFO/MainProcess] Task simulation.reap_expired_leases[d7554ac1-9db7-41dc-9145-d2857066208b] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 18:17:00,869: INFO/MainProcess] Task optimization.reap_expired_leases[4ebcef7e-ee66-4070-9ca6-3b7ba632a493] received
+[2026-11-12 18:17:00,877: INFO/MainProcess] Task optimization.reap_expired_leases[4ebcef7e-ee66-4070-9ca6-3b7ba632a493] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:17:00,900: INFO/MainProcess] Task global_batch.reap_expired_leases[60cb3725-cdf3-46bf-a5b9-528753944f67] received
+[2026-11-12 18:17:00,910: INFO/MainProcess] Task global_batch.reap_expired_leases[60cb3725-cdf3-46bf-a5b9-528753944f67] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-12 18:17:00,936: INFO/MainProcess] Task simulation.reap_expired_leases[2a0c7a6c-a123-43ec-b0db-6edcee2cba40] received
+[2026-11-12 18:17:00,944: INFO/MainProcess] Task simulation.reap_expired_leases[2a0c7a6c-a123-43ec-b0db-6edcee2cba40] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 18:18:00,868: INFO/MainProcess] Task optimization.reap_expired_leases[d0bc9b59-64ba-4f59-8d0b-18414f8cafb7] received
+[2026-11-12 18:18:00,873: INFO/MainProcess] Task optimization.reap_expired_leases[d0bc9b59-64ba-4f59-8d0b-18414f8cafb7] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:18:00,900: INFO/MainProcess] Task global_batch.reap_expired_leases[c28024da-61e9-4ddd-b683-01764d674312] received
+[2026-11-12 18:18:00,904: INFO/MainProcess] Task global_batch.reap_expired_leases[c28024da-61e9-4ddd-b683-01764d674312] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:18:00,938: INFO/MainProcess] Task simulation.reap_expired_leases[c3c297d8-2af5-41b5-8e5b-d3efe6c434d9] received
+[2026-11-12 18:18:00,943: INFO/MainProcess] Task simulation.reap_expired_leases[c3c297d8-2af5-41b5-8e5b-d3efe6c434d9] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
+[2026-11-12 18:19:00,887: INFO/MainProcess] Task optimization.reap_expired_leases[1f827163-d926-4fb2-8a2d-82aa8d56d29f] received
+[2026-11-12 18:19:00,894: INFO/MainProcess] Task optimization.reap_expired_leases[1f827163-d926-4fb2-8a2d-82aa8d56d29f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:19:00,900: INFO/MainProcess] Task global_batch.reap_expired_leases[490a0ec9-e177-4f2b-b2e6-b76f11992fad] received
+[2026-11-12 18:19:00,904: INFO/MainProcess] Task global_batch.reap_expired_leases[490a0ec9-e177-4f2b-b2e6-b76f11992fad] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:19:00,938: INFO/MainProcess] Task simulation.reap_expired_leases[9e529bdf-aec4-42f2-bc91-256495507043] received
+[2026-11-12 18:19:00,943: INFO/MainProcess] Task simulation.reap_expired_leases[9e529bdf-aec4-42f2-bc91-256495507043] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:20:00,870: INFO/MainProcess] Task optimization.reap_expired_leases[fb5171eb-80f4-460c-a0e1-903b04783f48] received
+[2026-11-12 18:20:00,875: INFO/MainProcess] Task optimization.reap_expired_leases[fb5171eb-80f4-460c-a0e1-903b04783f48] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:20:00,901: INFO/MainProcess] Task global_batch.reap_expired_leases[ab250072-4fff-4e33-87d9-3ca8166aa7c3] received
+[2026-11-12 18:20:00,923: INFO/MainProcess] Task global_batch.reap_expired_leases[ab250072-4fff-4e33-87d9-3ca8166aa7c3] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 18:20:00,936: INFO/MainProcess] Task simulation.reap_expired_leases[5141f532-616c-4c84-b38b-86bc8524e539] received
+[2026-11-12 18:20:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[5141f532-616c-4c84-b38b-86bc8524e539] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:21:00,870: INFO/MainProcess] Task optimization.reap_expired_leases[b70a4c53-f43b-4a22-89ed-51974437c23d] received
+[2026-11-12 18:21:00,877: INFO/MainProcess] Task optimization.reap_expired_leases[b70a4c53-f43b-4a22-89ed-51974437c23d] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:21:00,901: INFO/MainProcess] Task global_batch.reap_expired_leases[d4a241fd-c2c2-4dc5-bc43-7113657806c1] received
+[2026-11-12 18:21:00,907: INFO/MainProcess] Task global_batch.reap_expired_leases[d4a241fd-c2c2-4dc5-bc43-7113657806c1] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:21:00,938: INFO/MainProcess] Task simulation.reap_expired_leases[18d867de-6229-43ae-bca8-84cffbd256c9] received
+[2026-11-12 18:21:00,945: INFO/MainProcess] Task simulation.reap_expired_leases[18d867de-6229-43ae-bca8-84cffbd256c9] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:22:00,880: INFO/MainProcess] Task optimization.reap_expired_leases[0f3abd9d-6ce8-498f-814e-86a7a945feac] received
+[2026-11-12 18:22:00,886: INFO/MainProcess] Task optimization.reap_expired_leases[0f3abd9d-6ce8-498f-814e-86a7a945feac] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:22:00,902: INFO/MainProcess] Task global_batch.reap_expired_leases[8070325b-b166-4e49-bdbe-31a34a7a9785] received
+[2026-11-12 18:22:00,908: INFO/MainProcess] Task global_batch.reap_expired_leases[8070325b-b166-4e49-bdbe-31a34a7a9785] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:22:00,939: INFO/MainProcess] Task simulation.reap_expired_leases[47978cae-346a-4415-9ea6-cadb61e6de26] received
+[2026-11-12 18:22:00,944: INFO/MainProcess] Task simulation.reap_expired_leases[47978cae-346a-4415-9ea6-cadb61e6de26] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:23:00,881: INFO/MainProcess] Task optimization.reap_expired_leases[414a78e0-b91e-420d-99e8-eb7cf1f65888] received
+[2026-11-12 18:23:00,892: INFO/MainProcess] Task optimization.reap_expired_leases[414a78e0-b91e-420d-99e8-eb7cf1f65888] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:23:00,903: INFO/MainProcess] Task global_batch.reap_expired_leases[e5bc8de0-dca5-4206-8465-5041bbc65498] received
+[2026-11-12 18:23:00,911: INFO/MainProcess] Task global_batch.reap_expired_leases[e5bc8de0-dca5-4206-8465-5041bbc65498] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:23:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[066a2702-5cd3-4e77-802e-5a4493d52820] received
+[2026-11-12 18:23:00,950: INFO/MainProcess] Task simulation.reap_expired_leases[066a2702-5cd3-4e77-802e-5a4493d52820] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:24:00,881: INFO/MainProcess] Task optimization.reap_expired_leases[3d6a29ad-5d4a-4256-b6c0-e07a33db6853] received
+[2026-11-12 18:24:00,887: INFO/MainProcess] Task optimization.reap_expired_leases[3d6a29ad-5d4a-4256-b6c0-e07a33db6853] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:24:00,902: INFO/MainProcess] Task global_batch.reap_expired_leases[d3657422-219c-4907-827a-9e09fbfd99fa] received
+[2026-11-12 18:24:00,913: INFO/MainProcess] Task global_batch.reap_expired_leases[d3657422-219c-4907-827a-9e09fbfd99fa] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:24:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[a15bb26e-fa36-4f79-b95a-dcf408dcbf18] received
+[2026-11-12 18:24:00,953: INFO/MainProcess] Task simulation.reap_expired_leases[a15bb26e-fa36-4f79-b95a-dcf408dcbf18] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:25:00,882: INFO/MainProcess] Task optimization.reap_expired_leases[9d6d56fc-4415-4c64-9525-66c6a5b24df3] received
+[2026-11-12 18:25:00,902: INFO/MainProcess] Task optimization.reap_expired_leases[9d6d56fc-4415-4c64-9525-66c6a5b24df3] succeeded in 0.030999999995401595s: {'requeued': [], 'failed': []}
+[2026-11-12 18:25:00,913: INFO/MainProcess] Task global_batch.reap_expired_leases[eaae4efb-8480-4db7-bc5f-ea79a19fea7b] received
+[2026-11-12 18:25:00,917: INFO/MainProcess] Task global_batch.reap_expired_leases[eaae4efb-8480-4db7-bc5f-ea79a19fea7b] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 18:25:00,941: INFO/MainProcess] Task simulation.reap_expired_leases[9894f05e-5489-4dd1-92e1-e8fd3717375f] received
+[2026-11-12 18:25:00,947: INFO/MainProcess] Task simulation.reap_expired_leases[9894f05e-5489-4dd1-92e1-e8fd3717375f] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:26:00,881: INFO/MainProcess] Task optimization.reap_expired_leases[0b1486ab-accf-4b48-8ec7-7fd0009c44e1] received
+[2026-11-12 18:26:00,886: INFO/MainProcess] Task optimization.reap_expired_leases[0b1486ab-accf-4b48-8ec7-7fd0009c44e1] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:26:00,912: INFO/MainProcess] Task global_batch.reap_expired_leases[5d92a89c-a389-495f-9b9b-e7a040757601] received
+[2026-11-12 18:26:00,916: INFO/MainProcess] Task global_batch.reap_expired_leases[5d92a89c-a389-495f-9b9b-e7a040757601] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:26:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[13163cf7-e114-493c-9e19-3e234b87d6bd] received
+[2026-11-12 18:26:00,946: INFO/MainProcess] Task simulation.reap_expired_leases[13163cf7-e114-493c-9e19-3e234b87d6bd] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:27:00,883: INFO/MainProcess] Task optimization.reap_expired_leases[5e39d819-1434-4a31-815a-044dd58fcb02] received
+[2026-11-12 18:27:00,888: INFO/MainProcess] Task optimization.reap_expired_leases[5e39d819-1434-4a31-815a-044dd58fcb02] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:27:00,913: INFO/MainProcess] Task global_batch.reap_expired_leases[ac581dc4-1733-4c7a-95bd-02120405166a] received
+[2026-11-12 18:27:00,936: INFO/MainProcess] Task global_batch.reap_expired_leases[ac581dc4-1733-4c7a-95bd-02120405166a] succeeded in 0.031000000002677552s: {'requeued': [], 'batches': []}
+[2026-11-12 18:27:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[f1d27c0f-bbe0-40b6-a5c8-417a62329639] received
+[2026-11-12 18:27:00,947: INFO/MainProcess] Task simulation.reap_expired_leases[f1d27c0f-bbe0-40b6-a5c8-417a62329639] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:28:00,882: INFO/MainProcess] Task optimization.reap_expired_leases[72b10159-e24b-455c-9837-cd8079e25816] received
+[2026-11-12 18:28:00,887: INFO/MainProcess] Task optimization.reap_expired_leases[72b10159-e24b-455c-9837-cd8079e25816] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:28:00,912: INFO/MainProcess] Task global_batch.reap_expired_leases[a464f2b0-71d4-4296-a137-3397a524b259] received
+[2026-11-12 18:28:00,921: INFO/MainProcess] Task global_batch.reap_expired_leases[a464f2b0-71d4-4296-a137-3397a524b259] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 18:28:00,944: INFO/MainProcess] Task simulation.reap_expired_leases[532e9bed-ed49-487d-871f-acc3f3cf9470] received
+[2026-11-12 18:28:00,950: INFO/MainProcess] Task simulation.reap_expired_leases[532e9bed-ed49-487d-871f-acc3f3cf9470] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:29:00,883: INFO/MainProcess] Task optimization.reap_expired_leases[409b7b13-9340-42e5-aebe-4da33efd2fc3] received
+[2026-11-12 18:29:00,891: INFO/MainProcess] Task optimization.reap_expired_leases[409b7b13-9340-42e5-aebe-4da33efd2fc3] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:29:00,913: INFO/MainProcess] Task global_batch.reap_expired_leases[3fd0206b-a0e8-4270-9213-5546ea890b8c] received
+[2026-11-12 18:29:00,921: INFO/MainProcess] Task global_batch.reap_expired_leases[3fd0206b-a0e8-4270-9213-5546ea890b8c] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 18:29:00,942: INFO/MainProcess] Task simulation.reap_expired_leases[840541c3-9f74-4c2f-85e3-f7ce2e839270] received
+[2026-11-12 18:29:00,949: INFO/MainProcess] Task simulation.reap_expired_leases[840541c3-9f74-4c2f-85e3-f7ce2e839270] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:30:00,883: INFO/MainProcess] Task optimization.reap_expired_leases[45046ed5-73c9-4495-a4de-4803f771a53e] received
+[2026-11-12 18:30:00,888: INFO/MainProcess] Task optimization.reap_expired_leases[45046ed5-73c9-4495-a4de-4803f771a53e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:30:00,914: INFO/MainProcess] Task global_batch.reap_expired_leases[aae4cf9d-f720-43f6-9b95-a6b305436830] received
+[2026-11-12 18:30:00,918: INFO/MainProcess] Task global_batch.reap_expired_leases[aae4cf9d-f720-43f6-9b95-a6b305436830] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:30:00,944: INFO/MainProcess] Task simulation.reap_expired_leases[f9b9928c-db3a-475c-81f4-755ca880af32] received
+[2026-11-12 18:30:00,949: INFO/MainProcess] Task simulation.reap_expired_leases[f9b9928c-db3a-475c-81f4-755ca880af32] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:31:00,884: INFO/MainProcess] Task optimization.reap_expired_leases[62afc5cd-ea42-4ad9-9183-f63730847844] received
+[2026-11-12 18:31:00,905: INFO/MainProcess] Task optimization.reap_expired_leases[62afc5cd-ea42-4ad9-9183-f63730847844] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:31:00,914: INFO/MainProcess] Task global_batch.reap_expired_leases[9cfe899f-d8c5-4096-9a64-e603f0f8e50b] received
+[2026-11-12 18:31:00,919: INFO/MainProcess] Task global_batch.reap_expired_leases[9cfe899f-d8c5-4096-9a64-e603f0f8e50b] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:31:00,951: INFO/MainProcess] Task simulation.reap_expired_leases[e795365e-59bf-47f8-8074-007dc743cecf] received
+[2026-11-12 18:31:00,957: INFO/MainProcess] Task simulation.reap_expired_leases[e795365e-59bf-47f8-8074-007dc743cecf] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:32:00,885: INFO/MainProcess] Task optimization.reap_expired_leases[adf116cc-c068-4f4d-8cd1-addd19a17df2] received
+[2026-11-12 18:32:00,890: INFO/MainProcess] Task optimization.reap_expired_leases[adf116cc-c068-4f4d-8cd1-addd19a17df2] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:32:00,914: INFO/MainProcess] Task global_batch.reap_expired_leases[173addd8-6ed5-47ef-94b4-0bc00475e364] received
+[2026-11-12 18:32:00,920: INFO/MainProcess] Task global_batch.reap_expired_leases[173addd8-6ed5-47ef-94b4-0bc00475e364] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:32:00,952: INFO/MainProcess] Task simulation.reap_expired_leases[197f7def-f0eb-40d2-a9f6-7654bd0d03ae] received
+[2026-11-12 18:32:00,958: INFO/MainProcess] Task simulation.reap_expired_leases[197f7def-f0eb-40d2-a9f6-7654bd0d03ae] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:33:00,885: INFO/MainProcess] Task optimization.reap_expired_leases[8e6f87ec-9914-4e85-bb25-2fb06a242817] received
+[2026-11-12 18:33:00,892: INFO/MainProcess] Task optimization.reap_expired_leases[8e6f87ec-9914-4e85-bb25-2fb06a242817] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:33:00,915: INFO/MainProcess] Task global_batch.reap_expired_leases[c70b89cd-1b08-45a9-8dd8-1d6b2c7036b7] received
+[2026-11-12 18:33:00,920: INFO/MainProcess] Task global_batch.reap_expired_leases[c70b89cd-1b08-45a9-8dd8-1d6b2c7036b7] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:33:00,951: INFO/MainProcess] Task simulation.reap_expired_leases[7309b6a3-fde6-41db-8f06-a5f9feeff87a] received
+[2026-11-12 18:33:00,956: INFO/MainProcess] Task simulation.reap_expired_leases[7309b6a3-fde6-41db-8f06-a5f9feeff87a] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:34:00,886: INFO/MainProcess] Task optimization.reap_expired_leases[e3a2f0f5-9de1-4189-8d98-269fb9aa6c82] received
+[2026-11-12 18:34:00,894: INFO/MainProcess] Task optimization.reap_expired_leases[e3a2f0f5-9de1-4189-8d98-269fb9aa6c82] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:34:00,915: INFO/MainProcess] Task global_batch.reap_expired_leases[cde58561-0141-4e3c-a516-a2130b1dc500] received
+[2026-11-12 18:34:00,931: INFO/MainProcess] Task global_batch.reap_expired_leases[cde58561-0141-4e3c-a516-a2130b1dc500] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 18:34:00,951: INFO/MainProcess] Task simulation.reap_expired_leases[627b4e27-ba3f-453b-afc8-0f04050eaf12] received
+[2026-11-12 18:34:00,960: INFO/MainProcess] Task simulation.reap_expired_leases[627b4e27-ba3f-453b-afc8-0f04050eaf12] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:35:00,886: INFO/MainProcess] Task optimization.reap_expired_leases[06c778bf-7c99-4b29-bbc4-4b1823dcd0c6] received
+[2026-11-12 18:35:00,892: INFO/MainProcess] Task optimization.reap_expired_leases[06c778bf-7c99-4b29-bbc4-4b1823dcd0c6] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:35:00,917: INFO/MainProcess] Task global_batch.reap_expired_leases[753cc210-786a-4bef-ac9a-5e8d311ba127] received
+[2026-11-12 18:35:00,921: INFO/MainProcess] Task global_batch.reap_expired_leases[753cc210-786a-4bef-ac9a-5e8d311ba127] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:35:00,953: INFO/MainProcess] Task simulation.reap_expired_leases[704c0b1d-e391-43bd-a451-e3dab75adcca] received
+[2026-11-12 18:35:00,959: INFO/MainProcess] Task simulation.reap_expired_leases[704c0b1d-e391-43bd-a451-e3dab75adcca] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:36:00,887: INFO/MainProcess] Task optimization.reap_expired_leases[666d91f3-a0b0-4300-971b-35d5e5aade94] received
+[2026-11-12 18:36:00,893: INFO/MainProcess] Task optimization.reap_expired_leases[666d91f3-a0b0-4300-971b-35d5e5aade94] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:36:00,916: INFO/MainProcess] Task global_batch.reap_expired_leases[accb0ffb-f206-4e48-8991-dbb4402097e5] received
+[2026-11-12 18:36:00,922: INFO/MainProcess] Task global_batch.reap_expired_leases[accb0ffb-f206-4e48-8991-dbb4402097e5] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:36:00,953: INFO/MainProcess] Task simulation.reap_expired_leases[0300ea09-09a5-4686-81a4-8346b5182976] received
+[2026-11-12 18:36:00,959: INFO/MainProcess] Task simulation.reap_expired_leases[0300ea09-09a5-4686-81a4-8346b5182976] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:37:00,887: INFO/MainProcess] Task optimization.reap_expired_leases[90923b11-5724-4820-8192-3128961e9621] received
+[2026-11-12 18:37:00,895: INFO/MainProcess] Task optimization.reap_expired_leases[90923b11-5724-4820-8192-3128961e9621] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:37:00,917: INFO/MainProcess] Task global_batch.reap_expired_leases[6769e4eb-8e8a-4aa4-9796-26a83c678990] received
+[2026-11-12 18:37:00,928: INFO/MainProcess] Task global_batch.reap_expired_leases[6769e4eb-8e8a-4aa4-9796-26a83c678990] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
+[2026-11-12 18:37:00,953: INFO/MainProcess] Task simulation.reap_expired_leases[11306289-3f28-4a7b-8ab9-ab2eb86a81cd] received
+[2026-11-12 18:37:00,958: INFO/MainProcess] Task simulation.reap_expired_leases[11306289-3f28-4a7b-8ab9-ab2eb86a81cd] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:38:00,889: INFO/MainProcess] Task optimization.reap_expired_leases[29f4ebda-52d0-4b24-a0a2-d1e320a9639f] received
+[2026-11-12 18:38:00,895: INFO/MainProcess] Task optimization.reap_expired_leases[29f4ebda-52d0-4b24-a0a2-d1e320a9639f] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-12 18:38:00,917: INFO/MainProcess] Task global_batch.reap_expired_leases[b1b62b46-2c2e-461b-ad5f-c98f02a458cf] received
+[2026-11-12 18:38:00,921: INFO/MainProcess] Task global_batch.reap_expired_leases[b1b62b46-2c2e-461b-ad5f-c98f02a458cf] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:38:00,954: INFO/MainProcess] Task simulation.reap_expired_leases[ae456a16-a4a6-42a7-96c0-92d8b53fd37c] received
+[2026-11-12 18:38:00,958: INFO/MainProcess] Task simulation.reap_expired_leases[ae456a16-a4a6-42a7-96c0-92d8b53fd37c] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+[2026-11-12 18:39:00,888: INFO/MainProcess] Task optimization.reap_expired_leases[f871b6c1-21df-4add-a06b-7c1e3be8118b] received
+[2026-11-12 18:39:00,893: INFO/MainProcess] Task optimization.reap_expired_leases[f871b6c1-21df-4add-a06b-7c1e3be8118b] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-12 18:39:00,918: INFO/MainProcess] Task global_batch.reap_expired_leases[8164f493-a270-4c4f-aad3-9369448a7bd2] received
+[2026-11-12 18:39:00,922: INFO/MainProcess] Task global_batch.reap_expired_leases[8164f493-a270-4c4f-aad3-9369448a7bd2] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-12 18:39:00,954: INFO/MainProcess] Task simulation.reap_expired_leases[6e5d685a-bc15-4ec1-9783-bdb254c6cc3d] received
+[2026-11-12 18:39:00,958: INFO/MainProcess] Task simulation.reap_expired_leases[6e5d685a-bc15-4ec1-9783-bdb254c6cc3d] succeeded in 0.01599999999598367s: {'requeued': [], 'failed': []}
+
+worker: Hitting Ctrl+C again will initiate cold shutdown, terminating all running tasks!
+
+worker: Warm shutdown (MainProcess)

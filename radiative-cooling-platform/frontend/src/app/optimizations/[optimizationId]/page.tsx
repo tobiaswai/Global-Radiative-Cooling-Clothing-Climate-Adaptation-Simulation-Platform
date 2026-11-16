@@ -4,14 +4,27 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { LeaseBadge } from "@/components/global/lease-badge";
 import { ConvergenceChart } from "@/components/optimization/convergence-chart";
 import { RequirementMapChart } from "@/components/optimization/requirement-map-chart";
-import { LeaseBadge } from "@/components/global/lease-badge";
 import { cancelOptimization, getOptimization } from "@/lib/api-client";
-import { formatNumber } from "@/lib/format";
-import { METRIC_LABELS, TERMINAL_OPTIMIZATION, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import { formatNumber, formatSignedNumber } from "@/lib/format";
+import {
+  METRIC_LABELS,
+  OBJECTIVE_LABELS,
+  TERMINAL_OPTIMIZATION,
+  TREND_LABELS,
+  VARIABLE_LABELS,
+  mapMetricFor,
+} from "@/lib/optimization-labels";
 import type {
-  CandidateEvaluation, DecisionVariableName, MetricName, OptimizationJobDetail, OptimizationResult,
+  CandidateEvaluation,
+  DecisionVariableName,
+  MetricName,
+  OptimizationCreate,
+  OptimizationJobDetail,
+  OptimizationResult,
+  RequirementMapResult,
 } from "@/types/optimization";
 
 export default function OptimizationDetailPage() {
@@ -67,7 +80,7 @@ export default function OptimizationDetailPage() {
     );
   }
 
-  const metric = job.request.objective.metric;
+  const objective = job.request.objective.metric;
   const result = job.result;
   const terminal = TERMINAL_OPTIMIZATION.has(job.status);
 
@@ -75,7 +88,8 @@ export default function OptimizationDetailPage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
         <nav className="text-sm text-slate-400">
-          <Link href="/optimizations" className="hover:text-white">Inverse Design</Link> / <span className="text-slate-200">{job.name}</span>
+          <Link href="/optimizations" className="hover:text-white">Inverse Design</Link> /{" "}
+          <span className="text-slate-200">{job.name}</span>
         </nav>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -84,7 +98,7 @@ export default function OptimizationDetailPage() {
               <h1 className="text-2xl font-bold">{job.name}</h1>
               <p className="mt-1 text-sm text-slate-400">
                 {job.city_id} · months {job.request.months.join(", ")} · {job.request.variables.length} variable(s) ·
-                objective: {job.request.objective.sense} {METRIC_LABELS[metric]}
+                objective: {job.request.objective.sense} {OBJECTIVE_LABELS[objective]}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -109,22 +123,14 @@ export default function OptimizationDetailPage() {
         </section>
 
         {result && <VerdictCard result={result} />}
-        {job.history.length > 0 && <ConvergenceChart history={job.history} metric={metric} />}
-        {result && <CandidateTable result={result} metric={metric} />}
-        {result?.requirement_map && <RequirementMapChart map={result.requirement_map} metric={metric} />}
-        {result && (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-            <h2 className="text-lg font-semibold text-slate-200">Run record</h2>
-            <p className="mt-2">
-              {result.sample_count} sample day(s), {result.skipped_samples.length} skipped ·
-              {" "}{result.evaluation_count} garment evaluations · {result.simulation_count} thermal simulations ·
-              {" "}{result.generations} generations · {result.elapsed_seconds.toFixed(1)} s
-            </p>
-            <p className="mt-1 font-mono text-xs">
-              model {result.model_version} · fingerprint {result.parameter_fingerprint.slice(0, 16)}… · {result.algorithm_message}
-            </p>
-          </section>
+        {result && (result.warnings?.length ?? 0) > 0 && <WarningsPanel warnings={result.warnings!} />}
+        {job.history.length > 0 && <ConvergenceChart history={job.history} metric={objective} />}
+        {result && <CandidateTable result={result} request={job.request} />}
+        {result && (result.sensitivities?.length ?? 0) > 0 && <SensitivityTable result={result} request={job.request} />}
+        {result?.requirement_map && (
+          <RequirementMapChart map={result.requirement_map} metric={mapMetricFor(job.request).metric} />
         )}
+        {result && <RunRecord result={result} />}
       </div>
     </main>
   );
@@ -141,43 +147,67 @@ function VerdictCard({ result }: { result: OptimizationResult }) {
       <p className="text-sm uppercase tracking-wide opacity-70">Verdict</p>
       <p className="mt-1 text-3xl font-bold">{result.verdict.toUpperCase()}</p>
       <p className="mt-3 max-w-4xl">{result.message}</p>
-      {map && (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <Requirement label={`Minimum ${VARIABLE_LABELS[map.x_variable]}`}
-            value={map.minimum_x_at_max_y}
-            note={`when ${VARIABLE_LABELS[map.y_variable]} = ${map.y_values.at(-1)?.toFixed(2)}`} />
-          <Requirement label={`Minimum ${VARIABLE_LABELS[map.y_variable]}`}
-            value={map.minimum_y_at_max_x}
-            note={`when ${VARIABLE_LABELS[map.x_variable]} = ${map.x_values.at(-1)?.toFixed(2)}`} />
-        </div>
-      )}
+      {map && <RequirementReadings map={map} />}
     </section>
   );
 }
 
-function Requirement({ label, value, note }: { label: string; value: number | null; note: string }) {
+function RequirementReadings({ map }: { map: RequirementMapResult }) {
+  const step = (values: number[]) => (values.length > 1 ? Math.abs(values[1] - values[0]) : 0);
+  const rows = [
+    { variable: map.x_variable, value: map.required_x_at_best_y ?? map.minimum_x_at_max_y,
+      direction: map.x_demand_direction ?? "increasing", trend: map.objective_trend_x, step: step(map.x_values) },
+    { variable: map.y_variable, value: map.required_y_at_best_x ?? map.minimum_y_at_max_x,
+      direction: map.y_demand_direction ?? "increasing", trend: map.objective_trend_y, step: step(map.y_values) },
+  ];
+
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-4">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value === null ? "not reachable" : `≥ ${value.toFixed(2)}`}</p>
-      <p className="mt-1 text-xs text-slate-500">{note} (grid resolution limits precision)</p>
+    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      {rows.map((row) => (
+        <div key={row.variable} className="rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+          <p className="text-sm text-slate-400">Requirement on {VARIABLE_LABELS[row.variable]}</p>
+          <p className="mt-1 text-2xl font-semibold text-white">
+            {row.value === null || row.value === undefined
+              ? "not reachable"
+              : `${row.direction === "increasing" ? "≥" : "≤"} ${row.value.toFixed(3)}`}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Least demanding feasible value anywhere on the map (± {row.step.toFixed(3)} grid step).
+            {row.trend && ` Metric ${TREND_LABELS[row.trend]} along this axis.`}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
 
-function CandidateTable({ result, metric }: { result: OptimizationResult; metric: MetricName }) {
-  const columns: [string, CandidateEvaluation | null][] = [
-    ["Baseline candidate", result.baseline],
+function WarningsPanel({ warnings }: { warnings: string[] }) {
+  return (
+    <section className="rounded-2xl border border-amber-800 bg-amber-950/30 p-6">
+      <h2 className="text-lg font-semibold text-amber-200">Interpretation warnings</h2>
+      <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-amber-100">
+        {warnings.map((warning) => <li key={warning}>{warning}</li>)}
+      </ul>
+    </section>
+  );
+}
+
+function CandidateTable({ result, request }: { result: OptimizationResult; request: OptimizationCreate }) {
+  const columns: [string, CandidateEvaluation | null | undefined][] = [
+    ["Baseline", result.baseline],
     ["Best found", result.best],
-    ["Optical upper bound", result.optical_upper_bound],
+    ["Best corner", result.best_corner],
+    ["Most demanding", result.optical_upper_bound],
   ];
   const parameterNames = Object.keys(result.best.parameters) as DecisionVariableName[];
   const metricNames = Object.keys(METRIC_LABELS) as MetricName[];
+  const highlighted = new Set<string>([request.objective.metric, ...request.constraints.map((c) => c.metric)]);
+  const constraintLabels = Object.keys(result.best.constraint_excess ?? {});
 
   return (
     <section className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 p-6">
       <h2 className="text-xl font-semibold">Candidates</h2>
-      <table className="mt-4 w-full min-w-[48rem] text-left text-sm">
+      <table className="mt-4 w-full min-w-[56rem] text-left text-sm">
         <thead className="border-b border-slate-700 text-slate-400">
           <tr>
             <th className="px-3 py-2">Quantity</th>
@@ -191,22 +221,92 @@ function CandidateTable({ result, metric }: { result: OptimizationResult; metric
               {columns.map(([label, c]) => <td key={label} className="px-3 py-2 font-mono">{formatNumber(c?.parameters[name], 3)}</td>)}
             </tr>
           ))}
+          <tr className="border-b border-slate-800">
+            <td className="px-3 py-2 text-slate-300">Material demand</td>
+            {columns.map(([label, c]) => <td key={label} className="px-3 py-2">{formatNumber(c?.material_demand, 3)}</td>)}
+          </tr>
           {metricNames.map((name) => (
-            <tr key={name} className={`border-b border-slate-800 ${name === metric ? "bg-cyan-950/30" : ""}`}>
+            <tr key={name} className={`border-b border-slate-800 ${highlighted.has(name) ? "bg-cyan-950/30" : ""}`}>
               <td className="px-3 py-2 text-slate-300">{METRIC_LABELS[name]}</td>
               {columns.map(([label, c]) => <td key={label} className="px-3 py-2">{formatNumber(c?.metrics?.[name], 3)}</td>)}
+            </tr>
+          ))}
+          {constraintLabels.map((label) => (
+            <tr key={label} className="border-b border-slate-800">
+              <td className="px-3 py-2 font-mono text-xs text-slate-300">excess: {label}</td>
+              {columns.map(([column, c]) => {
+                const value = c?.constraint_excess?.[label];
+                return (
+                  <td key={column} className={`px-3 py-2 ${value !== undefined && value > 0 ? "text-red-300" : "text-emerald-300"}`}>
+                    {formatSignedNumber(value, 4)}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           <tr>
             <td className="px-3 py-2 text-slate-300">Constraints satisfied</td>
             {columns.map(([label, c]) => (
               <td key={label} className={`px-3 py-2 ${c?.feasible ? "text-emerald-300" : "text-red-300"}`}>
-                {c ? (c.feasible ? "yes" : `no (violation ${formatNumber(c.constraint_violation, 4)})`) : "—"}
+                {c ? (c.metrics ? (c.feasible ? "yes" : `no (normalised ${formatNumber(c.constraint_violation, 3)})`) : "impossible") : "—"}
               </td>
             ))}
           </tr>
         </tbody>
       </table>
+    </section>
+  );
+}
+
+function SensitivityTable({ result, request }: { result: OptimizationResult; request: OptimizationCreate }) {
+  const metrics = Array.from(new Set<MetricName>([
+    ...(request.objective.metric === "material_demand" ? [] : [request.objective.metric as MetricName]),
+    ...request.constraints.map((c) => c.metric),
+    "mean_skin_temperature_c",
+  ]));
+
+  return (
+    <section className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Sensitivity at the reported optimum</h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Change of each metric if the variable swept its whole search range (central difference,
+        linearised). Compare with the constraint excess to see whether a target is reachable at all.
+      </p>
+      <table className="mt-4 w-full min-w-[48rem] text-left text-sm">
+        <thead className="border-b border-slate-700 text-slate-400">
+          <tr>
+            <th className="px-3 py-2">Variable</th>
+            {metrics.map((m) => <th key={m} className="px-3 py-2">{METRIC_LABELS[m]}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {result.sensitivities!.map((s) => (
+            <tr key={s.name} className="border-b border-slate-800">
+              <td className="px-3 py-2 text-slate-300">{VARIABLE_LABELS[s.name]}</td>
+              {metrics.map((m) => <td key={m} className="px-3 py-2 font-mono">{formatSignedNumber(s.full_range_effects[m], 4)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function RunRecord({ result }: { result: OptimizationResult }) {
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
+      <h2 className="text-lg font-semibold text-slate-200">Run record</h2>
+      <p className="mt-2">
+        {result.sample_count} sample day(s), {result.skipped_samples.length} skipped ·{" "}
+        {result.evaluation_count} garment evaluations · {result.simulation_count} thermal simulations ·{" "}
+        {result.generations} generations · {result.elapsed_seconds.toFixed(1)} s
+      </p>
+      <p className="mt-1">
+        Objective normalised as (value − {formatNumber(result.objective_reference, 4)}) / {formatNumber(result.objective_scale, 3)}.
+      </p>
+      <p className="mt-1 font-mono text-xs">
+        model {result.model_version} · fingerprint {result.parameter_fingerprint.slice(0, 16)}… · {result.algorithm_message}
+      </p>
     </section>
   );
 }

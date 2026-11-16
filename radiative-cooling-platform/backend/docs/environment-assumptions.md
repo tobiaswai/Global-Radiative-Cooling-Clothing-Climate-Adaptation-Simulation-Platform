@@ -18,3 +18,10 @@ part of every weather-driven request and echoed in every response.
 What these do **not** represent: cloud-cover dependent sky emissivity, 
 ground surface temperature, urban canyon geometry, solar-altitude dependent f_p
 (the solar term uses GHI only).
+
+Selective emitters (infrared_emissivity_window set, ADR 0007): the sky is split
+into the 8-13 um window, whose emissivity is back-calculated from T_sky above,
+and the rest of the spectrum, treated as a blackbody at T_air. The non-sky part
+of the view is a blackbody at T_mrt in every band. With the default
+air_plus_solar_linear rule, T_mrt can exceed T_air by up to 15 K, which favours
+low out-of-window emissivity; repeat key results with equal_to_air.

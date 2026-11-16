@@ -13,6 +13,7 @@ backend/alembic/versions/933e5fc5bb27_create_simulation_jobs.py
 backend/alembic/versions/9cbc48c31e6e_stage7_job_leases_and_city_checkpoints.py
 backend/alembic/versions/9e0b460c56c3_add_global_batch_analysis_tables.py
 backend/alembic/versions/a1f4c2d9e7b3_stage4_material_library_links.py
+backend/alembic/versions/b4d8e2a6c1f3_stage_inverse_optimization_jobs.py
 backend/alembic/versions/b83aed15c819_add_material_version_and_spectrum_tables.py
 backend/alembic/versions/c7d2e9f4a1b8_stage3_material_version_clothing_area_factor.py
 backend/alembic/versions/df85b07c9163_add_stage_4_4_checkpoint_and_analytics_.py
@@ -26,6 +27,7 @@ backend/app/api/global_batches.py
 backend/app/api/materials.py
 backend/app/api/model.py
 backend/app/api/ops.py
+backend/app/api/optimizations.py
 backend/app/api/router.py
 backend/app/api/simulations.py
 backend/app/api/weather.py
@@ -42,6 +44,7 @@ backend/app/main.py
 backend/app/models/__init__.py
 backend/app/models/global_batch.py
 backend/app/models/material.py
+backend/app/models/optimization_job.py
 backend/app/models/simulation_job.py
 backend/app/schemas/__init__.py
 backend/app/schemas/environment.py
@@ -49,6 +52,7 @@ backend/app/schemas/global_batch.py
 backend/app/schemas/job.py
 backend/app/schemas/material.py
 backend/app/schemas/ops.py
+backend/app/schemas/optimization.py
 backend/app/schemas/provenance.py
 backend/app/schemas/simulation.py
 backend/app/schemas/weather.py
@@ -72,6 +76,15 @@ backend/app/services/leases.py
 backend/app/services/material_fields.py
 backend/app/services/material_resolution.py
 backend/app/services/model_parameters.py
+backend/app/services/optimization/__init__.py
+backend/app/services/optimization/evaluator.py
+backend/app/services/optimization/jobs.py
+backend/app/services/optimization/metrics.py
+backend/app/services/optimization/objective.py
+backend/app/services/optimization/requirement_map.py
+backend/app/services/optimization/runner.py
+backend/app/services/optimization/search_space.py
+backend/app/services/optimization/service.py
 backend/app/services/reproducibility.py
 backend/app/services/result_export.py
 backend/app/services/result_storage.py
@@ -86,6 +99,7 @@ backend/app/services/weather_simulation.py
 backend/app/utils/date_defaults.py
 backend/app/worker/__init__.py
 backend/app/worker/celery_app.py
+backend/app/worker/optimization_tasks.py
 backend/app/worker/tasks.py
 backend/celerybeat-schedule.bak
 backend/celerybeat-schedule.dat
@@ -102,6 +116,8 @@ backend/docs/acceptance/stage-6-consistency/golden-refresh.md
 backend/docs/acceptance/stage-8-observability/README.md
 backend/docs/acceptance/stage-8-observability/resume-benchmark.json
 backend/docs/acceptance/stage-9-reliability/drills.md
+backend/docs/acceptance/stage-optimization/optimization-summary.json
+backend/docs/acceptance/stage-optimization/optimization-summary.md
 backend/docs/decisions/0001-body-surface-area.md
 backend/docs/decisions/0002-gagge-controllers.md
 backend/docs/decisions/0003-clothing-surface-balance.md
@@ -115,6 +131,7 @@ backend/requirements.txt
 backend/run-tests.sh
 backend/scripts/capture_weather_fixture.py
 backend/scripts/render_model_parameters_doc.py
+backend/scripts/summarize_optimizations.py
 backend/tests/__init__.py
 backend/tests/conftest.py
 backend/tests/core/test_numba_cache_integration.py
@@ -125,6 +142,7 @@ backend/tests/fixtures/dubai_2h/open_meteo_payload.sha256
 backend/tests/fixtures/dubai_2h/request.json
 backend/tests/fixtures/dubai_2h/request_params.json
 backend/tests/test_api.py
+backend/tests/test_batch_single_consistency.py
 backend/tests/test_body.py
 backend/tests/test_cities.py
 backend/tests/test_climate_adaptation.py
@@ -145,6 +163,7 @@ backend/tests/test_material_resolution.py
 backend/tests/test_materials_api.py
 backend/tests/test_materials_update_delete.py
 backend/tests/test_model_parameters.py
+backend/tests/test_optimization.py
 backend/tests/test_parameter_participation.py
 backend/tests/test_physics.py
 backend/tests/test_radiation_convention.py
@@ -880,6 +899,68 @@ def downgrade() -> None:
 
     op.drop_constraint('ck_material_ir_energy_sum', 'material_versions', type_='check')
     op.drop_constraint('ck_material_evaporative_resistance', 'material_versions', type_='check')
+```
+
+### File: `backend/alembic/versions/b4d8e2a6c1f3_stage_inverse_optimization_jobs.py`
+```python
+"""inverse optimization jobs
+
+Revision ID: b4d8e2a6c1f3
+Revises: f0a1b2c3d4e5
+"""
+from typing import Sequence, Union
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+
+revision: str = "b4d8e2a6c1f3"
+down_revision: Union[str, Sequence[str], None] = "f0a1b2c3d4e5"
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    op.create_table(
+        "optimization_jobs",
+        sa.Column("id", sa.String(36), nullable=False),
+        sa.Column("celery_task_id", sa.String(255), nullable=True),
+        sa.Column("name", sa.String(200), nullable=False),
+        sa.Column("city_id", sa.String(100), nullable=False),
+        sa.Column("status", sa.String(30), nullable=False),
+        sa.Column("stage", sa.String(100), nullable=False),
+        sa.Column("progress", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("evaluation_count", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("request_json", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column("history_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("result_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.Column("error_message", sa.Text(), nullable=True),
+        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("attempt", sa.Integer(), server_default="0", nullable=False),
+        sa.Column("lease_owner", sa.String(100), nullable=True),
+        sa.Column("lease_expires_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("last_heartbeat_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("cancel_requested_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("control_material_version_id", sa.String(36), nullable=True),
+        sa.Column("base_material_version_id", sa.String(36), nullable=True),
+        sa.ForeignKeyConstraint(["control_material_version_id"], ["material_versions.id"], ondelete="SET NULL"),
+        sa.ForeignKeyConstraint(["base_material_version_id"], ["material_versions.id"], ondelete="SET NULL"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index("ix_optimization_jobs_status", "optimization_jobs", ["status"])
+    op.create_index("ix_optimization_jobs_city_id", "optimization_jobs", ["city_id"])
+    op.create_index("ix_optimization_jobs_celery_task_id", "optimization_jobs", ["celery_task_id"])
+    op.create_index("ix_optimization_jobs_lease_reap", "optimization_jobs", ["status", "lease_expires_at"])
+    op.create_index("ix_optimization_jobs_control_material_version_id", "optimization_jobs", ["control_material_version_id"])
+    op.create_index("ix_optimization_jobs_base_material_version_id", "optimization_jobs", ["base_material_version_id"])
+
+
+def downgrade() -> None:
+    op.drop_table("optimization_jobs")
 ```
 
 ### File: `backend/alembic/versions/b83aed15c819_add_material_version_and_spectrum_tables.py`
@@ -2049,6 +2130,7 @@ from sqlalchemy.orm import (
 )
 
 from app.models.global_batch import GlobalBatchJob
+from app.models.optimization_job import OptimizationJob
 from app.models.simulation_job import SimulationJob
 
 from app.db.session import get_db
@@ -2352,7 +2434,7 @@ def update_material(
     return MaterialResponse.model_validate(load_material(session, material_id))
 
 def count_material_references(session: Session, material_id: str) -> dict[str, int]:
-    """Jobs and batches whose control or RC garment used any version of this material."""
+    """Jobs whose control, RC, or optimization base garment used any version of this material."""
     version_ids = select(MaterialVersion.id).where(MaterialVersion.material_id == material_id)
 
     def count(model) -> int:
@@ -2365,9 +2447,19 @@ def count_material_references(session: Session, material_id: str) -> dict[str, i
             )
         ) or 0
 
+    optimization_count = session.scalar(
+        select(func.count()).select_from(OptimizationJob).where(
+            or_(
+                OptimizationJob.control_material_version_id.in_(version_ids),
+                OptimizationJob.base_material_version_id.in_(version_ids),
+            )
+        )
+    ) or 0
+
     return {
         "simulation_job_count": count(SimulationJob),
         "global_batch_count": count(GlobalBatchJob),
+        "optimization_job_count": optimization_count,
     }
 
 
@@ -2386,15 +2478,20 @@ def delete_material(material_id: str, session: Session = Depends(get_db)) -> Res
         raise HTTPException(status_code=404, detail="Material not found")
 
     references = count_material_references(session, material_id)
-    if references["simulation_job_count"] or references["global_batch_count"]:
+    if (
+        references["simulation_job_count"]
+        or references["global_batch_count"]
+        or references["optimization_job_count"]
+    ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
                 "code": "MATERIAL_IN_USE",
                 "message": (
-                    f"Versions of this material are referenced by "
-                    f"{references['simulation_job_count']} simulation job(s) and "
-                    f"{references['global_batch_count']} global batch(es). "
+                    "Versions of this material are referenced by "
+                    f"{references['simulation_job_count']} simulation job(s), "
+                    f"{references['global_batch_count']} global batch(es), and "
+                    f"{references['optimization_job_count']} optimization job(s). "
                     "Archive it instead: archived materials are hidden from lists "
                     "and pickers but keep their provenance."
                 ),
@@ -2806,6 +2903,129 @@ def ops_status(session: Session = Depends(get_db)) -> OpsStatusResponse:
     )
 ```
 
+### File: `backend/app/api/optimizations.py`
+```python
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.core.cities import get_city
+from app.core.time import utc_now
+from app.db.session import get_db
+from app.models.optimization_job import OptimizationJob
+from app.schemas.optimization import (
+    OptimizationCreate,
+    OptimizationEstimate,
+    OptimizationJobDetail,
+    OptimizationJobListResponse,
+    OptimizationJobResponse,
+)
+from app.services.leases import db_now
+from app.services.material_resolution import resolve_request_materials
+from app.services.optimization.jobs import optimization_to_detail, optimization_to_response
+from app.services.optimization.search_space import build_search_space
+from app.services.optimization.service import estimate_optimization
+from app.worker.celery_app import celery_app
+from app.worker.optimization_tasks import run_optimization_task
+
+
+router = APIRouter(prefix="/api/v1/optimizations", tags=["optimizations"])
+
+TERMINAL = {"completed", "failed", "cancelled"}
+MATERIAL_FIELDS = ("control_material", "base_material")
+
+
+def _validate(request: OptimizationCreate) -> None:
+    try:
+        get_city(request.city_id)
+        build_search_space(request)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+
+
+@router.post("/estimate", response_model=OptimizationEstimate)
+def estimate(request: OptimizationCreate, session: Session = Depends(get_db)) -> OptimizationEstimate:
+    request = resolve_request_materials(session, request, fields=MATERIAL_FIELDS)
+    _validate(request)
+    return estimate_optimization(request)
+
+
+@router.post("", response_model=OptimizationJobResponse, status_code=status.HTTP_202_ACCEPTED)
+def create_optimization(request: OptimizationCreate, session: Session = Depends(get_db)) -> OptimizationJobResponse:
+    request = resolve_request_materials(session, request, fields=MATERIAL_FIELDS)
+    _validate(request)
+
+    job = OptimizationJob(
+        name=request.name, city_id=request.city_id,
+        status="queued", stage="queued", progress=0,
+        request_json=request.model_dump(mode="json"),
+        control_material_version_id=request.control_material.material_version_id,
+        base_material_version_id=request.base_material.material_version_id,
+    )
+    session.add(job)
+    session.commit()
+    session.refresh(job)
+
+    try:
+        job.celery_task_id = run_optimization_task.delay(job.id).id
+        session.commit()
+        session.refresh(job)
+    except Exception as error:
+        job.status, job.stage = "failed", "queue_submission_failed"
+        job.error_message = str(error)[:4000]
+        session.commit()
+        raise HTTPException(status_code=503, detail=f"Unable to submit optimization: {error}") from error
+
+    return optimization_to_response(job, now=db_now(session))
+
+
+@router.get("", response_model=OptimizationJobListResponse)
+def list_optimizations(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    session: Session = Depends(get_db),
+) -> OptimizationJobListResponse:
+    total = session.scalar(select(func.count()).select_from(OptimizationJob)) or 0
+    jobs = session.scalars(
+        select(OptimizationJob).order_by(OptimizationJob.created_at.desc()).offset(offset).limit(limit)
+    ).all()
+    now = db_now(session)
+    return OptimizationJobListResponse(
+        items=[optimization_to_response(j, now=now) for j in jobs], total=total, limit=limit, offset=offset
+    )
+
+
+@router.get("/{job_id}", response_model=OptimizationJobDetail)
+def get_optimization(job_id: str, session: Session = Depends(get_db)) -> OptimizationJobDetail:
+    job = session.get(OptimizationJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Optimization job not found")
+    return optimization_to_detail(job, now=db_now(session))
+
+
+@router.post("/{job_id}/cancel", response_model=OptimizationJobResponse)
+def cancel_optimization(job_id: str, session: Session = Depends(get_db)) -> OptimizationJobResponse:
+    job = session.get(OptimizationJob, job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Optimization job not found")
+    if job.status in TERMINAL:
+        raise HTTPException(status_code=409, detail="Optimization job in terminal state cannot be cancelled")
+
+    now = utc_now()
+    job.cancel_requested_at = job.cancel_requested_at or now
+    if job.status == "queued":
+        job.status, job.stage, job.completed_at = "cancelled", "cancelled", now
+    else:
+        job.status, job.stage = "cancelling", "waiting_for_cooperative_cancel"
+
+    if job.celery_task_id:
+        celery_app.control.revoke(job.celery_task_id, terminate=False)
+
+    session.commit()
+    session.refresh(job)
+    return optimization_to_response(job, now=db_now(session))
+```
+
 ### File: `backend/app/api/router.py`
 ```python
 # app/api/router.py
@@ -2813,7 +3033,7 @@ def ops_status(session: Session = Depends(get_db)) -> OpsStatusResponse:
 
 from fastapi import APIRouter
 
-from app.api import benchmarks, global_batches, materials, model, ops, simulations, weather
+from app.api import benchmarks, global_batches, materials, model, ops, simulations, weather, optimizations
 
 
 api_router = APIRouter()
@@ -2826,6 +3046,7 @@ for router in (
     global_batches.router,
     model.router,
     ops.router,
+    optimizations.router,
 ):
     api_router.include_router(router)
 ```
@@ -4142,10 +4363,6 @@ def health_check():
 
 ### File: `backend/app/models/__init__.py`
 ```python
-from app.models.global_batch import (
-    GlobalBatchJob,
-    GlobalCityResult,
-)
 from app.models.material import (
     Material,
     MaterialSpectrum,
@@ -4155,6 +4372,8 @@ from app.models.simulation_job import SimulationJob
 
 from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, GlobalCityResult
 
+from app.models.optimization_job import OptimizationJob
+
 __all__ = [
     "GlobalBatchJob",
     "GlobalCityResult",
@@ -4163,6 +4382,7 @@ __all__ = [
     "MaterialVersion",
     "SimulationJob",
     "GlobalCityCheckpoint",
+    "OptimizationJob",
 ]
 ```
 
@@ -4987,6 +5207,60 @@ class MaterialSpectrum(Base):
 
     material_version: Mapped["MaterialVersion"] = relationship(
         back_populates="spectra",
+    )
+```
+
+### File: `backend/app/models/optimization_job.py`
+```python
+from datetime import datetime
+from uuid import uuid4
+
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column
+
+from app.db.base import Base
+
+
+class OptimizationJob(Base):
+    __tablename__ = "optimization_jobs"
+    __table_args__ = (
+        Index("ix_optimization_jobs_lease_reap", "status", "lease_expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    city_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="queued", index=True)
+    stage: Mapped[str] = mapped_column(String(100), nullable=False, default="queued")
+    progress: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    evaluation_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+
+    request_json: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    history_json: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    result_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    lease_owner: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cancel_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    control_material_version_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("material_versions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    base_material_version_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("material_versions.id", ondelete="SET NULL"), nullable=True, index=True
     )
 ```
 
@@ -6151,6 +6425,276 @@ class OpsStatusResponse(BaseModel):
     worst_case_recovery_seconds: int
 ```
 
+### File: `backend/app/schemas/optimization.py`
+```python
+"""Inverse design: target performance -> material parameter requirements (Stage 3)."""
+
+from __future__ import annotations
+
+import calendar
+from datetime import datetime
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
+
+from app.schemas.environment import EnvironmentAssumptions
+from app.schemas.simulation import MaterialInput, PersonInput
+
+
+DecisionVariableName = Literal[
+    "solar_reflectance",
+    "solar_transmittance",
+    "infrared_emissivity",
+    "infrared_transmittance",
+    "clothing_insulation_clo",
+    "evaporative_resistance_m2pa_w",
+]
+
+# Search limits; tighter than MaterialInput where the full range is not a
+# sensible design space (clo <= 2, Re,cl <= 200).
+VARIABLE_LIMITS: dict[str, tuple[float, float]] = {
+    "solar_reflectance": (0.0, 1.0),
+    "solar_transmittance": (0.0, 1.0),
+    "infrared_emissivity": (0.0, 1.0),
+    "infrared_transmittance": (0.0, 1.0),
+    "clothing_insulation_clo": (0.0, 2.0),
+    "evaporative_resistance_m2pa_w": (0.0, 200.0),
+}
+
+MetricName = Literal[
+    "mean_skin_temperature_c",
+    "peak_skin_temperature_c",
+    "peak_core_temperature_c",
+    "skin_exceedance_fraction",
+    "core_exceedance_fraction",
+    "mean_skin_cooling_c",
+    "mean_core_cooling_c",
+]
+
+OptimizationStatus = Literal["queued", "running", "cancelling", "cancelled", "completed", "failed"]
+LeaseState = Literal["none", "live", "expired"]
+
+
+class DecisionVariable(BaseModel):
+    name: DecisionVariableName
+    lower: float
+    upper: float
+
+    @model_validator(mode="after")
+    def check_bounds(self) -> "DecisionVariable":
+        low, high = VARIABLE_LIMITS[self.name]
+        if not (low <= self.lower < self.upper <= high):
+            raise ValueError(
+                f"{self.name}: bounds must satisfy {low} <= lower < upper <= {high}"
+            )
+        return self
+
+
+class MetricConstraint(BaseModel):
+    metric: MetricName
+    operator: Literal["<=", ">="] = "<="
+    threshold: float
+
+
+class OptimizationObjective(BaseModel):
+    metric: MetricName = "skin_exceedance_fraction"
+    sense: Literal["minimize", "maximize"] = "minimize"
+
+
+class RequirementMapSpec(BaseModel):
+    x_variable: DecisionVariableName = "solar_reflectance"
+    y_variable: DecisionVariableName = "infrared_emissivity"
+    resolution: int = Field(default=11, ge=3, le=21)
+
+
+class OptimizationCreate(BaseModel):
+    name: str = Field(default="Material requirement search", min_length=1, max_length=200)
+    city_id: str = Field(min_length=1)
+    year: int = Field(default=2023, ge=1940, le=2100)
+    months: list[int] = Field(default_factory=lambda: [8], min_length=1, max_length=12)
+    sample_days_per_month: int = Field(default=3, ge=1, le=31)
+    local_start_hour: int = Field(default=12, ge=0, le=23)
+    duration_minutes: int = Field(default=120, ge=30, le=480)
+    output_interval_minutes: int = Field(default=5, ge=1, le=30)
+
+    # Thresholds behind the *_exceedance_fraction metrics.
+    skin_threshold_c: float = Field(default=35.0, ge=30.0, le=42.0)
+    core_threshold_c: float = Field(default=38.0, ge=36.5, le=41.0)
+
+    person: PersonInput
+    control_material: MaterialInput
+    # Candidate garment; fields that are not decision variables stay fixed here.
+    base_material: MaterialInput
+    environment_assumptions: EnvironmentAssumptions = Field(default_factory=EnvironmentAssumptions)
+
+    variables: list[DecisionVariable] = Field(min_length=1, max_length=6)
+    objective: OptimizationObjective = Field(default_factory=OptimizationObjective)
+    constraints: list[MetricConstraint] = Field(default_factory=list, max_length=6)
+
+    algorithm: Literal["differential_evolution"] = "differential_evolution"
+    population_multiplier: int = Field(default=10, ge=4, le=30)
+    max_generations: int = Field(default=30, ge=1, le=200)
+    seed: int | None = 42
+
+    requirement_map: RequirementMapSpec | None = Field(default_factory=RequirementMapSpec)
+
+    @model_validator(mode="after")
+    def validate_request(self) -> "OptimizationCreate":
+        self.city_id = self.city_id.strip().lower()
+
+        if any(m < 1 or m > 12 for m in self.months) or len(set(self.months)) != len(self.months):
+            raise ValueError("months must be unique values between 1 and 12")
+        self.months = sorted(self.months)
+
+        names = [v.name for v in self.variables]
+        if len(set(names)) != len(names):
+            raise ValueError("variables cannot contain duplicate names")
+
+        spec = self.requirement_map
+        if spec is not None:
+            if spec.x_variable == spec.y_variable:
+                raise ValueError("requirement_map axes must differ")
+            missing = {spec.x_variable, spec.y_variable} - set(names)
+            if missing:
+                raise ValueError(
+                    "requirement_map axes must be decision variables: " + ", ".join(sorted(missing))
+                )
+        return self
+
+    def samples_per_month(self, month: int) -> int:
+        return min(self.sample_days_per_month, calendar.monthrange(self.year, month)[1])
+
+
+class OptimizationEstimate(BaseModel):
+    variable_count: int
+    population_size: int
+    optimizer_evaluation_budget: int
+    requirement_map_evaluations: int
+    sample_count: int
+    thermal_simulation_budget: int
+    weather_requests: int
+
+
+class EvaluationMetrics(BaseModel):
+    sample_count: int
+    mean_skin_temperature_c: float
+    peak_skin_temperature_c: float
+    peak_core_temperature_c: float
+    skin_exceedance_fraction: float
+    core_exceedance_fraction: float
+    mean_skin_cooling_c: float
+    mean_core_cooling_c: float
+
+
+class CandidateEvaluation(BaseModel):
+    parameters: dict[str, float]
+    metrics: EvaluationMetrics | None
+    objective_value: float | None  # raw metric value (unsigned, no penalty)
+    constraint_violation: float | None
+    feasible: bool
+
+
+class GenerationRecord(BaseModel):
+    generation: int
+    penalised_objective: float
+    best_parameters: dict[str, float]
+    best_metric_value: float | None
+    best_feasible: bool
+    evaluation_count: int
+
+
+class RequirementCell(BaseModel):
+    x: float
+    y: float
+    metric_value: float
+    constraint_violation: float
+    feasible: bool
+
+
+class FrontierPoint(BaseModel):
+    y: float
+    minimum_x: float | None
+
+
+class RequirementMapResult(BaseModel):
+    x_variable: DecisionVariableName
+    y_variable: DecisionVariableName
+    x_values: list[float]
+    y_values: list[float]
+    # cells[j][i] -> (x_values[i], y_values[j]); None = optically impossible
+    cells: list[list[RequirementCell | None]]
+    frontier: list[FrontierPoint]
+    minimum_x_at_max_y: float | None
+    minimum_y_at_max_x: float | None
+    fixed_parameters: dict[str, float]
+
+
+class SkippedOptimizationSample(BaseModel):
+    sample_date_local: datetime
+    reason_code: str
+    message: str
+
+
+class OptimizationResult(BaseModel):
+    verdict: Literal["feasible", "infeasible", "unconstrained"]
+    message: str
+    objective: OptimizationObjective
+    constraints: list[MetricConstraint]
+    best: CandidateEvaluation
+    baseline: CandidateEvaluation
+    optical_upper_bound: CandidateEvaluation | None
+    best_corner: CandidateEvaluation | None = None
+    requirement_map: RequirementMapResult | None
+    sample_count: int
+    skipped_samples: list[SkippedOptimizationSample]
+    weather_payload_sha256: dict[str, str | None]
+    evaluation_count: int
+    simulation_count: int
+    generations: int
+    algorithm: str
+    algorithm_message: str
+    elapsed_seconds: float
+    model_version: str
+    parameter_fingerprint: str
+
+
+class OptimizationJobResponse(BaseModel):
+    id: str
+    celery_task_id: str | None
+    name: str
+    city_id: str
+    status: OptimizationStatus
+    stage: str
+    progress: int
+    evaluation_count: int
+    error_message: str | None
+    created_at: datetime
+    updated_at: datetime
+    started_at: datetime | None
+    completed_at: datetime | None
+    attempt: int = 0
+    lease_owner: str | None = None
+    lease_expires_at: datetime | None = None
+    last_heartbeat_at: datetime | None = None
+    lease_state: LeaseState = "none"
+    cancel_requested_at: datetime | None = None
+    control_material_version_id: str | None = None
+    base_material_version_id: str | None = None
+
+
+class OptimizationJobDetail(OptimizationJobResponse):
+    request: OptimizationCreate
+    history: list[GenerationRecord]
+    result: OptimizationResult | None
+
+
+class OptimizationJobListResponse(BaseModel):
+    items: list[OptimizationJobResponse]
+    total: int
+    limit: int
+    offset: int
+```
+
 ### File: `backend/app/schemas/provenance.py`
 ```python
 """Provenance types shared by material inputs, the model parameter registry
@@ -7255,7 +7799,6 @@ from datetime import datetime, timedelta
 from typing import Any, TypedDict
 
 from app.core.cities import get_city
-from app.schemas import simulation
 from app.schemas.global_batch import (
     DailyAdaptationResult,
     GlobalBatchCreate,
@@ -7272,7 +7815,6 @@ from app.services.climate_analytics import build_city_analytics
 from app.services.exposure_statistics import (
     compute_daily_maximum_air_temperature,
     compute_exposure_window_statistics,
-    time_weighted_mean,
 )
 from app.services.scenario_summary import pair_scenarios
 from app.services.weather import (
@@ -7652,54 +8194,20 @@ async def analyze_city_climate_adaptation(
                 completed_sample_count += 1
                 continue
             
-            paired = pair_scenarios(
-                simulation.control, simulation.radiative_cooling
-            )
-            average_skin_improvement_c = paired.average_skin_c
-            average_core_improvement_c = paired.average_core_c
-            maximum_skin_improvement_c = paired.maximum_skin_c
-            final_skin_improvement_c = paired.final_skin_c
-            
-            paired_points = list(
-                zip(
-                    simulation.control.time_series,
-                    simulation.radiative_cooling.time_series,
-                    strict=True,
-                )
-            )
+            paired = pair_scenarios(simulation.control, simulation.radiative_cooling)
 
-            if not paired_points:
-                raise RuntimeError("Simulation returned no paired points")
-
-            minutes = [control.minute for control, _ in paired_points]
-
-            skin_improvements = [
-                control.skin_temperature_c - radiative.skin_temperature_c
-                for control, radiative in paired_points
-            ]
-
-            core_improvements = [
-                control.core_temperature_c - radiative.core_temperature_c
-                for control, radiative in paired_points
-            ]
-
-            # Exposure statistics strictly over [start, start + duration].
             exposure = compute_exposure_window_statistics(sample_weather)
-
             daily_maximum_air_temperature_c = compute_daily_maximum_air_temperature(
                 month_weather,
                 local_date=sample_day.date_local,
                 timezone_name=city.timezone,
             )
 
-            average_skin_improvement_c = time_weighted_mean(
-                minutes, skin_improvements
-            )
-            average_core_improvement_c = time_weighted_mean(
-                minutes, core_improvements
-            )
-            maximum_skin_improvement_c = max(skin_improvements)
-
+            average_skin_improvement_c = paired.average_skin_c
+            average_core_improvement_c = paired.average_core_c
+            maximum_skin_improvement_c = paired.maximum_skin_c
+            final_skin_improvement_c = paired.final_skin_c
+            
             exposure_eligible = is_exposure_eligible(
                 mean_air_temperature_c=exposure.mean_air_temperature_c,
                 mean_solar_radiation_w_m2=exposure.mean_solar_radiation_w_m2,
@@ -9829,6 +10337,7 @@ def build_sample_results_csv(
             "weight_days",
             "mean_air_temperature_c",
             "maximum_air_temperature_c",
+            "daily_maximum_air_temperature_c",
             "mean_solar_radiation_w_m2",
             "maximum_solar_radiation_w_m2",
             "exposure_eligible",
@@ -10516,7 +11025,6 @@ from app.schemas.global_batch import (
 )
 from app.services.checkpoints import CheckpointProvenance, load_resume_state
 from app.services.leases import db_now, derive_lease_state  # noqa: F401 (re-exported)
-from app.services.job_state import assert_batch_transition, derive_batch_status  # keep
 
 from collections import defaultdict
 import hashlib
@@ -10954,28 +11462,8 @@ def refresh_batch_status(
     session.commit()
 
 def reconcile_batch(db: Session, batch_id: str) -> None:
-    counts = dict(
-        db.execute(
-            select(GlobalCityResult.status, func.count())
-            .where(GlobalCityResult.batch_id == batch_id)
-            .group_by(GlobalCityResult.status)
-        ).all()
-    )
-    batch = db.get(GlobalBatchJob, batch_id)
-    batch.completed_city_count = counts.get("completed", 0)
-    batch.failed_city_count = counts.get("failed", 0)
-    batch.cancelled_city_count = counts.get("cancelled", 0)
-    done = sum(counts.get(s, 0) for s in ("completed", "failed", "cancelled"))
-    batch.progress = int(100 * done / max(batch.total_city_count, 1))
     """Kept for callers; refresh_batch_status is the single implementation."""
     refresh_batch_status(db, batch_id)
-
-    target = derive_batch_status(counts, batch.total_city_count, batch.cancel_requested_at is not None)
-    if target and batch.status != target:
-        assert_batch_transition(batch.status, target)
-        batch.status = target
-        batch.completed_at = func.now()
-    db.commit()
 ```
 
 ### File: `backend/app/services/job_service.py`
@@ -11204,6 +11692,8 @@ from app.core.time import utc_now
 from app.models.global_batch import GlobalCityResult
 from app.models.simulation_job import SimulationJob
 from app.services.job_state import CityStatus, JobStatus
+from app.models.optimization_job import OptimizationJob
+
 
 
 LeaseState = str  # "none" | "live" | "expired"
@@ -11325,6 +11815,20 @@ def heartbeat_job_lease(session: Session, job_id: str, owner: str, **values: Any
 
 def release_job_lease(session: Session, job_id: str, owner: str) -> None:
     _release(session, SimulationJob, job_id, owner)
+    
+def acquire_optimization_lease(session: Session, job_id: str, owner: str) -> bool:
+    return _acquire(
+        session, OptimizationJob, job_id, owner,
+        (JobStatus.QUEUED, JobStatus.RUNNING), JobStatus.RUNNING,
+    )
+
+
+def heartbeat_optimization_lease(session: Session, job_id: str, owner: str, **values: Any) -> bool:
+    return _heartbeat(session, OptimizationJob, job_id, owner, values)
+
+
+def release_optimization_lease(session: Session, job_id: str, owner: str) -> None:
+    _release(session, OptimizationJob, job_id, owner)
 ```
 
 ### File: `backend/app/services/material_fields.py`
@@ -11901,6 +12405,996 @@ def build_model_parameter_manifest() -> ModelParameterManifest:
     return ModelParameterManifest(
         **build_model_metadata().model_dump(),
         parameters=list_model_parameters(),
+    )
+```
+
+### File: `backend/app/services/optimization/__init__.py`
+```python
+"""Exposure-weighted performance metrics of one garment over prepared samples."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import numpy as np
+
+from app.schemas.optimization import EvaluationMetrics
+from app.schemas.simulation import ScenarioResult
+from app.services.exposure_statistics import time_weighted_mean
+from app.services.scenario_summary import pair_scenarios
+
+
+def fraction_above(minutes: Sequence[float], values: Sequence[float], threshold: float) -> float:
+    """Exact time fraction a piecewise-linear series spends strictly above
+    ``threshold``. Continuous in the data, so the optimizer sees a smooth-ish
+    landscape instead of a step count."""
+    t = np.asarray(minutes, dtype=float)
+    y = np.asarray(values, dtype=float)
+
+    if t.size == 0:
+        return 0.0
+    if t.size == 1 or t[-1] <= t[0]:
+        return float(y[0] > threshold)
+
+    above = 0.0
+    for t0, t1, y0, y1 in zip(t[:-1], t[1:], y[:-1], y[1:]):
+        dt = t1 - t0
+        if y0 > threshold and y1 > threshold:
+            above += dt
+        elif y0 <= threshold and y1 <= threshold:
+            continue
+        else:
+            crossing = (threshold - y0) / (y1 - y0)  # in [0, 1]
+            above += dt * (1.0 - crossing) if y1 > threshold else dt * crossing
+
+    return float(above / (t[-1] - t[0]))
+
+
+def compute_metrics(
+    pairs: Sequence[tuple[int, ScenarioResult, ScenarioResult]],
+    *,
+    skin_threshold_c: float,
+    core_threshold_c: float,
+) -> EvaluationMetrics:
+    """``pairs`` = (weight_days, control, candidate) per sample day."""
+    if not pairs:
+        raise ValueError("compute_metrics requires at least one sample")
+
+    weights = np.asarray([w for w, _, _ in pairs], dtype=float)
+    mean_skin, skin_exc, core_exc, cooling_skin, cooling_core = [], [], [], [], []
+    peak_skin = peak_core = -np.inf
+
+    for _, control, candidate in pairs:
+        minutes = [p.minute for p in candidate.time_series]
+        skin = [p.skin_temperature_c for p in candidate.time_series]
+        core = [p.core_temperature_c for p in candidate.time_series]
+
+        mean_skin.append(time_weighted_mean(minutes, skin))
+        skin_exc.append(fraction_above(minutes, skin, skin_threshold_c))
+        core_exc.append(fraction_above(minutes, core, core_threshold_c))
+
+        paired = pair_scenarios(control, candidate)
+        cooling_skin.append(paired.average_skin_c)
+        cooling_core.append(paired.average_core_c)
+
+        peak_skin = max(peak_skin, candidate.peak_skin_temperature_c)
+        peak_core = max(peak_core, candidate.peak_core_temperature_c)
+
+    def weighted(values: list[float]) -> float:
+        return float(np.average(values, weights=weights))
+
+    return EvaluationMetrics(
+        sample_count=len(pairs),
+        mean_skin_temperature_c=round(weighted(mean_skin), 5),
+        peak_skin_temperature_c=round(float(peak_skin), 5),
+        peak_core_temperature_c=round(float(peak_core), 5),
+        skin_exceedance_fraction=round(weighted(skin_exc), 6),
+        core_exceedance_fraction=round(weighted(core_exc), 6),
+        mean_skin_cooling_c=round(weighted(cooling_skin), 5),
+        mean_core_cooling_c=round(weighted(cooling_core), 5),
+    )
+```
+
+### File: `backend/app/services/optimization/evaluator.py`
+```python
+"""Prepared samples and the pure evaluate(x) used by every search algorithm.
+
+Preparation happens once: weather is fetched and sliced, interpolators are
+built, and the control garment is simulated once per sample day. Afterwards
+evaluate(x) only integrates the candidate garment.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+
+from app.core.cities import get_city
+from app.schemas.optimization import EvaluationMetrics, OptimizationCreate
+from app.schemas.simulation import MaterialInput, ScenarioResult
+from app.services.annual_sampling import build_weighted_sample_days
+from app.services.climate_adaptation import get_next_month_start
+from app.services.optimization.metrics import compute_metrics
+from app.services.two_node import simulate_material_with_interpolator
+from app.services.weather import get_historical_weather_range, slice_weather_time_series
+from app.services.weather_interpolation import WeatherInterpolator
+from app.services.weather_quality import WeatherDataError
+
+
+CACHE_DECIMALS = 6
+OPTICAL_SUM_TOLERANCE = 1e-6
+
+
+@dataclass(frozen=True)
+class PreparedSample:
+    start_time_local: datetime
+    weight_days: int
+    interpolator: WeatherInterpolator
+    control: ScenarioResult
+
+
+@dataclass
+class PreparationReport:
+    samples: list[PreparedSample]
+    skipped: list[dict] = field(default_factory=list)
+    weather_payload_sha256: dict[str, str | None] = field(default_factory=dict)
+
+
+async def prepare_samples(
+    request: OptimizationCreate,
+    *,
+    progress: Callable[[int, str], None] | None = None,
+) -> PreparationReport:
+    city = get_city(request.city_id)
+    report = PreparationReport(samples=[])
+
+    for index, month in enumerate(request.months):
+        if progress:
+            progress(1 + round(18 * index / len(request.months)), f"preparing_{request.year}-{month:02d}")
+
+        month_start = datetime(request.year, month, 1)
+        prefetch_end = get_next_month_start(year=request.year, month=month) + timedelta(
+            hours=request.local_start_hour, minutes=request.duration_minutes
+        )
+        month_weather = await get_historical_weather_range(
+            city=city,
+            start_time_local=month_start,
+            end_time_local=prefetch_end,
+            padding_hours=1,
+            require_window_coverage=False,
+        )
+        report.weather_payload_sha256[f"{month:02d}"] = month_weather.source.payload_sha256
+
+        days_in_month = (get_next_month_start(year=request.year, month=month) - month_start).days
+        for day, weight in build_weighted_sample_days(
+            days_in_month=days_in_month, sample_count=request.sample_days_per_month
+        ):
+            start = datetime(request.year, month, day, request.local_start_hour)
+            try:
+                sliced = slice_weather_time_series(
+                    weather=month_weather, start_time_local=start,
+                    duration_minutes=request.duration_minutes, padding_hours=1,
+                )
+                interpolator = WeatherInterpolator.from_series(
+                    sliced, assumptions=request.environment_assumptions
+                )
+                control = simulate_material_with_interpolator(
+                    request.duration_minutes, request.output_interval_minutes,
+                    interpolator, request.person, request.control_material,
+                )
+            except WeatherDataError as error:
+                report.skipped.append({
+                    "sample_date_local": start.isoformat(),
+                    "reason_code": error.code,
+                    "message": str(error)[:500],
+                })
+                continue
+
+            report.samples.append(PreparedSample(start, weight, interpolator, control))
+
+    if not report.samples:
+        raise RuntimeError("No usable sample day: every sample failed weather validation")
+
+    return report
+
+
+class MaterialEvaluator:
+    """evaluate(x) -> metrics. Deterministic, memoised on x rounded to 1e-6."""
+
+    def __init__(
+        self,
+        request: OptimizationCreate,
+        samples: Sequence[PreparedSample],
+        *,
+        on_evaluation: Callable[[int], None] | None = None,
+    ) -> None:
+        if not samples:
+            raise ValueError("MaterialEvaluator requires at least one prepared sample")
+        self.request = request
+        self.samples = list(samples)
+        self.names: tuple[str, ...] = tuple(v.name for v in request.variables)
+        self.on_evaluation = on_evaluation
+        self.evaluation_count = 0
+        self.simulation_count = 0
+        self._cache: dict[tuple[float, ...], EvaluationMetrics | None] = {}
+
+    def parameters(self, x: Sequence[float]) -> dict[str, float]:
+        return {name: float(value) for name, value in zip(self.names, x, strict=True)}
+
+    def vector(self, parameters: dict[str, float]) -> list[float]:
+        return [float(parameters[name]) for name in self.names]
+
+    def material_for(self, parameters: dict[str, float]) -> MaterialInput:
+        # model_copy does not re-validate; optical sums are checked explicitly.
+        # The candidate is a modified garment: drop library linkage.
+        return self.request.base_material.model_copy(
+            update={
+                **parameters,
+                "material_version_id": None,
+                "parameter_sources": None,
+                "source_type": "derived",
+                "source_reference": "optimization candidate",
+            }
+        )
+
+    @staticmethod
+    def physically_valid(material: MaterialInput) -> bool:
+        return (
+            material.solar_reflectance + material.solar_transmittance <= 1.0 + OPTICAL_SUM_TOLERANCE
+            and material.infrared_emissivity + material.infrared_transmittance
+            <= 1.0 + OPTICAL_SUM_TOLERANCE
+        )
+
+    def evaluate(self, x: Sequence[float]) -> EvaluationMetrics | None:
+        key = tuple(round(float(v), CACHE_DECIMALS) for v in x)
+        if key in self._cache:
+            return self._cache[key]
+
+        material = self.material_for(self.parameters(key))
+        if not self.physically_valid(material):
+            self._cache[key] = None
+            return None
+
+        request = self.request
+        pairs = []
+        for sample in self.samples:
+            candidate = simulate_material_with_interpolator(
+                request.duration_minutes, request.output_interval_minutes,
+                sample.interpolator, request.person, material,
+            )
+            pairs.append((sample.weight_days, sample.control, candidate))
+
+        metrics = compute_metrics(
+            pairs,
+            skin_threshold_c=request.skin_threshold_c,
+            core_threshold_c=request.core_threshold_c,
+        )
+
+        self._cache[key] = metrics
+        self.evaluation_count += 1
+        self.simulation_count += len(self.samples)
+
+        if self.on_evaluation is not None:
+            self.on_evaluation(self.evaluation_count)  # may raise (cancel / lease lost)
+
+        return metrics
+```
+
+### File: `backend/app/services/optimization/jobs.py`
+```python
+from datetime import datetime
+
+from app.models.optimization_job import OptimizationJob
+from app.schemas.optimization import (
+    GenerationRecord,
+    OptimizationCreate,
+    OptimizationJobDetail,
+    OptimizationJobResponse,
+    OptimizationResult,
+)
+from app.services.leases import derive_lease_state
+
+
+def optimization_to_response(job: OptimizationJob, *, now: datetime | None = None) -> OptimizationJobResponse:
+    return OptimizationJobResponse(
+        id=job.id, celery_task_id=job.celery_task_id, name=job.name, city_id=job.city_id,
+        status=job.status, stage=job.stage, progress=job.progress,
+        evaluation_count=job.evaluation_count or 0, error_message=job.error_message,
+        created_at=job.created_at, updated_at=job.updated_at,
+        started_at=job.started_at, completed_at=job.completed_at,
+        attempt=job.attempt or 0, lease_owner=job.lease_owner,
+        lease_expires_at=job.lease_expires_at, last_heartbeat_at=job.last_heartbeat_at,
+        lease_state=derive_lease_state(job.lease_owner, job.lease_expires_at, now),
+        cancel_requested_at=job.cancel_requested_at,
+        control_material_version_id=job.control_material_version_id,
+        base_material_version_id=job.base_material_version_id,
+    )
+
+
+def optimization_to_detail(job: OptimizationJob, *, now: datetime | None = None) -> OptimizationJobDetail:
+    return OptimizationJobDetail(
+        **optimization_to_response(job, now=now).model_dump(),
+        request=OptimizationCreate.model_validate(job.request_json),
+        history=[GenerationRecord.model_validate(r) for r in (job.history_json or [])],
+        result=None if job.result_json is None else OptimizationResult.model_validate(job.result_json),
+    )
+```
+
+### File: `backend/app/services/optimization/metrics.py`
+```python
+"""Exposure-weighted performance metrics of one garment over prepared samples."""
+
+from __future__ import annotations
+
+from collections.abc import Sequence
+
+import numpy as np
+
+from app.schemas.optimization import EvaluationMetrics
+from app.schemas.simulation import ScenarioResult
+from app.services.exposure_statistics import time_weighted_mean
+from app.services.scenario_summary import pair_scenarios
+
+
+def fraction_above(minutes: Sequence[float], values: Sequence[float], threshold: float) -> float:
+    """Exact time fraction a piecewise-linear series spends strictly above
+    ``threshold``. Continuous in the data, so the optimizer sees a smooth-ish
+    landscape instead of a step count."""
+    t = np.asarray(minutes, dtype=float)
+    y = np.asarray(values, dtype=float)
+
+    if t.size == 0:
+        return 0.0
+    if t.size == 1 or t[-1] <= t[0]:
+        return float(y[0] > threshold)
+
+    above = 0.0
+    for t0, t1, y0, y1 in zip(t[:-1], t[1:], y[:-1], y[1:]):
+        dt = t1 - t0
+        if y0 > threshold and y1 > threshold:
+            above += dt
+        elif y0 <= threshold and y1 <= threshold:
+            continue
+        else:
+            crossing = (threshold - y0) / (y1 - y0)  # in [0, 1]
+            above += dt * (1.0 - crossing) if y1 > threshold else dt * crossing
+
+    return float(above / (t[-1] - t[0]))
+
+
+def compute_metrics(
+    pairs: Sequence[tuple[int, ScenarioResult, ScenarioResult]],
+    *,
+    skin_threshold_c: float,
+    core_threshold_c: float,
+) -> EvaluationMetrics:
+    """``pairs`` = (weight_days, control, candidate) per sample day."""
+    if not pairs:
+        raise ValueError("compute_metrics requires at least one sample")
+
+    weights = np.asarray([w for w, _, _ in pairs], dtype=float)
+    mean_skin, skin_exc, core_exc, cooling_skin, cooling_core = [], [], [], [], []
+    peak_skin = peak_core = -np.inf
+
+    for _, control, candidate in pairs:
+        minutes = [p.minute for p in candidate.time_series]
+        skin = [p.skin_temperature_c for p in candidate.time_series]
+        core = [p.core_temperature_c for p in candidate.time_series]
+
+        mean_skin.append(time_weighted_mean(minutes, skin))
+        skin_exc.append(fraction_above(minutes, skin, skin_threshold_c))
+        core_exc.append(fraction_above(minutes, core, core_threshold_c))
+
+        paired = pair_scenarios(control, candidate)
+        cooling_skin.append(paired.average_skin_c)
+        cooling_core.append(paired.average_core_c)
+
+        peak_skin = max(peak_skin, candidate.peak_skin_temperature_c)
+        peak_core = max(peak_core, candidate.peak_core_temperature_c)
+
+    def weighted(values: list[float]) -> float:
+        return float(np.average(values, weights=weights))
+
+    return EvaluationMetrics(
+        sample_count=len(pairs),
+        mean_skin_temperature_c=round(weighted(mean_skin), 5),
+        peak_skin_temperature_c=round(float(peak_skin), 5),
+        peak_core_temperature_c=round(float(peak_core), 5),
+        skin_exceedance_fraction=round(weighted(skin_exc), 6),
+        core_exceedance_fraction=round(weighted(core_exc), 6),
+        mean_skin_cooling_c=round(weighted(cooling_skin), 5),
+        mean_core_cooling_c=round(weighted(cooling_core), 5),
+    )
+```
+
+### File: `backend/app/services/optimization/objective.py`
+```python
+"""Scalarisation: signed objective + exterior penalty on metric constraints."""
+
+from __future__ import annotations
+
+from app.schemas.optimization import EvaluationMetrics, MetricConstraint, OptimizationCreate
+
+
+PENALTY_WEIGHT = 1000.0
+INVALID_OBJECTIVE = 1.0e6
+FEASIBILITY_TOLERANCE = 1e-9
+
+
+def metric_value(metrics: EvaluationMetrics, name: str) -> float:
+    return float(getattr(metrics, name))
+
+
+def constraint_violation(metrics: EvaluationMetrics, constraints: list[MetricConstraint]) -> float:
+    total = 0.0
+    for c in constraints:
+        value = metric_value(metrics, c.metric)
+        total += max(0.0, value - c.threshold) if c.operator == "<=" else max(0.0, c.threshold - value)
+    return total
+
+
+def penalised_objective(metrics: EvaluationMetrics | None, request: OptimizationCreate) -> float:
+    if metrics is None:
+        return INVALID_OBJECTIVE
+    sign = 1.0 if request.objective.sense == "minimize" else -1.0
+    value = sign * metric_value(metrics, request.objective.metric)
+    return value + PENALTY_WEIGHT * constraint_violation(metrics, request.constraints)
+
+
+def is_feasible(metrics: EvaluationMetrics | None, request: OptimizationCreate) -> bool:
+    return metrics is not None and (
+        constraint_violation(metrics, request.constraints) <= FEASIBILITY_TOLERANCE
+    )
+```
+
+### File: `backend/app/services/optimization/requirement_map.py`
+```python
+"""Grid over two decision variables with the others fixed at the optimum."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
+import numpy as np
+
+from app.schemas.optimization import (
+    FrontierPoint,
+    OptimizationCreate,
+    RequirementCell,
+    RequirementMapResult,
+)
+from app.services.optimization.objective import constraint_violation, is_feasible, metric_value
+from app.services.optimization.runner import Evaluator
+from app.services.optimization.search_space import SearchSpace
+
+
+def build_requirement_map(
+    evaluator: Evaluator,
+    request: OptimizationCreate,
+    fixed_parameters: dict[str, float],
+    *,
+    space: SearchSpace,
+    on_cell: Callable[[int, int], None] | None = None,
+) -> RequirementMapResult:
+    spec = request.requirement_map
+    if spec is None:
+        raise ValueError("request has no requirement_map")
+
+    xi, yi = space.index(spec.x_variable), space.index(spec.y_variable)
+    xs = np.linspace(space.lower[xi], space.upper[xi], spec.resolution)
+    ys = np.linspace(space.lower[yi], space.upper[yi], spec.resolution)
+    total = len(xs) * len(ys)
+
+    cells: list[list[RequirementCell | None]] = []
+    done = 0
+    for y in ys:
+        row: list[RequirementCell | None] = []
+        for x in xs:
+            parameters = {**fixed_parameters, spec.x_variable: float(x), spec.y_variable: float(y)}
+            metrics = evaluator.evaluate([parameters[n] for n in space.names])
+            if metrics is None:
+                row.append(None)
+            else:
+                row.append(RequirementCell(
+                    x=round(float(x), 6),
+                    y=round(float(y), 6),
+                    metric_value=metric_value(metrics, request.objective.metric),
+                    constraint_violation=constraint_violation(metrics, request.constraints),
+                    feasible=is_feasible(metrics, request),
+                ))
+            done += 1
+            if on_cell is not None:
+                on_cell(done, total)
+        cells.append(row)
+
+    frontier = [
+        FrontierPoint(
+            y=round(float(y), 6),
+            minimum_x=next((c.x for c in row if c is not None and c.feasible), None),
+        )
+        for y, row in zip(ys, cells)
+    ]
+    last_column = [row[-1] for row in cells]
+
+    return RequirementMapResult(
+        x_variable=spec.x_variable,
+        y_variable=spec.y_variable,
+        x_values=[round(float(v), 6) for v in xs],
+        y_values=[round(float(v), 6) for v in ys],
+        cells=cells,
+        frontier=frontier,
+        minimum_x_at_max_y=frontier[-1].minimum_x,
+        minimum_y_at_max_x=next((c.y for c in last_column if c is not None and c.feasible), None),
+        fixed_parameters={k: v for k, v in fixed_parameters.items()
+                          if k not in (spec.x_variable, spec.y_variable)},
+    )
+```
+
+### File: `backend/app/services/optimization/runner.py`
+```python
+"""Differential evolution over the decision vector (scipy)."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Protocol, Sequence
+
+import numpy as np
+from scipy.optimize import LinearConstraint, differential_evolution
+
+from app.schemas.optimization import EvaluationMetrics, GenerationRecord, OptimizationCreate
+from app.services.optimization.objective import is_feasible, metric_value, penalised_objective
+from app.services.optimization.search_space import SearchSpace, build_search_space
+
+
+class OptimizationCancelled(Exception):
+    pass
+
+
+class Evaluator(Protocol):
+    evaluation_count: int
+
+    def evaluate(self, x: Sequence[float]) -> EvaluationMetrics | None: ...
+    def parameters(self, x: Sequence[float]) -> dict[str, float]: ...
+
+
+@dataclass
+class DifferentialEvolutionOutcome:
+    x: np.ndarray
+    fun: float
+    message: str
+    generations: int
+    history: list[GenerationRecord] = field(default_factory=list)
+
+
+def run_differential_evolution(
+    evaluator: Evaluator,
+    request: OptimizationCreate,
+    *,
+    space: SearchSpace | None = None,
+    on_generation: Callable[[GenerationRecord], None] | None = None,
+) -> DifferentialEvolutionOutcome:
+    space = space or build_search_space(request)
+    history: list[GenerationRecord] = []
+
+    def fun(x: np.ndarray) -> float:
+        return penalised_objective(evaluator.evaluate(x), request)
+
+    def callback(intermediate_result) -> None:
+        x = np.asarray(intermediate_result.x, dtype=float)
+        metrics = evaluator.evaluate(x)  # memoised; no extra physics
+        record = GenerationRecord(
+            generation=len(history) + 1,
+            penalised_objective=float(intermediate_result.fun),
+            best_parameters=evaluator.parameters(x),
+            best_metric_value=(
+                None if metrics is None else metric_value(metrics, request.objective.metric)
+            ),
+            best_feasible=is_feasible(metrics, request),
+            evaluation_count=evaluator.evaluation_count,
+        )
+        history.append(record)
+        if on_generation is not None:
+            on_generation(record)  # may raise OptimizationCancelled
+
+    constraints = ()
+    if space.linear_pairs:
+        matrix = np.zeros((len(space.linear_pairs), len(space.names)))
+        for row, (i, j) in enumerate(space.linear_pairs):
+            matrix[row, i] = matrix[row, j] = 1.0
+        constraints = (LinearConstraint(matrix, -np.inf, 1.0),)
+
+    result = differential_evolution(
+        fun,
+        bounds=list(zip(space.lower, space.upper)),
+        constraints=constraints,
+        popsize=request.population_multiplier,
+        maxiter=request.max_generations,
+        rng=np.random.default_rng(request.seed),
+        init="latinhypercube",
+        updating="immediate",
+        polish=False,   # polishing would add many evaluations through trust-constr
+        tol=1e-3,
+        atol=1e-4,
+        callback=callback,
+    )
+
+    return DifferentialEvolutionOutcome(
+        x=np.asarray(result.x, dtype=float),
+        fun=float(result.fun),
+        message=str(result.message),
+        generations=len(history),
+        history=history,
+    )
+```
+
+### File: `backend/app/services/optimization/search_space.py`
+```python
+"""Decision-variable bounds and the optical energy constraints
+rho_sol + tau_sol <= 1 and eps_IR + tau_IR <= 1."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+import numpy as np
+
+from app.schemas.optimization import OptimizationCreate
+
+
+OPTICAL_PAIRS: tuple[tuple[str, str], ...] = (
+    ("solar_reflectance", "solar_transmittance"),
+    ("infrared_emissivity", "infrared_transmittance"),
+)
+
+
+@dataclass(frozen=True)
+class SearchSpace:
+    names: tuple[str, ...]
+    lower: np.ndarray
+    upper: np.ndarray
+    # Index pairs (i, j) with x_i + x_j <= 1 (both are decision variables).
+    linear_pairs: tuple[tuple[int, int], ...]
+
+    def index(self, name: str) -> int:
+        return self.names.index(name)
+
+
+def build_search_space(request: OptimizationCreate) -> SearchSpace:
+    names = tuple(v.name for v in request.variables)
+    lower = {v.name: v.lower for v in request.variables}
+    upper = {v.name: v.upper for v in request.variables}
+    base = request.base_material
+    pairs: list[tuple[int, int]] = []
+
+    for a, b in OPTICAL_PAIRS:
+        has_a, has_b = a in upper, b in upper
+        if has_a and has_b:
+            pairs.append((names.index(a), names.index(b)))
+        elif has_a:
+            upper[a] = min(upper[a], 1.0 - float(getattr(base, b)))
+        elif has_b:
+            upper[b] = min(upper[b], 1.0 - float(getattr(base, a)))
+
+    for a, b in OPTICAL_PAIRS:
+        if a in lower and b in lower and lower[a] + lower[b] > 1.0 + 1e-9:
+            raise ValueError(f"lower bounds of {a} and {b} already sum above 1")
+
+    for name in names:
+        if lower[name] >= upper[name]:
+            raise ValueError(
+                f"{name}: no feasible range left after applying the optical "
+                f"energy constraint with the fixed base material "
+                f"(lower {lower[name]}, effective upper {upper[name]:.4f})"
+            )
+
+    return SearchSpace(
+        names=names,
+        lower=np.asarray([lower[n] for n in names], dtype=float),
+        upper=np.asarray([upper[n] for n in names], dtype=float),
+        linear_pairs=tuple(pairs),
+    )
+```
+
+### File: `backend/app/services/optimization/service.py`
+```python
+"""End-to-end optimization: baseline, DE search, passive limit, requirement map."""
+
+from __future__ import annotations
+
+import calendar
+from collections.abc import Callable
+from itertools import product
+from time import perf_counter
+
+from app.schemas.optimization import (
+    CandidateEvaluation,
+    OptimizationCreate,
+    OptimizationEstimate,
+    OptimizationResult,
+    SkippedOptimizationSample,
+)
+from app.services.optimization.evaluator import MaterialEvaluator, PreparationReport
+from app.services.optimization.objective import (
+    constraint_violation,
+    is_feasible,
+    metric_value,
+)
+from app.services.optimization.requirement_map import build_requirement_map
+from app.services.optimization.runner import run_differential_evolution
+from app.services.optimization.search_space import build_search_space
+from app.services.reproducibility import parameter_fingerprint
+from app.services.two_node import MODEL_VERSION
+
+
+Reporter = Callable[..., None]  # (progress=, stage=, history_record=, force=)
+
+
+def estimate_optimization(request: OptimizationCreate) -> OptimizationEstimate:
+    n = len(request.variables)
+    population = request.population_multiplier * n
+    optimizer = population * (request.max_generations + 1)
+    grid = request.requirement_map.resolution ** 2 if request.requirement_map else 0
+    corners = 2 ** n
+    samples = sum(
+        min(request.sample_days_per_month, calendar.monthrange(request.year, m)[1])
+        for m in request.months
+    )
+    # baseline + all corners + control garment once per sample
+    # (optical_upper_bound 已包含在 corners 內，不再另外 +1)
+    return OptimizationEstimate(
+        variable_count=n,
+        population_size=population,
+        optimizer_evaluation_budget=optimizer,
+        requirement_map_evaluations=grid,
+        sample_count=samples,
+        thermal_simulation_budget=(optimizer + grid + 1 + corners) * samples,
+        weather_requests=len(request.months),
+    )
+
+
+def evaluate_candidate(
+    evaluator: MaterialEvaluator,
+    request: OptimizationCreate,
+    parameters: dict[str, float],
+) -> CandidateEvaluation:
+    metrics = evaluator.evaluate(evaluator.vector(parameters))
+    return CandidateEvaluation(
+        parameters={k: round(v, 6) for k, v in parameters.items()},
+        metrics=metrics,
+        objective_value=(
+            None if metrics is None else metric_value(metrics, request.objective.metric)
+        ),
+        constraint_violation=(
+            None if metrics is None else constraint_violation(metrics, request.constraints)
+        ),
+        feasible=is_feasible(metrics, request),
+    )
+
+
+def corner_parameters(request: OptimizationCreate) -> list[dict[str, float]]:
+    """Return all 2^n corner points of the decision-variable hyper-rectangle."""
+    names = [v.name for v in request.variables]
+    return [
+        dict(zip(names, combo))
+        for combo in product(*[(v.lower, v.upper) for v in request.variables])
+    ]
+
+
+def best_corner(
+    evaluator: MaterialEvaluator, request: OptimizationCreate
+) -> CandidateEvaluation:
+    """Evaluate every corner and return the best one.
+
+    Priority: feasible first, then lowest constraint violation,
+    then best objective (respecting sense).
+    """
+    corners = [
+        evaluate_candidate(evaluator, request, p) for p in corner_parameters(request)
+    ]
+    sign = -1.0 if request.objective.sense == "maximize" else 1.0
+    return min(
+        corners,
+        key=lambda c: (
+            0 if c.feasible else 1,
+            c.constraint_violation if c.constraint_violation is not None else float("inf"),
+            sign * (c.objective_value if c.objective_value is not None else float("inf")),
+        ),
+    )
+
+
+def best_evaluated(
+    evaluator: MaterialEvaluator, request: OptimizationCreate
+) -> dict[str, float] | None:
+    """Pick the best already-evaluated point from the evaluator cache.
+
+    - If any feasible points exist → lowest objective (respecting sense).
+    - Otherwise → lowest constraint violation, then best objective.
+    """
+    # MaterialEvaluator keeps a private cache: key = rounded parameter tuple
+    cache = getattr(evaluator, "_cache", None)
+    if not cache:
+        return None
+
+    sign = -1.0 if request.objective.sense == "maximize" else 1.0
+    names = evaluator.names
+
+    pool: list[tuple[dict[str, float], object]] = []
+    for key, metrics in cache.items():
+        if metrics is None:
+            continue
+        params = {name: float(val) for name, val in zip(names, key, strict=True)}
+        pool.append((params, metrics))
+
+    if not pool:
+        return None
+
+    feasible = [(p, m) for p, m in pool if is_feasible(m, request)]
+    if feasible:
+        return min(
+            feasible,
+            key=lambda pm: sign * metric_value(pm[1], request.objective.metric),
+        )[0]
+
+    return min(
+        pool,
+        key=lambda pm: (
+            constraint_violation(pm[1], request.constraints),
+            sign * metric_value(pm[1], request.objective.metric),
+        ),
+    )[0]
+
+
+def _is_upper_optical_corner(
+    corner: CandidateEvaluation, request: OptimizationCreate
+) -> bool:
+    """True if the corner sits at the upper bound of every optical variable present."""
+    optical = {"solar_reflectance", "infrared_emissivity"}
+    upper_by_name = {v.name: v.upper for v in request.variables}
+    for name in optical:
+        if name not in corner.parameters:
+            continue
+        if abs(corner.parameters[name] - upper_by_name[name]) > 1e-6:
+            return False
+    return True
+
+
+def _verdict(
+    request: OptimizationCreate,
+    best: CandidateEvaluation,
+    upper: CandidateEvaluation | None,
+    corner: CandidateEvaluation | None = None,
+) -> tuple[str, str]:
+    metric = request.objective.metric
+    if not request.constraints:
+        return "unconstrained", (
+            f"No constraints were given; best {metric} = {best.objective_value:.4f}."
+        )
+    if best.feasible:
+        return "feasible", (
+            f"All constraints satisfied. Best {metric} = {best.objective_value:.4f}."
+        )
+
+    text = (
+        "No candidate inside the bounds satisfies the constraints "
+        f"(smallest total violation {best.constraint_violation:.4f})."
+    )
+    if upper is not None and not upper.feasible:
+        text += (
+            " Even with reflectance/emissivity at their upper bounds the violation "
+            f"is {upper.constraint_violation:.4f}: the target is beyond the passive "
+            "radiative-cooling limit of this model for this climate and activity."
+        )
+
+    # 3.2 monotonicity warning
+    if corner is not None and not _is_upper_optical_corner(corner, request):
+        text += (
+            " ⚠ 性能對某參數非單調：上限角落不是最佳角落，"
+            "需求地圖的『最低需求』讀數不適用。"
+        )
+
+    return "infeasible", text
+
+
+def execute_optimization(
+    request: OptimizationCreate,
+    evaluator: MaterialEvaluator,
+    preparation: PreparationReport,
+    *,
+    report: Reporter | None = None,
+) -> OptimizationResult:
+    started = perf_counter()
+
+    def progress(value: int, stage: str, **extra) -> None:
+        if report is not None:
+            report(progress=value, stage=stage, **extra)
+
+    space = build_search_space(request)
+    base = request.base_material
+
+    # 1. Baseline
+    progress(20, "evaluating_baseline", force=True)
+    baseline = evaluate_candidate(
+        evaluator, request, {n: float(getattr(base, n)) for n in space.names}
+    )
+
+    # 2. Differential Evolution
+    generations = request.max_generations
+    outcome = run_differential_evolution(
+        evaluator,
+        request,
+        space=space,
+        on_generation=lambda record: progress(
+            20 + round(65 * min(record.generation, generations) / generations),
+            f"generation_{record.generation}",
+            history_record=record,
+            force=True,
+        ),
+    )
+
+    # 3. Evaluate all corners (3.2) – also populates the cache
+    progress(84, "evaluating_corners", force=True)
+    corner_eval = best_corner(evaluator, request)
+
+    # Keep the old single optical-upper-bound for backward compatibility
+    optical_upper = None
+    optical = [n for n in ("solar_reflectance", "infrared_emissivity") if n in space.names]
+    if optical:
+        parameters = dict(corner_eval.parameters)  # start from best corner
+        for name in optical:
+            parameters[name] = float(space.upper[space.index(name)])
+        optical_upper = evaluate_candidate(evaluator, request, parameters)
+
+    # 4. Requirement map (further populates the cache)
+    requirement_map = None
+    if request.requirement_map is not None:
+        progress(86, "building_requirement_map", force=True)
+        requirement_map = build_requirement_map(
+            evaluator,
+            request,
+            corner_eval.parameters,  # use best corner as reference
+            space=space,
+            on_cell=lambda done, total: progress(
+                86 + round(12 * done / total), "building_requirement_map"
+            ),
+        )
+
+    # 5. Final reported point (3.3) – must run after corners + map are cached
+    candidate = best_evaluated(evaluator, request)
+    best = evaluate_candidate(
+        evaluator,
+        request,
+        candidate or evaluator.parameters(outcome.x),
+    )
+
+    # 6. Verdict (with monotonicity check)
+    verdict, message = _verdict(request, best, optical_upper, corner_eval)
+
+    return OptimizationResult(
+        verdict=verdict,
+        message=message,
+        objective=request.objective,
+        constraints=request.constraints,
+        best=best,
+        baseline=baseline,
+        optical_upper_bound=optical_upper,
+        best_corner=corner_eval,          # ← new field
+        requirement_map=requirement_map,
+        sample_count=len(preparation.samples),
+        skipped_samples=[
+            SkippedOptimizationSample.model_validate(s) for s in preparation.skipped
+        ],
+        weather_payload_sha256=preparation.weather_payload_sha256,
+        evaluation_count=evaluator.evaluation_count,
+        simulation_count=evaluator.simulation_count + len(preparation.samples),
+        generations=outcome.generations,
+        algorithm=request.algorithm,
+        algorithm_message=outcome.message,
+        elapsed_seconds=round(perf_counter() - started, 3),
+        model_version=MODEL_VERSION,
+        parameter_fingerprint=parameter_fingerprint(request.environment_assumptions),
     )
 ```
 
@@ -13366,6 +14860,25 @@ def simulate_material(
         failure_label="Fixed-environment numerical solution failed",
     )
 
+def simulate_material_with_interpolator(
+    duration_minutes: int,
+    output_interval_minutes: int,
+    interpolator: WeatherInterpolator,
+    person: PersonInput,
+    material: MaterialInput,
+) -> ScenarioResult:
+    """Same physics as simulate_material_with_weather, but reuses a prebuilt
+    interpolator (optimization evaluates thousands of garments per window)."""
+    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
+
+    return _integrate(
+        duration_minutes=duration_minutes,
+        output_interval_minutes=output_interval_minutes,
+        environment_at=interpolator.environment_at,
+        person=person,
+        material=material,
+        failure_label="Weather-driven numerical solution failed",
+    )
 
 def simulate_material_with_weather(
     duration_minutes: int,
@@ -13378,16 +14891,8 @@ def simulate_material_with_weather(
     interpolator = WeatherInterpolator.from_series(
         weather, assumptions=assumptions or EnvironmentAssumptions()
     )
-
-    interpolator.ensure_covers(0.0, duration_minutes * 60.0)
-
-    return _integrate(
-        duration_minutes=duration_minutes,
-        output_interval_minutes=output_interval_minutes,
-        environment_at=interpolator.environment_at,
-        person=person,
-        material=material,
-        failure_label="Weather-driven numerical solution failed",
+    return simulate_material_with_interpolator(
+        duration_minutes, output_interval_minutes, interpolator, person, material
     )
     
 # Numerical (not physical) settings.
@@ -13442,7 +14947,7 @@ from redis.asyncio import Redis
 
 from redis.exceptions import RedisError  # add near the redis import
 
-from app.core.config import settings
+from app.core.config import BACKEND_DIRECTORY, settings   # 合併原本的 settings import
 
 from app.services.weather_quality import (
     DEFAULT_STEP_SECONDS,
@@ -13466,7 +14971,7 @@ HOURLY_VARIABLES = [
     "direct_normal_irradiance",
 ]
 
-CACHE_DIRECTORY = Path("data/cache/weather")
+CACHE_DIRECTORY = BACKEND_DIRECTORY / "data" / "cache" / "weather"
 
 
 def city_to_response(
@@ -14738,9 +16243,7 @@ celery_app = Celery(
     "radiative_cooling_worker",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=[
-        "app.worker.tasks",
-    ],
+    include=["app.worker.tasks", "app.worker.optimization_tasks"],
 )
 
 celery_app.conf.update(
@@ -14759,25 +16262,18 @@ celery_app.conf.update(
         Queue("default"),
         Queue("global_standard"),
         Queue("global_large"),
+        Queue("optimization"),
     ),
     task_default_queue="default",
     task_routes={
-        "simulation.run_weather": {
-            "queue": "default",
-        },
-        "global_batch.run_city": {
-            "queue": "global_standard",
-        },
+        "simulation.run_weather": {"queue": "default"},
+        "global_batch.run_city": {"queue": "global_standard"},
+        "optimization.run": {"queue": "optimization"},
     },
 )
 
+# One entry per reaper task. Two entries pointing at the same task run it twice.
 celery_app.conf.beat_schedule = {
-    "reap-expired-leases": {
-        # Must match the explicit task name below; a wrong name is silently dropped.
-        "task": "global_batch.reap_expired_leases",
-        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
-        "options": {"queue": "default"},
-    },
     "reap-expired-city-leases": {
         "task": "global_batch.reap_expired_leases",
         "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
@@ -14788,8 +16284,233 @@ celery_app.conf.beat_schedule = {
         "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
         "options": {"queue": "default"},
     },
+    "reap-expired-optimization-leases": {
+        "task": "optimization.reap_expired_leases",
+        "schedule": settings.LEASE_REAPER_INTERVAL_SECONDS,
+        "options": {"queue": "default"},
+    },
 }
+```
 
+### File: `backend/app/worker/optimization_tasks.py`
+```python
+"""Inverse optimization task. Same lease/cancel contract as the other tasks.
+
+Heartbeats are emitted from inside evaluate() (throttled), so a single long
+generation can never outlive the lease TTL. Cancellation latency is bounded
+by CITY_HEARTBEAT_SECONDS. No checkpoints: a reaped job restarts from scratch.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+import time
+
+from celery import Task
+from sqlalchemy import func, select
+
+from app.core.config import settings
+from app.core.time import utc_now
+from app.db.session import SessionLocal
+from app.models.optimization_job import OptimizationJob
+from app.schemas.optimization import GenerationRecord, OptimizationCreate
+from app.services.job_state import JobStatus, assert_job_transition
+from app.services.leases import (
+    acquire_optimization_lease,
+    heartbeat_optimization_lease,
+    release_optimization_lease,
+)
+from app.services.optimization.evaluator import MaterialEvaluator, prepare_samples
+from app.services.optimization.runner import OptimizationCancelled
+from app.services.optimization.service import execute_optimization
+from app.worker.celery_app import celery_app
+from app.worker.tasks import LeaseLostError, _owner_id
+
+
+logger = logging.getLogger(__name__)
+
+OPTIMIZATION_QUEUE = "optimization"
+
+
+class OptimizationReporter:
+    """Throttled, owner-guarded writes of progress, history and cancel checks."""
+
+    def __init__(self, job_id: str, owner: str) -> None:
+        self.job_id = job_id
+        self.owner = owner
+        self.interval = settings.CITY_HEARTBEAT_SECONDS
+        self.last = 0.0
+        self.progress = 0
+        self.stage = "initializing"
+        self.history: list[dict] = []
+        self.evaluations = 0
+
+    def __call__(
+        self,
+        *,
+        progress: int | None = None,
+        stage: str | None = None,
+        history_record: GenerationRecord | None = None,
+        evaluations: int | None = None,
+        force: bool = False,
+    ) -> None:
+        if progress is not None:
+            self.progress = max(self.progress, min(99, int(progress)))
+        if stage is not None:
+            self.stage = stage
+        if history_record is not None:
+            self.history.append(history_record.model_dump(mode="json"))
+            self.evaluations = history_record.evaluation_count
+        if evaluations is not None:
+            self.evaluations = evaluations
+
+        if not force and time.monotonic() - self.last < self.interval:
+            return
+        self.flush()
+
+    def flush(self) -> None:
+        with SessionLocal() as session:
+            row = session.execute(
+                select(OptimizationJob.status, OptimizationJob.cancel_requested_at)
+                .where(OptimizationJob.id == self.job_id)
+            ).one_or_none()
+            if row is None:
+                raise RuntimeError(f"Optimization job not found: {self.job_id}")
+            if row.cancel_requested_at is not None or row.status in {JobStatus.CANCELLING, JobStatus.CANCELLED}:
+                raise OptimizationCancelled()
+
+            ok = heartbeat_optimization_lease(
+                session, self.job_id, self.owner,
+                stage=self.stage[:100], progress=self.progress,
+                history_json=list(self.history), evaluation_count=self.evaluations,
+            )
+        if not ok:
+            raise LeaseLostError()
+        self.last = time.monotonic()
+
+
+def _finish(session, job_id: str, owner: str, target: JobStatus, **values) -> bool:
+    current = session.scalar(
+        select(OptimizationJob.status).where(
+            OptimizationJob.id == job_id, OptimizationJob.lease_owner == owner
+        )
+    )
+    if current is None:
+        return False
+    assert_job_transition(current, target)
+    return heartbeat_optimization_lease(
+        session, job_id, owner, status=target, stage=target, completed_at=func.now(), **values
+    )
+
+
+@celery_app.task(bind=True, name="optimization.run", acks_late=True, reject_on_worker_lost=True)
+def run_optimization_task(self: Task, job_id: str) -> dict:
+    owner = _owner_id(self)
+    lease_lost = False
+
+    with SessionLocal() as session:
+        if not acquire_optimization_lease(session, job_id, owner):
+            return {"job_id": job_id, "status": "skipped", "reason": "lease_not_acquired"}
+
+    try:
+        with SessionLocal() as session:
+            job = session.get(OptimizationJob, job_id)
+            if job is None:
+                raise RuntimeError(f"Optimization job not found: {job_id}")
+            request = OptimizationCreate.model_validate(job.request_json)
+            ok = heartbeat_optimization_lease(
+                session, job_id, owner,
+                stage="preparing_samples", progress=1, error_message=None,
+                history_json=[], evaluation_count=0, result_json=None,
+                attempt=OptimizationJob.attempt + 1,
+            )
+        if not ok:
+            raise LeaseLostError()
+
+        reporter = OptimizationReporter(job_id, owner)
+
+        preparation = asyncio.run(
+            prepare_samples(request, progress=lambda p, s: reporter(progress=p, stage=s))
+        )
+        evaluator = MaterialEvaluator(
+            request, preparation.samples,
+            on_evaluation=lambda count: reporter(evaluations=count),
+        )
+        result = execute_optimization(request, evaluator, preparation, report=reporter)
+        reporter(force=True)  # last cancel check, flush history
+
+        with SessionLocal() as session:
+            ok = _finish(
+                session, job_id, owner, JobStatus.COMPLETED,
+                progress=100, error_message=None,
+                evaluation_count=result.evaluation_count,
+                history_json=reporter.history,
+                result_json=result.model_dump(mode="json"),
+            )
+        if not ok:
+            raise LeaseLostError()
+        return {"job_id": job_id, "status": "completed", "verdict": result.verdict}
+
+    except LeaseLostError:
+        lease_lost = True
+        return {"job_id": job_id, "status": "lease_lost"}
+
+    except OptimizationCancelled:
+        with SessionLocal() as session:
+            _finish(session, job_id, owner, JobStatus.CANCELLED)
+        return {"job_id": job_id, "status": "cancelled"}
+
+    except Exception as error:
+        logger.exception("optimization job %s failed", job_id)
+        with SessionLocal() as session:
+            _finish(session, job_id, owner, JobStatus.FAILED, error_message=str(error)[:4000])
+        raise
+
+    finally:
+        if not lease_lost:
+            with SessionLocal() as session:
+                release_optimization_lease(session, job_id, owner)
+
+
+@celery_app.task(name="optimization.reap_expired_leases")
+def reap_expired_optimization_leases() -> dict:
+    requeued: list[str] = []
+    failed: list[str] = []
+
+    with SessionLocal() as session:
+        stale = session.scalars(
+            select(OptimizationJob)
+            .where(
+                OptimizationJob.status.in_([JobStatus.RUNNING, JobStatus.CANCELLING]),
+                OptimizationJob.lease_expires_at < func.now(),
+            )
+            .with_for_update(skip_locked=True)
+        ).all()
+
+        for job in stale:
+            if job.status == JobStatus.CANCELLING:
+                assert_job_transition(job.status, JobStatus.CANCELLED)
+                job.status, job.stage, job.completed_at = JobStatus.CANCELLED, "cancelled", utc_now()
+            elif job.attempt < settings.CITY_MAX_RETRIES:
+                assert_job_transition(job.status, JobStatus.QUEUED)
+                job.status, job.stage = JobStatus.QUEUED, "retry_scheduled"
+                requeued.append(job.id)
+            else:
+                assert_job_transition(job.status, JobStatus.FAILED)
+                job.status, job.stage = JobStatus.FAILED, "failed"
+                job.error_message = f"lease expired after {job.attempt} attempt(s)"
+                job.completed_at = utc_now()
+                failed.append(job.id)
+            job.lease_owner = None
+            job.lease_expires_at = None
+
+        session.commit()
+
+    for job_id in requeued:
+        run_optimization_task.apply_async(args=[job_id], queue=OPTIMIZATION_QUEUE)
+
+    return {"requeued": requeued, "failed": failed}
 ```
 
 ### File: `backend/app/worker/tasks.py`
@@ -15403,7 +17124,7 @@ def reap_expired_leases() -> dict:
 
 ### File: `backend/celerybeat-schedule.bak`
 ```
-'entries', (0, 324)
+'entries', (2048, 658)
 '__version__', (512, 20)
 'tz', (1024, 18)
 'utc_enabled', (1536, 4)
@@ -15418,7 +17139,7 @@ def reap_expired_leases() -> dict:
 
 ### File: `backend/celerybeat-schedule.dir`
 ```
-'entries', (0, 324)
+'entries', (2048, 658)
 '__version__', (512, 20)
 'tz', (1024, 18)
 'utc_enabled', (1536, 4)
@@ -16392,6 +18113,4415 @@ the observed values; a drill without a recorded value is not accepted.
 | 9 | `global_large` batch, force one city failure | re-queued task appears on `global_large`, not `global_standard` (`celery -A app.worker.celery_app inspect reserved`) | |
 ```
 
+### File: `backend/docs/acceptance/stage-optimization/optimization-summary.json`
+```json
+{
+  "runs": [
+    {
+      "name": "Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "id": "f99754dc",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979956,
+        "infrared_emissivity": 0.500439
+      },
+      "best_objective": 0.969569,
+      "best_violation": 2.150069000000004,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.188,
+        "skin_exceedance_fraction": 0.969569,
+        "peak_core_temperature_c": 39.2805,
+        "mean_skin_cooling_c": 1.70892
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.969569,
+          "excess": 0.869569
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 39.2805,
+          "excess": 1.2805000000000035
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "lower"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 2.463095000000001,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 2.2187320000000015,
+      "best_corner_params": null,
+      "evaluations": 621,
+      "generations": 24,
+      "seconds": 89.03,
+      "baseline_exceedance": 0.972095,
+      "baseline_peak_skin": 38.5221,
+      "baseline_peak_core": 39.591,
+      "best_exceedance": 0.969569,
+      "best_peak_skin": 38.188,
+      "best_peak_core": 39.2805,
+      "upper_exceedance": 0.970232,
+      "upper_peak_skin": 38.2597,
+      "upper_peak_core": 39.3485,
+      "best_cooling": 1.70892,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.969568,
+      "map_max": 0.980992,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "mixed",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its lower bound (0.5); the optimum may lie outside the searched range",
+        "best beats the optical upper-bound corner: performance is non-monotone in at least one parameter",
+        "violation is an unweighted sum across constraints with different units: skin_exceedance_fraction <= 0.1 (+0.8696); peak_core_temperature_c <= 38.0 (+1.281)",
+        "map metric is non-monotone along ε; 'minimum requirement' readings assume monotonicity"
+      ]
+    },
+    {
+      "name": "H Dubai peak_core min, ε [0.05,0.99]",
+      "id": "d93fc6a6",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? peak_core_temperature_c minimize",
+      "bounds": "ε[0.05,0.99]",
+      "constraints": "—",
+      "verdict": "unconstrained",
+      "best_params": {
+        "infrared_emissivity": 0.05
+      },
+      "best_objective": 39.4968,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.4243,
+        "skin_exceedance_fraction": 0.971222,
+        "peak_core_temperature_c": 39.4968,
+        "mean_skin_cooling_c": 1.55468
+      },
+      "best_constraint_excess": {},
+      "best_at_bound": {
+        "infrared_emissivity": "lower"
+      },
+      "baseline_params": {
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "infrared_emissivity": 0.05
+      },
+      "evaluations": 23,
+      "generations": 1,
+      "seconds": 3.075,
+      "baseline_exceedance": 0.972095,
+      "baseline_peak_skin": 38.5221,
+      "baseline_peak_core": 39.591,
+      "best_exceedance": 0.971222,
+      "best_peak_skin": 38.4243,
+      "best_peak_core": 39.4968,
+      "upper_exceedance": 0.972127,
+      "upper_peak_skin": 38.5257,
+      "upper_peak_core": 39.5945,
+      "best_cooling": 1.55468,
+      "warnings": [
+        "best ε sits at its lower bound (0.05); the optimum may lie outside the searched range",
+        "best beats the optical upper-bound corner: performance is non-monotone in at least one parameter",
+        "best corner is ε=0.0500, not the upper bound"
+      ]
+    },
+    {
+      "name": "Exp-A Guangzhou peak_skin ≤ 33",
+      "id": "314795f8",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "mean_skin_temperature_c <= 33.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979824,
+        "infrared_emissivity": 0.988588
+      },
+      "best_objective": 0.931456,
+      "best_violation": 3.0220899999999986,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7789,
+        "skin_exceedance_fraction": 0.931456,
+        "peak_core_temperature_c": 37.9975,
+        "mean_skin_cooling_c": 1.53397
+      },
+      "best_constraint_excess": {
+        "mean_skin_temperature_c <= 33.0": {
+          "value": 36.02209,
+          "excess": 3.0220899999999986
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 3.1865299999999976,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 3.021630000000002,
+      "best_corner_params": null,
+      "evaluations": 500,
+      "generations": 18,
+      "seconds": 68.218,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931456,
+      "best_peak_skin": 36.7789,
+      "best_peak_core": 37.9975,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53397,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "id": "b25a5038",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979926,
+        "infrared_emissivity": 0.987599
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931447,
+          "excess": 0.831447
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9972,
+          "excess": -0.00280000000000058
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.203,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931447,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9972,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53411,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=1",
+      "id": "c1f10bd8",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 1,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979931,
+        "infrared_emissivity": 0.9842
+      },
+      "best_objective": 0.93145,
+      "best_violation": 0.83145,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.779,
+        "skin_exceedance_fraction": 0.93145,
+        "peak_core_temperature_c": 37.9975,
+        "mean_skin_cooling_c": 1.53389
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.93145,
+          "excess": 0.83145
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9975,
+          "excess": -0.0024999999999977263
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 462,
+      "generations": 16,
+      "seconds": 64.497,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.93145,
+      "best_peak_skin": 36.779,
+      "best_peak_core": 37.9975,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53389,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=2",
+      "id": "d8f0070d",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 2,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979987,
+        "infrared_emissivity": 0.985296
+      },
+      "best_objective": 0.931443,
+      "best_violation": 0.831443,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931443,
+        "peak_core_temperature_c": 37.9973,
+        "mean_skin_cooling_c": 1.53408
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931443,
+          "excess": 0.831443
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9973,
+          "excess": -0.00269999999999726
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 522,
+      "generations": 19,
+      "seconds": 70.077,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931443,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9973,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53408,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=3",
+      "id": "9f03fcea",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 3,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979935,
+        "infrared_emissivity": 0.989883
+      },
+      "best_objective": 0.931444,
+      "best_violation": 0.8314440000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.931444,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.53428
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931444,
+          "excess": 0.8314440000000001
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.997,
+          "excess": -0.0030000000000001137
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 520,
+      "generations": 19,
+      "seconds": 73.434,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931444,
+      "best_peak_skin": 36.7784,
+      "best_peak_core": 37.997,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53428,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=4",
+      "id": "e5877c0f",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 4,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979985,
+        "infrared_emissivity": 0.987318
+      },
+      "best_objective": 0.931442,
+      "best_violation": 0.831442,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7785,
+        "skin_exceedance_fraction": 0.931442,
+        "peak_core_temperature_c": 37.9971,
+        "mean_skin_cooling_c": 1.53421
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931442,
+          "excess": 0.831442
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9971,
+          "excess": -0.002899999999996794
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.227,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931442,
+      "best_peak_skin": 36.7785,
+      "best_peak_core": 37.9971,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53421,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=5",
+      "id": "98519f18",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 5,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979965,
+        "infrared_emissivity": 0.989419
+      },
+      "best_objective": 0.93144,
+      "best_violation": 0.8314400000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.93144,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.53431
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.93144,
+          "excess": 0.8314400000000001
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.997,
+          "excess": -0.0030000000000001137
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 501,
+      "generations": 18,
+      "seconds": 71.1,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.93144,
+      "best_peak_skin": 36.7784,
+      "best_peak_core": 37.997,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53431,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=10",
+      "id": "54d8da07",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979926,
+        "infrared_emissivity": 0.987599
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931447,
+          "excess": 0.831447
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9972,
+          "excess": -0.00280000000000058
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.705,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931447,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9972,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53411,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=20",
+      "id": "e73cb312",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 20,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979993,
+        "infrared_emissivity": 0.988499
+      },
+      "best_objective": 0.93144,
+      "best_violation": 0.8314400000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.93144,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.5343
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.93144,
+          "excess": 0.8314400000000001
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.997,
+          "excess": -0.0030000000000001137
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 1042,
+      "generations": 22,
+      "seconds": 142.371,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.93144,
+      "best_peak_skin": 36.7784,
+      "best_peak_core": 37.997,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.5343,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=5",
+      "id": "66f1f154",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 5,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979973,
+        "infrared_emissivity": 0.952376
+      },
+      "best_objective": 0.931483,
+      "best_violation": 0.831483,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7819,
+        "skin_exceedance_fraction": 0.931483,
+        "peak_core_temperature_c": 37.9998,
+        "mean_skin_cooling_c": 1.53179
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931483,
+          "excess": 0.831483
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9998,
+          "excess": -0.00019999999999953388
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 340,
+      "generations": 21,
+      "seconds": 45.3,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931483,
+      "best_peak_skin": 36.7819,
+      "best_peak_core": 37.9998,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53179,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Guangzhou August requirement search",
+      "id": "d2d9cca2",
+      "city": "guangzhou",
+      "months": [
+        9
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979985,
+        "infrared_emissivity": 0.986573
+      },
+      "best_objective": 0.803111,
+      "best_violation": 0.703111,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.6638,
+        "skin_exceedance_fraction": 0.803111,
+        "peak_core_temperature_c": 37.9028,
+        "mean_skin_cooling_c": 1.54986
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.803111,
+          "excess": 0.703111
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9028,
+          "excess": -0.09720000000000084
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 0.9301509999999984,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.702697,
+      "best_corner_params": null,
+      "evaluations": 481,
+      "generations": 17,
+      "seconds": 64.969,
+      "baseline_exceedance": 0.860251,
+      "baseline_peak_skin": 36.9582,
+      "baseline_peak_core": 38.1699,
+      "best_exceedance": 0.803111,
+      "best_peak_skin": 36.6638,
+      "best_peak_core": 37.9028,
+      "upper_exceedance": 0.802697,
+      "upper_peak_skin": 36.6635,
+      "upper_peak_core": 37.9025,
+      "best_cooling": 1.54986,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.802697,
+      "map_max": 0.94765,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Guangzhou August requirement search",
+      "id": "6300b97f",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best_params": {
+        "solar_reflectance": 0.979926,
+        "infrared_emissivity": 0.987599
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.931447,
+          "excess": 0.831447
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.9972,
+          "excess": -0.00280000000000058
+        }
+      },
+      "best_at_bound": {
+        "solar_reflectance": "upper",
+        "infrared_emissivity": "upper"
+      },
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": false,
+      "baseline_violation": 1.0640759999999982,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "best_corner_params": null,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 67.048,
+      "baseline_exceedance": 0.939176,
+      "baseline_peak_skin": 37.0283,
+      "baseline_peak_core": 38.2249,
+      "best_exceedance": 0.931447,
+      "best_peak_skin": 36.7787,
+      "best_peak_core": 37.9972,
+      "upper_exceedance": 0.931436,
+      "upper_peak_skin": 36.7782,
+      "upper_peak_core": 37.9969,
+      "best_cooling": 1.53411,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null
+        }
+      ],
+      "map_min": 0.931436,
+      "map_max": 0.971299,
+      "plateau_fraction": 0.008264462809917356,
+      "feasible_cell_share": 0.0,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": false,
+      "warnings": [
+        "best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range",
+        "best ε sits at its upper bound (0.99); the optimum may lie outside the searched range"
+      ]
+    },
+    {
+      "name": "Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "id": "455d0022",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.826953,
+        "infrared_emissivity": 0.77513
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.5537,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0906,
+        "mean_skin_cooling_c": 1.49506
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0906,
+          "excess": -0.909399999999998
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": null,
+      "evaluations": 200,
+      "generations": 3,
+      "seconds": 27.69,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.5537,
+      "best_peak_core": 37.0906,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.49506,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）",
+      "id": "d72418b5",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.1,0.98] ε[0.05,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.05
+      },
+      "evaluations": 242,
+      "generations": 5,
+      "seconds": 31.319,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.628,
+      "min_y_at_max_x": 0.05,
+      "frontier": [
+        {
+          "y": 0.05,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.144,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.238,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.332,
+          "minimum_x": 0.804
+        },
+        {
+          "y": 0.426,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.52,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.614,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.708,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.802,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.896,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.628
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.910188,
+      "plateau_fraction": 0.2809917355371901,
+      "feasible_cell_share": 0.35537190082644626,
+      "x_step": 0.088,
+      "y_step": 0.094,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.05: the true requirement lies below the searched range",
+        "28% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1",
+      "id": "dd922952",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 1,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.1,0.98] ε[0.55,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.55
+      },
+      "evaluations": 281,
+      "generations": 7,
+      "seconds": 36.664,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.628,
+      "min_y_at_max_x": 0.55,
+      "frontier": [
+        {
+          "y": 0.55,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.594,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.638,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.682,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.726,
+          "minimum_x": 0.716
+        },
+        {
+          "y": 0.77,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.814,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.858,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.902,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.946,
+          "minimum_x": 0.628
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.628
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.858187,
+      "plateau_fraction": 0.3305785123966942,
+      "feasible_cell_share": 0.4132231404958678,
+      "x_step": 0.088,
+      "y_step": 0.044,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.55: the true requirement lies below the searched range",
+        "33% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2",
+      "id": "f0897399",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 2,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 28.744,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3",
+      "id": "3ebaa2be",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 3,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 29.239,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4",
+      "id": "3d83bbf7",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 4,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 29.775,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5",
+      "id": "caffdcbc",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 5,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.3,0.98] ε[0.5,0.99]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5
+      },
+      "evaluations": 202,
+      "generations": 3,
+      "seconds": 27.078,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7608,
+      "upper_peak_core": 37.0361,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.791461,
+      "plateau_fraction": 0.4132231404958678,
+      "feasible_cell_share": 0.5206611570247934,
+      "x_step": 0.06799999999999999,
+      "y_step": 0.049,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range",
+        "41% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    },
+    {
+      "name": "L-W 拉薩權重 2:1 / 1:2",
+      "id": "8ba7a747",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "objective": "? skin_exceedance_fraction minimize",
+      "bounds": "ρ[0.05,0.99] ε[0.1,0.98]",
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "best_constraint_excess": {
+        "skin_exceedance_fraction <= 0.1": {
+          "value": 0.0,
+          "excess": -0.1
+        },
+        "peak_core_temperature_c <= 38.0": {
+          "value": 37.0433,
+          "excess": -0.9566999999999979
+        }
+      },
+      "best_at_bound": {},
+      "baseline_params": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "baseline_feasible": true,
+      "baseline_violation": 0.0,
+      "upper_params": {
+        "solar_reflectance": 0.99,
+        "infrared_emissivity": 0.98
+      },
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "best_corner_params": {
+        "solar_reflectance": 0.99,
+        "infrared_emissivity": 0.1
+      },
+      "evaluations": 242,
+      "generations": 5,
+      "seconds": 31.655,
+      "baseline_exceedance": 0.0,
+      "baseline_peak_skin": 34.1375,
+      "baseline_peak_core": 37.0433,
+      "best_exceedance": 0.0,
+      "best_peak_skin": 34.1375,
+      "best_peak_core": 37.0433,
+      "upper_exceedance": 0.0,
+      "upper_peak_skin": 33.7243,
+      "upper_peak_core": 37.0362,
+      "best_cooling": 1.96577,
+      "map": "ρ × ε",
+      "map_metric": null,
+      "min_x_at_max_y": 0.614,
+      "min_y_at_max_x": 0.1,
+      "frontier": [
+        {
+          "y": 0.1,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.188,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.276,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.364,
+          "minimum_x": 0.802
+        },
+        {
+          "y": 0.452,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.54,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.628,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.716,
+          "minimum_x": 0.708
+        },
+        {
+          "y": 0.804,
+          "minimum_x": 0.614
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.614
+        },
+        {
+          "y": 0.98,
+          "minimum_x": 0.614
+        }
+      ],
+      "map_min": 0.0,
+      "map_max": 0.913965,
+      "plateau_fraction": 0.2727272727272727,
+      "feasible_cell_share": 0.35537190082644626,
+      "x_step": 0.094,
+      "y_step": 0.088,
+      "monotone_x": "↓",
+      "monotone_y": "↓",
+      "min_x_at_max_y_at_lower_bound": false,
+      "min_y_at_max_x_at_lower_bound": true,
+      "warnings": [
+        "best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)",
+        "ε requirement reads at its lower bound 0.1: the true requirement lies below the searched range",
+        "27% of map cells share the minimum; the reported optimum is arbitrary"
+      ]
+    }
+  ],
+  "seed_groups": [
+    {
+      "names": [
+        "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "Exp-D Guangzhou seed=1",
+        "Exp-D Guangzhou seed=2",
+        "Exp-D Guangzhou seed=3",
+        "Exp-D Guangzhou seed=4",
+        "Exp-D Guangzhou seed=5",
+        "Exp-E Guangzhou mult=10",
+        "Guangzhou August requirement search"
+      ],
+      "seeds": [
+        42,
+        1,
+        2,
+        3,
+        4,
+        5,
+        42,
+        42
+      ],
+      "n": 8,
+      "distinct_results": 6,
+      "params": {
+        "infrared_emissivity": "0.9874 ± 0.0019",
+        "solar_reflectance": "0.9799 ± 0.0000"
+      },
+      "objective": "0.9314 ± 0.0000",
+      "evaluations": "510.1250 ± 20.5387"
+    },
+    {
+      "names": [
+        "Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4",
+        "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5"
+      ],
+      "seeds": [
+        42,
+        2,
+        3,
+        4,
+        5
+      ],
+      "n": 5,
+      "distinct_results": 2,
+      "params": {
+        "infrared_emissivity": "0.9150 ± 0.0782",
+        "solar_reflectance": "0.8854 ± 0.0327"
+      },
+      "objective": "0.0000 ± 0.0000",
+      "evaluations": "213.6000 ± 11.5239"
+    }
+  ],
+  "duplicates": [
+    [
+      "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+      "Exp-E Guangzhou mult=10",
+      "Guangzhou August requirement search"
+    ]
+  ],
+  "curves": [
+    [
+      {
+        "name": "Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            2208.255085000003
+          ],
+          [
+            61,
+            2208.255085000003
+          ],
+          [
+            81,
+            2178.0948249999983
+          ],
+          [
+            101,
+            2161.7336640000003
+          ],
+          [
+            121,
+            2161.7336640000003
+          ],
+          [
+            141,
+            2161.7336640000003
+          ],
+          [
+            161,
+            2158.2036339999977
+          ],
+          [
+            181,
+            2157.297628000003
+          ],
+          [
+            201,
+            2154.674605000002
+          ],
+          [
+            221,
+            2154.572602999999
+          ],
+          [
+            241,
+            2154.572602999999
+          ],
+          [
+            261,
+            2154.572602999999
+          ],
+          [
+            281,
+            2152.5525829999965
+          ],
+          [
+            300,
+            2152.5525829999965
+          ],
+          [
+            320,
+            2152.2495800000006
+          ],
+          [
+            340,
+            2152.2495800000006
+          ],
+          [
+            360,
+            2152.2495800000006
+          ],
+          [
+            380,
+            2151.9475779999984
+          ],
+          [
+            400,
+            2151.8465770000016
+          ],
+          [
+            420,
+            2151.3405709999993
+          ],
+          [
+            440,
+            2151.3405709999993
+          ],
+          [
+            460,
+            2151.3405709999993
+          ],
+          [
+            480,
+            2151.140571
+          ],
+          [
+            500,
+            2151.0385690000035
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "H Dubai peak_core min, ε [0.05,0.99]",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            39.4982
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-A Guangzhou peak_skin ≤ 33",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            3083.594161999997
+          ],
+          [
+            61,
+            3044.3620770000007
+          ],
+          [
+            80,
+            3044.3620770000007
+          ],
+          [
+            100,
+            3027.921551999998
+          ],
+          [
+            119,
+            3027.921551999998
+          ],
+          [
+            139,
+            3027.921551999998
+          ],
+          [
+            159,
+            3027.921551999998
+          ],
+          [
+            179,
+            3027.921551999998
+          ],
+          [
+            199,
+            3027.921551999998
+          ],
+          [
+            219,
+            3027.921551999998
+          ],
+          [
+            239,
+            3027.5515950000013
+          ],
+          [
+            259,
+            3024.7315060000014
+          ],
+          [
+            279,
+            3024.7315060000014
+          ],
+          [
+            299,
+            3024.7315060000014
+          ],
+          [
+            319,
+            3024.7315060000014
+          ],
+          [
+            339,
+            3024.5815050000033
+          ],
+          [
+            359,
+            3023.0214559999986
+          ],
+          [
+            379,
+            3023.0214559999986
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            885.1262929999987
+          ],
+          [
+            61,
+            855.9562239999967
+          ],
+          [
+            81,
+            851.8961639999987
+          ],
+          [
+            101,
+            845.8408090000015
+          ],
+          [
+            121,
+            843.4737420000032
+          ],
+          [
+            141,
+            837.6216900000026
+          ],
+          [
+            161,
+            837.6216900000026
+          ],
+          [
+            181,
+            832.3944630000001
+          ],
+          [
+            201,
+            832.3944630000001
+          ],
+          [
+            221,
+            832.3944630000001
+          ],
+          [
+            241,
+            832.3944630000001
+          ],
+          [
+            261,
+            832.3944630000001
+          ],
+          [
+            281,
+            832.3944630000001
+          ],
+          [
+            301,
+            832.387456
+          ],
+          [
+            321,
+            832.3814500000001
+          ],
+          [
+            341,
+            832.3814500000001
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            885.0625300000006
+          ],
+          [
+            61,
+            866.7189869999995
+          ],
+          [
+            81,
+            855.6209890000005
+          ],
+          [
+            101,
+            855.6209890000005
+          ],
+          [
+            121,
+            855.6209890000005
+          ],
+          [
+            141,
+            855.6209890000005
+          ],
+          [
+            161,
+            855.6209890000005
+          ],
+          [
+            181,
+            843.3087769999967
+          ],
+          [
+            201,
+            839.2487169999989
+          ],
+          [
+            221,
+            839.0046729999993
+          ],
+          [
+            241,
+            832.387456
+          ],
+          [
+            261,
+            832.387456
+          ],
+          [
+            281,
+            832.387456
+          ],
+          [
+            301,
+            832.387456
+          ],
+          [
+            321,
+            832.387456
+          ],
+          [
+            341,
+            832.387456
+          ],
+          [
+            361,
+            832.387456
+          ],
+          [
+            381,
+            832.3854540000001
+          ],
+          [
+            401,
+            832.374443
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            847.444713000001
+          ],
+          [
+            61,
+            847.444713000001
+          ],
+          [
+            81,
+            847.444713000001
+          ],
+          [
+            101,
+            836.2016699999988
+          ],
+          [
+            121,
+            836.2016699999988
+          ],
+          [
+            141,
+            836.2016699999988
+          ],
+          [
+            161,
+            836.2016699999988
+          ],
+          [
+            181,
+            834.713582000002
+          ],
+          [
+            201,
+            834.713582000002
+          ],
+          [
+            221,
+            834.713582000002
+          ],
+          [
+            241,
+            832.4254940000001
+          ],
+          [
+            261,
+            832.4254940000001
+          ],
+          [
+            281,
+            832.413482
+          ],
+          [
+            301,
+            832.413482
+          ],
+          [
+            321,
+            832.404473
+          ],
+          [
+            341,
+            832.397466
+          ],
+          [
+            361,
+            832.3894580000001
+          ],
+          [
+            380,
+            832.3754440000001
+          ],
+          [
+            399,
+            832.3754440000001
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            880.2294969999975
+          ],
+          [
+            61,
+            880.2294969999975
+          ],
+          [
+            81,
+            880.2294969999975
+          ],
+          [
+            101,
+            837.4636319999993
+          ],
+          [
+            121,
+            837.4376059999993
+          ],
+          [
+            141,
+            837.4376059999993
+          ],
+          [
+            161,
+            837.4376059999993
+          ],
+          [
+            181,
+            834.4175859999992
+          ],
+          [
+            201,
+            833.0965649999986
+          ],
+          [
+            221,
+            832.5725410000033
+          ],
+          [
+            240,
+            832.387456
+          ],
+          [
+            259,
+            832.387456
+          ],
+          [
+            279,
+            832.387456
+          ],
+          [
+            298,
+            832.387456
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.3854540000001
+          ],
+          [
+            378,
+            832.3814500000001
+          ],
+          [
+            398,
+            832.373442
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            40,
+            896.7895560000005
+          ],
+          [
+            60,
+            847.1709389999987
+          ],
+          [
+            80,
+            846.0388070000012
+          ],
+          [
+            100,
+            845.3557240000024
+          ],
+          [
+            120,
+            832.465534
+          ],
+          [
+            140,
+            832.465534
+          ],
+          [
+            160,
+            832.465534
+          ],
+          [
+            180,
+            832.413482
+          ],
+          [
+            200,
+            832.413482
+          ],
+          [
+            220,
+            832.3854540000001
+          ],
+          [
+            240,
+            832.3854540000001
+          ],
+          [
+            260,
+            832.3854540000001
+          ],
+          [
+            280,
+            832.376445
+          ],
+          [
+            300,
+            832.37144
+          ],
+          [
+            320,
+            832.37144
+          ],
+          [
+            340,
+            832.37144
+          ],
+          [
+            360,
+            832.37144
+          ],
+          [
+            380,
+            832.37144
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=10",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=20",
+        "multiplier": 20,
+        "seed": 42,
+        "curve": [
+          [
+            81,
+            856.0663339999966
+          ],
+          [
+            121,
+            856.0663339999966
+          ],
+          [
+            161,
+            851.7379060000022
+          ],
+          [
+            201,
+            851.7379060000022
+          ],
+          [
+            241,
+            835.100569000001
+          ],
+          [
+            281,
+            834.3505189999992
+          ],
+          [
+            321,
+            834.3505189999992
+          ],
+          [
+            361,
+            832.4575259999999
+          ],
+          [
+            401,
+            832.4575259999999
+          ],
+          [
+            441,
+            832.4575259999999
+          ],
+          [
+            481,
+            832.4575259999999
+          ],
+          [
+            521,
+            832.3944630000001
+          ],
+          [
+            561,
+            832.3944630000001
+          ],
+          [
+            601,
+            832.3944630000001
+          ],
+          [
+            641,
+            832.3854540000001
+          ],
+          [
+            681,
+            832.37144
+          ],
+          [
+            721,
+            832.37144
+          ],
+          [
+            761,
+            832.37144
+          ],
+          [
+            801,
+            832.37144
+          ],
+          [
+            841,
+            832.37144
+          ],
+          [
+            881,
+            832.37144
+          ],
+          [
+            921,
+            832.37144
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=5",
+        "multiplier": 5,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            889.8420090000011
+          ],
+          [
+            31,
+            877.0468140000022
+          ],
+          [
+            40,
+            877.0468140000022
+          ],
+          [
+            50,
+            877.0468140000022
+          ],
+          [
+            60,
+            877.0468140000022
+          ],
+          [
+            70,
+            877.0468140000022
+          ],
+          [
+            80,
+            877.0468140000022
+          ],
+          [
+            90,
+            834.9655339999978
+          ],
+          [
+            100,
+            834.9655339999978
+          ],
+          [
+            110,
+            833.3325010000016
+          ],
+          [
+            120,
+            833.3325010000016
+          ],
+          [
+            130,
+            833.3325010000016
+          ],
+          [
+            140,
+            833.3325010000016
+          ],
+          [
+            150,
+            833.3325010000016
+          ],
+          [
+            159,
+            833.3325010000016
+          ],
+          [
+            169,
+            833.3325010000016
+          ],
+          [
+            179,
+            833.3325010000016
+          ],
+          [
+            189,
+            832.419488
+          ],
+          [
+            199,
+            832.4144829999999
+          ],
+          [
+            209,
+            832.4144829999999
+          ],
+          [
+            219,
+            832.4144829999999
+          ]
+        ]
+      },
+      {
+        "name": "Guangzhou August requirement search",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Guangzhou August requirement search",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            734.067234
+          ],
+          [
+            61,
+            728.749922
+          ],
+          [
+            81,
+            720.40959
+          ],
+          [
+            101,
+            706.588783
+          ],
+          [
+            121,
+            706.588783
+          ],
+          [
+            141,
+            706.588783
+          ],
+          [
+            161,
+            706.588783
+          ],
+          [
+            181,
+            706.588783
+          ],
+          [
+            200,
+            706.588783
+          ],
+          [
+            220,
+            704.742939
+          ],
+          [
+            240,
+            704.742939
+          ],
+          [
+            260,
+            704.4246210000001
+          ],
+          [
+            280,
+            704.4246210000001
+          ],
+          [
+            300,
+            704.312509
+          ],
+          [
+            320,
+            704.214411
+          ],
+          [
+            340,
+            704.151348
+          ],
+          [
+            360,
+            703.9141109999999
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            40,
+            0.0
+          ],
+          [
+            59,
+            0.0
+          ],
+          [
+            79,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ],
+          [
+            121,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            100,
+            0.0
+          ],
+          [
+            120,
+            0.0
+          ],
+          [
+            140,
+            0.0
+          ],
+          [
+            160,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L-W 拉薩權重 2:1 / 1:2",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ],
+          [
+            121,
+            0.0
+          ]
+        ]
+      }
+    ]
+  ],
+  "skipped": []
+}
+```
+
+### File: `backend/docs/acceptance/stage-optimization/optimization-summary.md`
+```
+# Optimization summary
+
+22 completed runs; 0 skipped.
+
+## Runs
+
+| name | city | months | seed | mult | objective | bounds | constraints | verdict | evals | s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | dubai | [7] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 621 | 89 |
+| H Dubai peak_core min, ε [0.05,0.99] | dubai | [7] | 42 | 10 | ? peak_core_temperature_c minimize | ε[0.05,0.99] | — | unconstrained | 23 | 3.08 |
+| Exp-A Guangzhou peak_skin ≤ 33 | guangzhou | [8] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | mean_skin_temperature_c <= 33.0 | infeasible | 500 | 68.2 |
+| Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38 | guangzhou | [8] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 519 | 72.2 |
+| Exp-D Guangzhou seed=1 | guangzhou | [8] | 1 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 462 | 64.5 |
+| Exp-D Guangzhou seed=2 | guangzhou | [8] | 2 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 522 | 70.1 |
+| Exp-D Guangzhou seed=3 | guangzhou | [8] | 3 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 520 | 73.4 |
+| Exp-D Guangzhou seed=4 | guangzhou | [8] | 4 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 519 | 72.2 |
+| Exp-D Guangzhou seed=5 | guangzhou | [8] | 5 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 501 | 71.1 |
+| Exp-E Guangzhou mult=10 | guangzhou | [8] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 519 | 72.7 |
+| Exp-E Guangzhou mult=20 | guangzhou | [8] | 42 | 20 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 1042 | 142 |
+| Exp-E Guangzhou mult=5 | guangzhou | [8] | 42 | 5 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 340 | 45.3 |
+| Guangzhou August requirement search | guangzhou | [9] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 481 | 65 |
+| Guangzhou August requirement search | guangzhou | [8] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | infeasible | 519 | 67 |
+| Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | lhasa | [7] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 200 | 27.7 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1） | lhasa | [7] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.1,0.98] ε[0.05,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 242 | 31.3 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1 | lhasa | [7] | 1 | 10 | ? skin_exceedance_fraction minimize | ρ[0.1,0.98] ε[0.55,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 281 | 36.7 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2 | lhasa | [7] | 2 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 222 | 28.7 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3 | lhasa | [7] | 3 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 222 | 29.2 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4 | lhasa | [7] | 4 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 222 | 29.8 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5 | lhasa | [7] | 5 | 10 | ? skin_exceedance_fraction minimize | ρ[0.3,0.98] ε[0.5,0.99] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 202 | 27.1 |
+| L-W 拉薩權重 2:1 / 1:2 | lhasa | [7] | 42 | 10 | ? skin_exceedance_fraction minimize | ρ[0.05,0.99] ε[0.1,0.98] | skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0 | feasible | 242 | 31.7 |
+
+## Metrics (baseline / best / upper bound)
+
+| name | best | objective | violation | upper viol. | exceedance | peak skin °C | peak core °C | cooling °C |
+|---|---|---|---|---|---|---|---|---|
+| Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | ρ=0.9800, ε=0.5004 | 0.969569 | 2.15007 | 2.21873 | 0.972095 / 0.969569 / 0.970232 | 38.5221 / 38.188 / 38.2597 | 39.591 / 39.2805 / 39.3485 | 1.70892 |
+| H Dubai peak_core min, ε [0.05,0.99] | ε=0.0500 | 39.4968 | 0 | 0 | 0.972095 / 0.971222 / 0.972127 | 38.5221 / 38.4243 / 38.5257 | 39.591 / 39.4968 / 39.5945 | 1.55468 |
+| Exp-A Guangzhou peak_skin ≤ 33 | ρ=0.9798, ε=0.9886 | 0.931456 | 3.02209 | 3.02163 | 0.939176 / 0.931456 / 0.931436 | 37.0283 / 36.7789 / 36.7782 | 38.2249 / 37.9975 / 37.9969 | 1.53397 |
+| Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38 | ρ=0.9799, ε=0.9876 | 0.931447 | 0.831447 | 0.831436 | 0.939176 / 0.931447 / 0.931436 | 37.0283 / 36.7787 / 36.7782 | 38.2249 / 37.9972 / 37.9969 | 1.53411 |
+| Exp-D Guangzhou seed=1 | ρ=0.9799, ε=0.9842 | 0.93145 | 0.83145 | 0.831436 | 0.939176 / 0.93145 / 0.931436 | 37.0283 / 36.779 / 36.7782 | 38.2249 / 37.9975 / 37.9969 | 1.53389 |
+| Exp-D Guangzhou seed=2 | ρ=0.9800, ε=0.9853 | 0.931443 | 0.831443 | 0.831436 | 0.939176 / 0.931443 / 0.931436 | 37.0283 / 36.7787 / 36.7782 | 38.2249 / 37.9973 / 37.9969 | 1.53408 |
+| Exp-D Guangzhou seed=3 | ρ=0.9799, ε=0.9899 | 0.931444 | 0.831444 | 0.831436 | 0.939176 / 0.931444 / 0.931436 | 37.0283 / 36.7784 / 36.7782 | 38.2249 / 37.997 / 37.9969 | 1.53428 |
+| Exp-D Guangzhou seed=4 | ρ=0.9800, ε=0.9873 | 0.931442 | 0.831442 | 0.831436 | 0.939176 / 0.931442 / 0.931436 | 37.0283 / 36.7785 / 36.7782 | 38.2249 / 37.9971 / 37.9969 | 1.53421 |
+| Exp-D Guangzhou seed=5 | ρ=0.9800, ε=0.9894 | 0.93144 | 0.83144 | 0.831436 | 0.939176 / 0.93144 / 0.931436 | 37.0283 / 36.7784 / 36.7782 | 38.2249 / 37.997 / 37.9969 | 1.53431 |
+| Exp-E Guangzhou mult=10 | ρ=0.9799, ε=0.9876 | 0.931447 | 0.831447 | 0.831436 | 0.939176 / 0.931447 / 0.931436 | 37.0283 / 36.7787 / 36.7782 | 38.2249 / 37.9972 / 37.9969 | 1.53411 |
+| Exp-E Guangzhou mult=20 | ρ=0.9800, ε=0.9885 | 0.93144 | 0.83144 | 0.831436 | 0.939176 / 0.93144 / 0.931436 | 37.0283 / 36.7784 / 36.7782 | 38.2249 / 37.997 / 37.9969 | 1.5343 |
+| Exp-E Guangzhou mult=5 | ρ=0.9800, ε=0.9524 | 0.931483 | 0.831483 | 0.831436 | 0.939176 / 0.931483 / 0.931436 | 37.0283 / 36.7819 / 36.7782 | 38.2249 / 37.9998 / 37.9969 | 1.53179 |
+| Guangzhou August requirement search | ρ=0.9800, ε=0.9866 | 0.803111 | 0.703111 | 0.702697 | 0.860251 / 0.803111 / 0.802697 | 36.9582 / 36.6638 / 36.6635 | 38.1699 / 37.9028 / 37.9025 | 1.54986 |
+| Guangzhou August requirement search | ρ=0.9799, ε=0.9876 | 0.931447 | 0.831447 | 0.831436 | 0.939176 / 0.931447 / 0.931436 | 37.0283 / 36.7787 / 36.7782 | 38.2249 / 37.9972 / 37.9969 | 1.53411 |
+| Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | ρ=0.8270, ε=0.7751 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.5537 / 33.7608 | 37.0433 / 37.0906 / 37.0361 | 1.49506 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1） | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7608 | 37.0433 / 37.0433 / 37.0361 | 1.96577 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1 | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7608 | 37.0433 / 37.0433 / 37.0361 | 1.96577 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2 | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7608 | 37.0433 / 37.0433 / 37.0361 | 1.96577 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3 | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7608 | 37.0433 / 37.0433 / 37.0361 | 1.96577 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4 | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7608 | 37.0433 / 37.0433 / 37.0361 | 1.96577 |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5 | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7608 | 37.0433 / 37.0433 / 37.0361 | 1.96577 |
+| L-W 拉薩權重 2:1 / 1:2 | ρ=0.9000, ε=0.9500 | 0 | 0 | 0 | 0 / 0 / 0 | 34.1375 / 34.1375 / 33.7243 | 37.0433 / 37.0433 / 37.0362 | 1.96577 |
+
+## Constraint excess at best (native units, > 0 = violated)
+
+| name | excess |
+|---|---|
+| Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | skin_exceedance_fraction <= 0.1: 0.969569 (+0.8696); peak_core_temperature_c <= 38.0: 39.2805 (+1.281) |
+| Exp-A Guangzhou peak_skin ≤ 33 | mean_skin_temperature_c <= 33.0: 36.0221 (+3.022) |
+| Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38 | skin_exceedance_fraction <= 0.1: 0.931447 (+0.8314); peak_core_temperature_c <= 38.0: 37.9972 (-0.0028) |
+| Exp-D Guangzhou seed=1 | skin_exceedance_fraction <= 0.1: 0.93145 (+0.8315); peak_core_temperature_c <= 38.0: 37.9975 (-0.0025) |
+| Exp-D Guangzhou seed=2 | skin_exceedance_fraction <= 0.1: 0.931443 (+0.8314); peak_core_temperature_c <= 38.0: 37.9973 (-0.0027) |
+| Exp-D Guangzhou seed=3 | skin_exceedance_fraction <= 0.1: 0.931444 (+0.8314); peak_core_temperature_c <= 38.0: 37.997 (-0.003) |
+| Exp-D Guangzhou seed=4 | skin_exceedance_fraction <= 0.1: 0.931442 (+0.8314); peak_core_temperature_c <= 38.0: 37.9971 (-0.0029) |
+| Exp-D Guangzhou seed=5 | skin_exceedance_fraction <= 0.1: 0.93144 (+0.8314); peak_core_temperature_c <= 38.0: 37.997 (-0.003) |
+| Exp-E Guangzhou mult=10 | skin_exceedance_fraction <= 0.1: 0.931447 (+0.8314); peak_core_temperature_c <= 38.0: 37.9972 (-0.0028) |
+| Exp-E Guangzhou mult=20 | skin_exceedance_fraction <= 0.1: 0.93144 (+0.8314); peak_core_temperature_c <= 38.0: 37.997 (-0.003) |
+| Exp-E Guangzhou mult=5 | skin_exceedance_fraction <= 0.1: 0.931483 (+0.8315); peak_core_temperature_c <= 38.0: 37.9998 (-0.0002) |
+| Guangzhou August requirement search | skin_exceedance_fraction <= 0.1: 0.803111 (+0.7031); peak_core_temperature_c <= 38.0: 37.9028 (-0.0972) |
+| Guangzhou August requirement search | skin_exceedance_fraction <= 0.1: 0.931447 (+0.8314); peak_core_temperature_c <= 38.0: 37.9972 (-0.0028) |
+| Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0906 (-0.9094) |
+| L 拉薩：最低需求（parameter_demand，權重 1:1） | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+| L-W 拉薩權重 2:1 / 1:2 | skin_exceedance_fraction <= 0.1: 0 (-0.1); peak_core_temperature_c <= 38.0: 37.0433 (-0.9567) |
+
+## Requirement map
+
+| name | map | metric range | plateau | feasible cells | min x @ max y | min y @ max x | grid step | monotone x / y |
+|---|---|---|---|---|---|---|---|---|
+| Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | ρ × ε | 0.969568–0.980992 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / mixed |
+| Exp-A Guangzhou peak_skin ≤ 33 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-D Guangzhou seed=1 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-D Guangzhou seed=2 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-D Guangzhou seed=3 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-D Guangzhou seed=4 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-D Guangzhou seed=5 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-E Guangzhou mult=10 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-E Guangzhou mult=20 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-E Guangzhou mult=5 | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Guangzhou August requirement search | ρ × ε | 0.802697–0.94765 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Guangzhou August requirement search | ρ × ε | 0.931436–0.971299 | 0.00826 | 0 | — | — | 0.068 / 0.049 | ↓ / ↓ |
+| Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38 | ρ × ε | 0–0.791461 | 0.413 | 0.521 | 0.572 | 0.5 (LB) | 0.068 / 0.049 | ↓ / ↓ |
+| L 拉薩：最低需求（parameter_demand，權重 1:1） | ρ × ε | 0–0.910188 | 0.281 | 0.355 | 0.628 | 0.05 (LB) | 0.088 / 0.094 | ↓ / ↓ |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1 | ρ × ε | 0–0.858187 | 0.331 | 0.413 | 0.628 | 0.55 (LB) | 0.088 / 0.044 | ↓ / ↓ |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2 | ρ × ε | 0–0.791461 | 0.413 | 0.521 | 0.572 | 0.5 (LB) | 0.068 / 0.049 | ↓ / ↓ |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3 | ρ × ε | 0–0.791461 | 0.413 | 0.521 | 0.572 | 0.5 (LB) | 0.068 / 0.049 | ↓ / ↓ |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4 | ρ × ε | 0–0.791461 | 0.413 | 0.521 | 0.572 | 0.5 (LB) | 0.068 / 0.049 | ↓ / ↓ |
+| L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5 | ρ × ε | 0–0.791461 | 0.413 | 0.521 | 0.572 | 0.5 (LB) | 0.068 / 0.049 | ↓ / ↓ |
+| L-W 拉薩權重 2:1 / 1:2 | ρ × ε | 0–0.913965 | 0.273 | 0.355 | 0.614 | 0.1 (LB) | 0.094 / 0.088 | ↓ / ↓ |
+
+Grid readings are accurate to ± one grid step.
+(LB) = reading equals the searched lower bound.
+
+## Seed groups (same request apart from name and seed)
+
+| runs | seeds | n | distinct results | params | objective | evals |
+|---|---|---|---|---|---|---|
+| Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38; Exp-D Guangzhou seed=1; Exp-D Guangzhou seed=2; Exp-D Guangzhou seed=3; Exp-D Guangzhou seed=4; Exp-D Guangzhou seed=5; Exp-E Guangzhou mult=10; Guangzhou August requirement search | [42, 1, 2, 3, 4, 5, 42, 42] | 8 | 6 | ε 0.9874 ± 0.0019; ρ 0.9799 ± 0.0000 | 0.9314 ± 0.0000 | 510.1250 ± 20.5387 |
+| Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38; L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2; L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3; L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4; L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5 | [42, 2, 3, 4, 5] | 5 | 2 | ε 0.9150 ± 0.0782; ρ 0.8854 ± 0.0327 | 0.0000 ± 0.0000 | 213.6000 ± 11.5239 |
+
+Check that every group contains only the runs you intended; a differently named run here means its configuration was identical.
+
+## Identical requests (same seed too)
+
+- Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38 = Exp-E Guangzhou mult=10 = Guangzhou August requirement search
+
+## Warnings
+
+**Exp-C Dubai July skin_exceedance ≤ 0.1 + peak_core ≤ 38**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its lower bound (0.5); the optimum may lie outside the searched range
+- ⚠ best beats the optical upper-bound corner: performance is non-monotone in at least one parameter
+- ⚠ violation is an unweighted sum across constraints with different units: skin_exceedance_fraction <= 0.1 (+0.8696); peak_core_temperature_c <= 38.0 (+1.281)
+- ⚠ map metric is non-monotone along ε; 'minimum requirement' readings assume monotonicity
+
+**H Dubai peak_core min, ε [0.05,0.99]**
+- ⚠ best ε sits at its lower bound (0.05); the optimum may lie outside the searched range
+- ⚠ best beats the optical upper-bound corner: performance is non-monotone in at least one parameter
+- ⚠ best corner is ε=0.0500, not the upper bound
+
+**Exp-A Guangzhou peak_skin ≤ 33**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-B Guangzhou skin_exceedance ≤ 0.1 + peak_core ≤ 38**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-D Guangzhou seed=1**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+
+**Exp-D Guangzhou seed=2**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-D Guangzhou seed=3**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-D Guangzhou seed=4**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-D Guangzhou seed=5**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-E Guangzhou mult=10**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-E Guangzhou mult=20**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-E Guangzhou mult=5**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+
+**Guangzhou August requirement search**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Guangzhou August requirement search**
+- ⚠ best ρ sits at its upper bound (0.98); the optimum may lie outside the searched range
+- ⚠ best ε sits at its upper bound (0.99); the optimum may lie outside the searched range
+
+**Exp-C Lhasa July skin_exceedance ≤ 0.1 + peak_core ≤ 38**
+- ⚠ ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range
+- ⚠ 41% of map cells share the minimum; the reported optimum is arbitrary
+
+**L 拉薩：最低需求（parameter_demand，權重 1:1）**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.05: the true requirement lies below the searched range
+- ⚠ 28% of map cells share the minimum; the reported optimum is arbitrary
+
+**L 拉薩：最低需求（parameter_demand，權重 1:1）seed 1**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.55: the true requirement lies below the searched range
+- ⚠ 33% of map cells share the minimum; the reported optimum is arbitrary
+
+**L 拉薩：最低需求（parameter_demand，權重 1:1）seed 2**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range
+- ⚠ 41% of map cells share the minimum; the reported optimum is arbitrary
+
+**L 拉薩：最低需求（parameter_demand，權重 1:1）seed 3**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range
+- ⚠ 41% of map cells share the minimum; the reported optimum is arbitrary
+
+**L 拉薩：最低需求（parameter_demand，權重 1:1）seed 4**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range
+- ⚠ 41% of map cells share the minimum; the reported optimum is arbitrary
+
+**L 拉薩：最低需求（parameter_demand，權重 1:1）seed 5**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.5: the true requirement lies below the searched range
+- ⚠ 41% of map cells share the minimum; the reported optimum is arbitrary
+
+**L-W 拉薩權重 2:1 / 1:2**
+- ⚠ best equals the baseline fabric; on a tie the first evaluated point wins (check tie-breaking in best_evaluated)
+- ⚠ ε requirement reads at its lower bound 0.1: the true requirement lies below the searched range
+- ⚠ 27% of map cells share the minimum; the reported optimum is arbitrary
+
+
+```
+
 ### File: `backend/docs/decisions/0001-body-surface-area.md`
 ```
 # ADR 0001: body_surface_area_m2 is currently informational — RESOLVED (Stage 3)
@@ -16853,6 +22983,152 @@ for p in list_model_parameters():
     )
 
 Path(sys.argv[1]).write_text("\n".join(lines) + "\n", encoding="utf-8")
+```
+
+### File: `backend/scripts/summarize_optimizations.py`
+```python
+"""Summarize completed optimization jobs (Markdown + JSON).
+
+Usage (from backend/, API running):
+    python scripts/summarize_optimizations.py --out docs/acceptance/stage-optimization
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import statistics
+from collections import defaultdict
+from pathlib import Path
+
+import httpx
+
+KEY_METRICS = ("peak_skin_temperature_c", "skin_exceedance_fraction",
+               "peak_core_temperature_c", "mean_skin_cooling_c")
+GROUP_EXCLUDE = {"name", "seed"}              # D: same setup, different seed
+CURVE_EXCLUDE = GROUP_EXCLUDE | {"population_multiplier"}  # E
+
+
+def fetch_details(client: httpx.Client) -> list[dict]:
+    items, offset = [], 0
+    while True:
+        page = client.get("/api/v1/optimizations", params={"limit": 100, "offset": offset}).json()
+        items += page["items"]
+        offset += len(page["items"])
+        if not page["items"] or offset >= page["total"]:
+            break
+    return [client.get(f"/api/v1/optimizations/{i['id']}").json()
+            for i in items if i["status"] == "completed"]
+
+
+def group_key(request: dict, exclude: set[str]) -> str:
+    return json.dumps({k: v for k, v in request.items() if k not in exclude}, sort_keys=True)
+
+
+def plateau_fraction(rmap: dict | None) -> float | None:
+    """Share of map cells whose metric equals the minimum (flat objective)."""
+    if not rmap:
+        return None
+    values = [c["metric_value"] for row in rmap["cells"] for c in row if c]
+    if not values:
+        return None
+    low = min(values)
+    return sum(abs(v - low) < 1e-6 for v in values) / len(values)
+
+
+def summarize(detail: dict) -> dict:
+    req, res = detail["request"], detail["result"]
+    best, upper, rmap = res["best"], res["optical_upper_bound"], res["requirement_map"]
+    lower = {v["name"]: v["lower"] for v in req["variables"]}
+
+    row = {
+        "name": detail["name"], "id": detail["id"][:8], "city": req["city_id"],
+        "months": req["months"], "seed": req["seed"], "mult": req["population_multiplier"],
+        "constraints": "; ".join(f'{c["metric"]} {c["operator"]} {c["threshold"]}' for c in req["constraints"]),
+        "verdict": res["verdict"],
+        "best": {k: round(v, 4) for k, v in best["parameters"].items()},
+        "best_objective": best["objective_value"],
+        "best_violation": best["constraint_violation"],
+        "best_metrics": {k: best["metrics"][k] for k in KEY_METRICS} if best["metrics"] else None,
+        "baseline_feasible": res["baseline"]["feasible"],
+        "upper_feasible": upper["feasible"] if upper else None,
+        "upper_violation": upper["constraint_violation"] if upper else None,
+        "upper_peak_skin": upper["metrics"]["peak_skin_temperature_c"] if upper and upper["metrics"] else None,
+        "evaluations": res["evaluation_count"], "generations": res["generations"],
+        "seconds": res["elapsed_seconds"],
+        "plateau_fraction": plateau_fraction(rmap),
+    }
+    if rmap:
+        cells = [c for r in rmap["cells"] for c in r if c]
+        row.update({
+            "map": f'{rmap["x_variable"]} × {rmap["y_variable"]}',
+            "min_x_at_max_y": rmap["minimum_x_at_max_y"],
+            "min_y_at_max_x": rmap["minimum_y_at_max_x"],
+            "feasible_cell_share": round(sum(c["feasible"] for c in cells) / len(cells), 3),
+            # The searched lower bound is already feasible -> true requirement is below it.
+            "x_lower_bound_binding": rmap["minimum_x_at_max_y"] == lower.get(rmap["x_variable"]),
+            "frontier": rmap["frontier"],
+        })
+    return row
+
+
+def stats(values: list[float]) -> str:
+    if len(values) < 2:
+        return f"{values[0]:.4f}" if values else "—"
+    return f"{statistics.mean(values):.4f} ± {statistics.stdev(values):.4f}"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--base-url", default="http://localhost:8000")
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args()
+    args.out.mkdir(parents=True, exist_ok=True)
+
+    with httpx.Client(base_url=args.base_url, timeout=60) as client:
+        details = fetch_details(client)
+    rows = [summarize(d) for d in details]
+
+    lines = ["| name | verdict | best | objective | violation | upper feasible (viol) | min x @ max y | min y @ max x | lower bound binding | plateau |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        lines.append(
+            f'| {r["name"]} | {r["verdict"]} | {r["best"]} | {r["best_objective"]} | {r["best_violation"]} '
+            f'| {r["upper_feasible"]} ({r["upper_violation"]}) | {r.get("min_x_at_max_y")} | {r.get("min_y_at_max_x")} '
+            f'| {r.get("x_lower_bound_binding")} | {r["plateau_fraction"]} |'
+        )
+        if r["plateau_fraction"] and r["plateau_fraction"] > 0.2:
+            lines.append(f'|  ⚠ {r["name"]}: {r["plateau_fraction"]:.0%} of map cells share the minimum; '
+                         'the reported optimum is arbitrary |||||||||')
+
+    seeds = defaultdict(list)
+    for d, r in zip(details, rows):
+        seeds[group_key(d["request"], GROUP_EXCLUDE)].append(r)
+    lines += ["", "## Seed groups", "", "| first name | n | ρ | ε | objective |", "|---|---|---|---|---|"]
+    for group in seeds.values():
+        if len(group) < 2:
+            continue
+        rho = [g["best"].get("solar_reflectance") for g in group if "solar_reflectance" in g["best"]]
+        eps = [g["best"].get("infrared_emissivity") for g in group if "infrared_emissivity" in g["best"]]
+        obj = [g["best_objective"] for g in group if g["best_objective"] is not None]
+        lines.append(f'| {group[0]["name"]} | {len(group)} | {stats(rho)} | {stats(eps)} | {stats(obj)} |')
+
+    curves = defaultdict(list)
+    for d in details:
+        curves[group_key(d["request"], CURVE_EXCLUDE)].append({
+            "name": d["name"], "multiplier": d["request"]["population_multiplier"],
+            "seed": d["request"]["seed"],
+            "curve": [(h["evaluation_count"], h["penalised_objective"]) for h in d["history"]],
+        })
+
+    (args.out / "optimization-summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (args.out / "optimization-summary.json").write_text(
+        json.dumps({"runs": rows, "curves": list(curves.values())}, indent=2), encoding="utf-8")
+    print("\n".join(lines))
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ### File: `backend/tests/__init__.py`
@@ -17671,6 +23947,70 @@ def test_identical_material_api_improvement_is_zero(
             "final_core_temperature_improvement_c"
         ]
     ) < 1e-6
+```
+
+### File: `backend/tests/test_batch_single_consistency.py`
+```python
+"""Stage 0: the annual pipeline and a single weather run must agree on the
+same exposure window (same weather slice, same materials, same summary)."""
+
+from datetime import datetime, timedelta
+
+import pytest
+
+from app.core.cities import get_city
+from app.schemas.simulation import WeatherSimulationRequest
+from app.services import climate_adaptation
+from app.services.climate_adaptation import analyze_city_climate_adaptation
+from app.services.weather import slice_weather_time_series
+from app.services.weather_simulation import execute_weather_simulation_with_weather
+from tests.test_stage_8_resume_benchmark import SyntheticWeatherProvider, make_request
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_batch_sample_matches_single_run(monkeypatch, person, control_material, rc_material):
+    provider = SyntheticWeatherProvider()
+    monkeypatch.setattr(climate_adaptation, "get_historical_weather_range", provider)
+
+    request = make_request(person, control_material, rc_material).model_copy(
+        update={"start_month": 7, "end_month": 7}
+    )
+    annual = await analyze_city_climate_adaptation(city_id="dubai", request=request)
+    sample = annual["monthly_results"][0]["samples"][0]
+    start = datetime.fromisoformat(sample["sample_date_local"]).replace(tzinfo=None)
+
+    city = get_city("dubai")
+    month_weather = await provider(
+        city=city,
+        start_time_local=datetime(2023, 7, 1),
+        end_time_local=datetime(2023, 8, 1) + timedelta(
+            hours=request.local_start_hour, minutes=request.duration_minutes
+        ),
+        padding_hours=1,
+        require_window_coverage=False,
+    )
+    sliced = slice_weather_time_series(
+        weather=month_weather, start_time_local=start,
+        duration_minutes=request.duration_minutes, padding_hours=1,
+    )
+    single = execute_weather_simulation_with_weather(
+        request=WeatherSimulationRequest(
+            city_id="dubai", start_time_local=start,
+            duration_minutes=request.duration_minutes,
+            output_interval_minutes=request.output_interval_minutes,
+            person=person, control_material=control_material, rc_material=rc_material,
+            environment_assumptions=request.environment_assumptions,
+        ),
+        weather=sliced, city_name="Dubai",
+    )
+
+    assert sample["average_skin_improvement_c"] == pytest.approx(
+        single.summary.average_skin_temperature_improvement_c, abs=1e-4
+    )
+    assert sample["final_skin_improvement_c"] == pytest.approx(
+        single.summary.final_skin_temperature_improvement_c, abs=1e-4
+    )
 ```
 
 ### File: `backend/tests/test_body.py`
@@ -19571,6 +25911,247 @@ def test_material_fields_endpoint(client):
     assert body["fields"][0]["unit"] == "clo"
 ```
 
+### File: `backend/tests/test_optimization.py`
+```python
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+from pydantic import ValidationError
+
+from app.api import optimizations as optimizations_api
+from app.schemas.optimization import (
+    DecisionVariable,
+    EvaluationMetrics,
+    MetricConstraint,
+    OptimizationCreate,
+    RequirementMapSpec,
+)
+from app.services.optimization.evaluator import MaterialEvaluator, PreparedSample
+from app.services.optimization.metrics import fraction_above
+from app.services.optimization.requirement_map import build_requirement_map
+from app.services.optimization.runner import OptimizationCancelled, run_differential_evolution
+from app.services.optimization.search_space import build_search_space
+from app.services.optimization.service import estimate_optimization
+from app.services.two_node import simulate_material_with_interpolator
+from app.services.weather_interpolation import WeatherInterpolator
+
+
+RHO_EPS = [
+    DecisionVariable(name="solar_reflectance", lower=0.3, upper=0.98),
+    DecisionVariable(name="infrared_emissivity", lower=0.5, upper=0.99),
+]
+
+
+def make_request(person, control_material, rc_material, **overrides) -> OptimizationCreate:
+    payload = dict(
+        city_id="dubai", months=[7], duration_minutes=120, output_interval_minutes=10,
+        person=person, control_material=control_material, base_material=rc_material,
+        variables=RHO_EPS, requirement_map=RequirementMapSpec(resolution=3),
+        population_multiplier=4, max_generations=2,
+    )
+    payload.update(overrides)
+    return OptimizationCreate(**payload)
+
+
+# --- metrics -----------------------------------------------------------------
+
+@pytest.mark.unit
+def test_fraction_above_is_exact_for_linear_segments():
+    assert fraction_above([0, 10], [30, 40], 35) == pytest.approx(0.5)
+    assert fraction_above([0, 10, 20], [36, 36, 34], 35) == pytest.approx(0.75)
+    assert fraction_above([0, 10], [30, 31], 35) == 0.0
+
+
+# --- schema / search space -------------------------------------------------
+
+@pytest.mark.unit
+def test_map_axes_must_be_decision_variables(person, control_material, rc_material):
+    with pytest.raises(ValidationError, match="requirement_map axes"):
+        make_request(person, control_material, rc_material,
+                     variables=[RHO_EPS[0]], requirement_map=RequirementMapSpec())
+
+
+@pytest.mark.unit
+def test_single_optical_variable_is_tightened_by_fixed_partner(person, control_material, rc_material):
+    base = rc_material.model_copy(
+        update={"solar_reflectance": 0.8, "solar_transmittance": 0.1}
+    )
+    request = make_request(
+        person, control_material, base,
+        variables=[DecisionVariable(name="solar_reflectance", lower=0.3, upper=1.0)],
+        requirement_map=None,
+    )
+    space = build_search_space(request)
+    assert space.upper[0] == pytest.approx(0.9)
+    assert space.linear_pairs == ()
+
+
+@pytest.mark.unit
+def test_paired_optical_variables_become_linear_constraint(person, control_material, rc_material):
+    request = make_request(
+        person, control_material, rc_material,
+        variables=[
+            DecisionVariable(name="solar_reflectance", lower=0.3, upper=1.0),
+            DecisionVariable(name="solar_transmittance", lower=0.0, upper=0.5),
+        ],
+        requirement_map=None,
+    )
+    assert build_search_space(request).linear_pairs == ((0, 1),)
+
+
+@pytest.mark.unit
+def test_estimate_counts(person, control_material, rc_material):
+    request = make_request(person, control_material, rc_material, sample_days_per_month=3)
+    estimate = estimate_optimization(request)
+    assert estimate.population_size == 8
+    assert estimate.optimizer_evaluation_budget == 8 * 3
+    assert estimate.requirement_map_evaluations == 9
+    assert estimate.thermal_simulation_budget == (24 + 9 + 1 + 4) * 3   # = 114
+
+
+# --- evaluator (real physics on the fixture window) ------------------------
+
+@pytest.fixture
+def prepared(hourly_weather, person, control_material):
+    interpolator = WeatherInterpolator.from_series(hourly_weather)
+    control = simulate_material_with_interpolator(120, 10, interpolator, person, control_material)
+    return PreparedSample(hourly_weather.requested_start_time, 1, interpolator, control)
+
+
+@pytest.mark.unit
+def test_higher_reflectance_lowers_skin_temperature(prepared, person, control_material, rc_material):
+    evaluator = MaterialEvaluator(make_request(person, control_material, rc_material), [prepared])
+
+    low = evaluator.evaluate([0.3, 0.9])
+    high = evaluator.evaluate([0.95, 0.9])
+
+    assert high.mean_skin_temperature_c < low.mean_skin_temperature_c
+    assert high.mean_skin_cooling_c > low.mean_skin_cooling_c
+    assert 0.0 <= high.skin_exceedance_fraction <= 1.0
+
+    count = evaluator.evaluation_count
+    evaluator.evaluate([0.95, 0.9])
+    assert evaluator.evaluation_count == count  # memoised
+
+
+@pytest.mark.unit
+def test_optically_impossible_candidate_returns_none(prepared, person, control_material, rc_material):
+    request = make_request(
+        person, control_material, rc_material, requirement_map=None,
+        variables=[
+            DecisionVariable(name="solar_reflectance", lower=0.3, upper=1.0),
+            DecisionVariable(name="solar_transmittance", lower=0.0, upper=0.5),
+        ],
+    )
+    evaluator = MaterialEvaluator(request, [prepared])
+    assert evaluator.evaluate([0.8, 0.5]) is None
+    assert evaluator.evaluation_count == 0
+
+
+# --- runner / map with an analytic evaluator -------------------------------
+
+class AnalyticEvaluator:
+    """skin_exceedance_fraction = distance^2 to (0.8, 0.9); feasibility via
+    mean_skin_cooling_c = rho + eps."""
+
+    def __init__(self, names=("solar_reflectance", "infrared_emissivity")):
+        self.names = names
+        self.evaluation_count = 0
+
+    def parameters(self, x):
+        return {n: float(v) for n, v in zip(self.names, x)}
+
+    def evaluate(self, x):
+        self.evaluation_count += 1
+        rho, eps = float(x[0]), float(x[1])
+        return EvaluationMetrics(
+            sample_count=1, mean_skin_temperature_c=35.0, peak_skin_temperature_c=36.0,
+            peak_core_temperature_c=37.5,
+            skin_exceedance_fraction=(rho - 0.8) ** 2 + (eps - 0.9) ** 2,
+            core_exceedance_fraction=0.0,
+            mean_skin_cooling_c=rho + eps, mean_core_cooling_c=0.0,
+        )
+
+
+@pytest.mark.unit
+def test_differential_evolution_finds_known_minimum(person, control_material, rc_material):
+    request = make_request(person, control_material, rc_material,
+                           population_multiplier=10, max_generations=60)
+    outcome = run_differential_evolution(AnalyticEvaluator(), request)
+
+    assert outcome.x == pytest.approx([0.8, 0.9], abs=0.02)
+    assert outcome.generations == len(outcome.history) >= 1
+    assert outcome.history[-1].best_feasible  # no constraints
+
+
+@pytest.mark.unit
+def test_cancel_from_generation_callback_stops_the_search(person, control_material, rc_material):
+    request = make_request(person, control_material, rc_material, max_generations=50)
+
+    def cancel(_record):
+        raise OptimizationCancelled()
+
+    with pytest.raises(OptimizationCancelled):
+        run_differential_evolution(AnalyticEvaluator(), request, on_generation=cancel)
+
+
+@pytest.mark.unit
+def test_requirement_frontier(person, control_material, rc_material):
+    request = make_request(
+        person, control_material, rc_material,
+        variables=[
+            DecisionVariable(name="solar_reflectance", lower=0.5, upper=1.0),
+            DecisionVariable(name="infrared_emissivity", lower=0.5, upper=1.0),
+        ],
+        constraints=[MetricConstraint(metric="mean_skin_cooling_c", operator=">=", threshold=1.6)],
+        requirement_map=RequirementMapSpec(resolution=6),  # steps of 0.1
+    )
+    space = build_search_space(request)
+    result = build_requirement_map(
+        AnalyticEvaluator(), request, {"solar_reflectance": 0.8, "infrared_emissivity": 0.9}, space=space
+    )
+
+    frontier = {round(p.y, 2): p.minimum_x for p in result.frontier}
+    assert frontier[1.0] == pytest.approx(0.6)
+    assert frontier[0.6] == pytest.approx(1.0)
+    assert frontier[0.5] is None
+    assert result.minimum_x_at_max_y == pytest.approx(0.6)
+    assert result.minimum_y_at_max_x == pytest.approx(0.6)
+
+
+# --- API -------------------------------------------------------------------
+
+@pytest.mark.integration
+def test_optimization_api_round_trip(client, monkeypatch, person, control_material, rc_material):
+    monkeypatch.setattr(
+        optimizations_api, "run_optimization_task",
+        SimpleNamespace(delay=lambda job_id: SimpleNamespace(id="celery-opt")),
+    )
+    monkeypatch.setattr(optimizations_api.celery_app.control, "revoke", lambda *a, **k: None)
+
+    body = make_request(person, control_material, rc_material).model_dump(mode="json")
+
+    estimate = client.post("/api/v1/optimizations/estimate", json=body)
+    assert estimate.status_code == 200, estimate.text
+
+    created = client.post("/api/v1/optimizations", json=body)
+    assert created.status_code == 202, created.text
+    job_id = created.json()["id"]
+    assert created.json()["celery_task_id"] == "celery-opt"
+
+    detail = client.get(f"/api/v1/optimizations/{job_id}").json()
+    assert detail["status"] == "queued"
+    assert detail["history"] == [] and detail["result"] is None
+
+    cancelled = client.post(f"/api/v1/optimizations/{job_id}/cancel").json()
+    assert cancelled["status"] == "cancelled"
+    assert client.post(f"/api/v1/optimizations/{job_id}/cancel").status_code == 409
+
+    bad = {**body, "city_id": "atlantis"}
+    assert client.post("/api/v1/optimizations", json=bad).status_code == 422
+```
+
 ### File: `backend/tests/test_parameter_participation.py`
 ```python
 """Stage 2 definition of done: every input participates in the computation.
@@ -20823,6 +27404,31 @@ def test_export_contains_required_files():
     assert "sample-results.csv" in names
     assert "results.geojson" in names
     assert "results.json" in names
+
+@pytest.mark.unit
+def test_sample_csv_header_and_rows_have_same_width():
+    import csv, io
+    from app.services.global_batch_export import build_sample_results_csv
+
+    sample = {
+        "sample_date_local": "2023-07-16T12:00:00", "weight_days": 31,
+        "mean_air_temperature_c": 40.0, "maximum_air_temperature_c": 42.0,
+        "daily_maximum_air_temperature_c": 44.0,
+        "mean_solar_radiation_w_m2": 800.0, "maximum_solar_radiation_w_m2": 900.0,
+        "exposure_eligible": True, "beneficial": True,
+        "average_skin_improvement_c": 1.0, "final_skin_improvement_c": 1.2,
+        "average_core_improvement_c": 0.5, "maximum_skin_improvement_c": 1.5,
+        "weather_from_cache": True,
+    }
+    city = SimpleNamespace(city_id="dubai", city_name="Dubai", country="UAE",
+                           monthly_json=[{"month": 7, "samples": [sample]}])
+    batch = SimpleNamespace(id="b", city_results=[city])
+
+    rows = list(csv.reader(io.StringIO(build_sample_results_csv(batch))))
+    assert len(rows[0]) == len(rows[1])
+    header = rows[0]
+    assert rows[1][header.index("daily_maximum_air_temperature_c")] == "44.0"
+    assert rows[1][header.index("mean_solar_radiation_w_m2")] == "800.0"
 ```
 
 ### File: `backend/tests/test_stage_4_2_exposure.py`

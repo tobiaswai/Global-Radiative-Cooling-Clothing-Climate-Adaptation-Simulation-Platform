@@ -3,19 +3,19 @@
 import dynamic from "next/dynamic";
 import type { Data } from "plotly.js";
 
-import { METRIC_LABELS } from "@/lib/optimization-labels";
-import type { GenerationRecord, MetricName } from "@/types/optimization";
+import { OBJECTIVE_LABELS } from "@/lib/optimization-labels";
+import type { GenerationRecord, ObjectiveName } from "@/types/optimization";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
-export function ConvergenceChart({ history, metric }: { history: GenerationRecord[]; metric: MetricName }) {
+export function ConvergenceChart({ history, metric }: { history: GenerationRecord[]; metric: ObjectiveName }) {
   const data: Data[] = [
     {
       x: history.map((r) => r.generation),
       y: history.map((r) => r.best_metric_value),
       type: "scatter",
       mode: "lines+markers",
-      name: METRIC_LABELS[metric],
+      name: OBJECTIVE_LABELS[metric],
       line: { color: "#22d3ee", width: 3 },
       marker: { size: 8, color: history.map((r) => (r.best_feasible ? "#10b981" : "#ef4444")) },
     },
@@ -39,7 +39,7 @@ export function ConvergenceChart({ history, metric }: { history: GenerationRecor
           autosize: true, height: 380, paper_bgcolor: "#0f172a", plot_bgcolor: "#0f172a",
           font: { color: "#cbd5e1" }, margin: { l: 65, r: 70, t: 20, b: 55 },
           xaxis: { title: { text: "Generation" }, gridcolor: "#334155" },
-          yaxis: { title: { text: "Best objective metric" }, gridcolor: "#334155" },
+          yaxis: { title: { text: "Best objective value" }, gridcolor: "#334155" },
           yaxis2: { title: { text: "Evaluations" }, overlaying: "y", side: "right", showgrid: false },
           legend: { orientation: "h", y: -0.25 }, hovermode: "x unified",
         }}

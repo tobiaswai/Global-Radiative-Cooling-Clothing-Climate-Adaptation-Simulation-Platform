@@ -27,6 +27,7 @@ function versionToInput(version: MaterialVersion): MaterialVersionInput {
     source_reference: version.source_reference,
     notes: null,
     parameter_sources: version.parameter_sources ?? null,
+    infrared_emissivity_window: version.infrared_emissivity_window ?? null,
   };
 }
 
@@ -52,9 +53,27 @@ function NewVersionContent({ materialId }: { materialId: string }) {
         const latest = response.versions.at(-1);
         setMaterial(response);
         if (latest) {
-          setDraft(versionToInput(latest));
-        } else {
-          setLoadError("This material has no version to start from.");
+          let next = versionToInput(latest);
+          const query = new URLSearchParams(window.location.search);
+          const irWindow = Number(query.get("ir_window"));
+          const irBroadband = Number(query.get("ir_broadband"));
+          if (query.has("ir_window") && Number.isFinite(irWindow) && Number.isFinite(irBroadband)) {
+            const reference =
+              `Planck-weighted band average of the mir_emissivity spectrum of v${query.get("from_version")} ` +
+              `at ${query.get("t")} K`;
+            next = {
+              ...next,
+              infrared_emissivity_window: irWindow,
+              infrared_emissivity: irBroadband,
+              notes: `Band emissivities derived from the uploaded spectrum (${reference}).`,
+              parameter_sources: {
+                ...(next.parameter_sources ?? {}),
+                infrared_emissivity_window: { source_type: "derived", reference },
+                infrared_emissivity: { source_type: "derived", reference },
+              },
+            };
+          }
+          setDraft(next);
         }
       })
       .catch((caught: unknown) => {

@@ -126,6 +126,9 @@ export function MaterialVersionPicker({
                   {version.infrared_transmittance > 0
                     ? ` · τ_IR ${version.infrared_transmittance.toFixed(2)}`
                     : ""}
+                  {version.infrared_emissivity_window != null
+                    ? ` · ε_W ${version.infrared_emissivity_window.toFixed(2)}`
+                    : ""}
                 </option>
               ))}
             </optgroup>

@@ -76,6 +76,20 @@ class PersonInput(BaseModel):
         description="Posture; selects the effective radiation area ratio",
     )
 
+def _check_spectral_emissivity(broadband: float, window: float, transmittance: float) -> None:
+    from app.services.planck import outside_window_emissivity  # lazy: avoid layering cycle
+
+    if window + transmittance > 1.0 + 1e-6:
+        raise ValueError(
+            "infrared_emissivity_window + infrared_transmittance cannot be greater than 1"
+        )
+    outside = outside_window_emissivity(broadband, window)
+    if outside < -1e-6 or outside + transmittance > 1.0 + 1e-6:
+        raise ValueError(
+            "infrared_emissivity and infrared_emissivity_window imply an "
+            f"out-of-window emissivity of {outside:.3f}, outside "
+            "[0, 1 - infrared_transmittance]"
+        )
 class MaterialInput(BaseModel):
     """Garment parameters for one scenario.
 
@@ -127,8 +141,21 @@ class MaterialInput(BaseModel):
     )
     infrared_emissivity: float = Field(
         default=0.9, ge=0, le=1,
-        description="Longwave emissivity of the outer surface (8-13 um)",
+        description=(
+            "Broadband longwave emissivity of the outer surface "
+            "(Planck-weighted at emissivity_reference_temperature)"
+        ),
         json_schema_extra={"unit": "-"},
+    )
+
+    # Stage 10 (ADR 0007). Emissivity inside the atmospheric window.
+    infrared_emissivity_window: float | None = Field(
+        default=None, ge=0, le=1,
+        description="Longwave emissivity averaged over the atmospheric window (8-13 um)",
+        json_schema_extra={
+            "unit": "-",
+            "derived_when_null": "gray emitter: equals infrared_emissivity",
+        },
     )
 
     # Stage 2. Longwave transmittance of the textile (IR-transparent designs).
@@ -173,7 +200,13 @@ class MaterialInput(BaseModel):
             raise ValueError(
                 "infrared_emissivity + infrared_transmittance cannot be greater than 1"
             )
-
+        if self.infrared_emissivity_window is not None:
+            _check_spectral_emissivity(
+                self.infrared_emissivity,
+                self.infrared_emissivity_window,
+                self.infrared_transmittance,
+            )
+            
         validate_parameter_source_keys(self.parameter_sources)
 
         return self
@@ -232,6 +265,8 @@ class TimeSeriesPoint(BaseModel):
     solar_incident_w_m2: float | None = None
     solar_absorbed_by_textile_w_m2: float | None = None
     solar_transmitted_w_m2: float | None = None
+    # Stage 10: net window-band longwave loss (selective emitters only).
+    longwave_window_w_m2: float | None = None
 
 class ClothingSummary(BaseModel):
     """Resolved clothing quantities actually used by the solver."""
@@ -245,6 +280,9 @@ class ClothingSummary(BaseModel):
     clothing_area_factor_source: (
         Literal["material_input", "derived_from_clo"] | None
     ) = None
+    # Stage 10
+    infrared_emissivity_window: float | None = None
+    infrared_emissivity_outside_window: float | None = None
 
 class BodyThermalSummary(BaseModel):
     """Heat capacities derived from PersonInput (Stage 3, ADR 0001)."""

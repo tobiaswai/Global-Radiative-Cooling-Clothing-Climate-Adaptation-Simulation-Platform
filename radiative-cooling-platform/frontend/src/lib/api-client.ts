@@ -24,8 +24,8 @@ import type {
 } from "@/types/optimization";
 
 import type {
-  Material, MaterialCreate, MaterialListResponse,
-  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
+  Material, MaterialCreate, MaterialListResponse, SpectrumBandSummary,
+  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput, 
 } from "@/types/material";
 import type {
   City,
@@ -892,4 +892,19 @@ export async function getOptimization(id: string): Promise<OptimizationJobDetail
     throw new Error(await getErrorMessage(response, "Unable to load optimization"));
   }
   return response.json() as Promise<OptimizationJobDetail>;
+}
+
+export async function getSpectrumBandSummary(
+  versionId: string,
+  spectrumType: "mir_emissivity" | "mir_transmittance",
+): Promise<SpectrumBandSummary> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions/${encodeURIComponent(versionId)}` +
+      `/spectra/${spectrumType}/band-summary`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to summarise spectrum"));
+  }
+  return response.json() as Promise<SpectrumBandSummary>;
 }

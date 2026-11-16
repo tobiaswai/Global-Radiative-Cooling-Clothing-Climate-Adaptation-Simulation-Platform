@@ -1,111 +1,39 @@
 INFO:     Will watch for changes in these directories: ['C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [12316] using WatchFiles
-INFO:     Started server process [8820]
+INFO:     Started reloader process [23212] using WatchFiles
+INFO:     Started server process [11880]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:55180 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61180 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60042 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57054 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58960 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58668 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57645 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58668 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58723 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58960 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59204 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55719 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55719 - "OPTIONS /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55719 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61956 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:49918 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61956 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61920 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61497 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54575 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52867 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:54575 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61497 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62286 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53070 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55093 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55093 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50692 - "OPTIONS /api/v1/optimizations HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50692 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:50692 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52190 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55263 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56342 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55754 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65129 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62302 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64139 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:52022 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53177 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53177 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65072 - "OPTIONS /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65072 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65072 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:65072 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50519 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:50519 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58555 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64029 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59851 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:59851 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:61177 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53587 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
-INFO:     127.0.0.1:64029 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:53552 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60907 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60907 - "POST /api/v1/optimizations/estimate HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58979 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62259 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:62259 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
-INFO:     127.0.0.1:58979 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations?limit=100&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/8ba7a747-ac0e-45de-8f82-e0c93e55fb37 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/caffdcbc-7d77-433d-b672-45eba86709ed HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/3d83bbf7-f2bb-4bc5-bb27-99815677022a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/3ebaa2be-e68e-4d75-a608-95a394e84dc7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/f0897399-5014-45bd-987a-0077ee1d03c2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/dd922952-49c7-4127-9e0a-8aea749332c7 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/d72418b5-b5dd-42fb-80de-0a2952d519f0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/d93fc6a6-340c-4088-a9f6-dceb4f9b002c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/e73cb312-4585-403a-8689-476918f29c4e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/54d8da07-270d-4ca4-af90-e81ead5b1244 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/66f1f154-7aa5-45b1-b871-d89a641a6382 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/98519f18-66b0-4d17-a5af-9cb9ae921c19 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/e5877c0f-8e41-4e41-b816-d28c7145de23 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/9f03fcea-8017-44b5-8fdc-bc96e9208799 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/d8f0070d-fc20-45fc-91c1-52e363c916f9 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/c1f10bd8-31be-4ff8-8aae-588ea2461a3a HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/455d0022-a076-4771-9a15-ed9bca1bb2e0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/f99754dc-f108-4506-bc38-8cd2fb20ed88 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/b25a5038-2403-47f9-90a7-49471db64b00 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/314795f8-55d3-44fc-a29b-3c9cab71d271 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/d2d9cca2-1361-4c1a-8820-64f66353186c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59924 - "GET /api/v1/optimizations/6300b97f-51e6-4ccb-85c9-544b06dfb0ca HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65184 - "GET /api/v1/optimizations/8ba7a747-ac0e-45de-8f82-e0c93e55fb37 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60606 - "GET /api/v1/optimizations/8ba7a747-ac0e-45de-8f82-e0c93e55fb37 HTTP/1.1" 200 OK
+WARNING:  WatchFiles detected changes in 'scripts\summarize_optimizations.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [11880]
+INFO:     Started server process [28740]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

@@ -68,8 +68,8 @@
     }
   ],
   "duration_minutes": 120,
-  "model_version": "0.7.0",
-  "parameter_fingerprint": "10003d40edfe81c9756d66634a00474e428e1ce9856deb5e9de7dbb25b329874",
+  "model_version": "0.8.0",
+  "parameter_fingerprint": "587fffddb97b65905b6d977eb31891b10a4c63931a546dad0fc71b0e0e5a8eaa",
   "parameter_snapshot": {
     "environment_assumptions": {
       "fixed_sky_offset_k": 15.0,
@@ -84,9 +84,11 @@
       "solar_mrt_gain_k_per_w_m2": 0.012,
       "wind_speed_scaling_factor": 1.0
     },
-    "model_parameter_set_sha256": "cab48ac8b5c9a6f55dce17d397ac11ca463ae306cf58e811a7c953b3384967a6",
-    "model_parameter_set_version": "4.0.0",
+    "model_parameter_set_sha256": "57abf89ceb81973447655930dd9f76a13587e72017f7e370f9a89a0ede779ec2",
+    "model_parameter_set_version": "5.0.0",
     "model_parameters": {
+      "atmospheric_window_lower_um": 8.0,
+      "atmospheric_window_upper_um": 13.0,
       "blood_heat_capacity_per_flow": 1.163,
       "body_specific_heat": 3490.0,
       "clo_to_si": 0.155,
@@ -97,6 +99,7 @@
       "diffuse_hemisphere_fraction": 0.5,
       "effective_radiation_area_ratio_sitting": 0.7,
       "effective_radiation_area_ratio_standing": 0.73,
+      "emissivity_reference_temperature": 305.0,
       "exhaled_air_temperature": 34.0,
       "fallback_sky_temperature_offset": 15.0,
       "forced_convection_coefficient": 8.3,
@@ -115,6 +118,7 @@
       "respiratory_latent_coefficient": 1.7e-05,
       "respiratory_reference_vapor_pressure": 5867.0,
       "respiratory_sensible_coefficient": 0.0014,
+      "second_radiation_constant": 14387.768775,
       "shivering_coefficient": 19.4,
       "skin_blood_flow_basal": 6.3,
       "skin_blood_flow_maximum": 90.0,

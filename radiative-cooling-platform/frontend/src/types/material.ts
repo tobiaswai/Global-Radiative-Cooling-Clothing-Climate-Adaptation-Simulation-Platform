@@ -24,6 +24,7 @@ export type MaterialVersionInput = {
   source_reference: string | null;
   notes: string | null;
   parameter_sources?: Record<string, ParameterSource> | null;
+  infrared_emissivity_window?: number | null;
 };
 
 export type MaterialCreate = {
@@ -100,6 +101,7 @@ export type MaterialVersionListItem = {
   source_type: string;
   is_archived: boolean;
   created_at: string;
+  infrared_emissivity_window?: number | null;
 };
 
 export type MaterialVersionListResponse = {
@@ -115,4 +117,18 @@ export type MaterialUpdate = {
   description?: string | null;
   institution?: string | null;
   is_archived?: boolean;
+};
+
+export type SpectrumBandSummary = {
+  spectrum_type: string;
+  temperature_k: number;
+  window_lower_um: number;
+  window_upper_um: number;
+  measured_lower_um: number;
+  measured_upper_um: number;
+  window_average: number | null;
+  window_coverage: number;
+  broadband_average: number | null;
+  broadband_coverage: number;
+  outside_window_average: number | null;
 };

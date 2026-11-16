@@ -68,6 +68,14 @@ const resolvedRows: ResolvedRow[] = [
       formatNumber(scenario.clothing?.infrared_transmittance, 3),
   },
   {
+    label: "IR emissivity ε_W / ε_N",
+    render: (scenario) =>
+      scenario.clothing?.infrared_emissivity_window == null
+        ? "gray"
+        : `${formatNumber(scenario.clothing.infrared_emissivity_window, 3)} / ${formatNumber(
+            scenario.clothing.infrared_emissivity_outside_window, 3)}`,
+  },
+  {
     label: "Body mass",
     render: (scenario) => formatNumber(scenario.body?.body_mass_kg, 1, " kg"),
   },

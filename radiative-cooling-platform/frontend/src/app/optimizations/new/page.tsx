@@ -3,30 +3,52 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { NumberField } from "@/components/forms/number-field";
+import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
 import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
 import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import { createOptimization, estimateOptimization, getCities } from "@/lib/api-client";
 import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
-import { METRIC_OPTIONS, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import {
+  DEFAULT_DEMAND_DIRECTION,
+  EMISSIVITY_BAND_VARIABLES,
+  METRIC_OPTIONS,
+  METRIC_SCALES,
+  OBJECTIVE_OPTIONS,
+  VARIABLE_LABELS,
+} from "@/lib/optimization-labels";
 import type {
-  DecisionVariable, DecisionVariableName, MetricConstraint, MetricName,
-  OptimizationCreate, OptimizationEstimate,
+  DecisionVariable,
+  DecisionVariableName,
+  DemandDirection,
+  MetricConstraint,
+  MetricName,
+  ObjectiveName,
+  OptimizationCreate,
+  OptimizationEstimate,
+  Sense,
 } from "@/types/optimization";
 import type { City } from "@/types/simulation";
 
 const VARIABLE_DEFAULTS: Record<DecisionVariableName, { lower: number; upper: number; step: number }> = {
   solar_reflectance: { lower: 0.3, upper: 0.98, step: 0.01 },
-  infrared_emissivity: { lower: 0.5, upper: 0.99, step: 0.01 },
   solar_transmittance: { lower: 0, upper: 0.3, step: 0.01 },
+  infrared_emissivity: { lower: 0.5, upper: 0.99, step: 0.01 },
+  infrared_emissivity_window: { lower: 0.5, upper: 0.99, step: 0.01 },
+  infrared_emissivity_outside_window: { lower: 0.05, upper: 0.99, step: 0.01 },
   infrared_transmittance: { lower: 0, upper: 0.5, step: 0.01 },
   clothing_insulation_clo: { lower: 0.2, upper: 0.8, step: 0.05 },
   evaporative_resistance_m2pa_w: { lower: 5, upper: 30, step: 0.5 },
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MAX_VARIABLES = 6;
+
+function newVariable(name: DecisionVariableName): DecisionVariable {
+  const { lower, upper } = VARIABLE_DEFAULTS[name];
+  return { name, lower, upper, demand_direction: DEFAULT_DEMAND_DIRECTION[name], demand_weight: 1 };
+}
 
 const initialRequest: OptimizationCreate = {
   name: "Guangzhou August requirement search",
@@ -54,24 +76,31 @@ const initialRequest: OptimizationCreate = {
     projected_solar_area_factor: 0.25,
   },
   environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
-  variables: [
-    { name: "solar_reflectance", ...pick(VARIABLE_DEFAULTS.solar_reflectance) },
-    { name: "infrared_emissivity", ...pick(VARIABLE_DEFAULTS.infrared_emissivity) },
-  ],
-  objective: { metric: "skin_exceedance_fraction", sense: "minimize" },
+  variables: [newVariable("solar_reflectance"), newVariable("infrared_emissivity")],
+  objective: { metric: "skin_excess_degree_hours", sense: "minimize" },
   constraints: [
-    { metric: "skin_exceedance_fraction", operator: "<=", threshold: 0.1 },
-    { metric: "peak_core_temperature_c", operator: "<=", threshold: 38 },
+    { metric: "skin_excess_degree_hours", operator: "<=", threshold: 0.5, scale: null },
+    { metric: "peak_core_temperature_c", operator: "<=", threshold: 38, scale: null },
   ],
   algorithm: "differential_evolution",
   population_multiplier: 10,
   max_generations: 30,
   seed: 42,
+  secondary_demand_weight: 0.001,
+  convergence_tolerance: 0.0001,
   requirement_map: { x_variable: "solar_reflectance", y_variable: "infrared_emissivity", resolution: 11 },
 };
 
-function pick({ lower, upper }: { lower: number; upper: number }) {
-  return { lower, upper };
+function blockedReason(name: DecisionVariableName, request: OptimizationCreate): string | null {
+  const names = new Set(request.variables.map((v) => v.name));
+  if (names.has(name)) return null;
+  if (name === "infrared_emissivity") {
+    if ([...EMISSIVITY_BAND_VARIABLES].some((n) => names.has(n))) return "Not combinable with ε_W / ε_N.";
+    if (request.base_material.infrared_emissivity_window != null) return "Candidate is selective; use ε_W / ε_N.";
+  }
+  if (EMISSIVITY_BAND_VARIABLES.has(name) && names.has("infrared_emissivity")) return "Not combinable with gray ε.";
+  if (request.variables.length >= MAX_VARIABLES) return `At most ${MAX_VARIABLES} variables.`;
+  return null;
 }
 
 export default function NewOptimizationPage() {
@@ -105,7 +134,6 @@ export default function NewOptimizationPage() {
   }, [request, requestKey]);
 
   const currentEstimate = estimate?.key === requestKey ? estimate : null;
-  const variableNames = request.variables.map((v) => v.name);
 
   function update<K extends keyof OptimizationCreate>(key: K, value: OptimizationCreate[K]) {
     setRequest((current) => ({ ...current, [key]: value }));
@@ -114,12 +142,12 @@ export default function NewOptimizationPage() {
   function toggleVariable(name: DecisionVariableName) {
     setRequest((current) => {
       const exists = current.variables.some((v) => v.name === name);
-      const variables: DecisionVariable[] = exists
+      const variables = exists
         ? current.variables.filter((v) => v.name !== name)
-        : [...current.variables, { name, ...pick(VARIABLE_DEFAULTS[name]) }];
+        : [...current.variables, newVariable(name)];
       const map = current.requirement_map;
-      const mapStillValid = map && variables.some((v) => v.name === map.x_variable) && variables.some((v) => v.name === map.y_variable);
-      return { ...current, variables, requirement_map: mapStillValid ? map : null };
+      const valid = map && variables.some((v) => v.name === map.x_variable) && variables.some((v) => v.name === map.y_variable);
+      return { ...current, variables, requirement_map: valid ? map : null };
     });
   }
 
@@ -138,6 +166,10 @@ export default function NewOptimizationPage() {
     if (months.length > 0) update("months", months);
   }
 
+  function setObjectiveMetric(metric: ObjectiveName) {
+    update("objective", { metric, sense: metric === "material_demand" ? "minimize" : request.objective.sense });
+  }
+
   async function submit() {
     setSubmitting(true);
     setError("");
@@ -151,6 +183,7 @@ export default function NewOptimizationPage() {
   }
 
   const variableOptions = request.variables.map((v) => ({ value: v.name, label: VARIABLE_LABELS[v.name] }));
+  const variableNames = request.variables.map((v) => v.name);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -159,9 +192,9 @@ export default function NewOptimizationPage() {
           <p className="text-sm text-cyan-400">Inverse Design</p>
           <h1 className="mt-2 text-3xl font-bold">Derive Material Requirements from a Comfort Target</h1>
           <p className="mt-3 max-w-4xl text-slate-400">
-            Set a target and constraints for a city and season. Differential evolution searches the
-            selected material parameters; a requirement map then shows which (ρ, ε) combinations
-            satisfy the constraints. If no combination does, the result reports the passive limit.
+            Constraints are satisfied first; among feasible garments the objective is optimised and
+            ties go to the least demanding design. Choose <em>Material demand</em> as the objective to
+            ask directly for the minimum properties that meet the constraints.
           </p>
         </header>
 
@@ -200,23 +233,35 @@ export default function NewOptimizationPage() {
         </Section>
 
         <Section title="Decision variables">
+          <p className="mb-4 text-sm text-slate-400">
+            Demand direction says which end of a range is harder to manufacture; it drives requirement
+            readings and tie-breaking only, never the physics.
+          </p>
           <div className="space-y-3">
             {(Object.keys(VARIABLE_DEFAULTS) as DecisionVariableName[]).map((name) => {
               const variable = request.variables.find((v) => v.name === name);
+              const blocked = blockedReason(name, request);
               const { step } = VARIABLE_DEFAULTS[name];
               return (
-                <div key={name} className="grid items-end gap-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4 md:grid-cols-[16rem_1fr_1fr]">
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" checked={Boolean(variable)} onChange={() => toggleVariable(name)} className="h-4 w-4 accent-cyan-400" />
+                <div key={name} className="grid items-end gap-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4 md:grid-cols-[16rem_1fr_1fr_10rem_7rem]">
+                  <label className={`flex items-center gap-3 ${blocked ? "opacity-50" : ""}`}>
+                    <input type="checkbox" checked={Boolean(variable)} disabled={Boolean(blocked)}
+                      onChange={() => toggleVariable(name)} className="h-4 w-4 accent-cyan-400" />
                     <span>{VARIABLE_LABELS[name]}</span>
                   </label>
                   {variable ? (
                     <>
                       <NumberField label="Lower" value={variable.lower} step={step} onChange={(v) => updateVariable(name, { lower: v })} />
                       <NumberField label="Upper" value={variable.upper} step={step} onChange={(v) => updateVariable(name, { upper: v })} />
+                      <SelectField<DemandDirection> label="Harder when"
+                        value={variable.demand_direction ?? DEFAULT_DEMAND_DIRECTION[name]}
+                        options={[{ value: "increasing", label: "Higher" }, { value: "decreasing", label: "Lower" }]}
+                        onChange={(v) => updateVariable(name, { demand_direction: v })} />
+                      <NumberField label="Weight" value={variable.demand_weight ?? 1} min={0.1} max={10} step={0.1}
+                        onChange={(v) => updateVariable(name, { demand_weight: v })} />
                     </>
                   ) : (
-                    <p className="text-sm text-slate-500 md:col-span-2">Fixed at the candidate garment value.</p>
+                    <p className="text-sm text-slate-500 md:col-span-4">{blocked ?? "Fixed at the candidate garment value."}</p>
                   )}
                 </div>
               );
@@ -226,43 +271,59 @@ export default function NewOptimizationPage() {
 
         <Section title="Objective and constraints">
           <div className="grid gap-5 md:grid-cols-2">
-            <SelectField label="Objective metric" value={request.objective.metric} options={METRIC_OPTIONS}
-              onChange={(metric) => update("objective", { ...request.objective, metric: metric as MetricName })} />
-            <SelectField label="Sense" value={request.objective.sense}
+            <SelectField<ObjectiveName> label="Objective" value={request.objective.metric} options={OBJECTIVE_OPTIONS}
+              onChange={setObjectiveMetric} />
+            <SelectField<Sense> label="Sense" value={request.objective.sense}
+              disabled={request.objective.metric === "material_demand"}
               options={[{ value: "minimize", label: "Minimize" }, { value: "maximize", label: "Maximize" }]}
               onChange={(sense) => update("objective", { ...request.objective, sense })} />
           </div>
+          {request.objective.metric.endsWith("exceedance_fraction") && (
+            <p className="mt-3 text-sm text-amber-300">
+              Exceedance fractions saturate when the threshold is crossed almost everywhere. The
+              degree-hour metrics measure the same thing and keep a gradient.
+            </p>
+          )}
           <div className="mt-5 space-y-3">
             {request.constraints.map((constraint, index) => (
-              <div key={index} className="grid items-end gap-4 md:grid-cols-[1fr_8rem_10rem_auto]">
-                <SelectField label="Metric" value={constraint.metric} options={METRIC_OPTIONS}
-                  onChange={(metric) => updateConstraint(index, { metric: metric as MetricName })} />
-                <SelectField label="Operator" value={constraint.operator}
+              <div key={index} className="grid items-end gap-4 md:grid-cols-[1fr_7rem_9rem_9rem_auto]">
+                <SelectField<MetricName> label="Metric" value={constraint.metric} options={METRIC_OPTIONS}
+                  onChange={(metric) => updateConstraint(index, { metric })} />
+                <SelectField<"<=" | ">="> label="Operator" value={constraint.operator}
                   options={[{ value: "<=", label: "≤" }, { value: ">=", label: "≥" }]}
                   onChange={(operator) => updateConstraint(index, { operator })} />
-                <NumberField label="Threshold" value={constraint.threshold} step={0.01} onChange={(threshold) => updateConstraint(index, { threshold })} />
+                <NumberField label="Threshold" value={constraint.threshold} step={0.01}
+                  onChange={(threshold) => updateConstraint(index, { threshold })} />
+                <OptionalNumberField label="Scale" value={constraint.scale ?? null}
+                  placeholder={`default ${METRIC_SCALES[constraint.metric]}`} step={0.01} min={0}
+                  hint="Violation is divided by this before summing."
+                  onChange={(scale) => updateConstraint(index, { scale })} />
                 <button type="button" onClick={() => update("constraints", request.constraints.filter((_, i) => i !== index))}
                   className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300">Remove</button>
               </div>
             ))}
             {request.constraints.length < 6 && (
               <button type="button"
-                onClick={() => update("constraints", [...request.constraints, { metric: "mean_skin_cooling_c", operator: ">=", threshold: 1 }])}
+                onClick={() => update("constraints", [...request.constraints, { metric: "mean_skin_cooling_c", operator: ">=", threshold: 1, scale: null }])}
                 className="rounded-lg border border-cyan-800 px-4 py-2 text-sm text-cyan-300">Add constraint</button>
             )}
           </div>
         </Section>
 
         <Section title="Search settings">
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             <NumberField label="Population multiplier" value={request.population_multiplier} min={4} max={30}
               hint="Population = multiplier × variable count" onChange={(v) => update("population_multiplier", v)} />
             <NumberField label="Max generations" value={request.max_generations} min={1} max={200} onChange={(v) => update("max_generations", v)} />
             <NumberField label="Seed" value={request.seed ?? 0} min={0} onChange={(v) => update("seed", v)} />
-            {request.requirement_map && variableOptions.length >= 2 ? (
+            <NumberField label="Convergence tolerance" value={request.convergence_tolerance} min={0.000001} max={1} step={0.00001}
+              hint="Absolute, on the normalised objective." onChange={(v) => update("convergence_tolerance", v)} />
+            <NumberField label="Secondary demand weight" value={request.secondary_demand_weight} min={0} max={1} step={0.001}
+              hint="Tie-breaker towards less demanding garments." onChange={(v) => update("secondary_demand_weight", v)} />
+            {request.requirement_map && variableOptions.length >= 2 && (
               <NumberField label="Map resolution" value={request.requirement_map.resolution} min={3} max={21}
                 onChange={(resolution) => update("requirement_map", { ...request.requirement_map!, resolution })} />
-            ) : null}
+            )}
           </div>
           {variableOptions.length >= 2 && (
             <div className="mt-5 grid gap-5 md:grid-cols-3">
@@ -275,10 +336,10 @@ export default function NewOptimizationPage() {
               </label>
               {request.requirement_map && (
                 <>
-                  <SelectField label="Map x axis" value={request.requirement_map.x_variable} options={variableOptions}
-                    onChange={(x) => update("requirement_map", { ...request.requirement_map!, x_variable: x as DecisionVariableName })} />
-                  <SelectField label="Map y axis" value={request.requirement_map.y_variable} options={variableOptions}
-                    onChange={(y) => update("requirement_map", { ...request.requirement_map!, y_variable: y as DecisionVariableName })} />
+                  <SelectField<DecisionVariableName> label="Map x axis" value={request.requirement_map.x_variable} options={variableOptions}
+                    onChange={(x) => update("requirement_map", { ...request.requirement_map!, x_variable: x })} />
+                  <SelectField<DecisionVariableName> label="Map y axis" value={request.requirement_map.y_variable} options={variableOptions}
+                    onChange={(y) => update("requirement_map", { ...request.requirement_map!, y_variable: y })} />
                 </>
               )}
             </div>
@@ -301,7 +362,7 @@ export default function NewOptimizationPage() {
           </Section>
           <Section title="Candidate garment (fixed fields)">
             <p className="mb-4 text-sm text-slate-400">
-              Fields selected as decision variables are overwritten by the search ({variableNames.map((n) => VARIABLE_LABELS[n]).join(", ")}).
+              Overwritten by the search: {variableNames.map((n) => VARIABLE_LABELS[n]).join(", ")}.
             </p>
             <MaterialInputFields material={request.base_material} showName enableLibrary
               onChange={(m) => update("base_material", m)} />
@@ -310,10 +371,12 @@ export default function NewOptimizationPage() {
 
         <Section title="Workload estimate">
           {currentEstimate?.data ? (
-            <dl className="grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-6">
+            <dl className="grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-4">
               <Stat label="Population" value={currentEstimate.data.population_size} />
               <Stat label="Optimizer evaluations" value={currentEstimate.data.optimizer_evaluation_budget} />
               <Stat label="Map evaluations" value={currentEstimate.data.requirement_map_evaluations} />
+              <Stat label="Corners" value={currentEstimate.data.corner_evaluations} />
+              <Stat label="Sensitivity probes" value={currentEstimate.data.sensitivity_evaluations} />
               <Stat label="Sample days" value={currentEstimate.data.sample_count} />
               <Stat label="Thermal simulations (max)" value={currentEstimate.data.thermal_simulation_budget} />
               <Stat label="Weather requests" value={currentEstimate.data.weather_requests} />

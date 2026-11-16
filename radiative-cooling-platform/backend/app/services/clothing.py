@@ -38,7 +38,8 @@ class ClothingResistances:
     infrared_transmittance: float
     area_factor: float
     area_factor_source: ParameterSourceLabel
-
+    infrared_emissivity_window: float | None = None   # ← 新增
+    
     @property
     def evaporative_resistance_m2pa_w(self) -> float:
         return self.evaporative_resistance_m2kpa_w * 1000.0
@@ -89,6 +90,7 @@ def resolve_clothing(material: MaterialInput) -> ClothingResistances:
         infrared_transmittance=material.infrared_transmittance,
         area_factor=area_factor,
         area_factor_source=area_factor_source,
+        infrared_emissivity_window=material.infrared_emissivity_window,  # ← 新增
     )
 
 
@@ -158,6 +160,13 @@ def assumptions_applied(
         notes.append(
             "no beam/diffuse split supplied; GHI treated as beam on the "
             "projected area (legacy Stage 0-4 geometry, ADR 0006)"
+        )
+    if clothing.infrared_emissivity_window is not None:
+        notes.append(
+            "selective longwave emitter: sky-facing exchange uses "
+            f"atmospheric-window (8-13 um) emissivity "
+            f"{clothing.infrared_emissivity_window:.2f}; other surroundings use "
+            "the broadband infrared_emissivity"
         )
 
     return notes

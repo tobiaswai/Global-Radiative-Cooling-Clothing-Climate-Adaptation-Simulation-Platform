@@ -1,4 +1,4 @@
-"""Inverse design: target performance -> material parameter requirements (Stage 3)."""
+"""Inverse design: target performance -> material parameter requirements (Stage 3, 10)."""
 
 from __future__ import annotations
 
@@ -16,21 +16,42 @@ DecisionVariableName = Literal[
     "solar_reflectance",
     "solar_transmittance",
     "infrared_emissivity",
+    "infrared_emissivity_window",
+    "infrared_emissivity_outside_window",
     "infrared_transmittance",
     "clothing_insulation_clo",
     "evaporative_resistance_m2pa_w",
 ]
 
-# Search limits; tighter than MaterialInput where the full range is not a
-# sensible design space (clo <= 2, Re,cl <= 200).
 VARIABLE_LIMITS: dict[str, tuple[float, float]] = {
     "solar_reflectance": (0.0, 1.0),
     "solar_transmittance": (0.0, 1.0),
     "infrared_emissivity": (0.0, 1.0),
+    "infrared_emissivity_window": (0.0, 1.0),
+    "infrared_emissivity_outside_window": (0.0, 1.0),
     "infrared_transmittance": (0.0, 1.0),
     "clothing_insulation_clo": (0.0, 2.0),
     "evaporative_resistance_m2pa_w": (0.0, 200.0),
 }
+
+DemandDirection = Literal["increasing", "decreasing"]
+
+# Which end of each range is harder to make ("increasing": larger = more
+# demanding). Conventions only; override per variable.
+DEFAULT_DEMAND_DIRECTION: dict[str, DemandDirection] = {
+    "solar_reflectance": "increasing",
+    "solar_transmittance": "decreasing",
+    "infrared_emissivity": "increasing",
+    "infrared_emissivity_window": "increasing",
+    "infrared_emissivity_outside_window": "decreasing",
+    "infrared_transmittance": "increasing",
+    "clothing_insulation_clo": "decreasing",
+    "evaporative_resistance_m2pa_w": "decreasing",
+}
+
+EMISSIVITY_BAND_VARIABLES = frozenset(
+    {"infrared_emissivity_window", "infrared_emissivity_outside_window"}
+)
 
 MetricName = Literal[
     "mean_skin_temperature_c",
@@ -38,18 +59,36 @@ MetricName = Literal[
     "peak_core_temperature_c",
     "skin_exceedance_fraction",
     "core_exceedance_fraction",
+    "skin_excess_degree_hours",
+    "core_excess_degree_hours",
     "mean_skin_cooling_c",
     "mean_core_cooling_c",
 ]
 
+ObjectiveName = Literal[
+    "mean_skin_temperature_c",
+    "peak_skin_temperature_c",
+    "peak_core_temperature_c",
+    "skin_exceedance_fraction",
+    "core_exceedance_fraction",
+    "skin_excess_degree_hours",
+    "core_excess_degree_hours",
+    "mean_skin_cooling_c",
+    "mean_core_cooling_c",
+    "material_demand",
+]
+
 OptimizationStatus = Literal["queued", "running", "cancelling", "cancelled", "completed", "failed"]
 LeaseState = Literal["none", "live", "expired"]
+ObjectiveTrend = Literal["improves", "worsens", "flat", "mixed"]
 
 
 class DecisionVariable(BaseModel):
     name: DecisionVariableName
     lower: float
     upper: float
+    demand_direction: DemandDirection | None = None
+    demand_weight: float = Field(default=1.0, gt=0, le=10)
 
     @model_validator(mode="after")
     def check_bounds(self) -> "DecisionVariable":
@@ -65,10 +104,12 @@ class MetricConstraint(BaseModel):
     metric: MetricName
     operator: Literal["<=", ">="] = "<="
     threshold: float
+    # Violation is divided by this before constraints are summed. None -> metric default.
+    scale: float | None = Field(default=None, gt=0)
 
 
 class OptimizationObjective(BaseModel):
-    metric: MetricName = "skin_exceedance_fraction"
+    metric: ObjectiveName = "skin_excess_degree_hours"
     sense: Literal["minimize", "maximize"] = "minimize"
 
 
@@ -88,13 +129,11 @@ class OptimizationCreate(BaseModel):
     duration_minutes: int = Field(default=120, ge=30, le=480)
     output_interval_minutes: int = Field(default=5, ge=1, le=30)
 
-    # Thresholds behind the *_exceedance_fraction metrics.
     skin_threshold_c: float = Field(default=35.0, ge=30.0, le=42.0)
     core_threshold_c: float = Field(default=38.0, ge=36.5, le=41.0)
 
     person: PersonInput
     control_material: MaterialInput
-    # Candidate garment; fields that are not decision variables stay fixed here.
     base_material: MaterialInput
     environment_assumptions: EnvironmentAssumptions = Field(default_factory=EnvironmentAssumptions)
 
@@ -106,6 +145,16 @@ class OptimizationCreate(BaseModel):
     population_multiplier: int = Field(default=10, ge=4, le=30)
     max_generations: int = Field(default=30, ge=1, le=200)
     seed: int | None = 42
+    # Stage 10
+    secondary_demand_weight: float = Field(
+        default=1e-3, ge=0, le=1,
+        description="Weight of material_demand added to feasible objectives so ties "
+                    "resolve to the least demanding design",
+    )
+    convergence_tolerance: float = Field(
+        default=1e-4, gt=0, le=1,
+        description="Absolute DE tolerance on the normalised objective",
+    )
 
     requirement_map: RequirementMapSpec | None = Field(default_factory=RequirementMapSpec)
 
@@ -120,6 +169,17 @@ class OptimizationCreate(BaseModel):
         names = [v.name for v in self.variables]
         if len(set(names)) != len(names):
             raise ValueError("variables cannot contain duplicate names")
+
+        if "infrared_emissivity" in names and EMISSIVITY_BAND_VARIABLES & set(names):
+            raise ValueError(
+                "infrared_emissivity (gray study) cannot be combined with "
+                "infrared_emissivity_window / infrared_emissivity_outside_window"
+            )
+        if "infrared_emissivity" in names and self.base_material.infrared_emissivity_window is not None:
+            raise ValueError(
+                "base_material is a selective emitter; optimise "
+                "infrared_emissivity_window / infrared_emissivity_outside_window instead"
+            )
 
         spec = self.requirement_map
         if spec is not None:
@@ -144,6 +204,8 @@ class OptimizationEstimate(BaseModel):
     sample_count: int
     thermal_simulation_budget: int
     weather_requests: int
+    corner_evaluations: int = 0
+    sensitivity_evaluations: int = 0
 
 
 class EvaluationMetrics(BaseModel):
@@ -155,14 +217,20 @@ class EvaluationMetrics(BaseModel):
     core_exceedance_fraction: float
     mean_skin_cooling_c: float
     mean_core_cooling_c: float
+    # Stage 10. Optional so results stored before Stage 10 still load.
+    skin_excess_degree_hours: float | None = None
+    core_excess_degree_hours: float | None = None
 
 
 class CandidateEvaluation(BaseModel):
     parameters: dict[str, float]
     metrics: EvaluationMetrics | None
-    objective_value: float | None  # raw metric value (unsigned, no penalty)
-    constraint_violation: float | None
+    objective_value: float | None
+    constraint_violation: float | None   # normalised, summed
     feasible: bool
+    # Stage 10
+    constraint_excess: dict[str, float] = Field(default_factory=dict)  # native units, > 0 = violated
+    material_demand: float | None = None
 
 
 class GenerationRecord(BaseModel):
@@ -184,7 +252,8 @@ class RequirementCell(BaseModel):
 
 class FrontierPoint(BaseModel):
     y: float
-    minimum_x: float | None
+    minimum_x: float | None  # deprecated alias of required_x
+    required_x: float | None = None
 
 
 class RequirementMapResult(BaseModel):
@@ -192,12 +261,30 @@ class RequirementMapResult(BaseModel):
     y_variable: DecisionVariableName
     x_values: list[float]
     y_values: list[float]
-    # cells[j][i] -> (x_values[i], y_values[j]); None = optically impossible
     cells: list[list[RequirementCell | None]]
     frontier: list[FrontierPoint]
     minimum_x_at_max_y: float | None
     minimum_y_at_max_x: float | None
     fixed_parameters: dict[str, float]
+    # Stage 10
+    x_demand_direction: DemandDirection = "increasing"
+    y_demand_direction: DemandDirection = "increasing"
+    required_x_at_best_y: float | None = None
+    required_y_at_best_x: float | None = None
+    objective_trend_x: ObjectiveTrend | None = None
+    objective_trend_y: ObjectiveTrend | None = None
+    plateau_fraction: float | None = None
+    metric_min: float | None = None
+    metric_max: float | None = None
+
+
+class ParameterSensitivity(BaseModel):
+    """Central difference at the reported optimum, scaled to the whole range."""
+
+    name: DecisionVariableName
+    probe_low: float
+    probe_high: float
+    full_range_effects: dict[str, float]
 
 
 class SkippedOptimizationSample(BaseModel):
@@ -213,7 +300,8 @@ class OptimizationResult(BaseModel):
     constraints: list[MetricConstraint]
     best: CandidateEvaluation
     baseline: CandidateEvaluation
-    optical_upper_bound: CandidateEvaluation | None
+    optical_upper_bound: CandidateEvaluation | None  # most demanding design
+    best_corner: CandidateEvaluation | None = None
     requirement_map: RequirementMapResult | None
     sample_count: int
     skipped_samples: list[SkippedOptimizationSample]
@@ -226,6 +314,11 @@ class OptimizationResult(BaseModel):
     elapsed_seconds: float
     model_version: str
     parameter_fingerprint: str
+    # Stage 10
+    warnings: list[str] = Field(default_factory=list)
+    sensitivities: list[ParameterSensitivity] = Field(default_factory=list)
+    objective_reference: float | None = None
+    objective_scale: float | None = None
 
 
 class OptimizationJobResponse(BaseModel):

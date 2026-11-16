@@ -21,6 +21,9 @@ frontend/src/app/materials/[materialId]/versions/new/page.tsx
 frontend/src/app/materials/new/page.tsx
 frontend/src/app/materials/page.tsx
 frontend/src/app/ops/page.tsx
+frontend/src/app/optimizations/[optimizationId]/page.tsx
+frontend/src/app/optimizations/new/page.tsx
+frontend/src/app/optimizations/page.tsx
 frontend/src/app/page.tsx
 frontend/src/app/simulations/[jobId]/page.tsx
 frontend/src/app/simulations/new/page.tsx
@@ -43,6 +46,8 @@ frontend/src/components/layout/NavBar.tsx
 frontend/src/components/materials/material-header.tsx
 frontend/src/components/materials/material-version-fields.tsx
 frontend/src/components/materials/provenance-editor.tsx
+frontend/src/components/optimization/convergence-chart.tsx
+frontend/src/components/optimization/requirement-map-chart.tsx
 frontend/src/components/simulation/environment-assumptions-fields.tsx
 frontend/src/components/simulation/environment-input-fields.tsx
 frontend/src/components/simulation/material-input-fields.tsx
@@ -62,6 +67,7 @@ frontend/src/lib/format.test.ts
 frontend/src/lib/format.ts
 frontend/src/lib/global-batch-progress.test.ts
 frontend/src/lib/global-batch-progress.ts
+frontend/src/lib/optimization-labels.ts
 frontend/src/lib/relative-time.test.ts
 frontend/src/lib/relative-time.ts
 frontend/src/lib/time-series.test.ts
@@ -73,6 +79,7 @@ frontend/src/types/benchmark.ts
 frontend/src/types/global-batch.ts
 frontend/src/types/material.ts
 frontend/src/types/ops.ts
+frontend/src/types/optimization.ts
 frontend/src/types/simulation.ts
 
 # public/ (names only)
@@ -4914,6 +4921,675 @@ function Pair({ label, value }: { label: string; value: string }) {
 }
 ```
 
+### File: `frontend/src/app/optimizations/[optimizationId]/page.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { ConvergenceChart } from "@/components/optimization/convergence-chart";
+import { RequirementMapChart } from "@/components/optimization/requirement-map-chart";
+import { LeaseBadge } from "@/components/global/lease-badge";
+import { cancelOptimization, getOptimization } from "@/lib/api-client";
+import { formatNumber } from "@/lib/format";
+import { METRIC_LABELS, TERMINAL_OPTIMIZATION, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import type {
+  CandidateEvaluation, DecisionVariableName, MetricName, OptimizationJobDetail, OptimizationResult,
+} from "@/types/optimization";
+
+export default function OptimizationDetailPage() {
+  const { optimizationId } = useParams<{ optimizationId: string }>();
+  const [job, setJob] = useState<OptimizationJobDetail | null>(null);
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    let disposed = false;
+    let timer: number | null = null;
+
+    async function load() {
+      try {
+        const detail = await getOptimization(optimizationId);
+        if (disposed) return;
+        setJob(detail);
+        setError("");
+        if (!TERMINAL_OPTIMIZATION.has(detail.status)) timer = window.setTimeout(load, 3000);
+      } catch (caught) {
+        if (disposed) return;
+        setError(caught instanceof Error ? caught.message : "Unable to load optimization");
+        timer = window.setTimeout(load, 5000);
+      }
+    }
+
+    void load();
+    return () => {
+      disposed = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [optimizationId, revision]);
+
+  async function handleCancel() {
+    setCancelling(true);
+    try {
+      await cancelOptimization(optimizationId);
+      setRevision((r) => r + 1);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to cancel");
+    } finally {
+      setCancelling(false);
+    }
+  }
+
+  if (!job) {
+    return (
+      <main className="min-h-screen bg-slate-950 p-10 text-white">
+        {error ? <div className="rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>
+               : <p className="text-slate-400">Loading…</p>}
+      </main>
+    );
+  }
+
+  const metric = job.request.objective.metric;
+  const result = job.result;
+  const terminal = TERMINAL_OPTIMIZATION.has(job.status);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
+        <nav className="text-sm text-slate-400">
+          <Link href="/optimizations" className="hover:text-white">Inverse Design</Link> / <span className="text-slate-200">{job.name}</span>
+        </nav>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">{job.name}</h1>
+              <p className="mt-1 text-sm text-slate-400">
+                {job.city_id} · months {job.request.months.join(", ")} · {job.request.variables.length} variable(s) ·
+                objective: {job.request.objective.sense} {METRIC_LABELS[metric]}
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <LeaseBadge leaseState={job.lease_state} leaseOwner={job.lease_owner}
+                lastHeartbeatAt={job.last_heartbeat_at} leaseExpiresAt={job.lease_expires_at} />
+              {!terminal && (
+                <button type="button" onClick={handleCancel} disabled={cancelling || job.status === "cancelling"}
+                  className="rounded-lg border border-red-800 px-4 py-2 text-red-300 disabled:opacity-50">
+                  {job.status === "cancelling" ? "Cancel requested…" : "Cancel"}
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="mt-5 h-3 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-full bg-cyan-400 transition-all" style={{ width: `${job.progress}%` }} />
+          </div>
+          <p className="mt-2 text-sm text-slate-400">
+            {job.status} · {job.stage} · {job.evaluation_count} evaluations · {job.progress}%
+          </p>
+          {job.error_message && <p className="mt-3 text-sm text-red-300">{job.error_message}</p>}
+          {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
+        </section>
+
+        {result && <VerdictCard result={result} />}
+        {job.history.length > 0 && <ConvergenceChart history={job.history} metric={metric} />}
+        {result && <CandidateTable result={result} metric={metric} />}
+        {result?.requirement_map && <RequirementMapChart map={result.requirement_map} metric={metric} />}
+        {result && (
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
+            <h2 className="text-lg font-semibold text-slate-200">Run record</h2>
+            <p className="mt-2">
+              {result.sample_count} sample day(s), {result.skipped_samples.length} skipped ·
+              {" "}{result.evaluation_count} garment evaluations · {result.simulation_count} thermal simulations ·
+              {" "}{result.generations} generations · {result.elapsed_seconds.toFixed(1)} s
+            </p>
+            <p className="mt-1 font-mono text-xs">
+              model {result.model_version} · fingerprint {result.parameter_fingerprint.slice(0, 16)}… · {result.algorithm_message}
+            </p>
+          </section>
+        )}
+      </div>
+    </main>
+  );
+}
+
+function VerdictCard({ result }: { result: OptimizationResult }) {
+  const tone = result.verdict === "infeasible"
+    ? "border-red-800 bg-red-950/40 text-red-200"
+    : "border-emerald-800 bg-emerald-950/40 text-emerald-200";
+  const map = result.requirement_map;
+
+  return (
+    <section className={`rounded-2xl border p-6 ${tone}`}>
+      <p className="text-sm uppercase tracking-wide opacity-70">Verdict</p>
+      <p className="mt-1 text-3xl font-bold">{result.verdict.toUpperCase()}</p>
+      <p className="mt-3 max-w-4xl">{result.message}</p>
+      {map && (
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <Requirement label={`Minimum ${VARIABLE_LABELS[map.x_variable]}`}
+            value={map.minimum_x_at_max_y}
+            note={`when ${VARIABLE_LABELS[map.y_variable]} = ${map.y_values.at(-1)?.toFixed(2)}`} />
+          <Requirement label={`Minimum ${VARIABLE_LABELS[map.y_variable]}`}
+            value={map.minimum_y_at_max_x}
+            note={`when ${VARIABLE_LABELS[map.x_variable]} = ${map.x_values.at(-1)?.toFixed(2)}`} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Requirement({ label, value, note }: { label: string; value: number | null; note: string }) {
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+      <p className="text-sm text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-white">{value === null ? "not reachable" : `≥ ${value.toFixed(2)}`}</p>
+      <p className="mt-1 text-xs text-slate-500">{note} (grid resolution limits precision)</p>
+    </div>
+  );
+}
+
+function CandidateTable({ result, metric }: { result: OptimizationResult; metric: MetricName }) {
+  const columns: [string, CandidateEvaluation | null][] = [
+    ["Baseline candidate", result.baseline],
+    ["Best found", result.best],
+    ["Optical upper bound", result.optical_upper_bound],
+  ];
+  const parameterNames = Object.keys(result.best.parameters) as DecisionVariableName[];
+  const metricNames = Object.keys(METRIC_LABELS) as MetricName[];
+
+  return (
+    <section className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Candidates</h2>
+      <table className="mt-4 w-full min-w-[48rem] text-left text-sm">
+        <thead className="border-b border-slate-700 text-slate-400">
+          <tr>
+            <th className="px-3 py-2">Quantity</th>
+            {columns.map(([label]) => <th key={label} className="px-3 py-2">{label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {parameterNames.map((name) => (
+            <tr key={name} className="border-b border-slate-800">
+              <td className="px-3 py-2 text-slate-300">{VARIABLE_LABELS[name]}</td>
+              {columns.map(([label, c]) => <td key={label} className="px-3 py-2 font-mono">{formatNumber(c?.parameters[name], 3)}</td>)}
+            </tr>
+          ))}
+          {metricNames.map((name) => (
+            <tr key={name} className={`border-b border-slate-800 ${name === metric ? "bg-cyan-950/30" : ""}`}>
+              <td className="px-3 py-2 text-slate-300">{METRIC_LABELS[name]}</td>
+              {columns.map(([label, c]) => <td key={label} className="px-3 py-2">{formatNumber(c?.metrics?.[name], 3)}</td>)}
+            </tr>
+          ))}
+          <tr>
+            <td className="px-3 py-2 text-slate-300">Constraints satisfied</td>
+            {columns.map(([label, c]) => (
+              <td key={label} className={`px-3 py-2 ${c?.feasible ? "text-emerald-300" : "text-red-300"}`}>
+                {c ? (c.feasible ? "yes" : `no (violation ${formatNumber(c.constraint_violation, 4)})`) : "—"}
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  );
+}
+```
+
+### File: `frontend/src/app/optimizations/new/page.tsx`
+```tsx
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+import { NumberField } from "@/components/forms/number-field";
+import { SelectField } from "@/components/forms/select-field";
+import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
+import { MaterialInputFields } from "@/components/simulation/material-input-fields";
+import { PersonInputFields } from "@/components/simulation/person-input-fields";
+import { createOptimization, estimateOptimization, getCities } from "@/lib/api-client";
+import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
+import { METRIC_OPTIONS, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import type {
+  DecisionVariable, DecisionVariableName, MetricConstraint, MetricName,
+  OptimizationCreate, OptimizationEstimate,
+} from "@/types/optimization";
+import type { City } from "@/types/simulation";
+
+const VARIABLE_DEFAULTS: Record<DecisionVariableName, { lower: number; upper: number; step: number }> = {
+  solar_reflectance: { lower: 0.3, upper: 0.98, step: 0.01 },
+  infrared_emissivity: { lower: 0.5, upper: 0.99, step: 0.01 },
+  solar_transmittance: { lower: 0, upper: 0.3, step: 0.01 },
+  infrared_transmittance: { lower: 0, upper: 0.5, step: 0.01 },
+  clothing_insulation_clo: { lower: 0.2, upper: 0.8, step: 0.05 },
+  evaporative_resistance_m2pa_w: { lower: 5, upper: 30, step: 0.5 },
+};
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const initialRequest: OptimizationCreate = {
+  name: "Guangzhou August requirement search",
+  city_id: "guangzhou",
+  year: 2023,
+  months: [8],
+  sample_days_per_month: 3,
+  local_start_hour: 12,
+  duration_minutes: 120,
+  output_interval_minutes: 5,
+  skin_threshold_c: 35,
+  core_threshold_c: 38,
+  person: {
+    met: 2.6, body_mass_kg: 70, body_surface_area_m2: 1.8,
+    initial_core_temperature_c: 36.8, initial_skin_temperature_c: 33.7, position: "standing",
+  },
+  control_material: {
+    name: "Conventional clothing", clothing_insulation_clo: 0.5, clothing_area_factor: null,
+    solar_reflectance: 0.3, solar_transmittance: 0, infrared_emissivity: 0.9,
+    projected_solar_area_factor: 0.25,
+  },
+  base_material: {
+    name: "RC candidate", clothing_insulation_clo: 0.4, clothing_area_factor: null,
+    solar_reflectance: 0.9, solar_transmittance: 0, infrared_emissivity: 0.95,
+    projected_solar_area_factor: 0.25,
+  },
+  environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
+  variables: [
+    { name: "solar_reflectance", ...pick(VARIABLE_DEFAULTS.solar_reflectance) },
+    { name: "infrared_emissivity", ...pick(VARIABLE_DEFAULTS.infrared_emissivity) },
+  ],
+  objective: { metric: "skin_exceedance_fraction", sense: "minimize" },
+  constraints: [
+    { metric: "skin_exceedance_fraction", operator: "<=", threshold: 0.1 },
+    { metric: "peak_core_temperature_c", operator: "<=", threshold: 38 },
+  ],
+  algorithm: "differential_evolution",
+  population_multiplier: 10,
+  max_generations: 30,
+  seed: 42,
+  requirement_map: { x_variable: "solar_reflectance", y_variable: "infrared_emissivity", resolution: 11 },
+};
+
+function pick({ lower, upper }: { lower: number; upper: number }) {
+  return { lower, upper };
+}
+
+export default function NewOptimizationPage() {
+  const router = useRouter();
+  const [request, setRequest] = useState<OptimizationCreate>(initialRequest);
+  const [cities, setCities] = useState<City[]>([]);
+  const [estimate, setEstimate] = useState<{ key: string; data: OptimizationEstimate | null; error: string } | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let disposed = false;
+    getCities()
+      .then((list) => { if (!disposed) setCities(list); })
+      .catch((caught: unknown) => { if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load cities"); });
+    return () => { disposed = true; };
+  }, []);
+
+  const requestKey = JSON.stringify(request);
+
+  useEffect(() => {
+    let disposed = false;
+    const timer = window.setTimeout(() => {
+      estimateOptimization(request)
+        .then((data) => { if (!disposed) setEstimate({ key: requestKey, data, error: "" }); })
+        .catch((caught: unknown) => {
+          if (!disposed) setEstimate({ key: requestKey, data: null, error: caught instanceof Error ? caught.message : "Estimate failed" });
+        });
+    }, 400);
+    return () => { disposed = true; window.clearTimeout(timer); };
+  }, [request, requestKey]);
+
+  const currentEstimate = estimate?.key === requestKey ? estimate : null;
+  const variableNames = request.variables.map((v) => v.name);
+
+  function update<K extends keyof OptimizationCreate>(key: K, value: OptimizationCreate[K]) {
+    setRequest((current) => ({ ...current, [key]: value }));
+  }
+
+  function toggleVariable(name: DecisionVariableName) {
+    setRequest((current) => {
+      const exists = current.variables.some((v) => v.name === name);
+      const variables: DecisionVariable[] = exists
+        ? current.variables.filter((v) => v.name !== name)
+        : [...current.variables, { name, ...pick(VARIABLE_DEFAULTS[name]) }];
+      const map = current.requirement_map;
+      const mapStillValid = map && variables.some((v) => v.name === map.x_variable) && variables.some((v) => v.name === map.y_variable);
+      return { ...current, variables, requirement_map: mapStillValid ? map : null };
+    });
+  }
+
+  function updateVariable(name: DecisionVariableName, patch: Partial<DecisionVariable>) {
+    update("variables", request.variables.map((v) => (v.name === name ? { ...v, ...patch } : v)));
+  }
+
+  function updateConstraint(index: number, patch: Partial<MetricConstraint>) {
+    update("constraints", request.constraints.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+  }
+
+  function toggleMonth(month: number) {
+    const months = request.months.includes(month)
+      ? request.months.filter((m) => m !== month)
+      : [...request.months, month].sort((a, b) => a - b);
+    if (months.length > 0) update("months", months);
+  }
+
+  async function submit() {
+    setSubmitting(true);
+    setError("");
+    try {
+      const job = await createOptimization(request);
+      router.push(`/optimizations/${job.id}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to create optimization");
+      setSubmitting(false);
+    }
+  }
+
+  const variableOptions = request.variables.map((v) => ({ value: v.name, label: VARIABLE_LABELS[v.name] }));
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl space-y-6 px-6 py-10">
+        <header>
+          <p className="text-sm text-cyan-400">Inverse Design</p>
+          <h1 className="mt-2 text-3xl font-bold">Derive Material Requirements from a Comfort Target</h1>
+          <p className="mt-3 max-w-4xl text-slate-400">
+            Set a target and constraints for a city and season. Differential evolution searches the
+            selected material parameters; a requirement map then shows which (ρ, ε) combinations
+            satisfy the constraints. If no combination does, the result reports the passive limit.
+          </p>
+        </header>
+
+        {error && <div role="alert" className="rounded-xl border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>}
+
+        <Section title="Scenario">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <label className="block md:col-span-2">
+              <span className="mb-2 block text-sm text-slate-300">Name</span>
+              <input value={request.name} onChange={(e) => update("name", e.target.value)}
+                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+            </label>
+            <SelectField label="City" value={request.city_id}
+              options={cities.length ? cities.map((c) => ({ value: c.id, label: `${c.name} – ${c.climate_type}` })) : [{ value: request.city_id, label: request.city_id }]}
+              onChange={(v) => update("city_id", v)} />
+            <NumberField label="Weather year" value={request.year} min={1940} max={2100} onChange={(v) => update("year", v)} />
+            <NumberField label="Sample days / month" value={request.sample_days_per_month} min={1} max={31} onChange={(v) => update("sample_days_per_month", v)} />
+            <NumberField label="Local start hour" value={request.local_start_hour} min={0} max={23} onChange={(v) => update("local_start_hour", v)} />
+            <NumberField label="Exposure duration" suffix="min" value={request.duration_minutes} min={30} max={480} step={10} onChange={(v) => update("duration_minutes", v)} />
+            <NumberField label="Output interval" suffix="min" value={request.output_interval_minutes} min={1} max={30} onChange={(v) => update("output_interval_minutes", v)} />
+            <NumberField label="Skin threshold" suffix="°C" value={request.skin_threshold_c} min={30} max={42} step={0.1} onChange={(v) => update("skin_threshold_c", v)} />
+            <NumberField label="Core threshold" suffix="°C" value={request.core_threshold_c} min={36.5} max={41} step={0.1} onChange={(v) => update("core_threshold_c", v)} />
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {MONTHS.map((label, index) => {
+              const month = index + 1;
+              const active = request.months.includes(month);
+              return (
+                <button key={label} type="button" aria-pressed={active} onClick={() => toggleMonth(month)}
+                  className={`rounded-lg border px-3 py-1.5 text-sm ${active ? "border-cyan-400 bg-cyan-950 text-cyan-200" : "border-slate-700 text-slate-400"}`}>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        <Section title="Decision variables">
+          <div className="space-y-3">
+            {(Object.keys(VARIABLE_DEFAULTS) as DecisionVariableName[]).map((name) => {
+              const variable = request.variables.find((v) => v.name === name);
+              const { step } = VARIABLE_DEFAULTS[name];
+              return (
+                <div key={name} className="grid items-end gap-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4 md:grid-cols-[16rem_1fr_1fr]">
+                  <label className="flex items-center gap-3">
+                    <input type="checkbox" checked={Boolean(variable)} onChange={() => toggleVariable(name)} className="h-4 w-4 accent-cyan-400" />
+                    <span>{VARIABLE_LABELS[name]}</span>
+                  </label>
+                  {variable ? (
+                    <>
+                      <NumberField label="Lower" value={variable.lower} step={step} onChange={(v) => updateVariable(name, { lower: v })} />
+                      <NumberField label="Upper" value={variable.upper} step={step} onChange={(v) => updateVariable(name, { upper: v })} />
+                    </>
+                  ) : (
+                    <p className="text-sm text-slate-500 md:col-span-2">Fixed at the candidate garment value.</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+
+        <Section title="Objective and constraints">
+          <div className="grid gap-5 md:grid-cols-2">
+            <SelectField label="Objective metric" value={request.objective.metric} options={METRIC_OPTIONS}
+              onChange={(metric) => update("objective", { ...request.objective, metric: metric as MetricName })} />
+            <SelectField label="Sense" value={request.objective.sense}
+              options={[{ value: "minimize", label: "Minimize" }, { value: "maximize", label: "Maximize" }]}
+              onChange={(sense) => update("objective", { ...request.objective, sense })} />
+          </div>
+          <div className="mt-5 space-y-3">
+            {request.constraints.map((constraint, index) => (
+              <div key={index} className="grid items-end gap-4 md:grid-cols-[1fr_8rem_10rem_auto]">
+                <SelectField label="Metric" value={constraint.metric} options={METRIC_OPTIONS}
+                  onChange={(metric) => updateConstraint(index, { metric: metric as MetricName })} />
+                <SelectField label="Operator" value={constraint.operator}
+                  options={[{ value: "<=", label: "≤" }, { value: ">=", label: "≥" }]}
+                  onChange={(operator) => updateConstraint(index, { operator })} />
+                <NumberField label="Threshold" value={constraint.threshold} step={0.01} onChange={(threshold) => updateConstraint(index, { threshold })} />
+                <button type="button" onClick={() => update("constraints", request.constraints.filter((_, i) => i !== index))}
+                  className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300">Remove</button>
+              </div>
+            ))}
+            {request.constraints.length < 6 && (
+              <button type="button"
+                onClick={() => update("constraints", [...request.constraints, { metric: "mean_skin_cooling_c", operator: ">=", threshold: 1 }])}
+                className="rounded-lg border border-cyan-800 px-4 py-2 text-sm text-cyan-300">Add constraint</button>
+            )}
+          </div>
+        </Section>
+
+        <Section title="Search settings">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <NumberField label="Population multiplier" value={request.population_multiplier} min={4} max={30}
+              hint="Population = multiplier × variable count" onChange={(v) => update("population_multiplier", v)} />
+            <NumberField label="Max generations" value={request.max_generations} min={1} max={200} onChange={(v) => update("max_generations", v)} />
+            <NumberField label="Seed" value={request.seed ?? 0} min={0} onChange={(v) => update("seed", v)} />
+            {request.requirement_map && variableOptions.length >= 2 ? (
+              <NumberField label="Map resolution" value={request.requirement_map.resolution} min={3} max={21}
+                onChange={(resolution) => update("requirement_map", { ...request.requirement_map!, resolution })} />
+            ) : null}
+          </div>
+          {variableOptions.length >= 2 && (
+            <div className="mt-5 grid gap-5 md:grid-cols-3">
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" checked={Boolean(request.requirement_map)} className="h-4 w-4 accent-cyan-400"
+                  onChange={(e) => update("requirement_map", e.target.checked
+                    ? { x_variable: request.variables[0].name, y_variable: request.variables[1].name, resolution: 11 }
+                    : null)} />
+                Build requirement map
+              </label>
+              {request.requirement_map && (
+                <>
+                  <SelectField label="Map x axis" value={request.requirement_map.x_variable} options={variableOptions}
+                    onChange={(x) => update("requirement_map", { ...request.requirement_map!, x_variable: x as DecisionVariableName })} />
+                  <SelectField label="Map y axis" value={request.requirement_map.y_variable} options={variableOptions}
+                    onChange={(y) => update("requirement_map", { ...request.requirement_map!, y_variable: y as DecisionVariableName })} />
+                </>
+              )}
+            </div>
+          )}
+        </Section>
+
+        <Section title="Person">
+          <PersonInputFields person={request.person} onChange={(person) => update("person", person)} />
+        </Section>
+
+        <EnvironmentAssumptionsFields
+          value={request.environment_assumptions ?? DEFAULT_ENVIRONMENT_ASSUMPTIONS}
+          onChange={(value) => update("environment_assumptions", value)}
+        />
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Section title="Control clothing">
+            <MaterialInputFields material={request.control_material} showName enableLibrary
+              onChange={(m) => update("control_material", m)} />
+          </Section>
+          <Section title="Candidate garment (fixed fields)">
+            <p className="mb-4 text-sm text-slate-400">
+              Fields selected as decision variables are overwritten by the search ({variableNames.map((n) => VARIABLE_LABELS[n]).join(", ")}).
+            </p>
+            <MaterialInputFields material={request.base_material} showName enableLibrary
+              onChange={(m) => update("base_material", m)} />
+          </Section>
+        </div>
+
+        <Section title="Workload estimate">
+          {currentEstimate?.data ? (
+            <dl className="grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-6">
+              <Stat label="Population" value={currentEstimate.data.population_size} />
+              <Stat label="Optimizer evaluations" value={currentEstimate.data.optimizer_evaluation_budget} />
+              <Stat label="Map evaluations" value={currentEstimate.data.requirement_map_evaluations} />
+              <Stat label="Sample days" value={currentEstimate.data.sample_count} />
+              <Stat label="Thermal simulations (max)" value={currentEstimate.data.thermal_simulation_budget} />
+              <Stat label="Weather requests" value={currentEstimate.data.weather_requests} />
+            </dl>
+          ) : currentEstimate?.error ? (
+            <p className="text-sm text-amber-300">{currentEstimate.error}</p>
+          ) : (
+            <p className="text-sm text-slate-400">Calculating…</p>
+          )}
+        </Section>
+
+        <button type="button" onClick={submit} disabled={submitting || Boolean(currentEstimate?.error)}
+          className="rounded-xl bg-cyan-400 px-8 py-3 font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50">
+          {submitting ? "Submitting…" : "Start Search"}
+        </button>
+      </div>
+    </main>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="mb-5 text-xl font-semibold">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+      <dt className="text-xs uppercase tracking-wide text-slate-500">{label}</dt>
+      <dd className="mt-2 text-lg font-semibold text-cyan-300">{value.toLocaleString()}</dd>
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/app/optimizations/page.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { listOptimizations } from "@/lib/api-client";
+import { TERMINAL_OPTIMIZATION } from "@/lib/optimization-labels";
+import { formatRelativeTime } from "@/lib/relative-time";
+import type { OptimizationJob } from "@/types/optimization";
+
+export default function OptimizationListPage() {
+  const [items, setItems] = useState<OptimizationJob[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let disposed = false;
+    let timer: number | null = null;
+
+    async function load() {
+      try {
+        const response = await listOptimizations();
+        if (disposed) return;
+        setItems(response.items);
+        setError("");
+        if (response.items.some((job) => !TERMINAL_OPTIMIZATION.has(job.status))) {
+          timer = window.setTimeout(load, 5000);
+        }
+      } catch (caught) {
+        if (!disposed) setError(caught instanceof Error ? caught.message : "Unable to load optimizations");
+      } finally {
+        if (!disposed) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      disposed = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <header className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-cyan-400">Inverse Design</p>
+            <h1 className="mt-2 text-3xl font-bold">Material Requirement Searches</h1>
+          </div>
+          <Link href="/optimizations/new" className="rounded-lg bg-cyan-400 px-5 py-2.5 font-semibold text-slate-950">
+            New Search
+          </Link>
+        </header>
+
+        {error && <div className="mt-6 rounded-lg border border-red-900 bg-red-950 p-4 text-red-300">{error}</div>}
+
+        <section className="mt-8 overflow-hidden rounded-2xl border border-slate-800">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-900 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-5 py-4">Name</th>
+                <th className="px-5 py-4">City</th>
+                <th className="px-5 py-4">Status</th>
+                <th className="px-5 py-4">Progress</th>
+                <th className="px-5 py-4">Evaluations</th>
+                <th className="px-5 py-4">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((job) => (
+                <tr key={job.id} className="border-t border-slate-800">
+                  <td className="px-5 py-4">
+                    <Link href={`/optimizations/${job.id}`} className="text-cyan-300 hover:underline">{job.name}</Link>
+                    <p className="font-mono text-xs text-slate-500">{job.id.slice(0, 8)}</p>
+                  </td>
+                  <td className="px-5 py-4">{job.city_id}</td>
+                  <td className="px-5 py-4">{job.status}</td>
+                  <td className="px-5 py-4">{job.progress}%</td>
+                  <td className="px-5 py-4">{job.evaluation_count}</td>
+                  <td className="px-5 py-4 text-slate-400">{formatRelativeTime(job.created_at)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {loading && <div className="p-10 text-center text-slate-400">Loading…</div>}
+          {!loading && items.length === 0 && <div className="p-10 text-center text-slate-400">No searches yet.</div>}
+        </section>
+      </div>
+    </main>
+  );
+}
+```
+
 ### File: `frontend/src/app/page.tsx`
 ```tsx
 import { redirect } from "next/navigation";
@@ -8546,6 +9222,125 @@ export function ProvenanceEditor({
 }
 ```
 
+### File: `frontend/src/components/optimization/convergence-chart.tsx`
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import type { Data } from "plotly.js";
+
+import { METRIC_LABELS } from "@/lib/optimization-labels";
+import type { GenerationRecord, MetricName } from "@/types/optimization";
+
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+
+export function ConvergenceChart({ history, metric }: { history: GenerationRecord[]; metric: MetricName }) {
+  const data: Data[] = [
+    {
+      x: history.map((r) => r.generation),
+      y: history.map((r) => r.best_metric_value),
+      type: "scatter",
+      mode: "lines+markers",
+      name: METRIC_LABELS[metric],
+      line: { color: "#22d3ee", width: 3 },
+      marker: { size: 8, color: history.map((r) => (r.best_feasible ? "#10b981" : "#ef4444")) },
+    },
+    {
+      x: history.map((r) => r.generation),
+      y: history.map((r) => r.evaluation_count),
+      type: "scatter",
+      mode: "lines",
+      name: "Cumulative evaluations",
+      yaxis: "y2",
+      line: { color: "#94a3b8", dash: "dot" },
+    },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 className="mb-4 text-xl font-semibold">Convergence</h2>
+      <Plot
+        data={data}
+        layout={{
+          autosize: true, height: 380, paper_bgcolor: "#0f172a", plot_bgcolor: "#0f172a",
+          font: { color: "#cbd5e1" }, margin: { l: 65, r: 70, t: 20, b: 55 },
+          xaxis: { title: { text: "Generation" }, gridcolor: "#334155" },
+          yaxis: { title: { text: "Best objective metric" }, gridcolor: "#334155" },
+          yaxis2: { title: { text: "Evaluations" }, overlaying: "y", side: "right", showgrid: false },
+          legend: { orientation: "h", y: -0.25 }, hovermode: "x unified",
+        }}
+        config={{ responsive: true, displaylogo: false }}
+        useResizeHandler
+        style={{ width: "100%", height: "100%" }}
+      />
+      <p className="mt-2 text-sm text-slate-400">Green markers: best member satisfies all constraints; red: it does not.</p>
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/optimization/requirement-map-chart.tsx`
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import type { Data } from "plotly.js";
+
+import { METRIC_LABELS, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import type { MetricName, RequirementMapResult } from "@/types/optimization";
+
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+
+export function RequirementMapChart({ map, metric }: { map: RequirementMapResult; metric: MetricName }) {
+  const z = map.cells.map((row) => row.map((cell) => (cell ? cell.metric_value : null)));
+  const feasible = map.cells.flat().filter((cell) => cell?.feasible);
+  const frontier = map.frontier.filter((p) => p.minimum_x !== null);
+
+  const data: Data[] = [
+    {
+      type: "heatmap", x: map.x_values, y: map.y_values, z,
+      colorscale: "RdYlBu", reversescale: false,
+      colorbar: { title: { text: METRIC_LABELS[metric] } },
+      hovertemplate: "x=%{x}<br>y=%{y}<br>value=%{z:.4f}<extra></extra>",
+    },
+    {
+      type: "scatter", mode: "markers", name: "Feasible",
+      x: feasible.map((c) => c!.x), y: feasible.map((c) => c!.y),
+      marker: { symbol: "circle-open", size: 12, color: "#0f172a", line: { width: 2 } },
+    },
+    {
+      type: "scatter", mode: "lines+markers", name: "Requirement frontier",
+      x: frontier.map((p) => p.minimum_x), y: frontier.map((p) => p.y),
+      line: { color: "#f8fafc", width: 3, shape: "hv" },
+    },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 className="mb-4 text-xl font-semibold">Requirement Map</h2>
+      <Plot
+        data={data}
+        layout={{
+          autosize: true, height: 520, paper_bgcolor: "#0f172a", plot_bgcolor: "#0f172a",
+          font: { color: "#cbd5e1" }, margin: { l: 70, r: 30, t: 20, b: 60 },
+          xaxis: { title: { text: VARIABLE_LABELS[map.x_variable] } },
+          yaxis: { title: { text: VARIABLE_LABELS[map.y_variable] } },
+          legend: { orientation: "h", y: -0.2 },
+        }}
+        config={{ responsive: true, displaylogo: false, toImageButtonOptions: { format: "png", filename: "requirement-map", scale: 2 } }}
+        useResizeHandler
+        style={{ width: "100%", height: "100%" }}
+      />
+      <p className="mt-2 text-sm text-slate-400">
+        Other variables fixed at the optimum:{" "}
+        {Object.entries(map.fixed_parameters).map(([k, v]) => `${k} = ${v.toFixed(3)}`).join(", ") || "none"}.
+        Blank cells violate the optical energy constraint.
+      </p>
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/simulation/environment-assumptions-fields.tsx`
 ```tsx
 "use client";
@@ -9720,6 +10515,7 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/global-analysis", label: "Global Analysis" },
   { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
   { href: "/ops", label: "Operations" },
+  { href: "/optimizations", label: "Inverse Design" },
 ];
 ```
 
@@ -9741,6 +10537,14 @@ import type {
 } from "@/types/global-batch";
 
 import type { OpsStatus } from "@/types/ops";
+
+import type {
+  OptimizationCreate,
+  OptimizationEstimate,
+  OptimizationJob,
+  OptimizationJobDetail,
+  OptimizationJobList,
+} from "@/types/optimization";
 
 import type {
   Material, MaterialCreate, MaterialListResponse,
@@ -10546,6 +11350,72 @@ export async function getOpsStatus(): Promise<OpsStatus> {
 
   return response.json() as Promise<OpsStatus>;
 }
+
+async function postJson<T>(path: string, body: unknown, fallback: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(await getErrorMessage(response, fallback));
+  return response.json() as Promise<T>;
+}
+
+export function estimateOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationEstimate>(
+    "/api/v1/optimizations/estimate",
+    request,
+    "Unable to estimate optimization",
+  );
+}
+
+export function createOptimization(request: OptimizationCreate) {
+  return postJson<OptimizationJob>(
+    "/api/v1/optimizations",
+    request,
+    "Unable to create optimization",
+  );
+}
+
+export async function cancelOptimization(id: string): Promise<OptimizationJob> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}/cancel`,
+    { method: "POST" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to cancel optimization"));
+  }
+  return response.json() as Promise<OptimizationJob>;
+}
+
+export async function listOptimizations(
+  limit = 20,
+  offset = 0,
+): Promise<OptimizationJobList> {
+  const parameters = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations?${parameters}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimizations"));
+  }
+  return response.json() as Promise<OptimizationJobList>;
+}
+
+export async function getOptimization(id: string): Promise<OptimizationJobDetail> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/optimizations/${encodeURIComponent(id)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to load optimization"));
+  }
+  return response.json() as Promise<OptimizationJobDetail>;
+}
 ```
 
 ### File: `frontend/src/lib/checkpoint-cells.test.ts`
@@ -10894,6 +11764,37 @@ export function progressRequiresDetailReload(
 
   return processedNow !== processedBefore || isTerminalBatchStatus(event.batch.status);
 }
+```
+
+### File: `frontend/src/lib/optimization-labels.ts`
+```typescript
+import type { DecisionVariableName, MetricName } from "@/types/optimization";
+
+export const VARIABLE_LABELS: Record<DecisionVariableName, string> = {
+  solar_reflectance: "Solar reflectance ρ",
+  solar_transmittance: "Solar transmittance τ_sol",
+  infrared_emissivity: "IR emissivity ε",
+  infrared_transmittance: "IR transmittance τ_IR",
+  clothing_insulation_clo: "Insulation (clo)",
+  evaporative_resistance_m2pa_w: "Re,cl (m²·Pa/W)",
+};
+
+export const METRIC_LABELS: Record<MetricName, string> = {
+  mean_skin_temperature_c: "Mean skin temperature (°C)",
+  peak_skin_temperature_c: "Peak skin temperature (°C)",
+  peak_core_temperature_c: "Peak core temperature (°C)",
+  skin_exceedance_fraction: "Time fraction T_sk > threshold",
+  core_exceedance_fraction: "Time fraction T_core > threshold",
+  mean_skin_cooling_c: "Mean skin cooling vs control (°C)",
+  mean_core_cooling_c: "Mean core cooling vs control (°C)",
+};
+
+export const METRIC_OPTIONS = (Object.keys(METRIC_LABELS) as MetricName[]).map((value) => ({
+  value,
+  label: METRIC_LABELS[value],
+}));
+
+export const TERMINAL_OPTIMIZATION = new Set(["completed", "failed", "cancelled"]);
 ```
 
 ### File: `frontend/src/lib/relative-time.test.ts`
@@ -12243,6 +13144,147 @@ export type OpsStatus = {
   reaper_interval_seconds: number;
   worst_case_recovery_seconds: number;
 };
+```
+
+### File: `frontend/src/types/optimization.ts`
+```typescript
+import type { EnvironmentAssumptions, MaterialInput, PersonInput, LeaseState } from "@/types/simulation";
+
+export type DecisionVariableName =
+  | "solar_reflectance" | "solar_transmittance" | "infrared_emissivity"
+  | "infrared_transmittance" | "clothing_insulation_clo" | "evaporative_resistance_m2pa_w";
+
+export type MetricName =
+  | "mean_skin_temperature_c" | "peak_skin_temperature_c" | "peak_core_temperature_c"
+  | "skin_exceedance_fraction" | "core_exceedance_fraction"
+  | "mean_skin_cooling_c" | "mean_core_cooling_c";
+
+export type DecisionVariable = { name: DecisionVariableName; lower: number; upper: number };
+export type MetricConstraint = { metric: MetricName; operator: "<=" | ">="; threshold: number };
+export type OptimizationObjective = { metric: MetricName; sense: "minimize" | "maximize" };
+export type RequirementMapSpec = { x_variable: DecisionVariableName; y_variable: DecisionVariableName; resolution: number };
+
+export type OptimizationCreate = {
+  name: string;
+  city_id: string;
+  year: number;
+  months: number[];
+  sample_days_per_month: number;
+  local_start_hour: number;
+  duration_minutes: number;
+  output_interval_minutes: number;
+  skin_threshold_c: number;
+  core_threshold_c: number;
+  person: PersonInput;
+  control_material: MaterialInput;
+  base_material: MaterialInput;
+  environment_assumptions?: EnvironmentAssumptions;
+  variables: DecisionVariable[];
+  objective: OptimizationObjective;
+  constraints: MetricConstraint[];
+  algorithm: "differential_evolution";
+  population_multiplier: number;
+  max_generations: number;
+  seed: number | null;
+  requirement_map: RequirementMapSpec | null;
+};
+
+export type OptimizationEstimate = {
+  variable_count: number;
+  population_size: number;
+  optimizer_evaluation_budget: number;
+  requirement_map_evaluations: number;
+  sample_count: number;
+  thermal_simulation_budget: number;
+  weather_requests: number;
+};
+
+export type EvaluationMetrics = { sample_count: number } & Record<MetricName, number>;
+
+export type CandidateEvaluation = {
+  parameters: Record<string, number>;
+  metrics: EvaluationMetrics | null;
+  objective_value: number | null;
+  constraint_violation: number | null;
+  feasible: boolean;
+};
+
+export type GenerationRecord = {
+  generation: number;
+  penalised_objective: number;
+  best_parameters: Record<string, number>;
+  best_metric_value: number | null;
+  best_feasible: boolean;
+  evaluation_count: number;
+};
+
+export type RequirementCell = { x: number; y: number; metric_value: number; constraint_violation: number; feasible: boolean };
+
+export type RequirementMapResult = {
+  x_variable: DecisionVariableName;
+  y_variable: DecisionVariableName;
+  x_values: number[];
+  y_values: number[];
+  cells: (RequirementCell | null)[][];
+  frontier: { y: number; minimum_x: number | null }[];
+  minimum_x_at_max_y: number | null;
+  minimum_y_at_max_x: number | null;
+  fixed_parameters: Record<string, number>;
+};
+
+export type OptimizationResult = {
+  verdict: "feasible" | "infeasible" | "unconstrained";
+  message: string;
+  objective: OptimizationObjective;
+  constraints: MetricConstraint[];
+  best: CandidateEvaluation;
+  baseline: CandidateEvaluation;
+  optical_upper_bound: CandidateEvaluation | null;
+  requirement_map: RequirementMapResult | null;
+  sample_count: number;
+  skipped_samples: { sample_date_local: string; reason_code: string; message: string }[];
+  weather_payload_sha256: Record<string, string | null>;
+  evaluation_count: number;
+  simulation_count: number;
+  generations: number;
+  algorithm: string;
+  algorithm_message: string;
+  elapsed_seconds: number;
+  model_version: string;
+  parameter_fingerprint: string;
+};
+
+export type OptimizationStatus = "queued" | "running" | "cancelling" | "cancelled" | "completed" | "failed";
+
+export type OptimizationJob = {
+  id: string;
+  celery_task_id: string | null;
+  name: string;
+  city_id: string;
+  status: OptimizationStatus;
+  stage: string;
+  progress: number;
+  evaluation_count: number;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  attempt: number;
+  lease_owner: string | null;
+  lease_expires_at: string | null;
+  last_heartbeat_at: string | null;
+  lease_state: LeaseState;
+  cancel_requested_at: string | null;
+};
+
+export type OptimizationJobDetail = OptimizationJob & {
+  request: OptimizationCreate;
+  history: GenerationRecord[];
+  result: OptimizationResult | null;
+};
+
+export type OptimizationJobList = { items: OptimizationJob[]; total: number; limit: number; offset: number };
 ```
 
 ### File: `frontend/src/types/simulation.ts`
