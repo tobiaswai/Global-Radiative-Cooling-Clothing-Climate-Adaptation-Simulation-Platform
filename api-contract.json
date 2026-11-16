@@ -175,6 +175,13 @@
         },
         "CandidateEvaluation": {
           "properties": {
+            "constraint_excess": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Constraint Excess",
+              "type": "object"
+            },
             "constraint_violation": {
               "anyOf": [
                 {
@@ -189,6 +196,17 @@
             "feasible": {
               "title": "Feasible",
               "type": "boolean"
+            },
+            "material_demand": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Material Demand"
             },
             "metrics": {
               "anyOf": [
@@ -450,6 +468,28 @@
               "title": "Evaporative Resistance Source",
               "type": "string"
             },
+            "infrared_emissivity_outside_window": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Outside Window"
+            },
+            "infrared_emissivity_window": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Window"
+            },
             "infrared_transmittance": {
               "title": "Infrared Transmittance",
               "type": "number"
@@ -553,6 +593,28 @@
         },
         "DecisionVariable": {
           "properties": {
+            "demand_direction": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "increasing",
+                    "decreasing"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Demand Direction"
+            },
+            "demand_weight": {
+              "default": 1.0,
+              "exclusiveMinimum": 0.0,
+              "maximum": 10.0,
+              "title": "Demand Weight",
+              "type": "number"
+            },
             "lower": {
               "title": "Lower",
               "type": "number"
@@ -562,6 +624,8 @@
                 "solar_reflectance",
                 "solar_transmittance",
                 "infrared_emissivity",
+                "infrared_emissivity_window",
+                "infrared_emissivity_outside_window",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -863,6 +927,17 @@
               "title": "Core Exceedance Fraction",
               "type": "number"
             },
+            "core_excess_degree_hours": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Core Excess Degree Hours"
+            },
             "mean_core_cooling_c": {
               "title": "Mean Core Cooling C",
               "type": "number"
@@ -890,6 +965,17 @@
             "skin_exceedance_fraction": {
               "title": "Skin Exceedance Fraction",
               "type": "number"
+            },
+            "skin_excess_degree_hours": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Skin Excess Degree Hours"
             }
           },
           "required": [
@@ -917,6 +1003,17 @@
                 }
               ],
               "title": "Minimum X"
+            },
+            "required_x": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Required X"
             },
             "y": {
               "title": "Y",
@@ -2677,11 +2774,27 @@
             },
             "infrared_emissivity": {
               "default": 0.9,
-              "description": "Longwave emissivity of the outer surface (8-13 um)",
+              "description": "Broadband longwave emissivity of the outer surface (Planck-weighted at emissivity_reference_temperature)",
               "maximum": 1.0,
               "minimum": 0.0,
               "title": "Infrared Emissivity",
               "type": "number",
+              "unit": "-"
+            },
+            "infrared_emissivity_window": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "derived_when_null": "gray emitter: equals infrared_emissivity",
+              "description": "Longwave emissivity averaged over the atmospheric window (8-13 um)",
+              "title": "Infrared Emissivity Window",
               "unit": "-"
             },
             "infrared_transmittance": {
@@ -3060,6 +3173,19 @@
               "title": "Infrared Emissivity",
               "type": "number"
             },
+            "infrared_emissivity_window": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Window"
+            },
             "infrared_transmittance": {
               "default": 0,
               "maximum": 1.0,
@@ -3198,6 +3324,17 @@
             "infrared_emissivity": {
               "title": "Infrared Emissivity",
               "type": "number"
+            },
+            "infrared_emissivity_window": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Window"
             },
             "infrared_transmittance": {
               "title": "Infrared Transmittance",
@@ -3348,6 +3485,17 @@
               "title": "Infrared Emissivity",
               "type": "number"
             },
+            "infrared_emissivity_window": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Window"
+            },
             "infrared_transmittance": {
               "title": "Infrared Transmittance",
               "type": "number"
@@ -3468,6 +3616,8 @@
                 "peak_core_temperature_c",
                 "skin_exceedance_fraction",
                 "core_exceedance_fraction",
+                "skin_excess_degree_hours",
+                "core_excess_degree_hours",
                 "mean_skin_cooling_c",
                 "mean_core_cooling_c"
               ],
@@ -3482,6 +3632,18 @@
               ],
               "title": "Operator",
               "type": "string"
+            },
+            "scale": {
+              "anyOf": [
+                {
+                  "exclusiveMinimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Scale"
             },
             "threshold": {
               "title": "Threshold",
@@ -3834,6 +3996,14 @@
             "control_material": {
               "$ref": "#/components/schemas/MaterialInput"
             },
+            "convergence_tolerance": {
+              "default": 0.0001,
+              "description": "Absolute DE tolerance on the normalised objective",
+              "exclusiveMinimum": 0.0,
+              "maximum": 1.0,
+              "title": "Convergence Tolerance",
+              "type": "number"
+            },
             "core_threshold_c": {
               "default": 38.0,
               "maximum": 41.0,
@@ -3918,6 +4088,14 @@
               "title": "Sample Days Per Month",
               "type": "integer"
             },
+            "secondary_demand_weight": {
+              "default": 0.001,
+              "description": "Weight of material_demand added to feasible objectives so ties resolve to the least demanding design",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Secondary Demand Weight",
+              "type": "number"
+            },
             "seed": {
               "anyOf": [
                 {
@@ -3966,6 +4144,11 @@
         },
         "OptimizationEstimate": {
           "properties": {
+            "corner_evaluations": {
+              "default": 0,
+              "title": "Corner Evaluations",
+              "type": "integer"
+            },
             "optimizer_evaluation_budget": {
               "title": "Optimizer Evaluation Budget",
               "type": "integer"
@@ -3980,6 +4163,11 @@
             },
             "sample_count": {
               "title": "Sample Count",
+              "type": "integer"
+            },
+            "sensitivity_evaluations": {
+              "default": 0,
+              "title": "Sensitivity Evaluations",
               "type": "integer"
             },
             "thermal_simulation_budget": {
@@ -4458,15 +4646,18 @@
         "OptimizationObjective": {
           "properties": {
             "metric": {
-              "default": "skin_exceedance_fraction",
+              "default": "skin_excess_degree_hours",
               "enum": [
                 "mean_skin_temperature_c",
                 "peak_skin_temperature_c",
                 "peak_core_temperature_c",
                 "skin_exceedance_fraction",
                 "core_exceedance_fraction",
+                "skin_excess_degree_hours",
+                "core_excess_degree_hours",
                 "mean_skin_cooling_c",
-                "mean_core_cooling_c"
+                "mean_core_cooling_c",
+                "material_demand"
               ],
               "title": "Metric",
               "type": "string"
@@ -4500,6 +4691,16 @@
             "best": {
               "$ref": "#/components/schemas/CandidateEvaluation"
             },
+            "best_corner": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/CandidateEvaluation"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "constraints": {
               "items": {
                 "$ref": "#/components/schemas/MetricConstraint"
@@ -4530,6 +4731,28 @@
             "objective": {
               "$ref": "#/components/schemas/OptimizationObjective"
             },
+            "objective_reference": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Objective Reference"
+            },
+            "objective_scale": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Objective Scale"
+            },
             "optical_upper_bound": {
               "anyOf": [
                 {
@@ -4558,6 +4781,13 @@
               "title": "Sample Count",
               "type": "integer"
             },
+            "sensitivities": {
+              "items": {
+                "$ref": "#/components/schemas/ParameterSensitivity"
+              },
+              "title": "Sensitivities",
+              "type": "array"
+            },
             "simulation_count": {
               "title": "Simulation Count",
               "type": "integer"
@@ -4577,6 +4807,13 @@
               ],
               "title": "Verdict",
               "type": "string"
+            },
+            "warnings": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Warnings",
+              "type": "array"
             },
             "weather_payload_sha256": {
               "additionalProperties": {
@@ -4615,6 +4852,48 @@
             "parameter_fingerprint"
           ],
           "title": "OptimizationResult",
+          "type": "object"
+        },
+        "ParameterSensitivity": {
+          "description": "Central difference at the reported optimum, scaled to the whole range.",
+          "properties": {
+            "full_range_effects": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Full Range Effects",
+              "type": "object"
+            },
+            "name": {
+              "enum": [
+                "solar_reflectance",
+                "solar_transmittance",
+                "infrared_emissivity",
+                "infrared_emissivity_window",
+                "infrared_emissivity_outside_window",
+                "infrared_transmittance",
+                "clothing_insulation_clo",
+                "evaporative_resistance_m2pa_w"
+              ],
+              "title": "Name",
+              "type": "string"
+            },
+            "probe_high": {
+              "title": "Probe High",
+              "type": "number"
+            },
+            "probe_low": {
+              "title": "Probe Low",
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "probe_low",
+            "probe_high",
+            "full_range_effects"
+          ],
+          "title": "ParameterSensitivity",
           "type": "object"
         },
         "ParameterSource": {
@@ -4852,6 +5131,28 @@
               "title": "Frontier",
               "type": "array"
             },
+            "metric_max": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metric Max"
+            },
+            "metric_min": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Metric Min"
+            },
             "minimum_x_at_max_y": {
               "anyOf": [
                 {
@@ -4874,6 +5175,82 @@
               ],
               "title": "Minimum Y At Max X"
             },
+            "objective_trend_x": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "improves",
+                    "worsens",
+                    "flat",
+                    "mixed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Objective Trend X"
+            },
+            "objective_trend_y": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "improves",
+                    "worsens",
+                    "flat",
+                    "mixed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Objective Trend Y"
+            },
+            "plateau_fraction": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Plateau Fraction"
+            },
+            "required_x_at_best_y": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Required X At Best Y"
+            },
+            "required_y_at_best_x": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Required Y At Best X"
+            },
+            "x_demand_direction": {
+              "default": "increasing",
+              "enum": [
+                "increasing",
+                "decreasing"
+              ],
+              "title": "X Demand Direction",
+              "type": "string"
+            },
             "x_values": {
               "items": {
                 "type": "number"
@@ -4886,11 +5263,22 @@
                 "solar_reflectance",
                 "solar_transmittance",
                 "infrared_emissivity",
+                "infrared_emissivity_window",
+                "infrared_emissivity_outside_window",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
               ],
               "title": "X Variable",
+              "type": "string"
+            },
+            "y_demand_direction": {
+              "default": "increasing",
+              "enum": [
+                "increasing",
+                "decreasing"
+              ],
+              "title": "Y Demand Direction",
               "type": "string"
             },
             "y_values": {
@@ -4905,6 +5293,8 @@
                 "solar_reflectance",
                 "solar_transmittance",
                 "infrared_emissivity",
+                "infrared_emissivity_window",
+                "infrared_emissivity_outside_window",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -4942,6 +5332,8 @@
                 "solar_reflectance",
                 "solar_transmittance",
                 "infrared_emissivity",
+                "infrared_emissivity_window",
+                "infrared_emissivity_outside_window",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -4955,6 +5347,8 @@
                 "solar_reflectance",
                 "solar_transmittance",
                 "infrared_emissivity",
+                "infrared_emissivity_window",
+                "infrared_emissivity_outside_window",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -5638,6 +6032,91 @@
           "title": "SkippedSample",
           "type": "object"
         },
+        "SpectrumBandSummary": {
+          "description": "Planck-weighted band averages of one IR spectrum (Stage 10).",
+          "properties": {
+            "broadband_average": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Broadband Average"
+            },
+            "broadband_coverage": {
+              "title": "Broadband Coverage",
+              "type": "number"
+            },
+            "measured_lower_um": {
+              "title": "Measured Lower Um",
+              "type": "number"
+            },
+            "measured_upper_um": {
+              "title": "Measured Upper Um",
+              "type": "number"
+            },
+            "outside_window_average": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Outside Window Average"
+            },
+            "spectrum_type": {
+              "title": "Spectrum Type",
+              "type": "string"
+            },
+            "temperature_k": {
+              "title": "Temperature K",
+              "type": "number"
+            },
+            "window_average": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Window Average"
+            },
+            "window_coverage": {
+              "title": "Window Coverage",
+              "type": "number"
+            },
+            "window_lower_um": {
+              "title": "Window Lower Um",
+              "type": "number"
+            },
+            "window_upper_um": {
+              "title": "Window Upper Um",
+              "type": "number"
+            }
+          },
+          "required": [
+            "spectrum_type",
+            "temperature_k",
+            "window_lower_um",
+            "window_upper_um",
+            "measured_lower_um",
+            "measured_upper_um",
+            "window_average",
+            "window_coverage",
+            "broadband_average",
+            "broadband_coverage",
+            "outside_window_average"
+          ],
+          "title": "SpectrumBandSummary",
+          "type": "object"
+        },
         "SpectrumPoint": {
           "properties": {
             "value": {
@@ -5766,6 +6245,17 @@
             "longwave_radiation_w_m2": {
               "title": "Longwave Radiation W M2",
               "type": "number"
+            },
+            "longwave_window_w_m2": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Longwave Window W M2"
             },
             "maximum_evaporation_w_m2": {
               "anyOf": [
@@ -7173,6 +7663,69 @@
             }
           },
           "summary": "Get Material Spectrum",
+          "tags": [
+            "materials"
+          ]
+        }
+      },
+      "/api/v1/materials/versions/{version_id}/spectra/{spectrum_type}/band-summary": {
+        "get": {
+          "operationId": "get_spectrum_band_summary_api_v1_materials_versions__version_id__spectra__spectrum_type__band_summary_get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "version_id",
+              "required": true,
+              "schema": {
+                "title": "Version Id",
+                "type": "string"
+              }
+            },
+            {
+              "in": "path",
+              "name": "spectrum_type",
+              "required": true,
+              "schema": {
+                "title": "Spectrum Type",
+                "type": "string"
+              }
+            },
+            {
+              "in": "query",
+              "name": "temperature_k",
+              "required": false,
+              "schema": {
+                "default": 305.0,
+                "maximum": 400.0,
+                "minimum": 200.0,
+                "title": "Temperature K",
+                "type": "number"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SpectrumBandSummary"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Spectrum Band Summary",
           "tags": [
             "materials"
           ]
