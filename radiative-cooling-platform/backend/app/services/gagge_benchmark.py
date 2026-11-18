@@ -99,8 +99,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
     )
     alignment.append(
         "evaporative_resistance_m2pa_w and clothing_area_factor derived from clo "
-        "(the reference accepts clo only)"
-        "and the material is treated as gray"
+        "(the reference accepts clo only), and the material is treated as gray"
     )
 
     # --- prototype ------------------------------------------------------------

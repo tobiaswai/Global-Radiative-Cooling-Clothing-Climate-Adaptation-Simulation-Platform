@@ -13,6 +13,7 @@ import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import { WeatherQualityPanel } from "@/components/simulation/weather-quality-panel";
 import { getSimulationExportUrl } from "@/lib/api-client";
 import { isTerminalJobStatus, useSimulationJob } from "@/lib/use-simulation-job";
+import { RadiantEnvironmentChart } from "@/components/charts/radiant-environment-chart";
 
 const stageLabels: Record<string, string> = {
   queued: "Waiting for computing resources",
@@ -170,6 +171,7 @@ export default function SimulationJobPage() {
             <WeatherQualityPanel weather={result.weather} />
             <TemperatureChart result={result} />
             <HeatFluxChart result={result} />
+            <RadiantEnvironmentChart result={result} />
             <PhysiologyChart result={result} />
             <ModelQualityPanel result={result} />
             <ModelProvenancePanel result={result} />

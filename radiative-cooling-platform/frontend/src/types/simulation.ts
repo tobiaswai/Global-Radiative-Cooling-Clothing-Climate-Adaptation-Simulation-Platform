@@ -15,8 +15,16 @@ export type ParameterSource = {
 
 /** How the solver obtained a resolved clothing quantity. */
 export type ResolvedParameterSource = "material_input" | "derived_from_clo";
-export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
-export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
+export type MeanRadiantTemperatureMethod =
+  | "air_plus_solar_linear"
+  | "equal_to_air"
+  | "ground_energy_balance";
+  
+export type SkyTemperatureMethod =
+  | "humidity_offset"
+  | "fixed_offset"
+  | "swinbank"
+  | "brutsaert_cloud";
 
 export type RadiationTimeConvention =
   | "instantaneous_linear"
@@ -34,6 +42,8 @@ export type EnvironmentAssumptions = {
   wind_speed_scaling_factor: number;
   ground_albedo: number;
   radiation_time_convention: RadiationTimeConvention;
+  ground_emissivity: number;
+  ground_soil_conductance_w_m2k: number;
 };
 
 export type WeatherGap = { start: string; end: string; missing_steps: number };
@@ -130,6 +140,8 @@ export type TimeSeriesPoint = {
   solar_absorbed_by_textile_w_m2?: number | null; 
   solar_transmitted_w_m2?: number | null;
   longwave_window_w_m2?: number | null;
+  sky_temperature_c?: number | null;
+  surround_temperature_c?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -223,6 +235,8 @@ export type WeatherPoint = {
   direct_radiation_w_m2: number;
   diffuse_radiation_w_m2: number;
   dni_w_m2: number;
+  cloud_cover_percent?: number | null;
+  soil_temperature_c?: number | null;
 };
 
 export type WeatherTimeSeries = {

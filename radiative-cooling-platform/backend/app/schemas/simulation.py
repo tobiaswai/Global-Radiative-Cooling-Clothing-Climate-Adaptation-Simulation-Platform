@@ -267,6 +267,9 @@ class TimeSeriesPoint(BaseModel):
     solar_transmitted_w_m2: float | None = None
     # Stage 10: net window-band longwave loss (selective emitters only).
     longwave_window_w_m2: float | None = None
+    # Stage 11: boundary conditions actually used (same for both garments).
+    sky_temperature_c: float | None = None
+    surround_temperature_c: float | None = None
 
 class ClothingSummary(BaseModel):
     """Resolved clothing quantities actually used by the solver."""

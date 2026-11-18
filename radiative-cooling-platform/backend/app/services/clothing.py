@@ -161,12 +161,5 @@ def assumptions_applied(
             "no beam/diffuse split supplied; GHI treated as beam on the "
             "projected area (legacy Stage 0-4 geometry, ADR 0006)"
         )
-    if clothing.infrared_emissivity_window is not None:
-        notes.append(
-            "selective longwave emitter: sky-facing exchange uses "
-            f"atmospheric-window (8-13 um) emissivity "
-            f"{clothing.infrared_emissivity_window:.2f}; other surroundings use "
-            "the broadband infrared_emissivity"
-        )
 
     return notes

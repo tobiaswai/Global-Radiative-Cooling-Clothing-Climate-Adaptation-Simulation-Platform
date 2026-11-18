@@ -33,6 +33,9 @@ CSV_HEADERS = [
     # Stage 10
     "control_longwave_window_w_m2",
     "rc_longwave_window_w_m2",
+    # Stage 11 (boundary conditions; identical for both garments)
+    "sky_temperature_c",
+    "surround_temperature_c",
 ]
 
 
@@ -76,6 +79,8 @@ def export_result_csv(result: WeatherSimulationResponse) -> str:
                 _optional(rc, "solar_incident_w_m2"),
                 _optional(control, "longwave_window_w_m2"),
                 _optional(rc, "longwave_window_w_m2"),
+                _optional(rc, "sky_temperature_c"),
+                _optional(rc, "surround_temperature_c"),
             ]
         )
 

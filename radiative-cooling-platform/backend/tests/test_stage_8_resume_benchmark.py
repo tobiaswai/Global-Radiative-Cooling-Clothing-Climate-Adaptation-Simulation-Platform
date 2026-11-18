@@ -78,11 +78,12 @@ class SyntheticWeatherProvider:
     async def __call__(
         self,
         *,
-        city: CityConfig,
-        start_time_local: datetime,
-        end_time_local: datetime,
-        padding_hours: int = 1,
-        require_window_coverage: bool = True,
+        city,
+        start_time_local,
+        end_time_local,
+        padding_hours=1,
+        require_window_coverage=True,
+        extra_variables: tuple[str, ...] = (),
     ) -> WeatherTimeSeries:
         self.calls += 1
 
@@ -121,6 +122,7 @@ class SyntheticWeatherProvider:
             cursor += timedelta(hours=1)
 
         digest = hashlib.sha256(f"{city.id}|{start.isoformat()}|{end.isoformat()}".encode()).hexdigest()
+        assert extra_variables == (), extra_variables
 
         return WeatherTimeSeries(
             city=city_to_response(city),

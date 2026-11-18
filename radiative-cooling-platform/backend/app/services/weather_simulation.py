@@ -19,6 +19,8 @@ from app.services.weather import (
 
 from app.services.model_parameters import build_model_metadata
 
+from app.services.environment_model import required_weather_variables
+
 MODEL_NAME = "Weather-driven transient two-node prototype"
 
 ProgressCallback = Callable[
@@ -110,12 +112,9 @@ async def execute_weather_simulation(
 
     weather = await get_historical_weather(
         city=city,
-        start_time_local=(
-            request.start_time_local
-        ),
-        duration_minutes=(
-            request.duration_minutes
-        ),
+        start_time_local=request.start_time_local,
+        duration_minutes=request.duration_minutes,
+        extra_variables=required_weather_variables(request.environment_assumptions),
     )
 
     return execute_weather_simulation_with_weather(

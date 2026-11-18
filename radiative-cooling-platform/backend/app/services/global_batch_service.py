@@ -32,17 +32,6 @@ TERMINAL_CITY_STATUSES = {
     "cancelled",
 }
 
-def derive_lease_state(
-    owner: str | None,
-    expires_at: datetime | None,
-    now: datetime | None = None,
-) -> LeaseState:
-    if owner is None or expires_at is None:
-        return "none"
-    now = now or utc_now()
-    return "live" if expires_at > now else "expired"
-
-
 def load_checkpoint_months(session: Session, batch_id: str) -> dict[str, list[int]]:
     """city_result_id -> sorted months with a durable checkpoint. Months only;
     payloads are never loaded here."""

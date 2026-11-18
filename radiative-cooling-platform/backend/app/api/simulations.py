@@ -56,7 +56,7 @@ router = APIRouter(
     prefix="/api/v1/simulations",
     tags=["simulations"],
 )
-
+from app.services.environment_model import required_weather_variables
 
 @router.post("/run", response_model=SimulationResponse)
 def run_simulation(
@@ -144,6 +144,7 @@ async def run_weather_simulation(
             city=city,
             start_time_local=request.start_time_local,
             duration_minutes=request.duration_minutes,
+            extra_variables=required_weather_variables(request.environment_assumptions),
         )
 
         # Stage 2: the service owns environment assumptions, model version,

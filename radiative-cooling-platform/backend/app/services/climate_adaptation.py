@@ -46,6 +46,7 @@ from app.services.weather_simulation import (
     execute_weather_simulation_with_weather,
 )
 
+from app.services.environment_model import required_weather_variables
 
 __all__ = [
     "analyze_city_climate_adaptation",
@@ -349,11 +350,9 @@ async def analyze_city_climate_adaptation(
         # Monthly prefetch: do not require whole-month coverage here; each
         # sample slice enforces coverage for its own exposure window.
         month_weather = await get_historical_weather_range(
-            city=city,
-            start_time_local=month_start,
-            end_time_local=prefetch_end,
-            padding_hours=1,
-            require_window_coverage=False,
+            city=city, start_time_local=month_start, end_time_local=prefetch_end,
+            padding_hours=1, require_window_coverage=False,
+            extra_variables=required_weather_variables(request.environment_assumptions),
         )
 
         monthly_weather_payload_sha256[f"{month:02d}"] = (

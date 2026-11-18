@@ -94,16 +94,15 @@ async def test_execute_weather_simulation(
         city,
         start_time_local,
         duration_minutes,
+        extra_variables: tuple[str, ...] = (),
     ):
+        # Default assumptions must not request Stage 11 variables.
+        assert extra_variables == (), extra_variables
         weather_calls.append(
             {
                 "city": city,
-                "start_time_local": (
-                    start_time_local
-                ),
-                "duration_minutes": (
-                    duration_minutes
-                ),
+                "start_time_local": start_time_local,
+                "duration_minutes": duration_minutes,
             }
         )
         return weather

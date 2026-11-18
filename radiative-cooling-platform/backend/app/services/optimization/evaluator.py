@@ -22,7 +22,7 @@ from app.services.two_node import simulate_material_with_interpolator
 from app.services.weather import get_historical_weather_range, slice_weather_time_series
 from app.services.weather_interpolation import WeatherInterpolator
 from app.services.weather_quality import WeatherDataError
-
+from app.services.environment_model import required_weather_variables
 
 CACHE_DECIMALS = 6
 
@@ -59,11 +59,9 @@ async def prepare_samples(
             hours=request.local_start_hour, minutes=request.duration_minutes
         )
         month_weather = await get_historical_weather_range(
-            city=city,
-            start_time_local=month_start,
-            end_time_local=prefetch_end,
-            padding_hours=1,
-            require_window_coverage=False,
+            city=city, start_time_local=month_start, end_time_local=prefetch_end,
+            padding_hours=1, require_window_coverage=False,
+            extra_variables=required_weather_variables(request.environment_assumptions),
         )
         report.weather_payload_sha256[f"{month:02d}"] = month_weather.source.payload_sha256
 

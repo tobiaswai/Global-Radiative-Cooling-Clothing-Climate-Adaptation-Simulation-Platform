@@ -38,7 +38,7 @@ def make_point(
 @pytest.mark.unit
 def test_missing_stage_3_diagnostics_export_as_blank_cells():
     rows = list(csv.reader(io.StringIO(export_result_csv(make_export_result()))))
-    assert rows[1][13:] == [""] * 10
+    assert rows[1][13:] == [""] * 12
 
 @pytest.mark.unit
 def test_stage_3_diagnostics_are_exported_when_present():
@@ -102,7 +102,8 @@ def test_result_csv_contains_expected_headers():
 
     assert rows[0] == EXPECTED_HEADERS
     assert "control_clothing_surface_temperature_c" in rows[0]
-    assert len(rows[0]) == 1 + 2 * 11
+    assert len(rows[0]) == 1 + 2 * 12
+
 
 
 @pytest.mark.unit

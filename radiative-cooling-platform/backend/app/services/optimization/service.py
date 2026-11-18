@@ -325,14 +325,21 @@ def build_warnings(
     if all(abs(best.parameters[k] - baseline.parameters.get(k, math.nan)) < 1e-6 for k in best.parameters):
         warnings.append("best equals the baseline garment")
 
-    # 7. Mean radiant temperature proxy (ADR 0007).
-    if request.environment_assumptions.mean_radiant_temperature_method == "air_plus_solar_linear":
+    # 7. Mean radiant temperature proxy (ADR 0007, ADR 0008).
+    method = request.environment_assumptions.mean_radiant_temperature_method
+    ir_names = {"infrared_emissivity", "infrared_emissivity_window", "infrared_emissivity_outside_window"}
+    if method == "air_plus_solar_linear" and ir_names & set(space.names):
+        warnings.append(
+            "air_plus_solar_linear adds a GHI term to the non-sky longwave temperature although "
+            "body shortwave is computed explicitly, so the sun is counted twice and hot "
+            "surroundings are over-stated (ADR 0008). Infrared conclusions should be checked "
+            "with mean_radiant_temperature_method = ground_energy_balance."
+        )
         for name in ("infrared_emissivity", "infrared_emissivity_outside_window"):
             if name in at_lower_bound:
                 warnings.append(
-                    f"low {name} is favoured because T_mrt = T_air + solar gain places the "
-                    "non-sky hemisphere above the clothing surface; repeat with "
-                    "mean_radiant_temperature_method = equal_to_air before reporting this"
+                    f"low {name} is favoured under the double-counting proxy; do not report "
+                    "this without the ground_energy_balance rerun"
                 )
 
     return warnings

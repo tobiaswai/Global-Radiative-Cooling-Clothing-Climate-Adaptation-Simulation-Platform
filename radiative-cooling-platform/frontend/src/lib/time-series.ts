@@ -9,7 +9,9 @@ export type OptionalSeriesKey =
   | "solar_incident_w_m2"
   | "solar_absorbed_by_textile_w_m2"
   | "solar_transmitted_w_m2"
-  | "longwave_window_w_m2";
+  | "longwave_window_w_m2"
+  | "sky_temperature_c"
+  | "surround_temperature_c";
 
 export function hasOptionalSeries(
   points: TimeSeriesPoint[],

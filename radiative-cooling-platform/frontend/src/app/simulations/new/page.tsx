@@ -13,6 +13,7 @@ import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import { runSimulation } from "@/lib/api-client";
 import type { SimulationRequest, SimulationResponse } from "@/types/simulation";
+import { RadiantEnvironmentChart } from "@/components/charts/radiant-environment-chart";
 
 const initialRequest: SimulationRequest = {
   city: "Dubai",
@@ -231,6 +232,7 @@ export default function NewSimulationPage() {
             <TemperatureChart result={result} />
             <PhysiologyChart result={result} />
             <HeatFluxChart result={result} />
+            <RadiantEnvironmentChart result={result} />
             <ModelQualityPanel result={result} />
             <ModelProvenancePanel result={result} />
           </section>

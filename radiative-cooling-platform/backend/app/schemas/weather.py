@@ -25,6 +25,9 @@ class WeatherPoint(BaseModel):
     direct_radiation_w_m2: float
     diffuse_radiation_w_m2: float
     dni_w_m2: float
+    # Stage 11. Only present when requested (see environment_model.required_weather_variables).
+    cloud_cover_percent: float | None = None
+    soil_temperature_c: float | None = None
 
 
 class WeatherGap(BaseModel):

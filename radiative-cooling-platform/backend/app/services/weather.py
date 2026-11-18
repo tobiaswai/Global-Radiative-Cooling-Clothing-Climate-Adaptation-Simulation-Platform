@@ -54,6 +54,12 @@ HOURLY_VARIABLES = [
     "diffuse_radiation",
     "direct_normal_irradiance",
 ]
+# Stage 11: requested only when the environment assumptions need them, so the
+# default request (and therefore the cache key and payload hash) is unchanged.
+OPTIONAL_HOURLY_VARIABLES: dict[str, str] = {
+    "cloud_cover": "cloud_cover_percent",
+    "soil_temperature_0_to_7cm": "soil_temperature_c",
+}
 
 CACHE_DIRECTORY = BACKEND_DIRECTORY / "data" / "cache" / "weather"
 
@@ -108,14 +114,20 @@ def build_request_params(
     city: CityConfig,
     start_date: date,
     end_date: date,
+    extra_variables: tuple[str, ...] = (),
 ) -> dict[str, str | float]:
+    unknown = set(extra_variables) - set(OPTIONAL_HOURLY_VARIABLES)
+    if unknown:
+        raise ValueError(f"Unsupported weather variables: {sorted(unknown)}")
+
+    hourly = HOURLY_VARIABLES + sorted(set(extra_variables))
     return {
         "latitude": city.latitude,
         "longitude": city.longitude,
         "elevation": city.elevation_m,
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
-        "hourly": ",".join(HOURLY_VARIABLES),
+        "hourly": ",".join(hourly),
         "timezone": city.timezone,
         "wind_speed_unit": "ms",
         "temperature_unit": "celsius",
@@ -389,6 +401,15 @@ def parse_weather_points(
         expected_length,
     )
 
+    optional_series: dict[str, list] = {}
+    for api_name, field_name in OPTIONAL_HOURLY_VARIABLES.items():
+        values = hourly.get(api_name)
+        if values is None:
+            continue
+        if len(values) != expected_length:
+            raise RuntimeError(f"Open-Meteo variable {api_name} has inconsistent length")
+        optional_series[field_name] = values
+        
     tz = payload_timezone(payload, city)
     points: list[WeatherPoint] = []
 
@@ -447,6 +468,10 @@ def parse_weather_points(
                         index,
                     ),
                 ),
+                **{
+                    field: (None if values[index] is None else float(values[index]))
+                    for field, values in optional_series.items()
+                },
             )
         )
 
@@ -457,19 +482,18 @@ async def get_historical_weather(
     city: CityConfig,
     start_time_local: datetime,
     duration_minutes: int,
+    extra_variables: tuple[str, ...] = (),
 ) -> WeatherTimeSeries:
     start_time = normalize_local_datetime(start_time_local, city.timezone)
-    # Elapsed-time arithmetic must happen in UTC; adding a timedelta to a
-    # ZoneInfo datetime is wall-clock arithmetic and drifts across DST.
     end_time = (to_utc(start_time) + timedelta(minutes=duration_minutes)).astimezone(
         ZoneInfo(city.timezone)
     )
-
     return await get_historical_weather_range(
         city=city,
         start_time_local=start_time,
         end_time_local=end_time,
         padding_hours=1,
+        extra_variables=extra_variables,
     )
 
 async def get_historical_weather_range(
@@ -479,6 +503,7 @@ async def get_historical_weather_range(
     end_time_local: datetime,
     padding_hours: int = 1,
     require_window_coverage: bool = True,
+    extra_variables: tuple[str, ...] = (),
 ) -> WeatherTimeSeries:
     """Fetch, normalise and validate an ERA5 series for a local time range.
 
@@ -511,8 +536,9 @@ async def get_historical_weather_range(
         city=city,
         start_date=query_start.date(),
         end_date=query_end.date(),
+        extra_variables=extra_variables,
     )
-
+    
     payload, from_cache = await request_open_meteo(params)
 
     raw_points = parse_weather_points(payload, city)

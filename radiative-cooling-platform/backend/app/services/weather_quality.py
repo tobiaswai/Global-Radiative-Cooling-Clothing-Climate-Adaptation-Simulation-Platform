@@ -282,3 +282,6 @@ def ensure_window_covered(
                     "missing_steps": str(gap.missing_steps),
                 },
             )
+
+class WeatherMissingVariableError(WeatherDataError):
+    code = "WEATHER_MISSING_VARIABLE"

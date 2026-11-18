@@ -55,10 +55,11 @@ from app.services.longwave import (
     resolve_longwave_optics,
 )
 
+from app.services.psychrometrics import saturation_vapor_pressure_kpa
 
 # Version of the physics engine written into every response. Bump together
 # with MODEL_PARAMETER_SET_VERSION whenever results change.
-MODEL_VERSION = "0.8.0"  # Stage 6: shared time-weighted summary, audit grid, radiation convention key
+MODEL_VERSION = "0.9.0"  # Stage 11: radiant environment v2 (ADR 0008)
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
@@ -93,9 +94,7 @@ RESPIRATORY_REFERENCE_PRESSURE = _param("respiratory_reference_vapor_pressure")
 RESPIRATORY_SENSIBLE_COEFFICIENT = _param("respiratory_sensible_coefficient")
 EXHALED_AIR_TEMPERATURE = _param("exhaled_air_temperature")
 FALLBACK_SKY_OFFSET = _param("fallback_sky_temperature_offset")
-MAGNUS_A = _param("magnus_a")
-MAGNUS_B = _param("magnus_b")
-MAGNUS_C = _param("magnus_c")
+
 
 KELVIN_OFFSET = 273.15
 BODY_SETPOINT = (
@@ -162,9 +161,6 @@ def effective_radiation_area_ratio(position: BodyPosition) -> float:
         return RADIATION_AREA_RATIO_SITTING
     return RADIATION_AREA_RATIO_STANDING
 
-
-def saturation_vapor_pressure_kpa(temperature_c: float) -> float:
-    return MAGNUS_A * exp(MAGNUS_B * temperature_c / (temperature_c + MAGNUS_C))
 
 
 def convection_coefficient_w_m2k(wind_speed_m_s: float) -> float:
@@ -520,22 +516,6 @@ def _integrate(
             skin_storage / capacities.skin_j_m2k,
         ]
         
-    # in the output loop: pass optics=optics to calculate_fluxes and add
-    #     longwave_window_w_m2=(
-    #         None if fluxes.longwave_window is None
-    #         else round(fluxes.longwave_window, 4)
-    #     ),
-    # to the TimeSeriesPoint(...) call.
-
-    # in ClothingSummary(...):
-    #     infrared_emissivity_window=optics.window if optics.selective else None,
-    #     infrared_emissivity_outside_window=round(optics.outside, 6) if optics.selective else None,
-
-    # in ScenarioResult(...):
-    #     assumptions_applied=assumptions_applied(
-    #         clothing, solar_split_available=solar_split_available
-    #     ) + longwave_notes(optics),
-    
     solution = solve_ivp(
         fun=derivatives,
         t_span=(0.0, duration_seconds),
@@ -558,22 +538,25 @@ def _integrate(
     time_series: list[TimeSeriesPoint] = []
     net_heat: list[float] = []
 
-    for time_seconds, core_c, skin_c, emit in zip(
-        times, core_array, skin_array, is_output, strict=True
-    ):
+    for time_seconds, core_c, skin_c, emit in zip(times, core_array, skin_array, is_output, strict=True):
+        environment = environment_at(float(time_seconds))
         fluxes = calculate_fluxes(
             core_temperature_c=float(core_c),
             skin_temperature_c=float(skin_c),
-            environment=environment_at(float(time_seconds)),
+            environment=environment,
             person=person,
             material=material,
             clothing=clothing,
+            optics=optics,
         )
-
-        net_heat.append(fluxes.net_body_gain)  # every audit point
+        net_heat.append(fluxes.net_body_gain)
 
         if not emit:
             continue
+
+        sky_c = environment.sky_temperature_c
+        if sky_c is None:
+            sky_c = environment.air_temperature_c - FALLBACK_SKY_OFFSET
 
         time_series.append(
             TimeSeriesPoint(
@@ -587,15 +570,16 @@ def _integrate(
                 core_to_skin_w_m2=round(fluxes.core_to_skin, 4),
                 maximum_evaporation_w_m2=round(fluxes.maximum_evaporation, 4),
                 skin_wettedness=round(fluxes.skin_wettedness, 4),
-                clothing_surface_temperature_c=round(
-                    fluxes.clothing_surface_temperature_c, 4
-                ),
+                clothing_surface_temperature_c=round(fluxes.clothing_surface_temperature_c, 4),
                 skin_blood_flow_kg_h_m2=round(fluxes.skin_blood_flow, 4),
                 solar_incident_w_m2=round(fluxes.solar_incident, 4),
-                solar_absorbed_by_textile_w_m2=round(
-                    fluxes.solar_absorbed_by_textile, 4
-                ),
+                solar_absorbed_by_textile_w_m2=round(fluxes.solar_absorbed_by_textile, 4),
                 solar_transmitted_w_m2=round(fluxes.solar_transmitted, 4),
+                longwave_window_w_m2=(
+                    None if fluxes.longwave_window is None else round(fluxes.longwave_window, 4)
+                ),
+                sky_temperature_c=round(sky_c, 4),
+                surround_temperature_c=round(environment.mean_radiant_temperature_c, 4),
             )
         )
 
@@ -616,12 +600,14 @@ def _integrate(
             evaporative_resistance_m2pa_w=round(clothing.evaporative_resistance_m2pa_w, 4),
             evaporative_resistance_source=clothing.evaporative_resistance_source,
             infrared_transmittance=clothing.infrared_transmittance,
-            infrared_emissivity_window=material.infrared_emissivity_window,
             clothing_area_factor=round(clothing.area_factor, 6),
             clothing_area_factor_source=clothing.area_factor_source,
+            infrared_emissivity_window=round(optics.window, 6) if optics.selective else None,
+            infrared_emissivity_outside_window=round(optics.outside, 6) if optics.selective else None,
         ),
-        assumptions_applied=assumptions_applied(
-            clothing, solar_split_available=solar_split_available
+        assumptions_applied=(
+            assumptions_applied(clothing, solar_split_available=solar_split_available)
+            + longwave_notes(optics)
         ),
         body=BodyThermalSummary(
             body_mass_kg=person.body_mass_kg,
