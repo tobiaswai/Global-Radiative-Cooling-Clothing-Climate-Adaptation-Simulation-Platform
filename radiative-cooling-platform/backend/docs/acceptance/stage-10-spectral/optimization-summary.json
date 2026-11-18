@@ -1,0 +1,6727 @@
+{
+  "runs": [
+    {
+      "name": "J-tol-1e-4-b",
+      "id": "e1db6442",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "infrared_emissivity": 0.99
+      },
+      "best_objective": 2.439081,
+      "best_violation": 4.098262,
+      "best_metrics": {
+        "peak_skin_temperature_c": 37.0226,
+        "skin_exceedance_fraction": 0.939092,
+        "peak_core_temperature_c": 38.2201,
+        "mean_skin_cooling_c": 1.37305
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 4.098262,
+      "upper_peak_skin": 37.0226,
+      "evaluations": 122,
+      "generations": 11,
+      "seconds": 15.858,
+      "plateau_fraction": null,
+      "warnings": [
+        "best infrared_emissivity sits at its upper search bound (0.99); the optimum may lie outside the searched range",
+        "skin_excess_degree_hours <= 0.5: violated by 1.939, but the whole search range moves skin_excess_degree_hours by only about 0.08524 (linearised at the optimum); the target is out of reach of the selected variables",
+        "peak_core_temperature_c <= 38: violated by 0.2201, but the whole search range moves peak_core_temperature_c by only about 0.058 (linearised at the optimum); the target is out of reach of the selected variables"
+      ],
+      "sensitivities": [
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.9655,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0242,
+            "mean_skin_cooling_c": 0.0432,
+            "mean_skin_temperature_c": -0.0432,
+            "peak_core_temperature_c": -0.058,
+            "peak_skin_temperature_c": -0.07,
+            "core_exceedance_fraction": -0.0151,
+            "core_excess_degree_hours": -0.00906,
+            "skin_exceedance_fraction": -0.001,
+            "skin_excess_degree_hours": -0.08524
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ]
+    },
+    {
+      "name": "J-tol-1e-5",
+      "id": "d5c68053",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "infrared_emissivity": 0.99
+      },
+      "best_objective": 2.439081,
+      "best_violation": 4.098262,
+      "best_metrics": {
+        "peak_skin_temperature_c": 37.0226,
+        "skin_exceedance_fraction": 0.939092,
+        "peak_core_temperature_c": 38.2201,
+        "mean_skin_cooling_c": 1.37305
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 4.098262,
+      "upper_peak_skin": 37.0226,
+      "evaluations": 151,
+      "generations": 14,
+      "seconds": 19.536,
+      "plateau_fraction": null,
+      "warnings": [
+        "best infrared_emissivity sits at its upper search bound (0.99); the optimum may lie outside the searched range",
+        "skin_excess_degree_hours <= 0.5: violated by 1.939, but the whole search range moves skin_excess_degree_hours by only about 0.08524 (linearised at the optimum); the target is out of reach of the selected variables",
+        "peak_core_temperature_c <= 38: violated by 0.2201, but the whole search range moves peak_core_temperature_c by only about 0.058 (linearised at the optimum); the target is out of reach of the selected variables"
+      ],
+      "sensitivities": [
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.9655,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0242,
+            "mean_skin_cooling_c": 0.0432,
+            "mean_skin_temperature_c": -0.0432,
+            "peak_core_temperature_c": -0.058,
+            "peak_skin_temperature_c": -0.07,
+            "core_exceedance_fraction": -0.0151,
+            "core_excess_degree_hours": -0.00906,
+            "skin_exceedance_fraction": -0.001,
+            "skin_excess_degree_hours": -0.08524
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ]
+    },
+    {
+      "name": "J-tol-1e-4",
+      "id": "fc14744e",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.4582,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0794,
+        "mean_skin_cooling_c": 1.54682
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 34.1105,
+      "evaluations": 115,
+      "generations": 13,
+      "seconds": 15.392,
+      "plateau_fraction": null,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.5245,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0176,
+            "mean_skin_cooling_c": 0.4606,
+            "mean_skin_temperature_c": -0.4606,
+            "peak_core_temperature_c": -0.044,
+            "peak_skin_temperature_c": -0.366,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": 0.0,
+            "skin_excess_degree_hours": 0.0
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ]
+    },
+    {
+      "name": "I-Lhasa-min-demand-seed-6",
+      "id": "5792f168",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 6,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.4806,
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.13281778211284515,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 35.7972,
+        "skin_exceedance_fraction": 0.640023,
+        "peak_core_temperature_c": 37.3287,
+        "mean_skin_cooling_c": 0.23334
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 745,
+      "generations": 30,
+      "seconds": 98.687,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "infrared_emissivity requirement reads at its least demanding bound (0.5): the true requirement lies beyond the searched range",
+        "41% of map cells share the minimum; ties are resolved towards the least demanding design",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.446585,
+          "probe_high": 0.514585,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.2778,
+            "mean_skin_cooling_c": 1.63,
+            "mean_skin_temperature_c": -1.63,
+            "peak_core_temperature_c": -0.451,
+            "peak_skin_temperature_c": -1.628,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -1.19147,
+            "skin_excess_degree_hours": -2.10386
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.524534,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.059517,
+            "mean_skin_cooling_c": 0.364694,
+            "mean_skin_temperature_c": -0.364894,
+            "peak_core_temperature_c": -0.087878,
+            "peak_skin_temperature_c": -0.315562,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.260399,
+            "skin_excess_degree_hours": -0.438132
+          }
+        }
+      ],
+      "required_x_at_best_y": 0.368,
+      "required_y_at_best_x": 0.5,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.368,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.81,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        }
+      ]
+    },
+    {
+      "name": "I-Lhasa-min-demand-seed-5",
+      "id": "f2dc6007",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 5,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.4806,
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.13278593937575026,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 35.7972,
+        "skin_exceedance_fraction": 0.640091,
+        "peak_core_temperature_c": 37.3287,
+        "mean_skin_cooling_c": 0.23329
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 741,
+      "generations": 30,
+      "seconds": 96.962,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "infrared_emissivity requirement reads at its least demanding bound (0.5): the true requirement lies beyond the searched range",
+        "41% of map cells share the minimum; ties are resolved towards the least demanding design",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.446575,
+          "probe_high": 0.514575,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.2778,
+            "mean_skin_cooling_c": 1.6298,
+            "mean_skin_temperature_c": -1.6299,
+            "peak_core_temperature_c": -0.451,
+            "peak_skin_temperature_c": -1.627,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -1.191,
+            "skin_excess_degree_hours": -2.10381
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.52451,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.059376,
+            "mean_skin_cooling_c": 0.364851,
+            "mean_skin_temperature_c": -0.364851,
+            "peak_core_temperature_c": -0.087964,
+            "peak_skin_temperature_c": -0.313872,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.259994,
+            "skin_excess_degree_hours": -0.438201
+          }
+        }
+      ],
+      "required_x_at_best_y": 0.368,
+      "required_y_at_best_x": 0.5,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.368,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.81,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        }
+      ]
+    },
+    {
+      "name": "I-Lhasa-min-demand-seed-4",
+      "id": "bf4a830c",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 4,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.4806,
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.1327957833133253,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 35.7972,
+        "skin_exceedance_fraction": 0.640071,
+        "peak_core_temperature_c": 37.3287,
+        "mean_skin_cooling_c": 0.23332
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 743,
+      "generations": 30,
+      "seconds": 94.39,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "infrared_emissivity requirement reads at its least demanding bound (0.5): the true requirement lies beyond the searched range",
+        "41% of map cells share the minimum; ties are resolved towards the least demanding design",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.446587,
+          "probe_high": 0.514587,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.2778,
+            "mean_skin_cooling_c": 1.63,
+            "mean_skin_temperature_c": -1.63,
+            "peak_core_temperature_c": -0.451,
+            "peak_skin_temperature_c": -1.628,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -1.19152,
+            "skin_excess_degree_hours": -2.10391
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.524511,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.059373,
+            "mean_skin_cooling_c": 0.364836,
+            "mean_skin_temperature_c": -0.364836,
+            "peak_core_temperature_c": -0.087961,
+            "peak_skin_temperature_c": -0.315858,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.260303,
+            "skin_excess_degree_hours": -0.438103
+          }
+        }
+      ],
+      "required_x_at_best_y": 0.368,
+      "required_y_at_best_x": 0.5,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.368,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.81,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        }
+      ]
+    },
+    {
+      "name": "I-Lhasa-min-demand-seed-3",
+      "id": "17bea257",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 3,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.4806,
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.13277891656662663,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 35.7972,
+        "skin_exceedance_fraction": 0.640091,
+        "peak_core_temperature_c": 37.3287,
+        "mean_skin_cooling_c": 0.23328
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 738,
+      "generations": 30,
+      "seconds": 95.516,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "infrared_emissivity requirement reads at its least demanding bound (0.5): the true requirement lies beyond the searched range",
+        "41% of map cells share the minimum; ties are resolved towards the least demanding design",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.446571,
+          "probe_high": 0.514571,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.2778,
+            "mean_skin_cooling_c": 1.6298,
+            "mean_skin_temperature_c": -1.6299,
+            "peak_core_temperature_c": -0.451,
+            "peak_skin_temperature_c": -1.627,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -1.19092,
+            "skin_excess_degree_hours": -2.10384
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.524506,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.059385,
+            "mean_skin_cooling_c": 0.364711,
+            "mean_skin_temperature_c": -0.364711,
+            "peak_core_temperature_c": -0.087978,
+            "peak_skin_temperature_c": -0.313923,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.259916,
+            "skin_excess_degree_hours": -0.438013
+          }
+        }
+      ],
+      "required_x_at_best_y": 0.368,
+      "required_y_at_best_x": 0.5,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.368,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.81,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        }
+      ]
+    },
+    {
+      "name": "I-Lhasa-min-demand-seed-2",
+      "id": "3f44794e",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 2,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.4806,
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.13278631452581038,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 35.7972,
+        "skin_exceedance_fraction": 0.640071,
+        "peak_core_temperature_c": 37.3287,
+        "mean_skin_cooling_c": 0.23331
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 742,
+      "generations": 30,
+      "seconds": 94.727,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "infrared_emissivity requirement reads at its least demanding bound (0.5): the true requirement lies beyond the searched range",
+        "41% of map cells share the minimum; ties are resolved towards the least demanding design",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.446588,
+          "probe_high": 0.514588,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.2778,
+            "mean_skin_cooling_c": 1.6299,
+            "mean_skin_temperature_c": -1.63,
+            "peak_core_temperature_c": -0.451,
+            "peak_skin_temperature_c": -1.627,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -1.19155,
+            "skin_excess_degree_hours": -2.10388
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.524501,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.059398,
+            "mean_skin_cooling_c": 0.364785,
+            "mean_skin_temperature_c": -0.364785,
+            "peak_core_temperature_c": -0.087996,
+            "peak_skin_temperature_c": -0.315987,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.260409,
+            "skin_excess_degree_hours": -0.438162
+          }
+        }
+      ],
+      "required_x_at_best_y": 0.368,
+      "required_y_at_best_x": 0.5,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.368,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.81,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        }
+      ]
+    },
+    {
+      "name": "I-Lhasa-min-demand-seed-1",
+      "id": "7575e16b",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 1,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.4806,
+        "infrared_emissivity": 0.5
+      },
+      "best_objective": 0.13279345738295323,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 35.7972,
+        "skin_exceedance_fraction": 0.640071,
+        "peak_core_temperature_c": 37.3287,
+        "mean_skin_cooling_c": 0.23332
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 740,
+      "generations": 30,
+      "seconds": 100.325,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.5); the optimum may lie outside the searched range",
+        "infrared_emissivity requirement reads at its least demanding bound (0.5): the true requirement lies beyond the searched range",
+        "41% of map cells share the minimum; ties are resolved towards the least demanding design",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.446588,
+          "probe_high": 0.514588,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.2778,
+            "mean_skin_cooling_c": 1.63,
+            "mean_skin_temperature_c": -1.63,
+            "peak_core_temperature_c": -0.451,
+            "peak_skin_temperature_c": -1.628,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -1.19152,
+            "skin_excess_degree_hours": -2.10391
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.5,
+          "probe_high": 0.524508,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.059381,
+            "mean_skin_cooling_c": 0.364881,
+            "mean_skin_temperature_c": -0.364881,
+            "peak_core_temperature_c": -0.087971,
+            "peak_skin_temperature_c": -0.315897,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.260335,
+            "skin_excess_degree_hours": -0.438157
+          }
+        }
+      ],
+      "required_x_at_best_y": 0.368,
+      "required_y_at_best_x": 0.5,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.368,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.81,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.504,
+          "required_x": 0.504
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.436,
+          "required_x": 0.436
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.368,
+          "required_x": 0.368
+        }
+      ]
+    },
+    {
+      "name": "H2 - Jul",
+      "id": "565fe333",
+      "city": "dubai",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity_window": 0.99,
+        "infrared_emissivity_outside_window": 0.05
+      },
+      "best_objective": 3.601119,
+      "best_violation": 7.196338,
+      "best_metrics": {
+        "peak_skin_temperature_c": 37.8585,
+        "skin_exceedance_fraction": 0.970815,
+        "peak_core_temperature_c": 38.9941,
+        "mean_skin_cooling_c": 1.83442
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 7.196338,
+      "upper_peak_skin": 37.8585,
+      "evaluations": 1057,
+      "generations": 30,
+      "seconds": 390.447,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [
+        "best solar_reflectance sits at its upper search bound (0.98); the optimum may lie outside the searched range",
+        "best infrared_emissivity_window sits at its upper search bound (0.99); the optimum may lie outside the searched range",
+        "best infrared_emissivity_outside_window sits at its lower search bound (0.05); the optimum may lie outside the searched range"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.946,
+          "probe_high": 0.98,
+          "full_range_effects": {
+            "mean_core_cooling_c": 1.17,
+            "mean_skin_cooling_c": 1.6002,
+            "mean_skin_temperature_c": -1.6002,
+            "peak_core_temperature_c": -2.128,
+            "peak_skin_temperature_c": -2.358,
+            "core_exceedance_fraction": -1.3186,
+            "core_excess_degree_hours": -1.61602,
+            "skin_exceedance_fraction": -0.01734,
+            "skin_excess_degree_hours": -3.17794
+          }
+        },
+        {
+          "name": "infrared_emissivity_window",
+          "probe_low": 0.9655,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0706,
+            "mean_skin_cooling_c": 0.0966,
+            "mean_skin_temperature_c": -0.0966,
+            "peak_core_temperature_c": -0.132,
+            "peak_skin_temperature_c": -0.148,
+            "core_exceedance_fraction": -0.08828,
+            "core_excess_degree_hours": -0.09152,
+            "skin_exceedance_fraction": -0.00102,
+            "skin_excess_degree_hours": -0.19194
+          }
+        },
+        {
+          "name": "infrared_emissivity_outside_window",
+          "probe_low": 0.05,
+          "probe_high": 0.097,
+          "full_range_effects": {
+            "mean_core_cooling_c": -0.0792,
+            "mean_skin_cooling_c": -0.1088,
+            "mean_skin_temperature_c": 0.109,
+            "peak_core_temperature_c": 0.148,
+            "peak_skin_temperature_c": 0.164,
+            "core_exceedance_fraction": 0.10078,
+            "core_excess_degree_hours": 0.1036,
+            "skin_exceedance_fraction": 0.00136,
+            "skin_excess_degree_hours": 0.21608
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "infrared_emissivity_window \u00d7 infrared_emissivity_outside_window",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.05,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.144,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.238,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.332,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.426,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.52,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.614,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.708,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.802,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.896,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "H1 -  Aug",
+      "id": "75b42686",
+      "city": "dubai",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity_window": 0.99,
+        "infrared_emissivity_outside_window": 0.05
+      },
+      "best_objective": 3.81147,
+      "best_violation": 7.75924,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.0157,
+        "skin_exceedance_fraction": 0.971934,
+        "peak_core_temperature_c": 39.1363,
+        "mean_skin_cooling_c": 1.9489
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 7.75924,
+      "upper_peak_skin": 38.0157,
+      "evaluations": 1059,
+      "generations": 30,
+      "seconds": 398.358,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [
+        "best solar_reflectance sits at its upper search bound (0.98); the optimum may lie outside the searched range",
+        "best infrared_emissivity_window sits at its upper search bound (0.99); the optimum may lie outside the searched range",
+        "best infrared_emissivity_outside_window sits at its lower search bound (0.05); the optimum may lie outside the searched range",
+        "low infrared_emissivity_outside_window is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.946,
+          "probe_high": 0.98,
+          "full_range_effects": {
+            "mean_core_cooling_c": 1.2016,
+            "mean_skin_cooling_c": 1.6318,
+            "mean_skin_temperature_c": -1.6318,
+            "peak_core_temperature_c": -2.132,
+            "peak_skin_temperature_c": -2.36,
+            "core_exceedance_fraction": -0.98534,
+            "core_excess_degree_hours": -1.88278,
+            "skin_exceedance_fraction": -0.01594,
+            "skin_excess_degree_hours": -3.24296
+          }
+        },
+        {
+          "name": "infrared_emissivity_window",
+          "probe_low": 0.9655,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0392,
+            "mean_skin_cooling_c": 0.0536,
+            "mean_skin_temperature_c": -0.0536,
+            "peak_core_temperature_c": -0.072,
+            "peak_skin_temperature_c": -0.08,
+            "core_exceedance_fraction": -0.03626,
+            "core_excess_degree_hours": -0.05958,
+            "skin_exceedance_fraction": -0.0005,
+            "skin_excess_degree_hours": -0.1065
+          }
+        },
+        {
+          "name": "infrared_emissivity_outside_window",
+          "probe_low": 0.05,
+          "probe_high": 0.097,
+          "full_range_effects": {
+            "mean_core_cooling_c": -0.189,
+            "mean_skin_cooling_c": -0.2574,
+            "mean_skin_temperature_c": 0.2574,
+            "peak_core_temperature_c": 0.344,
+            "peak_skin_temperature_c": 0.38,
+            "core_exceedance_fraction": 0.17052,
+            "core_excess_degree_hours": 0.28852,
+            "skin_exceedance_fraction": 0.0027,
+            "skin_excess_degree_hours": 0.51134
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "infrared_emissivity_window \u00d7 infrared_emissivity_outside_window",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.05,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.144,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.238,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.332,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.426,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.52,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.614,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.708,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.802,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.896,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "G2 - Equal to air (shaded)",
+      "id": "b0738e64",
+      "city": "guangzhou",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "",
+      "verdict": "unconstrained",
+      "best": {
+        "infrared_emissivity": 0.99
+      },
+      "best_objective": 2.375719,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.8985,
+        "skin_exceedance_fraction": 0.933548,
+        "peak_core_temperature_c": 38.1176,
+        "mean_skin_cooling_c": 1.45854
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 36.8985,
+      "evaluations": 142,
+      "generations": 13,
+      "seconds": 17.643,
+      "plateau_fraction": null,
+      "warnings": [
+        "best infrared_emissivity sits at its upper search bound (0.99); the optimum may lie outside the searched range"
+      ],
+      "sensitivities": [
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.943,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.1172,
+            "mean_skin_cooling_c": 0.1942,
+            "mean_skin_temperature_c": -0.1944,
+            "peak_core_temperature_c": -0.258,
+            "peak_skin_temperature_c": -0.286,
+            "core_exceedance_fraction": -0.09108,
+            "core_excess_degree_hours": -0.0269,
+            "skin_exceedance_fraction": -0.00878,
+            "skin_excess_degree_hours": -0.37704
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ]
+    },
+    {
+      "name": "G1 - Air + linear solar gain",
+      "id": "9524b52a",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "",
+      "verdict": "unconstrained",
+      "best": {
+        "infrared_emissivity": 0.05
+      },
+      "best_objective": 4.399347,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.4243,
+        "skin_exceedance_fraction": 0.971222,
+        "peak_core_temperature_c": 39.4968,
+        "mean_skin_cooling_c": 1.55468
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 38.5257,
+      "evaluations": 72,
+      "generations": 7,
+      "seconds": 9.55,
+      "plateau_fraction": null,
+      "warnings": [
+        "best infrared_emissivity sits at its lower search bound (0.05); the optimum may lie outside the searched range",
+        "best beats the most demanding design: performance is non-monotone in at least one variable (check demand directions and the trends below)",
+        "low infrared_emissivity is favoured because T_mrt = T_air + solar gain places the non-sky hemisphere above the clothing surface; repeat with mean_radiant_temperature_method = equal_to_air before reporting this"
+      ],
+      "sensitivities": [
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.05,
+          "probe_high": 0.097,
+          "full_range_effects": {
+            "mean_core_cooling_c": -0.0556,
+            "mean_skin_cooling_c": -0.0738,
+            "mean_skin_temperature_c": 0.0738,
+            "peak_core_temperature_c": 0.114,
+            "peak_skin_temperature_c": 0.12,
+            "core_exceedance_fraction": 0.01758,
+            "core_excess_degree_hours": 0.09776,
+            "skin_exceedance_fraction": 0.00108,
+            "skin_excess_degree_hours": 0.14612
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ]
+    },
+    {
+      "name": "F2-degree-hours-gradient",
+      "id": "53682159",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.5; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "best_objective": 2.126385,
+      "best_violation": 3.25277,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7782,
+        "skin_exceedance_fraction": 0.931436,
+        "peak_core_temperature_c": 37.9969,
+        "mean_skin_cooling_c": 1.53443
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 3.25277,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 442,
+      "generations": 15,
+      "seconds": 57.356,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [
+        "best solar_reflectance sits at its upper search bound (0.98); the optimum may lie outside the searched range",
+        "best infrared_emissivity sits at its upper search bound (0.99); the optimum may lie outside the searched range"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.946,
+          "probe_high": 0.98,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.701,
+            "mean_skin_cooling_c": 1.3778,
+            "mean_skin_temperature_c": -1.3778,
+            "peak_core_temperature_c": -1.886,
+            "peak_skin_temperature_c": -2.068,
+            "core_exceedance_fraction": -0.87962,
+            "core_excess_degree_hours": -0.08126,
+            "skin_exceedance_fraction": -0.0664,
+            "skin_excess_degree_hours": -2.66524
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.9655,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0144,
+            "mean_skin_cooling_c": 0.0336,
+            "mean_skin_temperature_c": -0.0336,
+            "peak_core_temperature_c": -0.036,
+            "peak_skin_temperature_c": -0.046,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.00058,
+            "skin_excess_degree_hours": -0.06666
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "F1-infeasible-out-of-reach",
+      "id": "4a13bad4",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_excess_degree_hours <= 0.0; peak_core_temperature_c <= 38.0; peak_skin_temperature_c <= 32.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.99
+      },
+      "best_objective": 2.126385,
+      "best_violation": 9.03097,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7782,
+        "skin_exceedance_fraction": 0.931436,
+        "peak_core_temperature_c": 37.9969,
+        "mean_skin_cooling_c": 1.53443
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 9.03097,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 739,
+      "generations": 30,
+      "seconds": 94.374,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [
+        "best solar_reflectance sits at its upper search bound (0.98); the optimum may lie outside the searched range",
+        "best infrared_emissivity sits at its upper search bound (0.99); the optimum may lie outside the searched range",
+        "peak_skin_temperature_c <= 32: violated by 4.778, but the whole search range moves peak_skin_temperature_c by only about 2.114 (linearised at the optimum); the target is out of reach of the selected variables"
+      ],
+      "sensitivities": [
+        {
+          "name": "solar_reflectance",
+          "probe_low": 0.946,
+          "probe_high": 0.98,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.701,
+            "mean_skin_cooling_c": 1.3778,
+            "mean_skin_temperature_c": -1.3778,
+            "peak_core_temperature_c": -1.886,
+            "peak_skin_temperature_c": -2.068,
+            "core_exceedance_fraction": -0.87962,
+            "core_excess_degree_hours": -0.08126,
+            "skin_exceedance_fraction": -0.0664,
+            "skin_excess_degree_hours": -2.66524
+          }
+        },
+        {
+          "name": "infrared_emissivity",
+          "probe_low": 0.9655,
+          "probe_high": 0.99,
+          "full_range_effects": {
+            "mean_core_cooling_c": 0.0144,
+            "mean_skin_cooling_c": 0.0336,
+            "mean_skin_temperature_c": -0.0336,
+            "peak_core_temperature_c": -0.036,
+            "peak_skin_temperature_c": -0.046,
+            "core_exceedance_fraction": 0.0,
+            "core_excess_degree_hours": 0.0,
+            "skin_exceedance_fraction": -0.00058,
+            "skin_excess_degree_hours": -0.06666
+          }
+        }
+      ],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        "improves",
+        "improves"
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L-W \u62c9\u85a9\u6b0a\u91cd 2:1 / 1:2",
+      "id": "8ba7a747",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7243,
+      "evaluations": 242,
+      "generations": 5,
+      "seconds": 31.655,
+      "plateau_fraction": 0.2727272727272727,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.614,
+      "min_y_at_max_x": 0.1,
+      "feasible_cell_share": 0.355,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.1,
+          "minimum_x": 0.802,
+          "required_x": null
+        },
+        {
+          "y": 0.188,
+          "minimum_x": 0.802,
+          "required_x": null
+        },
+        {
+          "y": 0.276,
+          "minimum_x": 0.802,
+          "required_x": null
+        },
+        {
+          "y": 0.364,
+          "minimum_x": 0.802,
+          "required_x": null
+        },
+        {
+          "y": 0.452,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.54,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.628,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.716,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.804,
+          "minimum_x": 0.614,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.614,
+          "required_x": null
+        },
+        {
+          "y": 0.98,
+          "minimum_x": 0.614,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 5",
+      "id": "caffdcbc",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 5,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 202,
+      "generations": 3,
+      "seconds": 27.078,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.521,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 4",
+      "id": "3d83bbf7",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 4,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 29.775,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.521,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 3",
+      "id": "3ebaa2be",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 3,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 29.239,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.521,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 2",
+      "id": "f0897399",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 2,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 222,
+      "generations": 4,
+      "seconds": 28.744,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.521,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 1",
+      "id": "dd922952",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 1,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 281,
+      "generations": 7,
+      "seconds": 36.664,
+      "plateau_fraction": 0.3305785123966942,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.628,
+      "min_y_at_max_x": 0.55,
+      "feasible_cell_share": 0.413,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.55,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.594,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.638,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.682,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.726,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.77,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.814,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.858,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.902,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.946,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.628,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09",
+      "id": "d72418b5",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.9,
+        "infrared_emissivity": 0.95
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.1375,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0433,
+        "mean_skin_cooling_c": 1.96577
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 242,
+      "generations": 5,
+      "seconds": 31.319,
+      "plateau_fraction": 0.2809917355371901,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.628,
+      "min_y_at_max_x": 0.05,
+      "feasible_cell_share": 0.355,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.05,
+          "minimum_x": 0.804,
+          "required_x": null
+        },
+        {
+          "y": 0.144,
+          "minimum_x": 0.804,
+          "required_x": null
+        },
+        {
+          "y": 0.238,
+          "minimum_x": 0.804,
+          "required_x": null
+        },
+        {
+          "y": 0.332,
+          "minimum_x": 0.804,
+          "required_x": null
+        },
+        {
+          "y": 0.426,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.52,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.614,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.708,
+          "minimum_x": 0.716,
+          "required_x": null
+        },
+        {
+          "y": 0.802,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.896,
+          "minimum_x": 0.628,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.628,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "H Dubai peak_core min, \u03b5 [0.05,0.99]",
+      "id": "d93fc6a6",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "",
+      "verdict": "unconstrained",
+      "best": {
+        "infrared_emissivity": 0.05
+      },
+      "best_objective": 39.4968,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.4243,
+        "skin_exceedance_fraction": 0.971222,
+        "peak_core_temperature_c": 39.4968,
+        "mean_skin_cooling_c": 1.55468
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 38.5257,
+      "evaluations": 23,
+      "generations": 1,
+      "seconds": 3.075,
+      "plateau_fraction": null,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=20",
+      "id": "e73cb312",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 20,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.9885
+      },
+      "best_objective": 0.93144,
+      "best_violation": 0.8314400000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.93144,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.5343
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 1042,
+      "generations": 22,
+      "seconds": 142.371,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=10",
+      "id": "54d8da07",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.9799,
+        "infrared_emissivity": 0.9876
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.705,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-E Guangzhou mult=5",
+      "id": "66f1f154",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 5,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.9524
+      },
+      "best_objective": 0.931483,
+      "best_violation": 0.831483,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7819,
+        "skin_exceedance_fraction": 0.931483,
+        "peak_core_temperature_c": 37.9998,
+        "mean_skin_cooling_c": 1.53179
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 340,
+      "generations": 21,
+      "seconds": 45.3,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=5",
+      "id": "98519f18",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 5,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.9894
+      },
+      "best_objective": 0.93144,
+      "best_violation": 0.8314400000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.93144,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.53431
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 501,
+      "generations": 18,
+      "seconds": 71.1,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=4",
+      "id": "e5877c0f",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 4,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.9873
+      },
+      "best_objective": 0.931442,
+      "best_violation": 0.831442,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7785,
+        "skin_exceedance_fraction": 0.931442,
+        "peak_core_temperature_c": 37.9971,
+        "mean_skin_cooling_c": 1.53421
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.227,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=3",
+      "id": "9f03fcea",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 3,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.9799,
+        "infrared_emissivity": 0.9899
+      },
+      "best_objective": 0.931444,
+      "best_violation": 0.8314440000000001,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7784,
+        "skin_exceedance_fraction": 0.931444,
+        "peak_core_temperature_c": 37.997,
+        "mean_skin_cooling_c": 1.53428
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 520,
+      "generations": 19,
+      "seconds": 73.434,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=2",
+      "id": "d8f0070d",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 2,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.9853
+      },
+      "best_objective": 0.931443,
+      "best_violation": 0.831443,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931443,
+        "peak_core_temperature_c": 37.9973,
+        "mean_skin_cooling_c": 1.53408
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 522,
+      "generations": 19,
+      "seconds": 70.077,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-D Guangzhou seed=1",
+      "id": "c1f10bd8",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 1,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.9799,
+        "infrared_emissivity": 0.9842
+      },
+      "best_objective": 0.93145,
+      "best_violation": 0.83145,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.779,
+        "skin_exceedance_fraction": 0.93145,
+        "peak_core_temperature_c": 37.9975,
+        "mean_skin_cooling_c": 1.53389
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 462,
+      "generations": 16,
+      "seconds": 64.497,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-C Lhasa July skin_exceedance \u2264 0.1 + peak_core \u2264 38",
+      "id": "455d0022",
+      "city": "lhasa",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "feasible",
+      "best": {
+        "solar_reflectance": 0.827,
+        "infrared_emissivity": 0.7751
+      },
+      "best_objective": 0.0,
+      "best_violation": 0.0,
+      "best_metrics": {
+        "peak_skin_temperature_c": 34.5537,
+        "skin_exceedance_fraction": 0.0,
+        "peak_core_temperature_c": 37.0906,
+        "mean_skin_cooling_c": 1.49506
+      },
+      "baseline_feasible": true,
+      "upper_feasible": true,
+      "upper_violation": 0.0,
+      "upper_peak_skin": 33.7608,
+      "evaluations": 200,
+      "generations": 3,
+      "seconds": 27.69,
+      "plateau_fraction": 0.4132231404958678,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": 0.572,
+      "min_y_at_max_x": 0.5,
+      "feasible_cell_share": 0.521,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": 0.708,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": 0.64,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": 0.572,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-C Dubai July skin_exceedance \u2264 0.1 + peak_core \u2264 38",
+      "id": "f99754dc",
+      "city": "dubai",
+      "months": [
+        7
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.5004
+      },
+      "best_objective": 0.969569,
+      "best_violation": 2.150069000000004,
+      "best_metrics": {
+        "peak_skin_temperature_c": 38.188,
+        "skin_exceedance_fraction": 0.969569,
+        "peak_core_temperature_c": 39.2805,
+        "mean_skin_cooling_c": 1.70892
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 2.2187320000000015,
+      "upper_peak_skin": 38.2597,
+      "evaluations": 621,
+      "generations": 24,
+      "seconds": 89.03,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-B Guangzhou skin_exceedance \u2264 0.1 + peak_core \u2264 38",
+      "id": "b25a5038",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.9799,
+        "infrared_emissivity": 0.9876
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 72.203,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Exp-A Guangzhou peak_skin \u2264 33",
+      "id": "314795f8",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "mean_skin_temperature_c <= 33.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.9798,
+        "infrared_emissivity": 0.9886
+      },
+      "best_objective": 0.931456,
+      "best_violation": 3.0220899999999986,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7789,
+        "skin_exceedance_fraction": 0.931456,
+        "peak_core_temperature_c": 37.9975,
+        "mean_skin_cooling_c": 1.53397
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 3.021630000000002,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 500,
+      "generations": 18,
+      "seconds": 68.218,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Guangzhou August requirement search",
+      "id": "d2d9cca2",
+      "city": "guangzhou",
+      "months": [
+        9
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.98,
+        "infrared_emissivity": 0.9866
+      },
+      "best_objective": 0.803111,
+      "best_violation": 0.703111,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.6638,
+        "skin_exceedance_fraction": 0.803111,
+        "peak_core_temperature_c": 37.9028,
+        "mean_skin_cooling_c": 1.54986
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.702697,
+      "upper_peak_skin": 36.6635,
+      "evaluations": 481,
+      "generations": 17,
+      "seconds": 64.969,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    },
+    {
+      "name": "Guangzhou August requirement search",
+      "id": "6300b97f",
+      "city": "guangzhou",
+      "months": [
+        8
+      ],
+      "seed": 42,
+      "mult": 10,
+      "constraints": "skin_exceedance_fraction <= 0.1; peak_core_temperature_c <= 38.0",
+      "verdict": "infeasible",
+      "best": {
+        "solar_reflectance": 0.9799,
+        "infrared_emissivity": 0.9876
+      },
+      "best_objective": 0.931447,
+      "best_violation": 0.831447,
+      "best_metrics": {
+        "peak_skin_temperature_c": 36.7787,
+        "skin_exceedance_fraction": 0.931447,
+        "peak_core_temperature_c": 37.9972,
+        "mean_skin_cooling_c": 1.53411
+      },
+      "baseline_feasible": false,
+      "upper_feasible": false,
+      "upper_violation": 0.8314360000000001,
+      "upper_peak_skin": 36.7782,
+      "evaluations": 519,
+      "generations": 19,
+      "seconds": 67.048,
+      "plateau_fraction": 0.008264462809917356,
+      "warnings": [],
+      "sensitivities": [],
+      "required_x_at_best_y": null,
+      "required_y_at_best_x": null,
+      "objective_trend": [
+        null,
+        null
+      ],
+      "map": "solar_reflectance \u00d7 infrared_emissivity",
+      "min_x_at_max_y": null,
+      "min_y_at_max_x": null,
+      "feasible_cell_share": 0.0,
+      "x_lower_bound_binding": false,
+      "frontier": [
+        {
+          "y": 0.5,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.549,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.598,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.647,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.696,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.745,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.794,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.843,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.892,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.941,
+          "minimum_x": null,
+          "required_x": null
+        },
+        {
+          "y": 0.99,
+          "minimum_x": null,
+          "required_x": null
+        }
+      ]
+    }
+  ],
+  "curves": [
+    [
+      {
+        "name": "J-tol-1e-4-b",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            1004.099012
+          ],
+          [
+            31,
+            1004.099012
+          ],
+          [
+            41,
+            1004.099012
+          ],
+          [
+            50,
+            1004.099012
+          ],
+          [
+            60,
+            1004.099006
+          ],
+          [
+            70,
+            1004.098788
+          ],
+          [
+            80,
+            1004.098602
+          ],
+          [
+            90,
+            1004.098386
+          ],
+          [
+            100,
+            1004.098274
+          ],
+          [
+            109,
+            1004.098274
+          ],
+          [
+            119,
+            1004.098268
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "J-tol-1e-5",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            1004.099012
+          ],
+          [
+            31,
+            1004.099012
+          ],
+          [
+            41,
+            1004.099012
+          ],
+          [
+            50,
+            1004.099012
+          ],
+          [
+            60,
+            1004.099006
+          ],
+          [
+            70,
+            1004.098788
+          ],
+          [
+            80,
+            1004.098602
+          ],
+          [
+            90,
+            1004.098386
+          ],
+          [
+            100,
+            1004.098274
+          ],
+          [
+            109,
+            1004.098274
+          ],
+          [
+            119,
+            1004.098268
+          ],
+          [
+            129,
+            1004.098268
+          ],
+          [
+            138,
+            1004.098268
+          ],
+          [
+            148,
+            1004.098268
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "J-tol-1e-4",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            0.12419886329825881
+          ],
+          [
+            31,
+            0.12419886329825881
+          ],
+          [
+            41,
+            0.02650373477167746
+          ],
+          [
+            48,
+            0.003126385869926268
+          ],
+          [
+            55,
+            0.003126385869926268
+          ],
+          [
+            62,
+            0.0019088905598226096
+          ],
+          [
+            69,
+            1.4294289389337618e-05
+          ],
+          [
+            79,
+            1.4294289389337618e-05
+          ],
+          [
+            87,
+            1.4294289389337618e-05
+          ],
+          [
+            95,
+            1.4294289389337618e-05
+          ],
+          [
+            100,
+            1.4294289389337618e-05
+          ],
+          [
+            106,
+            1.4294289389337618e-05
+          ],
+          [
+            112,
+            1.3417167359001636e-05
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "I-Lhasa-min-demand-seed-6",
+        "multiplier": 10,
+        "seed": 6,
+        "curve": [
+          [
+            41,
+            2.725480144698141
+          ],
+          [
+            61,
+            1.598835370531701
+          ],
+          [
+            81,
+            1.5478510981423146
+          ],
+          [
+            101,
+            1.5478510981423146
+          ],
+          [
+            121,
+            1.5478510981423146
+          ],
+          [
+            140,
+            1.5369202950974914
+          ],
+          [
+            160,
+            1.465948708721182
+          ],
+          [
+            180,
+            1.3675561438005515
+          ],
+          [
+            200,
+            1.3634688732763527
+          ],
+          [
+            220,
+            1.3634688732763527
+          ],
+          [
+            240,
+            1.3634688732763527
+          ],
+          [
+            260,
+            1.3634688732763527
+          ],
+          [
+            280,
+            1.3634688732763527
+          ],
+          [
+            300,
+            1.339794197141067
+          ],
+          [
+            320,
+            1.339794197141067
+          ],
+          [
+            340,
+            1.3306093445884033
+          ],
+          [
+            360,
+            1.3306093445884033
+          ],
+          [
+            380,
+            1.3306093445884033
+          ],
+          [
+            400,
+            1.3306093445884033
+          ],
+          [
+            420,
+            1.3306093445884033
+          ],
+          [
+            440,
+            1.3297571142457987
+          ],
+          [
+            460,
+            1.3291632894734318
+          ],
+          [
+            480,
+            1.3291632894734318
+          ],
+          [
+            500,
+            1.3287215096567502
+          ],
+          [
+            520,
+            1.3287215096567502
+          ],
+          [
+            540,
+            1.3287215096567502
+          ],
+          [
+            560,
+            1.3287215096567502
+          ],
+          [
+            580,
+            1.3284476752662768
+          ],
+          [
+            600,
+            1.3281794657026815
+          ],
+          [
+            620,
+            1.3281794657026815
+          ]
+        ]
+      },
+      {
+        "name": "I-Lhasa-min-demand-seed-5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            41,
+            1.5292830036810803
+          ],
+          [
+            61,
+            1.5292830036810803
+          ],
+          [
+            81,
+            1.5292830036810803
+          ],
+          [
+            101,
+            1.5292830036810803
+          ],
+          [
+            121,
+            1.4607648156879218
+          ],
+          [
+            141,
+            1.4607648156879218
+          ],
+          [
+            161,
+            1.4607648156879218
+          ],
+          [
+            181,
+            1.4171332085650026
+          ],
+          [
+            201,
+            1.4171332085650026
+          ],
+          [
+            221,
+            1.3728744617458266
+          ],
+          [
+            240,
+            1.3728744617458266
+          ],
+          [
+            260,
+            1.361810141718447
+          ],
+          [
+            279,
+            1.3536817243271273
+          ],
+          [
+            299,
+            1.3468589721727313
+          ],
+          [
+            319,
+            1.3386054717959472
+          ],
+          [
+            339,
+            1.3386054717959472
+          ],
+          [
+            358,
+            1.3343128841499385
+          ],
+          [
+            378,
+            1.3307640871083941
+          ],
+          [
+            397,
+            1.3307640871083941
+          ],
+          [
+            416,
+            1.3307640871083941
+          ],
+          [
+            436,
+            1.3307640871083941
+          ],
+          [
+            456,
+            1.3307640871083941
+          ],
+          [
+            476,
+            1.3303804838488786
+          ],
+          [
+            496,
+            1.3299043303075035
+          ],
+          [
+            516,
+            1.3299043303075035
+          ],
+          [
+            536,
+            1.3295923702657089
+          ],
+          [
+            556,
+            1.328056453426605
+          ],
+          [
+            576,
+            1.328056453426605
+          ],
+          [
+            596,
+            1.3278584691055884
+          ],
+          [
+            616,
+            1.3278584691055884
+          ]
+        ]
+      },
+      {
+        "name": "I-Lhasa-min-demand-seed-4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            1.729880422247806
+          ],
+          [
+            61,
+            1.6799872040850212
+          ],
+          [
+            81,
+            1.6799872040850212
+          ],
+          [
+            101,
+            1.6547900846508197
+          ],
+          [
+            121,
+            1.6437144237757906
+          ],
+          [
+            141,
+            1.623616521621123
+          ],
+          [
+            161,
+            1.623616521621123
+          ],
+          [
+            181,
+            1.5641344168798426
+          ],
+          [
+            201,
+            1.3559318642132812
+          ],
+          [
+            221,
+            1.3559318642132812
+          ],
+          [
+            241,
+            1.3559318642132812
+          ],
+          [
+            261,
+            1.3419121720792855
+          ],
+          [
+            281,
+            1.3419121720792855
+          ],
+          [
+            301,
+            1.3320194322777945
+          ],
+          [
+            321,
+            1.3320194322777945
+          ],
+          [
+            341,
+            1.3320194322777945
+          ],
+          [
+            361,
+            1.3320194322777945
+          ],
+          [
+            381,
+            1.3320194322777945
+          ],
+          [
+            401,
+            1.3300724140689446
+          ],
+          [
+            421,
+            1.3290957659648432
+          ],
+          [
+            441,
+            1.3289414245448143
+          ],
+          [
+            461,
+            1.3289414245448143
+          ],
+          [
+            481,
+            1.3282399626102788
+          ],
+          [
+            501,
+            1.3280759133480309
+          ],
+          [
+            520,
+            1.3280759133480309
+          ],
+          [
+            540,
+            1.3280143179772
+          ],
+          [
+            560,
+            1.3280143179772
+          ],
+          [
+            578,
+            1.3280143179772
+          ],
+          [
+            598,
+            1.327990757817316
+          ],
+          [
+            618,
+            1.3279587323065796
+          ]
+        ]
+      },
+      {
+        "name": "I-Lhasa-min-demand-seed-3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            1.8527381509754774
+          ],
+          [
+            60,
+            1.8527381509754774
+          ],
+          [
+            80,
+            1.4154372964864161
+          ],
+          [
+            99,
+            1.4154372964864161
+          ],
+          [
+            118,
+            1.3691064459319628
+          ],
+          [
+            138,
+            1.3691064459319628
+          ],
+          [
+            158,
+            1.3691064459319628
+          ],
+          [
+            177,
+            1.3691064459319628
+          ],
+          [
+            197,
+            1.3691064459319628
+          ],
+          [
+            217,
+            1.345921601140767
+          ],
+          [
+            237,
+            1.345921601140767
+          ],
+          [
+            256,
+            1.3330455565885628
+          ],
+          [
+            276,
+            1.3293164099520034
+          ],
+          [
+            296,
+            1.3293164099520034
+          ],
+          [
+            316,
+            1.3293164099520034
+          ],
+          [
+            336,
+            1.3293164099520034
+          ],
+          [
+            356,
+            1.3293164099520034
+          ],
+          [
+            376,
+            1.3293164099520034
+          ],
+          [
+            396,
+            1.3281384448367912
+          ],
+          [
+            416,
+            1.3281384448367912
+          ],
+          [
+            436,
+            1.3281384448367912
+          ],
+          [
+            456,
+            1.3281384448367912
+          ],
+          [
+            476,
+            1.3281384448367912
+          ],
+          [
+            496,
+            1.327807766946713
+          ],
+          [
+            516,
+            1.327807766946713
+          ],
+          [
+            536,
+            1.327807766946713
+          ],
+          [
+            555,
+            1.327787456200275
+          ],
+          [
+            574,
+            1.327787456200275
+          ],
+          [
+            594,
+            1.327787456200275
+          ],
+          [
+            613,
+            1.327787456200275
+          ]
+        ]
+      },
+      {
+        "name": "I-Lhasa-min-demand-seed-2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            1.5664646926005046
+          ],
+          [
+            61,
+            1.5664646926005046
+          ],
+          [
+            81,
+            1.5664646926005046
+          ],
+          [
+            101,
+            1.5664646926005046
+          ],
+          [
+            121,
+            1.5664646926005046
+          ],
+          [
+            141,
+            1.4719367335876792
+          ],
+          [
+            161,
+            1.3822842548434382
+          ],
+          [
+            181,
+            1.3822842548434382
+          ],
+          [
+            201,
+            1.3822842548434382
+          ],
+          [
+            220,
+            1.3822842548434382
+          ],
+          [
+            240,
+            1.3822842548434382
+          ],
+          [
+            260,
+            1.3781904250433226
+          ],
+          [
+            280,
+            1.3680592186835276
+          ],
+          [
+            300,
+            1.351534187048356
+          ],
+          [
+            320,
+            1.3350660871380085
+          ],
+          [
+            340,
+            1.3350660871380085
+          ],
+          [
+            360,
+            1.3348799081452878
+          ],
+          [
+            379,
+            1.3348799081452878
+          ],
+          [
+            399,
+            1.330306471618344
+          ],
+          [
+            419,
+            1.330306471618344
+          ],
+          [
+            439,
+            1.3283548384395156
+          ],
+          [
+            459,
+            1.3283548384395156
+          ],
+          [
+            479,
+            1.327928722651613
+          ],
+          [
+            498,
+            1.327928722651613
+          ],
+          [
+            518,
+            1.327928722651613
+          ],
+          [
+            538,
+            1.327928722651613
+          ],
+          [
+            558,
+            1.327928722651613
+          ],
+          [
+            577,
+            1.327928722651613
+          ],
+          [
+            597,
+            1.3278826544129452
+          ],
+          [
+            617,
+            1.3278582904823035
+          ]
+        ]
+      },
+      {
+        "name": "I-Lhasa-min-demand-seed-1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            1.8118347063681985
+          ],
+          [
+            61,
+            1.7758508943555684
+          ],
+          [
+            81,
+            1.5007268420767232
+          ],
+          [
+            100,
+            1.5007268420767232
+          ],
+          [
+            120,
+            1.4122775078159184
+          ],
+          [
+            140,
+            1.4122775078159184
+          ],
+          [
+            160,
+            1.4122775078159184
+          ],
+          [
+            180,
+            1.3817195153238748
+          ],
+          [
+            200,
+            1.3817195153238748
+          ],
+          [
+            220,
+            1.3817195153238748
+          ],
+          [
+            240,
+            1.3577050714747463
+          ],
+          [
+            260,
+            1.3577050714747463
+          ],
+          [
+            280,
+            1.3577050714747463
+          ],
+          [
+            300,
+            1.3577050714747463
+          ],
+          [
+            319,
+            1.3577050714747463
+          ],
+          [
+            339,
+            1.3577050714747463
+          ],
+          [
+            359,
+            1.3577050714747463
+          ],
+          [
+            378,
+            1.3485231072777852
+          ],
+          [
+            397,
+            1.3397171477488845
+          ],
+          [
+            416,
+            1.3397171477488845
+          ],
+          [
+            436,
+            1.3373984308259703
+          ],
+          [
+            456,
+            1.3324943879126787
+          ],
+          [
+            476,
+            1.3324943879126787
+          ],
+          [
+            496,
+            1.3317163027859131
+          ],
+          [
+            516,
+            1.3294027261203512
+          ],
+          [
+            536,
+            1.3294027261203512
+          ],
+          [
+            556,
+            1.3294027261203512
+          ],
+          [
+            576,
+            1.3284983396148815
+          ],
+          [
+            595,
+            1.3284983396148815
+          ],
+          [
+            615,
+            1.3279349382132637
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "H2 - Jul",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            61,
+            1007.756422
+          ],
+          [
+            91,
+            1007.562784
+          ],
+          [
+            120,
+            1007.51585
+          ],
+          [
+            150,
+            1007.51585
+          ],
+          [
+            180,
+            1007.432442
+          ],
+          [
+            210,
+            1007.307522
+          ],
+          [
+            240,
+            1007.307522
+          ],
+          [
+            270,
+            1007.307522
+          ],
+          [
+            300,
+            1007.295212
+          ],
+          [
+            330,
+            1007.286162
+          ],
+          [
+            360,
+            1007.260034
+          ],
+          [
+            390,
+            1007.258342
+          ],
+          [
+            420,
+            1007.247392
+          ],
+          [
+            450,
+            1007.218202
+          ],
+          [
+            480,
+            1007.212878
+          ],
+          [
+            510,
+            1007.212878
+          ],
+          [
+            539,
+            1007.2096
+          ],
+          [
+            569,
+            1007.2096
+          ],
+          [
+            599,
+            1007.201024
+          ],
+          [
+            629,
+            1007.201024
+          ],
+          [
+            659,
+            1007.201024
+          ],
+          [
+            689,
+            1007.198248
+          ],
+          [
+            719,
+            1007.198248
+          ],
+          [
+            749,
+            1007.197504
+          ],
+          [
+            779,
+            1007.197504
+          ],
+          [
+            809,
+            1007.197504
+          ],
+          [
+            839,
+            1007.197504
+          ],
+          [
+            869,
+            1007.197504
+          ],
+          [
+            899,
+            1007.197504
+          ],
+          [
+            929,
+            1007.197504
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "H1 -  Aug",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            61,
+            1007.962926
+          ],
+          [
+            91,
+            1007.962926
+          ],
+          [
+            121,
+            1007.86505
+          ],
+          [
+            151,
+            1007.86505
+          ],
+          [
+            181,
+            1007.86505
+          ],
+          [
+            211,
+            1007.805542
+          ],
+          [
+            241,
+            1007.805542
+          ],
+          [
+            271,
+            1007.805542
+          ],
+          [
+            301,
+            1007.805542
+          ],
+          [
+            331,
+            1007.805542
+          ],
+          [
+            361,
+            1007.805542
+          ],
+          [
+            391,
+            1007.805542
+          ],
+          [
+            421,
+            1007.805542
+          ],
+          [
+            451,
+            1007.805542
+          ],
+          [
+            481,
+            1007.80406
+          ],
+          [
+            511,
+            1007.795122
+          ],
+          [
+            541,
+            1007.793032
+          ],
+          [
+            571,
+            1007.781754
+          ],
+          [
+            601,
+            1007.777556
+          ],
+          [
+            631,
+            1007.777556
+          ],
+          [
+            661,
+            1007.775496
+          ],
+          [
+            691,
+            1007.77518
+          ],
+          [
+            721,
+            1007.76721
+          ],
+          [
+            751,
+            1007.766408
+          ],
+          [
+            781,
+            1007.766408
+          ],
+          [
+            811,
+            1007.766398
+          ],
+          [
+            841,
+            1007.762224
+          ],
+          [
+            871,
+            1007.762224
+          ],
+          [
+            901,
+            1007.762206
+          ],
+          [
+            931,
+            1007.762206
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "G2 - Equal to air (shaded)",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            -0.028599277494516084
+          ],
+          [
+            31,
+            -0.028599277494516084
+          ],
+          [
+            41,
+            -0.028599277494516084
+          ],
+          [
+            50,
+            -0.028599277494516084
+          ],
+          [
+            60,
+            -0.02864318981492294
+          ],
+          [
+            70,
+            -0.029294336729074406
+          ],
+          [
+            80,
+            -0.029917516249253807
+          ],
+          [
+            90,
+            -0.030502763497541354
+          ],
+          [
+            100,
+            -0.030984115447982748
+          ],
+          [
+            110,
+            -0.03098411712512213
+          ],
+          [
+            120,
+            -0.030994095917564895
+          ],
+          [
+            130,
+            -0.031022045106164593
+          ],
+          [
+            139,
+            -0.03102205148363758
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "G1 - Air + linear solar gain",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            -0.23980558011366981
+          ],
+          [
+            31,
+            -0.23980558011366981
+          ],
+          [
+            41,
+            -0.24271134962652227
+          ],
+          [
+            48,
+            -0.24336568736141298
+          ],
+          [
+            55,
+            -0.24336568736141298
+          ],
+          [
+            62,
+            -0.24340580911094425
+          ],
+          [
+            69,
+            -0.24346999857057136
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "F2-degree-hours-gradient",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            1003.568282
+          ],
+          [
+            61,
+            1003.36176
+          ],
+          [
+            80,
+            1003.36176
+          ],
+          [
+            100,
+            1003.276918
+          ],
+          [
+            119,
+            1003.276918
+          ],
+          [
+            139,
+            1003.276918
+          ],
+          [
+            159,
+            1003.276918
+          ],
+          [
+            179,
+            1003.276918
+          ],
+          [
+            199,
+            1003.276918
+          ],
+          [
+            219,
+            1003.276918
+          ],
+          [
+            239,
+            1003.275298
+          ],
+          [
+            259,
+            1003.26127
+          ],
+          [
+            279,
+            1003.26127
+          ],
+          [
+            299,
+            1003.26127
+          ],
+          [
+            319,
+            1003.26127
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "F1-infeasible-out-of-reach",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            1009.437382
+          ],
+          [
+            61,
+            1009.17116
+          ],
+          [
+            80,
+            1009.17116
+          ],
+          [
+            100,
+            1009.062618
+          ],
+          [
+            119,
+            1009.062618
+          ],
+          [
+            139,
+            1009.062618
+          ],
+          [
+            159,
+            1009.062618
+          ],
+          [
+            179,
+            1009.062618
+          ],
+          [
+            199,
+            1009.062618
+          ],
+          [
+            219,
+            1009.062618
+          ],
+          [
+            239,
+            1009.060598
+          ],
+          [
+            259,
+            1009.04257
+          ],
+          [
+            279,
+            1009.04257
+          ],
+          [
+            299,
+            1009.04257
+          ],
+          [
+            319,
+            1009.04257
+          ],
+          [
+            339,
+            1009.041766
+          ],
+          [
+            359,
+            1009.033464
+          ],
+          [
+            379,
+            1009.033464
+          ],
+          [
+            399,
+            1009.031698
+          ],
+          [
+            419,
+            1009.031698
+          ],
+          [
+            439,
+            1009.031698
+          ],
+          [
+            458,
+            1009.031698
+          ],
+          [
+            478,
+            1009.031698
+          ],
+          [
+            497,
+            1009.031698
+          ],
+          [
+            516,
+            1009.031698
+          ],
+          [
+            536,
+            1009.031698
+          ],
+          [
+            556,
+            1009.031698
+          ],
+          [
+            576,
+            1009.031698
+          ],
+          [
+            596,
+            1009.031698
+          ],
+          [
+            616,
+            1009.031564
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L-W \u62c9\u85a9\u6b0a\u91cd 2:1 / 1:2",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ],
+          [
+            121,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ]
+        ]
+      },
+      {
+        "name": "Exp-C Lhasa July skin_exceedance \u2264 0.1 + peak_core \u2264 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            40,
+            0.0
+          ],
+          [
+            59,
+            0.0
+          ],
+          [
+            79,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09seed 1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            100,
+            0.0
+          ],
+          [
+            120,
+            0.0
+          ],
+          [
+            140,
+            0.0
+          ],
+          [
+            160,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "L \u62c9\u85a9\uff1a\u6700\u4f4e\u9700\u6c42\uff08parameter_demand\uff0c\u6b0a\u91cd 1:1\uff09",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            0.0
+          ],
+          [
+            61,
+            0.0
+          ],
+          [
+            81,
+            0.0
+          ],
+          [
+            101,
+            0.0
+          ],
+          [
+            121,
+            0.0
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "H Dubai peak_core min, \u03b5 [0.05,0.99]",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            39.4982
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-E Guangzhou mult=20",
+        "multiplier": 20,
+        "seed": 42,
+        "curve": [
+          [
+            81,
+            856.0663339999966
+          ],
+          [
+            121,
+            856.0663339999966
+          ],
+          [
+            161,
+            851.7379060000022
+          ],
+          [
+            201,
+            851.7379060000022
+          ],
+          [
+            241,
+            835.100569000001
+          ],
+          [
+            281,
+            834.3505189999992
+          ],
+          [
+            321,
+            834.3505189999992
+          ],
+          [
+            361,
+            832.4575259999999
+          ],
+          [
+            401,
+            832.4575259999999
+          ],
+          [
+            441,
+            832.4575259999999
+          ],
+          [
+            481,
+            832.4575259999999
+          ],
+          [
+            521,
+            832.3944630000001
+          ],
+          [
+            561,
+            832.3944630000001
+          ],
+          [
+            601,
+            832.3944630000001
+          ],
+          [
+            641,
+            832.3854540000001
+          ],
+          [
+            681,
+            832.37144
+          ],
+          [
+            721,
+            832.37144
+          ],
+          [
+            761,
+            832.37144
+          ],
+          [
+            801,
+            832.37144
+          ],
+          [
+            841,
+            832.37144
+          ],
+          [
+            881,
+            832.37144
+          ],
+          [
+            921,
+            832.37144
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=10",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      },
+      {
+        "name": "Exp-E Guangzhou mult=5",
+        "multiplier": 5,
+        "seed": 42,
+        "curve": [
+          [
+            21,
+            889.8420090000011
+          ],
+          [
+            31,
+            877.0468140000022
+          ],
+          [
+            40,
+            877.0468140000022
+          ],
+          [
+            50,
+            877.0468140000022
+          ],
+          [
+            60,
+            877.0468140000022
+          ],
+          [
+            70,
+            877.0468140000022
+          ],
+          [
+            80,
+            877.0468140000022
+          ],
+          [
+            90,
+            834.9655339999978
+          ],
+          [
+            100,
+            834.9655339999978
+          ],
+          [
+            110,
+            833.3325010000016
+          ],
+          [
+            120,
+            833.3325010000016
+          ],
+          [
+            130,
+            833.3325010000016
+          ],
+          [
+            140,
+            833.3325010000016
+          ],
+          [
+            150,
+            833.3325010000016
+          ],
+          [
+            159,
+            833.3325010000016
+          ],
+          [
+            169,
+            833.3325010000016
+          ],
+          [
+            179,
+            833.3325010000016
+          ],
+          [
+            189,
+            832.419488
+          ],
+          [
+            199,
+            832.4144829999999
+          ],
+          [
+            209,
+            832.4144829999999
+          ],
+          [
+            219,
+            832.4144829999999
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=5",
+        "multiplier": 10,
+        "seed": 5,
+        "curve": [
+          [
+            40,
+            896.7895560000005
+          ],
+          [
+            60,
+            847.1709389999987
+          ],
+          [
+            80,
+            846.0388070000012
+          ],
+          [
+            100,
+            845.3557240000024
+          ],
+          [
+            120,
+            832.465534
+          ],
+          [
+            140,
+            832.465534
+          ],
+          [
+            160,
+            832.465534
+          ],
+          [
+            180,
+            832.413482
+          ],
+          [
+            200,
+            832.413482
+          ],
+          [
+            220,
+            832.3854540000001
+          ],
+          [
+            240,
+            832.3854540000001
+          ],
+          [
+            260,
+            832.3854540000001
+          ],
+          [
+            280,
+            832.376445
+          ],
+          [
+            300,
+            832.37144
+          ],
+          [
+            320,
+            832.37144
+          ],
+          [
+            340,
+            832.37144
+          ],
+          [
+            360,
+            832.37144
+          ],
+          [
+            380,
+            832.37144
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=4",
+        "multiplier": 10,
+        "seed": 4,
+        "curve": [
+          [
+            41,
+            880.2294969999975
+          ],
+          [
+            61,
+            880.2294969999975
+          ],
+          [
+            81,
+            880.2294969999975
+          ],
+          [
+            101,
+            837.4636319999993
+          ],
+          [
+            121,
+            837.4376059999993
+          ],
+          [
+            141,
+            837.4376059999993
+          ],
+          [
+            161,
+            837.4376059999993
+          ],
+          [
+            181,
+            834.4175859999992
+          ],
+          [
+            201,
+            833.0965649999986
+          ],
+          [
+            221,
+            832.5725410000033
+          ],
+          [
+            240,
+            832.387456
+          ],
+          [
+            259,
+            832.387456
+          ],
+          [
+            279,
+            832.387456
+          ],
+          [
+            298,
+            832.387456
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.3854540000001
+          ],
+          [
+            378,
+            832.3814500000001
+          ],
+          [
+            398,
+            832.373442
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=3",
+        "multiplier": 10,
+        "seed": 3,
+        "curve": [
+          [
+            41,
+            847.444713000001
+          ],
+          [
+            61,
+            847.444713000001
+          ],
+          [
+            81,
+            847.444713000001
+          ],
+          [
+            101,
+            836.2016699999988
+          ],
+          [
+            121,
+            836.2016699999988
+          ],
+          [
+            141,
+            836.2016699999988
+          ],
+          [
+            161,
+            836.2016699999988
+          ],
+          [
+            181,
+            834.713582000002
+          ],
+          [
+            201,
+            834.713582000002
+          ],
+          [
+            221,
+            834.713582000002
+          ],
+          [
+            241,
+            832.4254940000001
+          ],
+          [
+            261,
+            832.4254940000001
+          ],
+          [
+            281,
+            832.413482
+          ],
+          [
+            301,
+            832.413482
+          ],
+          [
+            321,
+            832.404473
+          ],
+          [
+            341,
+            832.397466
+          ],
+          [
+            361,
+            832.3894580000001
+          ],
+          [
+            380,
+            832.3754440000001
+          ],
+          [
+            399,
+            832.3754440000001
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=2",
+        "multiplier": 10,
+        "seed": 2,
+        "curve": [
+          [
+            41,
+            885.0625300000006
+          ],
+          [
+            61,
+            866.7189869999995
+          ],
+          [
+            81,
+            855.6209890000005
+          ],
+          [
+            101,
+            855.6209890000005
+          ],
+          [
+            121,
+            855.6209890000005
+          ],
+          [
+            141,
+            855.6209890000005
+          ],
+          [
+            161,
+            855.6209890000005
+          ],
+          [
+            181,
+            843.3087769999967
+          ],
+          [
+            201,
+            839.2487169999989
+          ],
+          [
+            221,
+            839.0046729999993
+          ],
+          [
+            241,
+            832.387456
+          ],
+          [
+            261,
+            832.387456
+          ],
+          [
+            281,
+            832.387456
+          ],
+          [
+            301,
+            832.387456
+          ],
+          [
+            321,
+            832.387456
+          ],
+          [
+            341,
+            832.387456
+          ],
+          [
+            361,
+            832.387456
+          ],
+          [
+            381,
+            832.3854540000001
+          ],
+          [
+            401,
+            832.374443
+          ]
+        ]
+      },
+      {
+        "name": "Exp-D Guangzhou seed=1",
+        "multiplier": 10,
+        "seed": 1,
+        "curve": [
+          [
+            41,
+            885.1262929999987
+          ],
+          [
+            61,
+            855.9562239999967
+          ],
+          [
+            81,
+            851.8961639999987
+          ],
+          [
+            101,
+            845.8408090000015
+          ],
+          [
+            121,
+            843.4737420000032
+          ],
+          [
+            141,
+            837.6216900000026
+          ],
+          [
+            161,
+            837.6216900000026
+          ],
+          [
+            181,
+            832.3944630000001
+          ],
+          [
+            201,
+            832.3944630000001
+          ],
+          [
+            221,
+            832.3944630000001
+          ],
+          [
+            241,
+            832.3944630000001
+          ],
+          [
+            261,
+            832.3944630000001
+          ],
+          [
+            281,
+            832.3944630000001
+          ],
+          [
+            301,
+            832.387456
+          ],
+          [
+            321,
+            832.3814500000001
+          ],
+          [
+            341,
+            832.3814500000001
+          ]
+        ]
+      },
+      {
+        "name": "Exp-B Guangzhou skin_exceedance \u2264 0.1 + peak_core \u2264 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      },
+      {
+        "name": "Guangzhou August requirement search",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            913.8961620000011
+          ],
+          [
+            61,
+            856.4090770000024
+          ],
+          [
+            80,
+            856.4090770000024
+          ],
+          [
+            100,
+            835.4835520000001
+          ],
+          [
+            119,
+            835.4835520000001
+          ],
+          [
+            139,
+            835.4835520000001
+          ],
+          [
+            159,
+            835.4835520000001
+          ],
+          [
+            179,
+            835.4835520000001
+          ],
+          [
+            199,
+            835.4835520000001
+          ],
+          [
+            219,
+            835.4835520000001
+          ],
+          [
+            239,
+            835.4835520000001
+          ],
+          [
+            259,
+            832.395464
+          ],
+          [
+            279,
+            832.395464
+          ],
+          [
+            299,
+            832.395464
+          ],
+          [
+            318,
+            832.387456
+          ],
+          [
+            338,
+            832.387456
+          ],
+          [
+            358,
+            832.387456
+          ],
+          [
+            378,
+            832.380449
+          ],
+          [
+            398,
+            832.378447
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-C Dubai July skin_exceedance \u2264 0.1 + peak_core \u2264 38",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            2208.255085000003
+          ],
+          [
+            61,
+            2208.255085000003
+          ],
+          [
+            81,
+            2178.0948249999983
+          ],
+          [
+            101,
+            2161.7336640000003
+          ],
+          [
+            121,
+            2161.7336640000003
+          ],
+          [
+            141,
+            2161.7336640000003
+          ],
+          [
+            161,
+            2158.2036339999977
+          ],
+          [
+            181,
+            2157.297628000003
+          ],
+          [
+            201,
+            2154.674605000002
+          ],
+          [
+            221,
+            2154.572602999999
+          ],
+          [
+            241,
+            2154.572602999999
+          ],
+          [
+            261,
+            2154.572602999999
+          ],
+          [
+            281,
+            2152.5525829999965
+          ],
+          [
+            300,
+            2152.5525829999965
+          ],
+          [
+            320,
+            2152.2495800000006
+          ],
+          [
+            340,
+            2152.2495800000006
+          ],
+          [
+            360,
+            2152.2495800000006
+          ],
+          [
+            380,
+            2151.9475779999984
+          ],
+          [
+            400,
+            2151.8465770000016
+          ],
+          [
+            420,
+            2151.3405709999993
+          ],
+          [
+            440,
+            2151.3405709999993
+          ],
+          [
+            460,
+            2151.3405709999993
+          ],
+          [
+            480,
+            2151.140571
+          ],
+          [
+            500,
+            2151.0385690000035
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Exp-A Guangzhou peak_skin \u2264 33",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            3083.594161999997
+          ],
+          [
+            61,
+            3044.3620770000007
+          ],
+          [
+            80,
+            3044.3620770000007
+          ],
+          [
+            100,
+            3027.921551999998
+          ],
+          [
+            119,
+            3027.921551999998
+          ],
+          [
+            139,
+            3027.921551999998
+          ],
+          [
+            159,
+            3027.921551999998
+          ],
+          [
+            179,
+            3027.921551999998
+          ],
+          [
+            199,
+            3027.921551999998
+          ],
+          [
+            219,
+            3027.921551999998
+          ],
+          [
+            239,
+            3027.5515950000013
+          ],
+          [
+            259,
+            3024.7315060000014
+          ],
+          [
+            279,
+            3024.7315060000014
+          ],
+          [
+            299,
+            3024.7315060000014
+          ],
+          [
+            319,
+            3024.7315060000014
+          ],
+          [
+            339,
+            3024.5815050000033
+          ],
+          [
+            359,
+            3023.0214559999986
+          ],
+          [
+            379,
+            3023.0214559999986
+          ]
+        ]
+      }
+    ],
+    [
+      {
+        "name": "Guangzhou August requirement search",
+        "multiplier": 10,
+        "seed": 42,
+        "curve": [
+          [
+            41,
+            734.067234
+          ],
+          [
+            61,
+            728.749922
+          ],
+          [
+            81,
+            720.40959
+          ],
+          [
+            101,
+            706.588783
+          ],
+          [
+            121,
+            706.588783
+          ],
+          [
+            141,
+            706.588783
+          ],
+          [
+            161,
+            706.588783
+          ],
+          [
+            181,
+            706.588783
+          ],
+          [
+            200,
+            706.588783
+          ],
+          [
+            220,
+            704.742939
+          ],
+          [
+            240,
+            704.742939
+          ],
+          [
+            260,
+            704.4246210000001
+          ],
+          [
+            280,
+            704.4246210000001
+          ],
+          [
+            300,
+            704.312509
+          ],
+          [
+            320,
+            704.214411
+          ],
+          [
+            340,
+            704.151348
+          ],
+          [
+            360,
+            703.9141109999999
+          ]
+        ]
+      }
+    ]
+  ]
+}

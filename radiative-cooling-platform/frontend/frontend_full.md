@@ -1,4 +1,4 @@
-# Frontend Source Bundle (`frontend/` - excluding node_modules, .next, public assets)
+# Frontend Source Bundle (`frontend/` - excluding node_modules, .next, tests, stories, public assets)
 
 ## Directory Structure
 ```text
@@ -46,6 +46,7 @@ frontend/src/components/layout/NavBar.tsx
 frontend/src/components/materials/material-header.tsx
 frontend/src/components/materials/material-version-fields.tsx
 frontend/src/components/materials/provenance-editor.tsx
+frontend/src/components/materials/spectrum-band-panel.tsx
 frontend/src/components/optimization/convergence-chart.tsx
 frontend/src/components/optimization/requirement-map-chart.tsx
 frontend/src/components/simulation/environment-assumptions-fields.tsx
@@ -58,19 +59,14 @@ frontend/src/components/simulation/person-input-fields.tsx
 frontend/src/components/simulation/weather-quality-panel.tsx
 frontend/src/config/navigation.ts
 frontend/src/lib/api-client.ts
-frontend/src/lib/checkpoint-cells.test.ts
 frontend/src/lib/checkpoint-cells.ts
-frontend/src/lib/date-defaults.test.ts
 frontend/src/lib/date-defaults.ts
 frontend/src/lib/environment-assumptions.ts
-frontend/src/lib/format.test.ts
 frontend/src/lib/format.ts
-frontend/src/lib/global-batch-progress.test.ts
 frontend/src/lib/global-batch-progress.ts
 frontend/src/lib/optimization-labels.ts
-frontend/src/lib/relative-time.test.ts
+frontend/src/lib/planck.ts
 frontend/src/lib/relative-time.ts
-frontend/src/lib/time-series.test.ts
 frontend/src/lib/time-series.ts
 frontend/src/lib/use-global-batch.ts
 frontend/src/lib/use-simulation-job.ts
@@ -3613,6 +3609,7 @@ import type {
   Material,
 } from "@/types/material";
 import { MaterialHeader } from "@/components/materials/material-header";
+import { SpectrumBandPanel } from "@/components/materials/spectrum-band-panel";
 
 type SpectrumType =
   | "solar_reflectance"
@@ -3835,6 +3832,11 @@ function MaterialDetailContent({
                     fallback="Derived from clo"
                     digits={1}
                   />
+                  <Metric
+                    label="IR emissivity, 8–13 µm"
+                    value={version.infrared_emissivity_window}
+                    fallback="Gray"
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -3875,6 +3877,13 @@ function MaterialDetailContent({
                               }{" "}
                               μm
                             </span>
+                            {spectrum.spectrum_type === "mir_emissivity" && (
+                              <SpectrumBandPanel
+                                materialId={material.id}
+                                versionId={version.id}
+                                versionNumber={version.version_number}
+                              />
+                            )}
                           </li>
                         ),
                       )}
@@ -4111,6 +4120,7 @@ function versionToInput(version: MaterialVersion): MaterialVersionInput {
     source_reference: version.source_reference,
     notes: null,
     parameter_sources: version.parameter_sources ?? null,
+    infrared_emissivity_window: version.infrared_emissivity_window ?? null,
   };
 }
 
@@ -4136,9 +4146,27 @@ function NewVersionContent({ materialId }: { materialId: string }) {
         const latest = response.versions.at(-1);
         setMaterial(response);
         if (latest) {
-          setDraft(versionToInput(latest));
-        } else {
-          setLoadError("This material has no version to start from.");
+          let next = versionToInput(latest);
+          const query = new URLSearchParams(window.location.search);
+          const irWindow = Number(query.get("ir_window"));
+          const irBroadband = Number(query.get("ir_broadband"));
+          if (query.has("ir_window") && Number.isFinite(irWindow) && Number.isFinite(irBroadband)) {
+            const reference =
+              `Planck-weighted band average of the mir_emissivity spectrum of v${query.get("from_version")} ` +
+              `at ${query.get("t")} K`;
+            next = {
+              ...next,
+              infrared_emissivity_window: irWindow,
+              infrared_emissivity: irBroadband,
+              notes: `Band emissivities derived from the uploaded spectrum (${reference}).`,
+              parameter_sources: {
+                ...(next.parameter_sources ?? {}),
+                infrared_emissivity_window: { source_type: "derived", reference },
+                infrared_emissivity: { source_type: "derived", reference },
+              },
+            };
+          }
+          setDraft(next);
         }
       })
       .catch((caught: unknown) => {
@@ -4929,14 +4957,27 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { LeaseBadge } from "@/components/global/lease-badge";
 import { ConvergenceChart } from "@/components/optimization/convergence-chart";
 import { RequirementMapChart } from "@/components/optimization/requirement-map-chart";
-import { LeaseBadge } from "@/components/global/lease-badge";
 import { cancelOptimization, getOptimization } from "@/lib/api-client";
-import { formatNumber } from "@/lib/format";
-import { METRIC_LABELS, TERMINAL_OPTIMIZATION, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import { formatNumber, formatSignedNumber } from "@/lib/format";
+import {
+  METRIC_LABELS,
+  OBJECTIVE_LABELS,
+  TERMINAL_OPTIMIZATION,
+  TREND_LABELS,
+  VARIABLE_LABELS,
+  mapMetricFor,
+} from "@/lib/optimization-labels";
 import type {
-  CandidateEvaluation, DecisionVariableName, MetricName, OptimizationJobDetail, OptimizationResult,
+  CandidateEvaluation,
+  DecisionVariableName,
+  MetricName,
+  OptimizationCreate,
+  OptimizationJobDetail,
+  OptimizationResult,
+  RequirementMapResult,
 } from "@/types/optimization";
 
 export default function OptimizationDetailPage() {
@@ -4992,7 +5033,7 @@ export default function OptimizationDetailPage() {
     );
   }
 
-  const metric = job.request.objective.metric;
+  const objective = job.request.objective.metric;
   const result = job.result;
   const terminal = TERMINAL_OPTIMIZATION.has(job.status);
 
@@ -5000,7 +5041,8 @@ export default function OptimizationDetailPage() {
     <main className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto max-w-7xl space-y-8 px-6 py-10">
         <nav className="text-sm text-slate-400">
-          <Link href="/optimizations" className="hover:text-white">Inverse Design</Link> / <span className="text-slate-200">{job.name}</span>
+          <Link href="/optimizations" className="hover:text-white">Inverse Design</Link> /{" "}
+          <span className="text-slate-200">{job.name}</span>
         </nav>
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
@@ -5009,7 +5051,7 @@ export default function OptimizationDetailPage() {
               <h1 className="text-2xl font-bold">{job.name}</h1>
               <p className="mt-1 text-sm text-slate-400">
                 {job.city_id} · months {job.request.months.join(", ")} · {job.request.variables.length} variable(s) ·
-                objective: {job.request.objective.sense} {METRIC_LABELS[metric]}
+                objective: {job.request.objective.sense} {OBJECTIVE_LABELS[objective]}
               </p>
             </div>
             <div className="flex items-center gap-4">
@@ -5034,22 +5076,14 @@ export default function OptimizationDetailPage() {
         </section>
 
         {result && <VerdictCard result={result} />}
-        {job.history.length > 0 && <ConvergenceChart history={job.history} metric={metric} />}
-        {result && <CandidateTable result={result} metric={metric} />}
-        {result?.requirement_map && <RequirementMapChart map={result.requirement_map} metric={metric} />}
-        {result && (
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
-            <h2 className="text-lg font-semibold text-slate-200">Run record</h2>
-            <p className="mt-2">
-              {result.sample_count} sample day(s), {result.skipped_samples.length} skipped ·
-              {" "}{result.evaluation_count} garment evaluations · {result.simulation_count} thermal simulations ·
-              {" "}{result.generations} generations · {result.elapsed_seconds.toFixed(1)} s
-            </p>
-            <p className="mt-1 font-mono text-xs">
-              model {result.model_version} · fingerprint {result.parameter_fingerprint.slice(0, 16)}… · {result.algorithm_message}
-            </p>
-          </section>
+        {result && (result.warnings?.length ?? 0) > 0 && <WarningsPanel warnings={result.warnings!} />}
+        {job.history.length > 0 && <ConvergenceChart history={job.history} metric={objective} />}
+        {result && <CandidateTable result={result} request={job.request} />}
+        {result && (result.sensitivities?.length ?? 0) > 0 && <SensitivityTable result={result} request={job.request} />}
+        {result?.requirement_map && (
+          <RequirementMapChart map={result.requirement_map} metric={mapMetricFor(job.request).metric} />
         )}
+        {result && <RunRecord result={result} />}
       </div>
     </main>
   );
@@ -5066,43 +5100,67 @@ function VerdictCard({ result }: { result: OptimizationResult }) {
       <p className="text-sm uppercase tracking-wide opacity-70">Verdict</p>
       <p className="mt-1 text-3xl font-bold">{result.verdict.toUpperCase()}</p>
       <p className="mt-3 max-w-4xl">{result.message}</p>
-      {map && (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-          <Requirement label={`Minimum ${VARIABLE_LABELS[map.x_variable]}`}
-            value={map.minimum_x_at_max_y}
-            note={`when ${VARIABLE_LABELS[map.y_variable]} = ${map.y_values.at(-1)?.toFixed(2)}`} />
-          <Requirement label={`Minimum ${VARIABLE_LABELS[map.y_variable]}`}
-            value={map.minimum_y_at_max_x}
-            note={`when ${VARIABLE_LABELS[map.x_variable]} = ${map.x_values.at(-1)?.toFixed(2)}`} />
-        </div>
-      )}
+      {map && <RequirementReadings map={map} />}
     </section>
   );
 }
 
-function Requirement({ label, value, note }: { label: string; value: number | null; note: string }) {
+function RequirementReadings({ map }: { map: RequirementMapResult }) {
+  const step = (values: number[]) => (values.length > 1 ? Math.abs(values[1] - values[0]) : 0);
+  const rows = [
+    { variable: map.x_variable, value: map.required_x_at_best_y ?? map.minimum_x_at_max_y,
+      direction: map.x_demand_direction ?? "increasing", trend: map.objective_trend_x, step: step(map.x_values) },
+    { variable: map.y_variable, value: map.required_y_at_best_x ?? map.minimum_y_at_max_x,
+      direction: map.y_demand_direction ?? "increasing", trend: map.objective_trend_y, step: step(map.y_values) },
+  ];
+
   return (
-    <div className="rounded-xl border border-slate-700 bg-slate-950/60 p-4">
-      <p className="text-sm text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-white">{value === null ? "not reachable" : `≥ ${value.toFixed(2)}`}</p>
-      <p className="mt-1 text-xs text-slate-500">{note} (grid resolution limits precision)</p>
+    <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      {rows.map((row) => (
+        <div key={row.variable} className="rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+          <p className="text-sm text-slate-400">Requirement on {VARIABLE_LABELS[row.variable]}</p>
+          <p className="mt-1 text-2xl font-semibold text-white">
+            {row.value === null || row.value === undefined
+              ? "not reachable"
+              : `${row.direction === "increasing" ? "≥" : "≤"} ${row.value.toFixed(3)}`}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Least demanding feasible value anywhere on the map (± {row.step.toFixed(3)} grid step).
+            {row.trend && ` Metric ${TREND_LABELS[row.trend]} along this axis.`}
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
 
-function CandidateTable({ result, metric }: { result: OptimizationResult; metric: MetricName }) {
-  const columns: [string, CandidateEvaluation | null][] = [
-    ["Baseline candidate", result.baseline],
+function WarningsPanel({ warnings }: { warnings: string[] }) {
+  return (
+    <section className="rounded-2xl border border-amber-800 bg-amber-950/30 p-6">
+      <h2 className="text-lg font-semibold text-amber-200">Interpretation warnings</h2>
+      <ul className="mt-3 list-inside list-disc space-y-2 text-sm text-amber-100">
+        {warnings.map((warning) => <li key={warning}>{warning}</li>)}
+      </ul>
+    </section>
+  );
+}
+
+function CandidateTable({ result, request }: { result: OptimizationResult; request: OptimizationCreate }) {
+  const columns: [string, CandidateEvaluation | null | undefined][] = [
+    ["Baseline", result.baseline],
     ["Best found", result.best],
-    ["Optical upper bound", result.optical_upper_bound],
+    ["Best corner", result.best_corner],
+    ["Most demanding", result.optical_upper_bound],
   ];
   const parameterNames = Object.keys(result.best.parameters) as DecisionVariableName[];
   const metricNames = Object.keys(METRIC_LABELS) as MetricName[];
+  const highlighted = new Set<string>([request.objective.metric, ...request.constraints.map((c) => c.metric)]);
+  const constraintLabels = Object.keys(result.best.constraint_excess ?? {});
 
   return (
     <section className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 p-6">
       <h2 className="text-xl font-semibold">Candidates</h2>
-      <table className="mt-4 w-full min-w-[48rem] text-left text-sm">
+      <table className="mt-4 w-full min-w-[56rem] text-left text-sm">
         <thead className="border-b border-slate-700 text-slate-400">
           <tr>
             <th className="px-3 py-2">Quantity</th>
@@ -5116,22 +5174,92 @@ function CandidateTable({ result, metric }: { result: OptimizationResult; metric
               {columns.map(([label, c]) => <td key={label} className="px-3 py-2 font-mono">{formatNumber(c?.parameters[name], 3)}</td>)}
             </tr>
           ))}
+          <tr className="border-b border-slate-800">
+            <td className="px-3 py-2 text-slate-300">Material demand</td>
+            {columns.map(([label, c]) => <td key={label} className="px-3 py-2">{formatNumber(c?.material_demand, 3)}</td>)}
+          </tr>
           {metricNames.map((name) => (
-            <tr key={name} className={`border-b border-slate-800 ${name === metric ? "bg-cyan-950/30" : ""}`}>
+            <tr key={name} className={`border-b border-slate-800 ${highlighted.has(name) ? "bg-cyan-950/30" : ""}`}>
               <td className="px-3 py-2 text-slate-300">{METRIC_LABELS[name]}</td>
               {columns.map(([label, c]) => <td key={label} className="px-3 py-2">{formatNumber(c?.metrics?.[name], 3)}</td>)}
+            </tr>
+          ))}
+          {constraintLabels.map((label) => (
+            <tr key={label} className="border-b border-slate-800">
+              <td className="px-3 py-2 font-mono text-xs text-slate-300">excess: {label}</td>
+              {columns.map(([column, c]) => {
+                const value = c?.constraint_excess?.[label];
+                return (
+                  <td key={column} className={`px-3 py-2 ${value !== undefined && value > 0 ? "text-red-300" : "text-emerald-300"}`}>
+                    {formatSignedNumber(value, 4)}
+                  </td>
+                );
+              })}
             </tr>
           ))}
           <tr>
             <td className="px-3 py-2 text-slate-300">Constraints satisfied</td>
             {columns.map(([label, c]) => (
               <td key={label} className={`px-3 py-2 ${c?.feasible ? "text-emerald-300" : "text-red-300"}`}>
-                {c ? (c.feasible ? "yes" : `no (violation ${formatNumber(c.constraint_violation, 4)})`) : "—"}
+                {c ? (c.metrics ? (c.feasible ? "yes" : `no (normalised ${formatNumber(c.constraint_violation, 3)})`) : "impossible") : "—"}
               </td>
             ))}
           </tr>
         </tbody>
       </table>
+    </section>
+  );
+}
+
+function SensitivityTable({ result, request }: { result: OptimizationResult; request: OptimizationCreate }) {
+  const metrics = Array.from(new Set<MetricName>([
+    ...(request.objective.metric === "material_demand" ? [] : [request.objective.metric as MetricName]),
+    ...request.constraints.map((c) => c.metric),
+    "mean_skin_temperature_c",
+  ]));
+
+  return (
+    <section className="overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900 p-6">
+      <h2 className="text-xl font-semibold">Sensitivity at the reported optimum</h2>
+      <p className="mt-1 text-sm text-slate-400">
+        Change of each metric if the variable swept its whole search range (central difference,
+        linearised). Compare with the constraint excess to see whether a target is reachable at all.
+      </p>
+      <table className="mt-4 w-full min-w-[48rem] text-left text-sm">
+        <thead className="border-b border-slate-700 text-slate-400">
+          <tr>
+            <th className="px-3 py-2">Variable</th>
+            {metrics.map((m) => <th key={m} className="px-3 py-2">{METRIC_LABELS[m]}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {result.sensitivities!.map((s) => (
+            <tr key={s.name} className="border-b border-slate-800">
+              <td className="px-3 py-2 text-slate-300">{VARIABLE_LABELS[s.name]}</td>
+              {metrics.map((m) => <td key={m} className="px-3 py-2 font-mono">{formatSignedNumber(s.full_range_effects[m], 4)}</td>)}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+function RunRecord({ result }: { result: OptimizationResult }) {
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-400">
+      <h2 className="text-lg font-semibold text-slate-200">Run record</h2>
+      <p className="mt-2">
+        {result.sample_count} sample day(s), {result.skipped_samples.length} skipped ·{" "}
+        {result.evaluation_count} garment evaluations · {result.simulation_count} thermal simulations ·{" "}
+        {result.generations} generations · {result.elapsed_seconds.toFixed(1)} s
+      </p>
+      <p className="mt-1">
+        Objective normalised as (value − {formatNumber(result.objective_reference, 4)}) / {formatNumber(result.objective_scale, 3)}.
+      </p>
+      <p className="mt-1 font-mono text-xs">
+        model {result.model_version} · fingerprint {result.parameter_fingerprint.slice(0, 16)}… · {result.algorithm_message}
+      </p>
     </section>
   );
 }
@@ -5144,30 +5272,52 @@ function CandidateTable({ result, metric }: { result: OptimizationResult; metric
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { NumberField } from "@/components/forms/number-field";
+import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
 import { EnvironmentAssumptionsFields } from "@/components/simulation/environment-assumptions-fields";
 import { MaterialInputFields } from "@/components/simulation/material-input-fields";
 import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import { createOptimization, estimateOptimization, getCities } from "@/lib/api-client";
 import { DEFAULT_ENVIRONMENT_ASSUMPTIONS } from "@/lib/environment-assumptions";
-import { METRIC_OPTIONS, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import {
+  DEFAULT_DEMAND_DIRECTION,
+  EMISSIVITY_BAND_VARIABLES,
+  METRIC_OPTIONS,
+  METRIC_SCALES,
+  OBJECTIVE_OPTIONS,
+  VARIABLE_LABELS,
+} from "@/lib/optimization-labels";
 import type {
-  DecisionVariable, DecisionVariableName, MetricConstraint, MetricName,
-  OptimizationCreate, OptimizationEstimate,
+  DecisionVariable,
+  DecisionVariableName,
+  DemandDirection,
+  MetricConstraint,
+  MetricName,
+  ObjectiveName,
+  OptimizationCreate,
+  OptimizationEstimate,
+  Sense,
 } from "@/types/optimization";
 import type { City } from "@/types/simulation";
 
 const VARIABLE_DEFAULTS: Record<DecisionVariableName, { lower: number; upper: number; step: number }> = {
   solar_reflectance: { lower: 0.3, upper: 0.98, step: 0.01 },
-  infrared_emissivity: { lower: 0.5, upper: 0.99, step: 0.01 },
   solar_transmittance: { lower: 0, upper: 0.3, step: 0.01 },
+  infrared_emissivity: { lower: 0.5, upper: 0.99, step: 0.01 },
+  infrared_emissivity_window: { lower: 0.5, upper: 0.99, step: 0.01 },
+  infrared_emissivity_outside_window: { lower: 0.05, upper: 0.99, step: 0.01 },
   infrared_transmittance: { lower: 0, upper: 0.5, step: 0.01 },
   clothing_insulation_clo: { lower: 0.2, upper: 0.8, step: 0.05 },
   evaporative_resistance_m2pa_w: { lower: 5, upper: 30, step: 0.5 },
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MAX_VARIABLES = 6;
+
+function newVariable(name: DecisionVariableName): DecisionVariable {
+  const { lower, upper } = VARIABLE_DEFAULTS[name];
+  return { name, lower, upper, demand_direction: DEFAULT_DEMAND_DIRECTION[name], demand_weight: 1 };
+}
 
 const initialRequest: OptimizationCreate = {
   name: "Guangzhou August requirement search",
@@ -5195,24 +5345,31 @@ const initialRequest: OptimizationCreate = {
     projected_solar_area_factor: 0.25,
   },
   environment_assumptions: DEFAULT_ENVIRONMENT_ASSUMPTIONS,
-  variables: [
-    { name: "solar_reflectance", ...pick(VARIABLE_DEFAULTS.solar_reflectance) },
-    { name: "infrared_emissivity", ...pick(VARIABLE_DEFAULTS.infrared_emissivity) },
-  ],
-  objective: { metric: "skin_exceedance_fraction", sense: "minimize" },
+  variables: [newVariable("solar_reflectance"), newVariable("infrared_emissivity")],
+  objective: { metric: "skin_excess_degree_hours", sense: "minimize" },
   constraints: [
-    { metric: "skin_exceedance_fraction", operator: "<=", threshold: 0.1 },
-    { metric: "peak_core_temperature_c", operator: "<=", threshold: 38 },
+    { metric: "skin_excess_degree_hours", operator: "<=", threshold: 0.5, scale: null },
+    { metric: "peak_core_temperature_c", operator: "<=", threshold: 38, scale: null },
   ],
   algorithm: "differential_evolution",
   population_multiplier: 10,
   max_generations: 30,
   seed: 42,
+  secondary_demand_weight: 0.001,
+  convergence_tolerance: 0.0001,
   requirement_map: { x_variable: "solar_reflectance", y_variable: "infrared_emissivity", resolution: 11 },
 };
 
-function pick({ lower, upper }: { lower: number; upper: number }) {
-  return { lower, upper };
+function blockedReason(name: DecisionVariableName, request: OptimizationCreate): string | null {
+  const names = new Set(request.variables.map((v) => v.name));
+  if (names.has(name)) return null;
+  if (name === "infrared_emissivity") {
+    if ([...EMISSIVITY_BAND_VARIABLES].some((n) => names.has(n))) return "Not combinable with ε_W / ε_N.";
+    if (request.base_material.infrared_emissivity_window != null) return "Candidate is selective; use ε_W / ε_N.";
+  }
+  if (EMISSIVITY_BAND_VARIABLES.has(name) && names.has("infrared_emissivity")) return "Not combinable with gray ε.";
+  if (request.variables.length >= MAX_VARIABLES) return `At most ${MAX_VARIABLES} variables.`;
+  return null;
 }
 
 export default function NewOptimizationPage() {
@@ -5246,7 +5403,6 @@ export default function NewOptimizationPage() {
   }, [request, requestKey]);
 
   const currentEstimate = estimate?.key === requestKey ? estimate : null;
-  const variableNames = request.variables.map((v) => v.name);
 
   function update<K extends keyof OptimizationCreate>(key: K, value: OptimizationCreate[K]) {
     setRequest((current) => ({ ...current, [key]: value }));
@@ -5255,12 +5411,12 @@ export default function NewOptimizationPage() {
   function toggleVariable(name: DecisionVariableName) {
     setRequest((current) => {
       const exists = current.variables.some((v) => v.name === name);
-      const variables: DecisionVariable[] = exists
+      const variables = exists
         ? current.variables.filter((v) => v.name !== name)
-        : [...current.variables, { name, ...pick(VARIABLE_DEFAULTS[name]) }];
+        : [...current.variables, newVariable(name)];
       const map = current.requirement_map;
-      const mapStillValid = map && variables.some((v) => v.name === map.x_variable) && variables.some((v) => v.name === map.y_variable);
-      return { ...current, variables, requirement_map: mapStillValid ? map : null };
+      const valid = map && variables.some((v) => v.name === map.x_variable) && variables.some((v) => v.name === map.y_variable);
+      return { ...current, variables, requirement_map: valid ? map : null };
     });
   }
 
@@ -5279,6 +5435,10 @@ export default function NewOptimizationPage() {
     if (months.length > 0) update("months", months);
   }
 
+  function setObjectiveMetric(metric: ObjectiveName) {
+    update("objective", { metric, sense: metric === "material_demand" ? "minimize" : request.objective.sense });
+  }
+
   async function submit() {
     setSubmitting(true);
     setError("");
@@ -5292,6 +5452,7 @@ export default function NewOptimizationPage() {
   }
 
   const variableOptions = request.variables.map((v) => ({ value: v.name, label: VARIABLE_LABELS[v.name] }));
+  const variableNames = request.variables.map((v) => v.name);
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
@@ -5300,9 +5461,9 @@ export default function NewOptimizationPage() {
           <p className="text-sm text-cyan-400">Inverse Design</p>
           <h1 className="mt-2 text-3xl font-bold">Derive Material Requirements from a Comfort Target</h1>
           <p className="mt-3 max-w-4xl text-slate-400">
-            Set a target and constraints for a city and season. Differential evolution searches the
-            selected material parameters; a requirement map then shows which (ρ, ε) combinations
-            satisfy the constraints. If no combination does, the result reports the passive limit.
+            Constraints are satisfied first; among feasible garments the objective is optimised and
+            ties go to the least demanding design. Choose <em>Material demand</em> as the objective to
+            ask directly for the minimum properties that meet the constraints.
           </p>
         </header>
 
@@ -5341,23 +5502,35 @@ export default function NewOptimizationPage() {
         </Section>
 
         <Section title="Decision variables">
+          <p className="mb-4 text-sm text-slate-400">
+            Demand direction says which end of a range is harder to manufacture; it drives requirement
+            readings and tie-breaking only, never the physics.
+          </p>
           <div className="space-y-3">
             {(Object.keys(VARIABLE_DEFAULTS) as DecisionVariableName[]).map((name) => {
               const variable = request.variables.find((v) => v.name === name);
+              const blocked = blockedReason(name, request);
               const { step } = VARIABLE_DEFAULTS[name];
               return (
-                <div key={name} className="grid items-end gap-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4 md:grid-cols-[16rem_1fr_1fr]">
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" checked={Boolean(variable)} onChange={() => toggleVariable(name)} className="h-4 w-4 accent-cyan-400" />
+                <div key={name} className="grid items-end gap-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4 md:grid-cols-[16rem_1fr_1fr_10rem_7rem]">
+                  <label className={`flex items-center gap-3 ${blocked ? "opacity-50" : ""}`}>
+                    <input type="checkbox" checked={Boolean(variable)} disabled={Boolean(blocked)}
+                      onChange={() => toggleVariable(name)} className="h-4 w-4 accent-cyan-400" />
                     <span>{VARIABLE_LABELS[name]}</span>
                   </label>
                   {variable ? (
                     <>
                       <NumberField label="Lower" value={variable.lower} step={step} onChange={(v) => updateVariable(name, { lower: v })} />
                       <NumberField label="Upper" value={variable.upper} step={step} onChange={(v) => updateVariable(name, { upper: v })} />
+                      <SelectField<DemandDirection> label="Harder when"
+                        value={variable.demand_direction ?? DEFAULT_DEMAND_DIRECTION[name]}
+                        options={[{ value: "increasing", label: "Higher" }, { value: "decreasing", label: "Lower" }]}
+                        onChange={(v) => updateVariable(name, { demand_direction: v })} />
+                      <NumberField label="Weight" value={variable.demand_weight ?? 1} min={0.1} max={10} step={0.1}
+                        onChange={(v) => updateVariable(name, { demand_weight: v })} />
                     </>
                   ) : (
-                    <p className="text-sm text-slate-500 md:col-span-2">Fixed at the candidate garment value.</p>
+                    <p className="text-sm text-slate-500 md:col-span-4">{blocked ?? "Fixed at the candidate garment value."}</p>
                   )}
                 </div>
               );
@@ -5367,43 +5540,59 @@ export default function NewOptimizationPage() {
 
         <Section title="Objective and constraints">
           <div className="grid gap-5 md:grid-cols-2">
-            <SelectField label="Objective metric" value={request.objective.metric} options={METRIC_OPTIONS}
-              onChange={(metric) => update("objective", { ...request.objective, metric: metric as MetricName })} />
-            <SelectField label="Sense" value={request.objective.sense}
+            <SelectField<ObjectiveName> label="Objective" value={request.objective.metric} options={OBJECTIVE_OPTIONS}
+              onChange={setObjectiveMetric} />
+            <SelectField<Sense> label="Sense" value={request.objective.sense}
+              disabled={request.objective.metric === "material_demand"}
               options={[{ value: "minimize", label: "Minimize" }, { value: "maximize", label: "Maximize" }]}
               onChange={(sense) => update("objective", { ...request.objective, sense })} />
           </div>
+          {request.objective.metric.endsWith("exceedance_fraction") && (
+            <p className="mt-3 text-sm text-amber-300">
+              Exceedance fractions saturate when the threshold is crossed almost everywhere. The
+              degree-hour metrics measure the same thing and keep a gradient.
+            </p>
+          )}
           <div className="mt-5 space-y-3">
             {request.constraints.map((constraint, index) => (
-              <div key={index} className="grid items-end gap-4 md:grid-cols-[1fr_8rem_10rem_auto]">
-                <SelectField label="Metric" value={constraint.metric} options={METRIC_OPTIONS}
-                  onChange={(metric) => updateConstraint(index, { metric: metric as MetricName })} />
-                <SelectField label="Operator" value={constraint.operator}
+              <div key={index} className="grid items-end gap-4 md:grid-cols-[1fr_7rem_9rem_9rem_auto]">
+                <SelectField<MetricName> label="Metric" value={constraint.metric} options={METRIC_OPTIONS}
+                  onChange={(metric) => updateConstraint(index, { metric })} />
+                <SelectField<"<=" | ">="> label="Operator" value={constraint.operator}
                   options={[{ value: "<=", label: "≤" }, { value: ">=", label: "≥" }]}
                   onChange={(operator) => updateConstraint(index, { operator })} />
-                <NumberField label="Threshold" value={constraint.threshold} step={0.01} onChange={(threshold) => updateConstraint(index, { threshold })} />
+                <NumberField label="Threshold" value={constraint.threshold} step={0.01}
+                  onChange={(threshold) => updateConstraint(index, { threshold })} />
+                <OptionalNumberField label="Scale" value={constraint.scale ?? null}
+                  placeholder={`default ${METRIC_SCALES[constraint.metric]}`} step={0.01} min={0}
+                  hint="Violation is divided by this before summing."
+                  onChange={(scale) => updateConstraint(index, { scale })} />
                 <button type="button" onClick={() => update("constraints", request.constraints.filter((_, i) => i !== index))}
                   className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300">Remove</button>
               </div>
             ))}
             {request.constraints.length < 6 && (
               <button type="button"
-                onClick={() => update("constraints", [...request.constraints, { metric: "mean_skin_cooling_c", operator: ">=", threshold: 1 }])}
+                onClick={() => update("constraints", [...request.constraints, { metric: "mean_skin_cooling_c", operator: ">=", threshold: 1, scale: null }])}
                 className="rounded-lg border border-cyan-800 px-4 py-2 text-sm text-cyan-300">Add constraint</button>
             )}
           </div>
         </Section>
 
         <Section title="Search settings">
-          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             <NumberField label="Population multiplier" value={request.population_multiplier} min={4} max={30}
               hint="Population = multiplier × variable count" onChange={(v) => update("population_multiplier", v)} />
             <NumberField label="Max generations" value={request.max_generations} min={1} max={200} onChange={(v) => update("max_generations", v)} />
             <NumberField label="Seed" value={request.seed ?? 0} min={0} onChange={(v) => update("seed", v)} />
-            {request.requirement_map && variableOptions.length >= 2 ? (
+            <NumberField label="Convergence tolerance" value={request.convergence_tolerance} min={0.000001} max={1} step={0.00001}
+              hint="Absolute, on the normalised objective." onChange={(v) => update("convergence_tolerance", v)} />
+            <NumberField label="Secondary demand weight" value={request.secondary_demand_weight} min={0} max={1} step={0.001}
+              hint="Tie-breaker towards less demanding garments." onChange={(v) => update("secondary_demand_weight", v)} />
+            {request.requirement_map && variableOptions.length >= 2 && (
               <NumberField label="Map resolution" value={request.requirement_map.resolution} min={3} max={21}
                 onChange={(resolution) => update("requirement_map", { ...request.requirement_map!, resolution })} />
-            ) : null}
+            )}
           </div>
           {variableOptions.length >= 2 && (
             <div className="mt-5 grid gap-5 md:grid-cols-3">
@@ -5416,10 +5605,10 @@ export default function NewOptimizationPage() {
               </label>
               {request.requirement_map && (
                 <>
-                  <SelectField label="Map x axis" value={request.requirement_map.x_variable} options={variableOptions}
-                    onChange={(x) => update("requirement_map", { ...request.requirement_map!, x_variable: x as DecisionVariableName })} />
-                  <SelectField label="Map y axis" value={request.requirement_map.y_variable} options={variableOptions}
-                    onChange={(y) => update("requirement_map", { ...request.requirement_map!, y_variable: y as DecisionVariableName })} />
+                  <SelectField<DecisionVariableName> label="Map x axis" value={request.requirement_map.x_variable} options={variableOptions}
+                    onChange={(x) => update("requirement_map", { ...request.requirement_map!, x_variable: x })} />
+                  <SelectField<DecisionVariableName> label="Map y axis" value={request.requirement_map.y_variable} options={variableOptions}
+                    onChange={(y) => update("requirement_map", { ...request.requirement_map!, y_variable: y })} />
                 </>
               )}
             </div>
@@ -5442,7 +5631,7 @@ export default function NewOptimizationPage() {
           </Section>
           <Section title="Candidate garment (fixed fields)">
             <p className="mb-4 text-sm text-slate-400">
-              Fields selected as decision variables are overwritten by the search ({variableNames.map((n) => VARIABLE_LABELS[n]).join(", ")}).
+              Overwritten by the search: {variableNames.map((n) => VARIABLE_LABELS[n]).join(", ")}.
             </p>
             <MaterialInputFields material={request.base_material} showName enableLibrary
               onChange={(m) => update("base_material", m)} />
@@ -5451,10 +5640,12 @@ export default function NewOptimizationPage() {
 
         <Section title="Workload estimate">
           {currentEstimate?.data ? (
-            <dl className="grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-6">
+            <dl className="grid gap-4 text-sm sm:grid-cols-3 lg:grid-cols-4">
               <Stat label="Population" value={currentEstimate.data.population_size} />
               <Stat label="Optimizer evaluations" value={currentEstimate.data.optimizer_evaluation_budget} />
               <Stat label="Map evaluations" value={currentEstimate.data.requirement_map_evaluations} />
+              <Stat label="Corners" value={currentEstimate.data.corner_evaluations} />
+              <Stat label="Sensitivity probes" value={currentEstimate.data.sensitivity_evaluations} />
               <Stat label="Sample days" value={currentEstimate.data.sample_count} />
               <Stat label="Thermal simulations (max)" value={currentEstimate.data.thermal_simulation_budget} />
               <Stat label="Weather requests" value={currentEstimate.data.weather_requests} />
@@ -6800,6 +6991,7 @@ export function BenchmarkChart({ points, referenceLabel }: BenchmarkChartProps) 
 
 import dynamic from "next/dynamic";
 
+import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
 import type { SimulationResponse } from "@/types/simulation";
 
 const Plot = dynamic(
@@ -6816,11 +7008,6 @@ export function HeatFluxChart({
 }: HeatFluxChartProps) {
   const points =
     result.radiative_cooling.time_series;
-
-  // 檢查時間序列的第一個點是否包含 solar_incident_w_m2 屬性
-  const hasOptionalSeries =
-    points.length > 0 &&
-    "solar_incident_w_m2" in points[0];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
@@ -6867,19 +7054,27 @@ export function HeatFluxChart({
             mode: "lines",
             name: "Absorbed Solar Radiation",
           },
-          ...(hasOptionalSeries
+          ...(hasOptionalSeries(points, "solar_incident_w_m2")
             ? [
                 {
                   x: points.map((point) => point.minute),
-                  y: points.map(
-                    (point) =>
-                      (point as { solar_incident_w_m2?: number })
-                        .solar_incident_w_m2 ?? 0,
-                  ),
+                  y: pluckOptionalSeries(points, "solar_incident_w_m2"),
                   type: "scatter" as const,
                   mode: "lines" as const,
                   name: "Incident Solar (per A_D)",
                   visible: "legendonly" as const,
+                },
+              ]
+            : []),
+          ...(hasOptionalSeries(points, "longwave_window_w_m2")
+            ? [
+                {
+                  x: points.map((point) => point.minute),
+                  y: pluckOptionalSeries(points, "longwave_window_w_m2"),
+                  type: "scatter" as const,
+                  mode: "lines" as const,
+                  name: "Longwave, 8–13 µm window",
+                  line: { dash: "dot" as const },
                 },
               ]
             : []),
@@ -6930,8 +7125,6 @@ export function HeatFluxChart({
     </div>
   );
 }
-
-
 ```
 
 ### File: `frontend/src/components/charts/physiology-chart.tsx`
@@ -8931,6 +9124,7 @@ function TextField({
 
 import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
+import { checkSpectralEmissivity } from "@/lib/planck";
 import type { MaterialMode, MaterialVersionInput } from "@/types/material";
 
 const MODE_OPTIONS: { value: MaterialMode; label: string }[] = [
@@ -8954,6 +9148,15 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
   const solarSumTooHigh = value.solar_reflectance + value.solar_transmittance > 1 + 1e-6;
   const infraredSumTooHigh =
     value.infrared_emissivity + value.infrared_transmittance > 1 + 1e-6;
+
+  const spectral =
+    value.infrared_emissivity_window == null
+      ? null
+      : checkSpectralEmissivity(
+          value.infrared_emissivity,
+          value.infrared_emissivity_window,
+          value.infrared_transmittance,
+        );
 
   return (
     <div className="space-y-4">
@@ -9013,11 +9216,19 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
           onChange={(v) => onChange("solar_transmittance", v)}
         />
         <NumberField
-          label="Infrared Emissivity"
+          label="Infrared Emissivity (broadband ε)"
           value={value.infrared_emissivity}
           min={0} max={1} step={0.01}
           disabled={disabled}
           onChange={(v) => onChange("infrared_emissivity", v)}
+        />
+        <OptionalNumberField
+          label="IR Emissivity, 8–13 µm window (ε_W)"
+          value={value.infrared_emissivity_window ?? null}
+          placeholder="Gray emitter (= ε)"
+          min={0} max={1} step={0.01}
+          disabled={disabled}
+          onChange={(v) => onChange("infrared_emissivity_window", v)}
         />
         <NumberField
           label="Infrared Transmittance"
@@ -9050,6 +9261,11 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
         <p role="alert" className="text-sm text-amber-300">
           {solarSumTooHigh && "Solar reflectance + transmittance must not exceed 1. "}
           {infraredSumTooHigh && "Infrared emissivity + transmittance must not exceed 1."}
+        </p>
+      )}
+      {spectral && (
+        <p className={`text-sm ${spectral.error ? "text-amber-300" : "text-slate-400"}`}>
+          {spectral.error ?? `Derived ε_N = ${spectral.outside.toFixed(3)}`}
         </p>
       )}
     </div>
@@ -9222,6 +9438,106 @@ export function ProvenanceEditor({
 }
 ```
 
+### File: `frontend/src/components/materials/spectrum-band-panel.tsx`
+```tsx
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+
+import { getSpectrumBandSummary } from "@/lib/api-client";
+import { formatNumber } from "@/lib/format";
+import { broadbandEmissivity } from "@/lib/planck";
+import type { SpectrumBandSummary } from "@/types/material";
+
+const MINIMUM_COVERAGE = 0.95;
+
+export function SpectrumBandPanel({
+  materialId,
+  versionId,
+  versionNumber,
+}: {
+  materialId: string;
+  versionId: string;
+  versionNumber: number;
+}) {
+  const [summary, setSummary] = useState<SpectrumBandSummary | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      setSummary(await getSpectrumBandSummary(versionId, "mir_emissivity"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to summarise spectrum");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const windowValue = summary?.window_average ?? null;
+  const outside = summary?.outside_window_average ?? null;
+  const broadband = windowValue !== null && outside !== null ? broadbandEmissivity(windowValue, outside) : null;
+  const usable = summary !== null && windowValue !== null && broadband !== null && summary.window_coverage >= MINIMUM_COVERAGE;
+
+  const href =
+    usable && broadband !== null && windowValue !== null
+      ? `/materials/${materialId}/versions/new?ir_window=${windowValue.toFixed(4)}` +
+        `&ir_broadband=${broadband.toFixed(4)}&from_version=${versionNumber}&t=${summary!.temperature_k}`
+      : null;
+
+  return (
+    <div className="mt-3 rounded-lg border border-slate-800 bg-slate-950 p-4 text-sm">
+      <button type="button" onClick={() => void load()} disabled={loading}
+        className="rounded-lg border border-cyan-800 px-3 py-1.5 text-cyan-300 disabled:opacity-50">
+        {loading ? "Integrating…" : "Derive band emissivities (Planck-weighted)"}
+      </button>
+
+      {error && <p className="mt-2 text-red-300">{error}</p>}
+
+      {summary && (
+        <>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-4">
+            <Pair label={`ε_W (${summary.window_lower_um}–${summary.window_upper_um} µm)`} value={formatNumber(windowValue, 3)} />
+            <Pair label="ε_N (measured, outside window)" value={formatNumber(outside, 3)} />
+            <Pair label={`Broadband ε (${summary.temperature_k} K)`} value={formatNumber(broadband, 3)} />
+            <Pair label="Window / total coverage"
+              value={`${(summary.window_coverage * 100).toFixed(1)} % / ${(summary.broadband_coverage * 100).toFixed(1)} %`} />
+          </dl>
+          {summary.window_coverage < MINIMUM_COVERAGE && (
+            <p className="mt-2 text-amber-300">
+              The spectrum covers less than {MINIMUM_COVERAGE * 100} % of the window&apos;s blackbody emission; values are not used.
+            </p>
+          )}
+          {summary.broadband_coverage < MINIMUM_COVERAGE && (
+            <p className="mt-2 text-xs text-slate-500">
+              Broadband ε assumes the measured out-of-window average also holds outside{" "}
+              {summary.measured_lower_um}–{summary.measured_upper_um} µm.
+            </p>
+          )}
+          {href && (
+            <Link href={href} className="mt-3 inline-block text-cyan-300 underline">
+              Create a new version with these values →
+            </Link>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function Pair({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-slate-500">{label}</dt>
+      <dd className="mt-1 font-mono text-cyan-300">{value}</dd>
+    </div>
+  );
+}
+```
+
 ### File: `frontend/src/components/optimization/convergence-chart.tsx`
 ```tsx
 "use client";
@@ -9229,19 +9545,19 @@ export function ProvenanceEditor({
 import dynamic from "next/dynamic";
 import type { Data } from "plotly.js";
 
-import { METRIC_LABELS } from "@/lib/optimization-labels";
-import type { GenerationRecord, MetricName } from "@/types/optimization";
+import { OBJECTIVE_LABELS } from "@/lib/optimization-labels";
+import type { GenerationRecord, ObjectiveName } from "@/types/optimization";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
-export function ConvergenceChart({ history, metric }: { history: GenerationRecord[]; metric: MetricName }) {
+export function ConvergenceChart({ history, metric }: { history: GenerationRecord[]; metric: ObjectiveName }) {
   const data: Data[] = [
     {
       x: history.map((r) => r.generation),
       y: history.map((r) => r.best_metric_value),
       type: "scatter",
       mode: "lines+markers",
-      name: METRIC_LABELS[metric],
+      name: OBJECTIVE_LABELS[metric],
       line: { color: "#22d3ee", width: 3 },
       marker: { size: 8, color: history.map((r) => (r.best_feasible ? "#10b981" : "#ef4444")) },
     },
@@ -9265,7 +9581,7 @@ export function ConvergenceChart({ history, metric }: { history: GenerationRecor
           autosize: true, height: 380, paper_bgcolor: "#0f172a", plot_bgcolor: "#0f172a",
           font: { color: "#cbd5e1" }, margin: { l: 65, r: 70, t: 20, b: 55 },
           xaxis: { title: { text: "Generation" }, gridcolor: "#334155" },
-          yaxis: { title: { text: "Best objective metric" }, gridcolor: "#334155" },
+          yaxis: { title: { text: "Best objective value" }, gridcolor: "#334155" },
           yaxis2: { title: { text: "Evaluations" }, overlaying: "y", side: "right", showgrid: false },
           legend: { orientation: "h", y: -0.25 }, hovermode: "x unified",
         }}
@@ -9286,44 +9602,52 @@ export function ConvergenceChart({ history, metric }: { history: GenerationRecor
 import dynamic from "next/dynamic";
 import type { Data } from "plotly.js";
 
-import { METRIC_LABELS, VARIABLE_LABELS } from "@/lib/optimization-labels";
+import { METRIC_LABELS, TREND_LABELS, VARIABLE_LABELS } from "@/lib/optimization-labels";
 import type { MetricName, RequirementMapResult } from "@/types/optimization";
 
 const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 export function RequirementMapChart({ map, metric }: { map: RequirementMapResult; metric: MetricName }) {
   const z = map.cells.map((row) => row.map((cell) => (cell ? cell.metric_value : null)));
-  const feasible = map.cells.flat().filter((cell) => cell?.feasible);
-  const frontier = map.frontier.filter((p) => p.minimum_x !== null);
+  const feasible = map.cells.flat().filter((cell): cell is NonNullable<typeof cell> => Boolean(cell?.feasible));
+  const frontier = map.frontier
+    .map((p) => ({ y: p.y, x: p.required_x ?? p.minimum_x }))
+    .filter((p): p is { y: number; x: number } => p.x !== null);
 
   const data: Data[] = [
     {
       type: "heatmap", x: map.x_values, y: map.y_values, z,
-      colorscale: "RdYlBu", reversescale: false,
+      colorscale: "RdYlBu",
       colorbar: { title: { text: METRIC_LABELS[metric] } },
       hovertemplate: "x=%{x}<br>y=%{y}<br>value=%{z:.4f}<extra></extra>",
     },
     {
       type: "scatter", mode: "markers", name: "Feasible",
-      x: feasible.map((c) => c!.x), y: feasible.map((c) => c!.y),
+      x: feasible.map((c) => c.x), y: feasible.map((c) => c.y),
       marker: { symbol: "circle-open", size: 12, color: "#0f172a", line: { width: 2 } },
     },
     {
-      type: "scatter", mode: "lines+markers", name: "Requirement frontier",
-      x: frontier.map((p) => p.minimum_x), y: frontier.map((p) => p.y),
+      type: "scatter", mode: "lines+markers", name: "Least demanding feasible x per row",
+      x: frontier.map((p) => p.x), y: frontier.map((p) => p.y),
       line: { color: "#f8fafc", width: 3, shape: "hv" },
     },
   ];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
-      <h2 className="mb-4 text-xl font-semibold">Requirement Map</h2>
+      <h2 className="mb-1 text-xl font-semibold">Requirement Map</h2>
+      <p className="mb-4 text-sm text-slate-400">
+        Metric {METRIC_LABELS[metric]}
+        {map.objective_trend_x && ` · along ${VARIABLE_LABELS[map.x_variable]}: ${TREND_LABELS[map.objective_trend_x]}`}
+        {map.objective_trend_y && ` · along ${VARIABLE_LABELS[map.y_variable]}: ${TREND_LABELS[map.objective_trend_y]}`}
+        {typeof map.plateau_fraction === "number" && ` · plateau ${(map.plateau_fraction * 100).toFixed(0)} %`}
+      </p>
       <Plot
         data={data}
         layout={{
           autosize: true, height: 520, paper_bgcolor: "#0f172a", plot_bgcolor: "#0f172a",
           font: { color: "#cbd5e1" }, margin: { l: 70, r: 30, t: 20, b: 60 },
-          xaxis: { title: { text: VARIABLE_LABELS[map.x_variable] } },
+          xaxis: { title: { text: `${VARIABLE_LABELS[map.x_variable]} (more demanding → ${map.x_demand_direction === "decreasing" ? "left" : "right"})` } },
           yaxis: { title: { text: VARIABLE_LABELS[map.y_variable] } },
           legend: { orientation: "h", y: -0.2 },
         }}
@@ -9332,9 +9656,9 @@ export function RequirementMapChart({ map, metric }: { map: RequirementMapResult
         style={{ width: "100%", height: "100%" }}
       />
       <p className="mt-2 text-sm text-slate-400">
-        Other variables fixed at the optimum:{" "}
+        Other variables fixed at the reported optimum:{" "}
         {Object.entries(map.fixed_parameters).map(([k, v]) => `${k} = ${v.toFixed(3)}`).join(", ") || "none"}.
-        Blank cells violate the optical energy constraint.
+        Blank cells are physically impossible garments.
       </p>
     </div>
   );
@@ -9648,14 +9972,11 @@ export function EnvironmentInputFields({
 ```tsx
 "use client";
 
-import {
-  NumberField,
-  OptionalNumberField,
-} from "@/components/forms/number-field";
+import { NumberField, OptionalNumberField } from "@/components/forms/number-field";
 import { MaterialVersionPicker } from "@/components/simulation/material-version-picker";
+import { EMISSIVITY_REFERENCE_K, checkSpectralEmissivity } from "@/lib/planck";
 import type { MaterialInput, ParameterSource } from "@/types/simulation";
 
-/** Every MaterialInput key that enters the physics (i.e. not provenance/name). */
 type PhysicalKey = Exclude<
   keyof MaterialInput,
   | "name"
@@ -9669,7 +9990,6 @@ type PhysicalKey = Exclude<
 type MaterialInputFieldsProps = {
   material: MaterialInput;
   showName?: boolean;
-  /** Show the material library picker (Stage 4). */
   enableLibrary?: boolean;
   disabled?: boolean;
   onChange: (material: MaterialInput) => void;
@@ -9686,33 +10006,31 @@ export function MaterialInputFields({
 
   function updatePhysical<K extends PhysicalKey>(key: K, value: MaterialInput[K]) {
     const next: MaterialInput = { ...material, [key]: value };
-
     if (linked) {
-      // The backend rejects a version id whose values were edited; drop the
-      // link (and the provenance that came with it) instead.
       next.material_version_id = null;
       next.parameter_sources = null;
       next.source_type = null;
       next.source_reference = null;
     }
-
     onChange(next);
   }
+
+  const windowValue = material.infrared_emissivity_window ?? null;
+  const spectral =
+    windowValue === null
+      ? null
+      : checkSpectralEmissivity(material.infrared_emissivity, windowValue, material.infrared_transmittance ?? 0);
 
   return (
     <div className="space-y-5">
       {enableLibrary && (
-        <MaterialVersionPicker
-          material={material}
-          disabled={disabled}
-          onChange={onChange}
-        />
+        <MaterialVersionPicker material={material} disabled={disabled} onChange={onChange} />
       )}
 
       {linked && (
         <p className="text-xs text-slate-500">
-          Values come from the linked library version. Editing any physical
-          value removes the link so the result is not attributed to that version.
+          Values come from the linked library version. Editing any physical value removes the
+          link so the result is not attributed to that version.
         </p>
       )}
 
@@ -9732,111 +10050,86 @@ export function MaterialInputFields({
         )}
 
         <NumberField
-          label="Clothing Insulation"
-          suffix="clo"
-          value={material.clothing_insulation_clo}
-          min={0} max={5} step={0.05}
-          disabled={disabled}
+          label="Clothing Insulation" suffix="clo"
+          value={material.clothing_insulation_clo} min={0} max={5} step={0.05} disabled={disabled}
           onChange={(value) => updatePhysical("clothing_insulation_clo", value)}
         />
-
         <OptionalNumberField
-          label="Evaporative Resistance (Re,cl)"
-          suffix="m²·Pa/W"
-          value={material.evaporative_resistance_m2pa_w ?? null}
-          placeholder="Derived from clo"
-          min={0} max={1000} step={0.5}
-          disabled={disabled}
-          hint="Leave empty to derive R_cl / (LR · i_cl) (Stage 2)."
+          label="Evaporative Resistance (Re,cl)" suffix="m²·Pa/W"
+          value={material.evaporative_resistance_m2pa_w ?? null} placeholder="Derived from clo"
+          min={0} max={1000} step={0.5} disabled={disabled}
+          hint="Leave empty to derive R_cl / (LR · i_cl)."
           onChange={(value) => updatePhysical("evaporative_resistance_m2pa_w", value)}
         />
-
         <OptionalNumberField
           label="Clothing Area Factor (f_cl)"
-          value={material.clothing_area_factor}
-          placeholder="Derived from clo"
-          min={1} max={2} step={0.01}
-          disabled={disabled}
-          hint="Leave empty to derive 1 + 0.15 · clo (Stage 3)."
+          value={material.clothing_area_factor} placeholder="Derived from clo"
+          min={1} max={2} step={0.01} disabled={disabled}
+          hint="Leave empty to derive 1 + 0.15 · clo."
           onChange={(value) => updatePhysical("clothing_area_factor", value)}
         />
-
         <NumberField
-          label="Solar Reflectance"
-          value={material.solar_reflectance}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
+          label="Solar Reflectance" value={material.solar_reflectance}
+          min={0} max={1} step={0.01} disabled={disabled}
           onChange={(value) => updatePhysical("solar_reflectance", value)}
         />
-
         <NumberField
-          label="Solar Transmittance"
-          value={material.solar_transmittance}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
+          label="Solar Transmittance" value={material.solar_transmittance}
+          min={0} max={1} step={0.01} disabled={disabled}
           onChange={(value) => updatePhysical("solar_transmittance", value)}
         />
-
         <NumberField
-          label="Infrared Emissivity"
-          value={material.infrared_emissivity}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
+          label="Infrared Emissivity (broadband ε)" value={material.infrared_emissivity}
+          min={0} max={1} step={0.01} disabled={disabled}
+          hint={`Planck-weighted at ${EMISSIVITY_REFERENCE_K} K.`}
           onChange={(value) => updatePhysical("infrared_emissivity", value)}
         />
-
+        <OptionalNumberField
+          label="IR Emissivity, 8–13 µm window (ε_W)"
+          value={windowValue} placeholder="Gray emitter (= ε)"
+          min={0} max={1} step={0.01} disabled={disabled}
+          hint="Leave empty for a gray textile. Set it for a selective emitter (ADR 0007)."
+          onChange={(value) => updatePhysical("infrared_emissivity_window", value)}
+        />
         <NumberField
-          label="Infrared Transmittance"
-          value={material.infrared_transmittance ?? 0}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
+          label="Infrared Transmittance" value={material.infrared_transmittance ?? 0}
+          min={0} max={1} step={0.01} disabled={disabled}
           hint="Emissivity + transmittance must not exceed 1."
           onChange={(value) => updatePhysical("infrared_transmittance", value)}
         />
-
         <NumberField
-          label="Projected Solar Area Factor"
-          value={material.projected_solar_area_factor}
-          min={0} max={1} step={0.01}
-          disabled={disabled}
+          label="Projected Solar Area Factor" value={material.projected_solar_area_factor}
+          min={0} max={1} step={0.01} disabled={disabled}
           onChange={(value) => updatePhysical("projected_solar_area_factor", value)}
         />
       </div>
+
+      {spectral && (
+        <p role={spectral.error ? "alert" : undefined}
+           className={`text-sm ${spectral.error ? "text-amber-300" : "text-slate-400"}`}>
+          {spectral.error ?? `Derived out-of-window emissivity ε_N = ${spectral.outside.toFixed(3)}.`}
+        </p>
+      )}
 
       <ProvenanceBadges sources={material.parameter_sources} />
     </div>
   );
 }
 
-function ProvenanceBadges({
-  sources,
-}: {
-  sources: Record<string, ParameterSource> | null | undefined;
-}) {
+function ProvenanceBadges({ sources }: { sources: Record<string, ParameterSource> | null | undefined }) {
   const entries = Object.entries(sources ?? {});
-
-  if (entries.length === 0) {
-    return null;
-  }
+  if (entries.length === 0) return null;
 
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        Parameter provenance
-      </p>
-
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Parameter provenance</p>
       <ul className="mt-2 flex flex-wrap gap-2">
         {entries.map(([field, source]) => (
-          <li
-            key={field}
-            title={source.reference ?? undefined}
-            className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300"
-          >
+          <li key={field} title={source.reference ?? undefined}
+              className="rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs text-slate-300">
             <span className="font-mono">{field}</span>
             <span className="ml-1 text-cyan-300">{source.source_type}</span>
-            {source.reference && (
-              <span className="ml-1 text-slate-500">— {source.reference}</span>
-            )}
+            {source.reference && <span className="ml-1 text-slate-500">— {source.reference}</span>}
           </li>
         ))}
       </ul>
@@ -9975,6 +10268,9 @@ export function MaterialVersionPicker({
                   {version.infrared_transmittance > 0
                     ? ` · τ_IR ${version.infrared_transmittance.toFixed(2)}`
                     : ""}
+                  {version.infrared_emissivity_window != null
+                    ? ` · ε_W ${version.infrared_emissivity_window.toFixed(2)}`
+                    : ""}
                 </option>
               ))}
             </optgroup>
@@ -10087,6 +10383,14 @@ const resolvedRows: ResolvedRow[] = [
     label: "Infrared transmittance",
     render: (scenario) =>
       formatNumber(scenario.clothing?.infrared_transmittance, 3),
+  },
+  {
+    label: "IR emissivity ε_W / ε_N",
+    render: (scenario) =>
+      scenario.clothing?.infrared_emissivity_window == null
+        ? "gray"
+        : `${formatNumber(scenario.clothing.infrared_emissivity_window, 3)} / ${formatNumber(
+            scenario.clothing.infrared_emissivity_outside_window, 3)}`,
   },
   {
     label: "Body mass",
@@ -10547,8 +10851,8 @@ import type {
 } from "@/types/optimization";
 
 import type {
-  Material, MaterialCreate, MaterialListResponse,
-  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput
+  Material, MaterialCreate, MaterialListResponse, SpectrumBandSummary,
+  MaterialVersionListResponse, MaterialUpdate, MaterialVersion, MaterialVersionInput, 
 } from "@/types/material";
 import type {
   City,
@@ -11416,43 +11720,21 @@ export async function getOptimization(id: string): Promise<OptimizationJobDetail
   }
   return response.json() as Promise<OptimizationJobDetail>;
 }
-```
 
-### File: `frontend/src/lib/checkpoint-cells.test.ts`
-```typescript
-import { describe, expect, it } from "vitest";
-
-import { buildCheckpointCells, monthsFromCheckpoint } from "@/lib/checkpoint-cells";
-
-describe("buildCheckpointCells", () => {
-  it("marks outside, checkpointed, running and pending months", () => {
-    const cells = buildCheckpointCells(7, 12, [7, 8], "running");
-    const states = cells.map((c) => c.state);
-
-    expect(states.slice(0, 6)).toEqual(Array(6).fill("outside"));
-    expect(states[6]).toBe("checkpointed");
-    expect(states[7]).toBe("checkpointed");
-    expect(states[8]).toBe("running");
-    expect(states.slice(9)).toEqual(["pending", "pending", "pending"]);
-  });
-
-  it("never shows a running cell for a non-running city", () => {
-    const cells = buildCheckpointCells(1, 12, [1, 2, 3], "failed");
-    expect(cells.filter((c) => c.state === "running")).toHaveLength(0);
-    expect(cells.filter((c) => c.state === "pending")).toHaveLength(9);
-  });
-
-  it("always returns twelve cells", () => {
-    expect(buildCheckpointCells(3, 3, [], "queued")).toHaveLength(12);
-  });
-});
-
-describe("monthsFromCheckpoint", () => {
-  it("splits restored and computed months", () => {
-    expect(monthsFromCheckpoint([1, 2, 3], true, 12)).toEqual({ restored: 3, computed: 9 });
-    expect(monthsFromCheckpoint([1, 2, 3], false, 12)).toEqual({ restored: 0, computed: 12 });
-  });
-});
+export async function getSpectrumBandSummary(
+  versionId: string,
+  spectrumType: "mir_emissivity" | "mir_transmittance",
+): Promise<SpectrumBandSummary> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/materials/versions/${encodeURIComponent(versionId)}` +
+      `/spectra/${spectrumType}/band-summary`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) {
+    throw new Error(await getErrorMessage(response, "Unable to summarise spectrum"));
+  }
+  return response.json() as Promise<SpectrumBandSummary>;
+}
 ```
 
 ### File: `frontend/src/lib/checkpoint-cells.ts`
@@ -11506,37 +11788,6 @@ export function monthsFromCheckpoint(
   const restored = Math.min(checkpointMonths.length, completedMonthCount);
   return { restored, computed: Math.max(0, completedMonthCount - restored) };
 }
-```
-
-### File: `frontend/src/lib/date-defaults.test.ts`
-```typescript
-import { describe, expect, it } from "vitest";
-
-import {
-  getDefaultSimulationDateTime,
-  getPreviousCompleteYear,
-} from "@/lib/date-defaults";
-
-describe("date defaults", () => {
-  it("uses the previous calendar year", () => {
-    expect(getPreviousCompleteYear(new Date("2026-03-01T00:00:00"))).toBe(2025);
-  });
-
-  it("builds a datetime-local string for 15 July 10:00", () => {
-    expect(getDefaultSimulationDateTime(new Date("2026-03-01T00:00:00"))).toBe(
-      "2025-07-15T10:00",
-    );
-  });
-
-  it("rejects invalid dates", () => {
-    expect(() => getPreviousCompleteYear(new Date("nope"))).toThrow();
-  });
-  it("matches the datetime-local value format exactly", () => {
-    expect(getDefaultSimulationDateTime(new Date("2026-03-01T00:00:00"))).toMatch(
-      /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/,
-    );
-  });
-});
 ```
 
 ### File: `frontend/src/lib/date-defaults.ts`
@@ -11597,35 +11848,6 @@ export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
 };
 ```
 
-### File: `frontend/src/lib/format.test.ts`
-```typescript
-import { describe, expect, it } from "vitest";
-
-import { formatNumber, formatSignedNumber } from "@/lib/format";
-
-describe("formatNumber", () => {
-  it("renders an em dash for missing or non-finite values", () => {
-    expect(formatNumber(null)).toBe("—");
-    expect(formatNumber(undefined)).toBe("—");
-    expect(formatNumber(Number.NaN)).toBe("—");
-    expect(formatNumber(Number.POSITIVE_INFINITY)).toBe("—");
-  });
-
-  it("applies digits and unit", () => {
-    expect(formatNumber(1.23456, 3, " °C")).toBe("1.235 °C");
-    expect(formatNumber(2)).toBe("2.00");
-  });
-});
-
-describe("formatSignedNumber", () => {
-  it("prefixes positive values only", () => {
-    expect(formatSignedNumber(0.5, 1)).toBe("+0.5");
-    expect(formatSignedNumber(-0.5, 1)).toBe("-0.5");
-    expect(formatSignedNumber(0, 1)).toBe("0.0");
-  });
-});
-```
-
 ### File: `frontend/src/lib/format.ts`
 ```typescript
 export function formatNumber(
@@ -11653,61 +11875,6 @@ export function formatSignedNumber(
 
   return `${sign}${value.toFixed(digits)}${unit}`;
 }
-```
-
-### File: `frontend/src/lib/global-batch-progress.test.ts`
-```typescript
-import { describe, expect, it } from "vitest";
-
-import { mergeBatchProgress, progressRequiresDetailReload } from "@/lib/global-batch-progress";
-import type { GlobalBatchDetail, GlobalBatchProgressEvent } from "@/types/global-batch";
-
-const detail = {
-  id: "b1",
-  status: "running",
-  progress: 10,
-  completed_city_count: 0,
-  failed_city_count: 0,
-  cancelled_city_count: 0,
-  request: { name: "x" },
-  city_results: [
-    { id: "c1", status: "running", progress: 10, monthly_results: [{ month: 1 }], checkpoint_months: [1] },
-    { id: "c2", status: "queued", progress: 0, monthly_results: null, checkpoint_months: [] },
-  ],
-} as unknown as GlobalBatchDetail;
-
-const event = {
-  batch: { id: "b1", status: "running", progress: 35, completed_city_count: 0, failed_city_count: 0, cancelled_city_count: 0 },
-  cities: [
-    { id: "c1", status: "running", progress: 70, checkpoint_months: [1, 2, 3], lease_state: "live" },
-  ],
-} as unknown as GlobalBatchProgressEvent;
-
-describe("mergeBatchProgress", () => {
-  it("overlays progress without discarding heavy fields", () => {
-    const merged = mergeBatchProgress(detail, event);
-
-    expect(merged.progress).toBe(35);
-    expect(merged.request).toEqual({ name: "x" });
-    expect(merged.city_results[0].progress).toBe(70);
-    expect(merged.city_results[0].checkpoint_months).toEqual([1, 2, 3]);
-    expect(merged.city_results[0].monthly_results).toEqual([{ month: 1 }]);
-    expect(merged.city_results[1]).toBe(detail.city_results[1]);
-  });
-});
-
-describe("progressRequiresDetailReload", () => {
-  it("reloads when a city reaches a terminal state or the batch finishes", () => {
-    expect(progressRequiresDetailReload(null, event)).toBe(true);
-    expect(progressRequiresDetailReload(detail, event)).toBe(false);
-
-    const oneDone = { ...event, batch: { ...event.batch, completed_city_count: 1 } };
-    expect(progressRequiresDetailReload(detail, oneDone)).toBe(true);
-
-    const finished = { ...event, batch: { ...event.batch, status: "completed" as const} };
-    expect(progressRequiresDetailReload(detail, finished)).toBe(true);
-  });
-});
 ```
 
 ### File: `frontend/src/lib/global-batch-progress.ts`
@@ -11768,16 +11935,43 @@ export function progressRequiresDetailReload(
 
 ### File: `frontend/src/lib/optimization-labels.ts`
 ```typescript
-import type { DecisionVariableName, MetricName } from "@/types/optimization";
+import type {
+  DecisionVariableName,
+  DemandDirection,
+  MetricName,
+  ObjectiveName,
+  ObjectiveTrend,
+  OptimizationCreate,
+  Sense,
+} from "@/types/optimization";
 
 export const VARIABLE_LABELS: Record<DecisionVariableName, string> = {
   solar_reflectance: "Solar reflectance ρ",
   solar_transmittance: "Solar transmittance τ_sol",
-  infrared_emissivity: "IR emissivity ε",
+  infrared_emissivity: "IR emissivity ε (gray)",
+  infrared_emissivity_window: "IR emissivity ε_W (8–13 µm)",
+  infrared_emissivity_outside_window: "IR emissivity ε_N (outside window)",
   infrared_transmittance: "IR transmittance τ_IR",
   clothing_insulation_clo: "Insulation (clo)",
   evaporative_resistance_m2pa_w: "Re,cl (m²·Pa/W)",
 };
+
+/** Mirrors DEFAULT_DEMAND_DIRECTION in app/schemas/optimization.py. */
+export const DEFAULT_DEMAND_DIRECTION: Record<DecisionVariableName, DemandDirection> = {
+  solar_reflectance: "increasing",
+  solar_transmittance: "decreasing",
+  infrared_emissivity: "increasing",
+  infrared_emissivity_window: "increasing",
+  infrared_emissivity_outside_window: "decreasing",
+  infrared_transmittance: "increasing",
+  clothing_insulation_clo: "decreasing",
+  evaporative_resistance_m2pa_w: "decreasing",
+};
+
+export const EMISSIVITY_BAND_VARIABLES = new Set<DecisionVariableName>([
+  "infrared_emissivity_window",
+  "infrared_emissivity_outside_window",
+]);
 
 export const METRIC_LABELS: Record<MetricName, string> = {
   mean_skin_temperature_c: "Mean skin temperature (°C)",
@@ -11785,8 +11979,29 @@ export const METRIC_LABELS: Record<MetricName, string> = {
   peak_core_temperature_c: "Peak core temperature (°C)",
   skin_exceedance_fraction: "Time fraction T_sk > threshold",
   core_exceedance_fraction: "Time fraction T_core > threshold",
+  skin_excess_degree_hours: "Skin excess above threshold (°C·h)",
+  core_excess_degree_hours: "Core excess above threshold (°C·h)",
   mean_skin_cooling_c: "Mean skin cooling vs control (°C)",
   mean_core_cooling_c: "Mean core cooling vs control (°C)",
+};
+
+export const OBJECTIVE_LABELS: Record<ObjectiveName, string> = {
+  ...METRIC_LABELS,
+  material_demand: "Material demand (0 = least demanding)",
+};
+
+/** Mirrors METRIC_SCALES in app/services/optimization/objective.py. */
+export const METRIC_SCALES: Record<ObjectiveName, number> = {
+  mean_skin_temperature_c: 1,
+  peak_skin_temperature_c: 1,
+  peak_core_temperature_c: 1,
+  skin_exceedance_fraction: 0.1,
+  core_exceedance_fraction: 0.1,
+  skin_excess_degree_hours: 0.5,
+  core_excess_degree_hours: 0.5,
+  mean_skin_cooling_c: 1,
+  mean_core_cooling_c: 1,
+  material_demand: 0.1,
 };
 
 export const METRIC_OPTIONS = (Object.keys(METRIC_LABELS) as MetricName[]).map((value) => ({
@@ -11794,53 +12009,101 @@ export const METRIC_OPTIONS = (Object.keys(METRIC_LABELS) as MetricName[]).map((
   label: METRIC_LABELS[value],
 }));
 
+export const OBJECTIVE_OPTIONS = (Object.keys(OBJECTIVE_LABELS) as ObjectiveName[]).map((value) => ({
+  value,
+  label: OBJECTIVE_LABELS[value],
+}));
+
+export const TREND_LABELS: Record<ObjectiveTrend, string> = {
+  improves: "improves as it becomes more demanding",
+  worsens: "worsens as it becomes more demanding",
+  flat: "flat",
+  mixed: "non-monotone",
+};
+
+/** Same rule as requirement_map.map_metric on the backend. */
+export function mapMetricFor(request: OptimizationCreate): { metric: MetricName; sense: Sense } {
+  if (request.objective.metric !== "material_demand") {
+    return { metric: request.objective.metric, sense: request.objective.sense };
+  }
+  const first = request.constraints[0];
+  if (first) return { metric: first.metric, sense: first.operator === "<=" ? "minimize" : "maximize" };
+  return { metric: "skin_excess_degree_hours", sense: "minimize" };
+}
+
 export const TERMINAL_OPTIMIZATION = new Set(["completed", "failed", "cancelled"]);
 ```
 
-### File: `frontend/src/lib/relative-time.test.ts`
+### File: `frontend/src/lib/planck.ts`
 ```typescript
-import { describe, expect, it } from "vitest";
+/**
+ * Planck band fractions, mirroring app/services/planck.py (Stage 10, ADR 0007).
+ * Constants mirror the backend registry; keep them in sync.
+ */
+export const SECOND_RADIATION_CONSTANT = 14387.768775; // um K
+export const WINDOW_LOWER_UM = 8;
+export const WINDOW_UPPER_UM = 13;
+export const EMISSIVITY_REFERENCE_K = 305;
 
-import { formatRelativeTime, heartbeatHealth, shortOwner } from "@/lib/relative-time";
+const NORMALIZATION = 15 / Math.PI ** 4;
 
-const NOW = new Date("2026-01-01T12:00:00Z");
+function lowerIntegral(z: number): number {
+  const z2 = z * z;
+  return z ** 3 * (1 / 3 - z / 8 + z2 / 60 - z2 ** 2 / 5040 + z2 ** 3 / 272160 - z2 ** 4 / 13305600);
+}
 
-describe("formatRelativeTime", () => {
-  it("handles missing and invalid input", () => {
-    expect(formatRelativeTime(null, NOW)).toBe("—");
-    expect(formatRelativeTime("nope", NOW)).toBe("nope");
-  });
+function upperIntegral(z: number): number {
+  let total = 0;
+  for (let n = 1; n <= 60; n += 1) {
+    const term = (Math.exp(-n * z) / n) * (z ** 3 + (3 * z ** 2) / n + (6 * z) / n ** 2 + 6 / n ** 3);
+    total += term;
+    if (term <= 1e-16 * total) break;
+  }
+  return total;
+}
 
-  it("scales units", () => {
-    expect(formatRelativeTime("2026-01-01T11:59:50Z", NOW)).toBe("just now");
-    expect(formatRelativeTime("2026-01-01T11:58:00Z", NOW)).toBe("2 min ago");
-    expect(formatRelativeTime("2026-01-01T09:00:00Z", NOW)).toBe("3 h ago");
-    expect(formatRelativeTime("2025-12-29T12:00:00Z", NOW)).toBe("3 d ago");
-    expect(formatRelativeTime("2026-01-01T12:05:00Z", NOW)).toBe("in 5 min");
-  });
-});
+export function blackbodyFraction(lambdaT: number): number {
+  if (lambdaT <= 0) return 0;
+  const z = SECOND_RADIATION_CONSTANT / lambdaT;
+  if (z < 1) return Math.max(0, 1 - NORMALIZATION * lowerIntegral(z));
+  if (z > 700) return 0;
+  return Math.min(1, NORMALIZATION * upperIntegral(z));
+}
 
-describe("heartbeatHealth", () => {
-  it("is none without a lease and expired when the server says so", () => {
-    expect(heartbeatHealth("none", "2026-01-01T11:59:59Z", 30, NOW)).toBe("none");
-    expect(heartbeatHealth(undefined, null, 30, NOW)).toBe("none");
-    expect(heartbeatHealth("expired", "2026-01-01T11:59:59Z", 30, NOW)).toBe("expired");
-  });
+export function bandFraction(temperatureK = EMISSIVITY_REFERENCE_K): number {
+  return blackbodyFraction(WINDOW_UPPER_UM * temperatureK) - blackbodyFraction(WINDOW_LOWER_UM * temperatureK);
+}
 
-  it("flags a live lease whose heartbeat is older than two intervals", () => {
-    expect(heartbeatHealth("live", "2026-01-01T11:59:40Z", 30, NOW)).toBe("healthy");
-    expect(heartbeatHealth("live", "2026-01-01T11:58:00Z", 30, NOW)).toBe("stale");
-    expect(heartbeatHealth("live", null, 30, NOW)).toBe("stale");
-  });
-});
+export function outsideWindowEmissivity(broadband: number, windowValue: number): number {
+  const fw = bandFraction();
+  return (broadband - fw * windowValue) / (1 - fw);
+}
 
-describe("shortOwner", () => {
-  it("compacts host:pid:task", () => {
-    expect(shortOwner("worker-a:4242:0f1e2d3c4b5a")).toBe("worker-a · 0f1e2d");
-    expect(shortOwner("single")).toBe("single");
-    expect(shortOwner(null)).toBe("—");
-  });
-});
+export function broadbandEmissivity(windowValue: number, outside: number): number {
+  const fw = bandFraction();
+  return fw * windowValue + (1 - fw) * outside;
+}
+
+export type SpectralCheck = { outside: number; error: string | null };
+
+/** Same rule as the backend validator _check_spectral_emissivity. */
+export function checkSpectralEmissivity(
+  broadband: number,
+  windowValue: number,
+  transmittance: number,
+): SpectralCheck {
+  const outside = outsideWindowEmissivity(broadband, windowValue);
+  if (windowValue + transmittance > 1 + 1e-6) {
+    return { outside, error: "ε_W + τ_IR must not exceed 1." };
+  }
+  if (outside < -1e-6 || outside + transmittance > 1 + 1e-6) {
+    return {
+      outside,
+      error: `Broadband ε and ε_W imply an out-of-window emissivity of ${outside.toFixed(3)}, outside [0, 1 − τ_IR].`,
+    };
+  }
+  return { outside, error: null };
+}
 ```
 
 ### File: `frontend/src/lib/relative-time.ts`
@@ -11895,55 +12158,6 @@ export function shortOwner(owner: string | null | undefined): string {
 }
 ```
 
-### File: `frontend/src/lib/time-series.test.ts`
-```typescript
-import { describe, expect, it } from "vitest";
-
-import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
-import type { TimeSeriesPoint } from "@/types/simulation";
-
-function point(overrides: Partial<TimeSeriesPoint> = {}): TimeSeriesPoint {
-  return {
-    minute: 0,
-    core_temperature_c: 36.8,
-    skin_temperature_c: 33.7,
-    convection_w_m2: 0,
-    longwave_radiation_w_m2: 0,
-    evaporation_w_m2: 0,
-    absorbed_solar_w_m2: 0,
-    core_to_skin_w_m2: 0,
-    ...overrides,
-  };
-}
-
-describe("hasOptionalSeries", () => {
-  it("is false when every value is absent or null", () => {
-    const points = [point(), point({ skin_wettedness: null })];
-    expect(hasOptionalSeries(points, "skin_wettedness")).toBe(false);
-  });
-
-  it("is true when at least one numeric value exists", () => {
-    const points = [point(), point({ skin_wettedness: 0.2 })];
-    expect(hasOptionalSeries(points, "skin_wettedness")).toBe(true);
-  });
-});
-
-describe("pluckOptionalSeries", () => {
-  it("maps missing and non-finite values to null", () => {
-    const points = [
-      point({ clothing_surface_temperature_c: 35.1 }),
-      point({ clothing_surface_temperature_c: null }),
-      point(),
-      point({ clothing_surface_temperature_c: Number.NaN }),
-    ];
-
-    expect(
-      pluckOptionalSeries(points, "clothing_surface_temperature_c"),
-    ).toEqual([35.1, null, null, null]);
-  });
-});
-```
-
 ### File: `frontend/src/lib/time-series.ts`
 ```typescript
 import type { TimeSeriesPoint } from "@/types/simulation";
@@ -11956,7 +12170,8 @@ export type OptionalSeriesKey =
   | "skin_blood_flow_kg_h_m2"
   | "solar_incident_w_m2"
   | "solar_absorbed_by_textile_w_m2"
-  | "solar_transmitted_w_m2";
+  | "solar_transmitted_w_m2"
+  | "longwave_window_w_m2";
 
 export function hasOptionalSeries(
   points: TimeSeriesPoint[],
@@ -13022,6 +13237,7 @@ export type MaterialVersionInput = {
   source_reference: string | null;
   notes: string | null;
   parameter_sources?: Record<string, ParameterSource> | null;
+  infrared_emissivity_window?: number | null;
 };
 
 export type MaterialCreate = {
@@ -13098,6 +13314,7 @@ export type MaterialVersionListItem = {
   source_type: string;
   is_archived: boolean;
   created_at: string;
+  infrared_emissivity_window?: number | null;
 };
 
 export type MaterialVersionListResponse = {
@@ -13113,6 +13330,20 @@ export type MaterialUpdate = {
   description?: string | null;
   institution?: string | null;
   is_archived?: boolean;
+};
+
+export type SpectrumBandSummary = {
+  spectrum_type: string;
+  temperature_k: number;
+  window_lower_um: number;
+  window_upper_um: number;
+  measured_lower_um: number;
+  measured_upper_um: number;
+  window_average: number | null;
+  window_coverage: number;
+  broadband_average: number | null;
+  broadband_coverage: number;
+  outside_window_average: number | null;
 };
 ```
 
@@ -13148,21 +13379,56 @@ export type OpsStatus = {
 
 ### File: `frontend/src/types/optimization.ts`
 ```typescript
-import type { EnvironmentAssumptions, MaterialInput, PersonInput, LeaseState } from "@/types/simulation";
+import type { EnvironmentAssumptions, LeaseState, MaterialInput, PersonInput } from "@/types/simulation";
 
 export type DecisionVariableName =
-  | "solar_reflectance" | "solar_transmittance" | "infrared_emissivity"
-  | "infrared_transmittance" | "clothing_insulation_clo" | "evaporative_resistance_m2pa_w";
+  | "solar_reflectance"
+  | "solar_transmittance"
+  | "infrared_emissivity"
+  | "infrared_emissivity_window"
+  | "infrared_emissivity_outside_window"
+  | "infrared_transmittance"
+  | "clothing_insulation_clo"
+  | "evaporative_resistance_m2pa_w";
 
 export type MetricName =
-  | "mean_skin_temperature_c" | "peak_skin_temperature_c" | "peak_core_temperature_c"
-  | "skin_exceedance_fraction" | "core_exceedance_fraction"
-  | "mean_skin_cooling_c" | "mean_core_cooling_c";
+  | "mean_skin_temperature_c"
+  | "peak_skin_temperature_c"
+  | "peak_core_temperature_c"
+  | "skin_exceedance_fraction"
+  | "core_exceedance_fraction"
+  | "skin_excess_degree_hours"
+  | "core_excess_degree_hours"
+  | "mean_skin_cooling_c"
+  | "mean_core_cooling_c";
 
-export type DecisionVariable = { name: DecisionVariableName; lower: number; upper: number };
-export type MetricConstraint = { metric: MetricName; operator: "<=" | ">="; threshold: number };
-export type OptimizationObjective = { metric: MetricName; sense: "minimize" | "maximize" };
-export type RequirementMapSpec = { x_variable: DecisionVariableName; y_variable: DecisionVariableName; resolution: number };
+export type ObjectiveName = MetricName | "material_demand";
+export type DemandDirection = "increasing" | "decreasing";
+export type ObjectiveTrend = "improves" | "worsens" | "flat" | "mixed";
+export type Sense = "minimize" | "maximize";
+
+export type DecisionVariable = {
+  name: DecisionVariableName;
+  lower: number;
+  upper: number;
+  demand_direction?: DemandDirection | null;
+  demand_weight?: number;
+};
+
+export type MetricConstraint = {
+  metric: MetricName;
+  operator: "<=" | ">=";
+  threshold: number;
+  scale?: number | null;
+};
+
+export type OptimizationObjective = { metric: ObjectiveName; sense: Sense };
+
+export type RequirementMapSpec = {
+  x_variable: DecisionVariableName;
+  y_variable: DecisionVariableName;
+  resolution: number;
+};
 
 export type OptimizationCreate = {
   name: string;
@@ -13186,6 +13452,8 @@ export type OptimizationCreate = {
   population_multiplier: number;
   max_generations: number;
   seed: number | null;
+  secondary_demand_weight: number;
+  convergence_tolerance: number;
   requirement_map: RequirementMapSpec | null;
 };
 
@@ -13197,9 +13465,11 @@ export type OptimizationEstimate = {
   sample_count: number;
   thermal_simulation_budget: number;
   weather_requests: number;
+  corner_evaluations: number;
+  sensitivity_evaluations: number;
 };
 
-export type EvaluationMetrics = { sample_count: number } & Record<MetricName, number>;
+export type EvaluationMetrics = { sample_count: number } & Record<MetricName, number | null>;
 
 export type CandidateEvaluation = {
   parameters: Record<string, number>;
@@ -13207,6 +13477,8 @@ export type CandidateEvaluation = {
   objective_value: number | null;
   constraint_violation: number | null;
   feasible: boolean;
+  constraint_excess: Record<string, number>;
+  material_demand: number | null;
 };
 
 export type GenerationRecord = {
@@ -13218,7 +13490,15 @@ export type GenerationRecord = {
   evaluation_count: number;
 };
 
-export type RequirementCell = { x: number; y: number; metric_value: number; constraint_violation: number; feasible: boolean };
+export type RequirementCell = {
+  x: number;
+  y: number;
+  metric_value: number;
+  constraint_violation: number;
+  feasible: boolean;
+};
+
+export type FrontierPoint = { y: number; minimum_x: number | null; required_x?: number | null };
 
 export type RequirementMapResult = {
   x_variable: DecisionVariableName;
@@ -13226,10 +13506,26 @@ export type RequirementMapResult = {
   x_values: number[];
   y_values: number[];
   cells: (RequirementCell | null)[][];
-  frontier: { y: number; minimum_x: number | null }[];
+  frontier: FrontierPoint[];
   minimum_x_at_max_y: number | null;
   minimum_y_at_max_x: number | null;
   fixed_parameters: Record<string, number>;
+  x_demand_direction?: DemandDirection;
+  y_demand_direction?: DemandDirection;
+  required_x_at_best_y?: number | null;
+  required_y_at_best_x?: number | null;
+  objective_trend_x?: ObjectiveTrend | null;
+  objective_trend_y?: ObjectiveTrend | null;
+  plateau_fraction?: number | null;
+  metric_min?: number | null;
+  metric_max?: number | null;
+};
+
+export type ParameterSensitivity = {
+  name: DecisionVariableName;
+  probe_low: number;
+  probe_high: number;
+  full_range_effects: Partial<Record<MetricName, number>>;
 };
 
 export type OptimizationResult = {
@@ -13240,6 +13536,7 @@ export type OptimizationResult = {
   best: CandidateEvaluation;
   baseline: CandidateEvaluation;
   optical_upper_bound: CandidateEvaluation | null;
+  best_corner?: CandidateEvaluation | null;
   requirement_map: RequirementMapResult | null;
   sample_count: number;
   skipped_samples: { sample_date_local: string; reason_code: string; message: string }[];
@@ -13252,6 +13549,10 @@ export type OptimizationResult = {
   elapsed_seconds: number;
   model_version: string;
   parameter_fingerprint: string;
+  warnings?: string[];
+  sensitivities?: ParameterSensitivity[];
+  objective_reference?: number | null;
+  objective_scale?: number | null;
 };
 
 export type OptimizationStatus = "queued" | "running" | "cancelling" | "cancelled" | "completed" | "failed";
@@ -13276,6 +13577,8 @@ export type OptimizationJob = {
   last_heartbeat_at: string | null;
   lease_state: LeaseState;
   cancel_requested_at: string | null;
+  control_material_version_id?: string | null;
+  base_material_version_id?: string | null;
 };
 
 export type OptimizationJobDetail = OptimizationJob & {
@@ -13384,6 +13687,8 @@ export type MaterialInput = {
   parameter_sources?: Record<string, ParameterSource> | null;
   source_type?: string | null;
   source_reference?: string | null;
+  /** Stage 10: emissivity in 8–13 µm. null/absent = gray emitter. */
+  infrared_emissivity_window?: number | null;
 };
 
 export type SimulationRequest = {
@@ -13418,6 +13723,7 @@ export type TimeSeriesPoint = {
   solar_incident_w_m2?: number | null; 
   solar_absorbed_by_textile_w_m2?: number | null; 
   solar_transmitted_w_m2?: number | null;
+  longwave_window_w_m2?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -13439,6 +13745,8 @@ export type ClothingSummary = {
   clothing_area_factor?: number | null;
   /** Stage 3 */
   clothing_area_factor_source?: ResolvedParameterSource | null;
+  infrared_emissivity_window?: number | null;
+  infrared_emissivity_outside_window?: number | null;
 };
 
 /** Stage 3 (ADR 0001): heat capacities derived from PersonInput. */
@@ -13621,10424 +13929,5 @@ export type ModelParameter = {
 export type ModelParameterManifest = ModelMetadata & {
   parameters: ModelParameter[];
 };
-```
-
-### File: `.stage-3-api-contract-before.json`
-```json
-{
-  "components": {
-    "schemas": {
-      "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post": {
-        "properties": {
-          "file": {
-            "contentMediaType": "application/octet-stream",
-            "title": "File",
-            "type": "string"
-          },
-          "spectrum_type": {
-            "title": "Spectrum Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "spectrum_type",
-          "file"
-        ],
-        "title": "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
-        "type": "object"
-      },
-      "CityResponse": {
-        "properties": {
-          "climate_type": {
-            "title": "Climate Type",
-            "type": "string"
-          },
-          "country": {
-            "title": "Country",
-            "type": "string"
-          },
-          "elevation_m": {
-            "title": "Elevation M",
-            "type": "number"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "latitude": {
-            "title": "Latitude",
-            "type": "number"
-          },
-          "longitude": {
-            "title": "Longitude",
-            "type": "number"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "timezone": {
-            "title": "Timezone",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "country",
-          "latitude",
-          "longitude",
-          "elevation_m",
-          "timezone",
-          "climate_type"
-        ],
-        "title": "CityResponse",
-        "type": "object"
-      },
-      "ClothingSummary": {
-        "description": "Resolved clothing resistances actually used by the solver.",
-        "properties": {
-          "dry_resistance_m2k_w": {
-            "title": "Dry Resistance M2K W",
-            "type": "number"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "title": "Evaporative Resistance M2Pa W",
-            "type": "number"
-          },
-          "evaporative_resistance_source": {
-            "enum": [
-              "material_input",
-              "derived_from_clo"
-            ],
-            "title": "Evaporative Resistance Source",
-            "type": "string"
-          },
-          "infrared_transmittance": {
-            "title": "Infrared Transmittance",
-            "type": "number"
-          }
-        },
-        "required": [
-          "dry_resistance_m2k_w",
-          "evaporative_resistance_m2pa_w",
-          "evaporative_resistance_source",
-          "infrared_transmittance"
-        ],
-        "title": "ClothingSummary",
-        "type": "object"
-      },
-      "DailyAdaptationResult": {
-        "properties": {
-          "average_core_improvement_c": {
-            "title": "Average Core Improvement C",
-            "type": "number"
-          },
-          "average_skin_improvement_c": {
-            "title": "Average Skin Improvement C",
-            "type": "number"
-          },
-          "beneficial": {
-            "title": "Beneficial",
-            "type": "boolean"
-          },
-          "exposure_eligible": {
-            "title": "Exposure Eligible",
-            "type": "boolean"
-          },
-          "final_skin_improvement_c": {
-            "title": "Final Skin Improvement C",
-            "type": "number"
-          },
-          "maximum_air_temperature_c": {
-            "title": "Maximum Air Temperature C",
-            "type": "number"
-          },
-          "maximum_skin_improvement_c": {
-            "title": "Maximum Skin Improvement C",
-            "type": "number"
-          },
-          "maximum_solar_radiation_w_m2": {
-            "title": "Maximum Solar Radiation W M2",
-            "type": "number"
-          },
-          "mean_air_temperature_c": {
-            "title": "Mean Air Temperature C",
-            "type": "number"
-          },
-          "mean_solar_radiation_w_m2": {
-            "title": "Mean Solar Radiation W M2",
-            "type": "number"
-          },
-          "sample_date_local": {
-            "format": "date-time",
-            "title": "Sample Date Local",
-            "type": "string"
-          },
-          "weather_from_cache": {
-            "title": "Weather From Cache",
-            "type": "boolean"
-          },
-          "weight_days": {
-            "minimum": 1.0,
-            "title": "Weight Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "sample_date_local",
-          "weight_days",
-          "mean_air_temperature_c",
-          "maximum_air_temperature_c",
-          "mean_solar_radiation_w_m2",
-          "maximum_solar_radiation_w_m2",
-          "exposure_eligible",
-          "beneficial",
-          "average_skin_improvement_c",
-          "final_skin_improvement_c",
-          "average_core_improvement_c",
-          "maximum_skin_improvement_c",
-          "weather_from_cache"
-        ],
-        "title": "DailyAdaptationResult",
-        "type": "object"
-      },
-      "EnergyDiagnostics": {
-        "properties": {
-          "energy_residual_j_m2": {
-            "title": "Energy Residual J M2",
-            "type": "number"
-          },
-          "integrated_net_heat_j_m2": {
-            "title": "Integrated Net Heat J M2",
-            "type": "number"
-          },
-          "maximum_core_step_c": {
-            "title": "Maximum Core Step C",
-            "type": "number"
-          },
-          "maximum_skin_step_c": {
-            "title": "Maximum Skin Step C",
-            "type": "number"
-          },
-          "normalized_residual_percent": {
-            "title": "Normalized Residual Percent",
-            "type": "number"
-          },
-          "solver_function_evaluations": {
-            "title": "Solver Function Evaluations",
-            "type": "integer"
-          },
-          "stored_energy_change_j_m2": {
-            "title": "Stored Energy Change J M2",
-            "type": "number"
-          }
-        },
-        "required": [
-          "stored_energy_change_j_m2",
-          "integrated_net_heat_j_m2",
-          "energy_residual_j_m2",
-          "normalized_residual_percent",
-          "maximum_core_step_c",
-          "maximum_skin_step_c",
-          "solver_function_evaluations"
-        ],
-        "title": "EnergyDiagnostics",
-        "type": "object"
-      },
-      "EnvironmentAssumptions": {
-        "additionalProperties": false,
-        "properties": {
-          "fixed_sky_offset_k": {
-            "default": 15.0,
-            "description": "fixed_offset: T_air - T_sky",
-            "maximum": 50.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Fixed Sky Offset K",
-            "type": "number"
-          },
-          "mean_radiant_temperature_method": {
-            "default": "air_plus_solar_linear",
-            "enum": [
-              "air_plus_solar_linear",
-              "equal_to_air"
-            ],
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Mean Radiant Temperature Method",
-            "type": "string"
-          },
-          "sky_offset_base_k": {
-            "default": 5.0,
-            "description": "humidity_offset: depression at 100 % RH",
-            "maximum": 40.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Sky Offset Base K",
-            "type": "number"
-          },
-          "sky_offset_humidity_range_k": {
-            "default": 10.0,
-            "description": "humidity_offset: additional depression at 0 % RH",
-            "maximum": 40.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Sky Offset Humidity Range K",
-            "type": "number"
-          },
-          "sky_temperature_method": {
-            "default": "humidity_offset",
-            "enum": [
-              "humidity_offset",
-              "fixed_offset",
-              "swinbank"
-            ],
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Sky Temperature Method",
-            "type": "string"
-          },
-          "sky_view_factor": {
-            "default": 0.5,
-            "description": "Fraction of the body's radiative view occupied by sky",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "reference": "Standing person on an open, unobstructed site",
-            "source_type": "assumed",
-            "title": "Sky View Factor",
-            "type": "number"
-          },
-          "solar_mrt_gain_cap_k": {
-            "default": 15.0,
-            "description": "Upper bound of the solar MRT rise",
-            "maximum": 40.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Solar Mrt Gain Cap K",
-            "type": "number"
-          },
-          "solar_mrt_gain_k_per_w_m2": {
-            "default": 0.012,
-            "description": "MRT rise per W/m^2 of GHI (air_plus_solar_linear only)",
-            "maximum": 0.05,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Solar Mrt Gain K Per W M2",
-            "type": "number"
-          },
-          "wind_speed_scaling_factor": {
-            "default": 1.0,
-            "description": "Multiplier from ERA5 10 m wind to body-height wind. 1.0 keeps Stage 1 behaviour; ~0.67 approximates 1.1 m height via a logarithmic profile over open terrain.",
-            "exclusiveMinimum": 0.0,
-            "maximum": 1.5,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Wind Speed Scaling Factor",
-            "type": "number"
-          }
-        },
-        "title": "EnvironmentAssumptions",
-        "type": "object"
-      },
-      "EnvironmentInput": {
-        "properties": {
-          "air_temperature_c": {
-            "default": 38.0,
-            "maximum": 70.0,
-            "minimum": -50.0,
-            "title": "Air Temperature C",
-            "type": "number"
-          },
-          "mean_radiant_temperature_c": {
-            "default": 45.0,
-            "maximum": 100.0,
-            "minimum": -50.0,
-            "title": "Mean Radiant Temperature C",
-            "type": "number"
-          },
-          "relative_humidity_percent": {
-            "default": 40.0,
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Relative Humidity Percent",
-            "type": "number"
-          },
-          "sky_temperature_c": {
-            "anyOf": [
-              {
-                "maximum": 70.0,
-                "minimum": -100.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sky Temperature C"
-          },
-          "sky_view_factor": {
-            "default": 0.5,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Sky View Factor",
-            "type": "number"
-          },
-          "solar_radiation_w_m2": {
-            "default": 800.0,
-            "maximum": 1500.0,
-            "minimum": 0.0,
-            "title": "Solar Radiation W M2",
-            "type": "number"
-          },
-          "wind_speed_m_s": {
-            "default": 1.5,
-            "maximum": 30.0,
-            "minimum": 0.0,
-            "title": "Wind Speed M S",
-            "type": "number"
-          }
-        },
-        "title": "EnvironmentInput",
-        "type": "object"
-      },
-      "GaggeBenchmarkRequest": {
-        "properties": {
-          "duration_minutes": {
-            "default": 60,
-            "maximum": 240.0,
-            "minimum": 1.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment": {
-            "$ref": "#/components/schemas/EnvironmentInput"
-          },
-          "material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          }
-        },
-        "required": [
-          "environment",
-          "person",
-          "material"
-        ],
-        "title": "GaggeBenchmarkRequest",
-        "type": "object"
-      },
-      "GaggeBenchmarkResponse": {
-        "properties": {
-          "difference_core_temperature_c": {
-            "title": "Difference Core Temperature C",
-            "type": "number"
-          },
-          "difference_skin_temperature_c": {
-            "title": "Difference Skin Temperature C",
-            "type": "number"
-          },
-          "environment_note": {
-            "title": "Environment Note",
-            "type": "string"
-          },
-          "gagge": {
-            "$ref": "#/components/schemas/GaggeModelOutput"
-          },
-          "prototype": {
-            "$ref": "#/components/schemas/PrototypeBenchmarkOutput"
-          },
-          "reference_library": {
-            "title": "Reference Library",
-            "type": "string"
-          },
-          "reference_model": {
-            "title": "Reference Model",
-            "type": "string"
-          },
-          "warning": {
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reference_model",
-          "reference_library",
-          "environment_note",
-          "prototype",
-          "gagge",
-          "difference_core_temperature_c",
-          "difference_skin_temperature_c",
-          "warning"
-        ],
-        "title": "GaggeBenchmarkResponse",
-        "type": "object"
-      },
-      "GaggeModelOutput": {
-        "properties": {
-          "core_temperature_c": {
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "respiratory_heat_loss_w_m2": {
-            "title": "Respiratory Heat Loss W M2",
-            "type": "number"
-          },
-          "skin_blood_flow_kg_h_m2": {
-            "title": "Skin Blood Flow Kg H M2",
-            "type": "number"
-          },
-          "skin_evaporation_w_m2": {
-            "title": "Skin Evaporation W M2",
-            "type": "number"
-          },
-          "skin_heat_loss_w_m2": {
-            "title": "Skin Heat Loss W M2",
-            "type": "number"
-          },
-          "skin_temperature_c": {
-            "title": "Skin Temperature C",
-            "type": "number"
-          },
-          "skin_wettedness": {
-            "title": "Skin Wettedness",
-            "type": "number"
-          },
-          "standard_effective_temperature_c": {
-            "title": "Standard Effective Temperature C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "core_temperature_c",
-          "skin_temperature_c",
-          "skin_evaporation_w_m2",
-          "skin_heat_loss_w_m2",
-          "respiratory_heat_loss_w_m2",
-          "skin_blood_flow_kg_h_m2",
-          "skin_wettedness",
-          "standard_effective_temperature_c"
-        ],
-        "title": "GaggeModelOutput",
-        "type": "object"
-      },
-      "GlobalBatchCreate": {
-        "properties": {
-          "analysis_resolution": {
-            "default": "representative",
-            "enum": [
-              "representative",
-              "daily"
-            ],
-            "title": "Analysis Resolution",
-            "type": "string"
-          },
-          "city_ids": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 100,
-            "minItems": 1,
-            "title": "City Ids",
-            "type": "array"
-          },
-          "control_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "daily_stride_days": {
-            "default": 1,
-            "maximum": 7.0,
-            "minimum": 1.0,
-            "title": "Daily Stride Days",
-            "type": "integer"
-          },
-          "duration_minutes": {
-            "default": 120,
-            "maximum": 1440.0,
-            "minimum": 30.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "enable_heatwave_analysis": {
-            "default": true,
-            "title": "Enable Heatwave Analysis",
-            "type": "boolean"
-          },
-          "end_month": {
-            "default": 12,
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "End Month",
-            "type": "integer"
-          },
-          "environment_assumptions": {
-            "$ref": "#/components/schemas/EnvironmentAssumptions"
-          },
-          "execution_profile": {
-            "default": "auto",
-            "enum": [
-              "auto",
-              "standard",
-              "large"
-            ],
-            "title": "Execution Profile",
-            "type": "string"
-          },
-          "exposure_match_mode": {
-            "default": "all",
-            "enum": [
-              "all",
-              "any"
-            ],
-            "title": "Exposure Match Mode",
-            "type": "string"
-          },
-          "heatwave_minimum_consecutive_days": {
-            "default": 3,
-            "maximum": 30.0,
-            "minimum": 2.0,
-            "title": "Heatwave Minimum Consecutive Days",
-            "type": "integer"
-          },
-          "heatwave_temperature_threshold_c": {
-            "default": 35.0,
-            "maximum": 70.0,
-            "minimum": -20.0,
-            "title": "Heatwave Temperature Threshold C",
-            "type": "number"
-          },
-          "local_start_hour": {
-            "default": 12,
-            "maximum": 23.0,
-            "minimum": 0.0,
-            "title": "Local Start Hour",
-            "type": "integer"
-          },
-          "minimum_air_temperature_c": {
-            "anyOf": [
-              {
-                "maximum": 70.0,
-                "minimum": -50.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": 30.0,
-            "title": "Minimum Air Temperature C"
-          },
-          "minimum_skin_improvement_c": {
-            "default": 0.2,
-            "maximum": 10.0,
-            "minimum": -5.0,
-            "title": "Minimum Skin Improvement C",
-            "type": "number"
-          },
-          "minimum_solar_radiation_w_m2": {
-            "anyOf": [
-              {
-                "maximum": 1500.0,
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": 300.0,
-            "title": "Minimum Solar Radiation W M2"
-          },
-          "name": {
-            "default": "Global multi-day climate adaptation analysis",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "output_interval_minutes": {
-            "default": 10,
-            "maximum": 60.0,
-            "minimum": 1.0,
-            "title": "Output Interval Minutes",
-            "type": "integer"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "rc_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "representative_day": {
-            "anyOf": [
-              {
-                "maximum": 28.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Representative Day"
-          },
-          "resume_from_checkpoint": {
-            "default": true,
-            "title": "Resume From Checkpoint",
-            "type": "boolean"
-          },
-          "sample_days_per_month": {
-            "default": 3,
-            "maximum": 7.0,
-            "minimum": 1.0,
-            "title": "Sample Days Per Month",
-            "type": "integer"
-          },
-          "start_month": {
-            "default": 1,
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "Start Month",
-            "type": "integer"
-          },
-          "year": {
-            "default": 2023,
-            "maximum": 2100.0,
-            "minimum": 1940.0,
-            "title": "Year",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "city_ids",
-          "person",
-          "control_material",
-          "rc_material"
-        ],
-        "title": "GlobalBatchCreate",
-        "type": "object"
-      },
-      "GlobalBatchDetail": {
-        "properties": {
-          "cancelled_city_count": {
-            "title": "Cancelled City Count",
-            "type": "integer"
-          },
-          "celery_group_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Group Id"
-          },
-          "city_results": {
-            "items": {
-              "$ref": "#/components/schemas/GlobalCityResultResponse"
-            },
-            "title": "City Results",
-            "type": "array"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "completed_city_count": {
-            "title": "Completed City Count",
-            "type": "integer"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "failed_city_count": {
-            "title": "Failed City Count",
-            "type": "integer"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "request": {
-            "$ref": "#/components/schemas/GlobalBatchCreate"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "partial_completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "total_city_count": {
-            "title": "Total City Count",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_group_id",
-          "status",
-          "stage",
-          "progress",
-          "total_city_count",
-          "completed_city_count",
-          "failed_city_count",
-          "cancelled_city_count",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at",
-          "request",
-          "city_results"
-        ],
-        "title": "GlobalBatchDetail",
-        "type": "object"
-      },
-      "GlobalBatchEstimateResponse": {
-        "properties": {
-          "analysis_resolution": {
-            "enum": [
-              "representative",
-              "daily"
-            ],
-            "title": "Analysis Resolution",
-            "type": "string"
-          },
-          "checkpoint_count_per_city": {
-            "title": "Checkpoint Count Per City",
-            "type": "integer"
-          },
-          "city_count": {
-            "title": "City Count",
-            "type": "integer"
-          },
-          "estimated_weather_requests": {
-            "title": "Estimated Weather Requests",
-            "type": "integer"
-          },
-          "heatwave_analysis_available": {
-            "title": "Heatwave Analysis Available",
-            "type": "boolean"
-          },
-          "month_count": {
-            "title": "Month Count",
-            "type": "integer"
-          },
-          "resolved_execution_profile": {
-            "enum": [
-              "auto",
-              "standard",
-              "large"
-            ],
-            "title": "Resolved Execution Profile",
-            "type": "string"
-          },
-          "resolved_queue": {
-            "title": "Resolved Queue",
-            "type": "string"
-          },
-          "samples_per_city": {
-            "title": "Samples Per City",
-            "type": "integer"
-          },
-          "thermal_simulation_count": {
-            "title": "Thermal Simulation Count",
-            "type": "integer"
-          },
-          "total_samples": {
-            "title": "Total Samples",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "city_count",
-          "month_count",
-          "samples_per_city",
-          "total_samples",
-          "thermal_simulation_count",
-          "estimated_weather_requests",
-          "analysis_resolution",
-          "resolved_execution_profile",
-          "resolved_queue",
-          "checkpoint_count_per_city",
-          "heatwave_analysis_available"
-        ],
-        "title": "GlobalBatchEstimateResponse",
-        "type": "object"
-      },
-      "GlobalBatchListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/GlobalBatchResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "GlobalBatchListResponse",
-        "type": "object"
-      },
-      "GlobalBatchResponse": {
-        "properties": {
-          "cancelled_city_count": {
-            "title": "Cancelled City Count",
-            "type": "integer"
-          },
-          "celery_group_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Group Id"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "completed_city_count": {
-            "title": "Completed City Count",
-            "type": "integer"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "failed_city_count": {
-            "title": "Failed City Count",
-            "type": "integer"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "partial_completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "total_city_count": {
-            "title": "Total City Count",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_group_id",
-          "status",
-          "stage",
-          "progress",
-          "total_city_count",
-          "completed_city_count",
-          "failed_city_count",
-          "cancelled_city_count",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at"
-        ],
-        "title": "GlobalBatchResponse",
-        "type": "object"
-      },
-      "GlobalCityResultResponse": {
-        "properties": {
-          "annual_average_core_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annual Average Core Improvement C"
-          },
-          "annual_average_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annual Average Skin Improvement C"
-          },
-          "batch_id": {
-            "title": "Batch Id",
-            "type": "string"
-          },
-          "beneficial_weighted_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Beneficial Weighted Days"
-          },
-          "celery_task_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Task Id"
-          },
-          "city_id": {
-            "title": "City Id",
-            "type": "string"
-          },
-          "city_name": {
-            "title": "City Name",
-            "type": "string"
-          },
-          "climate_adaptation_rate_percent": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Climate Adaptation Rate Percent"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "completed_month_count": {
-            "default": 0,
-            "title": "Completed Month Count",
-            "type": "integer"
-          },
-          "core_improvement_p50_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Core Improvement P50 C"
-          },
-          "core_improvement_p90_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Core Improvement P90 C"
-          },
-          "core_improvement_p95_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Core Improvement P95 C"
-          },
-          "country": {
-            "title": "Country",
-            "type": "string"
-          },
-          "data_quality": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Quality"
-          },
-          "effective_cooling_hours": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective Cooling Hours"
-          },
-          "eligible_sample_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eligible Sample Count"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "evaluated_weighted_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaluated Weighted Days"
-          },
-          "exposure_coverage_percent": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exposure Coverage Percent"
-          },
-          "heatwave_event_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Heatwave Event Count"
-          },
-          "heatwave_events": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/HeatwaveEvent"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Heatwave Events"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "last_checkpoint_month": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Checkpoint Month"
-          },
-          "last_heartbeat_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Heartbeat At"
-          },
-          "latitude": {
-            "title": "Latitude",
-            "type": "number"
-          },
-          "longest_heatwave_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Longest Heatwave Days"
-          },
-          "longitude": {
-            "title": "Longitude",
-            "type": "number"
-          },
-          "maximum_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum Skin Improvement C"
-          },
-          "metric_definitions": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metric Definitions"
-          },
-          "monthly_results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/MonthlyAdaptationResult"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Monthly Results"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "resumed_from_checkpoint": {
-            "default": false,
-            "title": "Resumed From Checkpoint",
-            "type": "boolean"
-          },
-          "retry_count": {
-            "title": "Retry Count",
-            "type": "integer"
-          },
-          "sampled_day_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sampled Day Count"
-          },
-          "skin_improvement_p50_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Improvement P50 C"
-          },
-          "skin_improvement_p90_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Improvement P90 C"
-          },
-          "skin_improvement_p95_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Improvement P95 C"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelled",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "batch_id",
-          "celery_task_id",
-          "city_id",
-          "city_name",
-          "country",
-          "latitude",
-          "longitude",
-          "status",
-          "stage",
-          "progress",
-          "climate_adaptation_rate_percent",
-          "exposure_coverage_percent",
-          "annual_average_skin_improvement_c",
-          "annual_average_core_improvement_c",
-          "maximum_skin_improvement_c",
-          "effective_cooling_hours",
-          "sampled_day_count",
-          "eligible_sample_count",
-          "evaluated_weighted_days",
-          "beneficial_weighted_days",
-          "retry_count",
-          "monthly_results",
-          "error_message",
-          "started_at",
-          "completed_at"
-        ],
-        "title": "GlobalCityResultResponse",
-        "type": "object"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
-        "type": "object"
-      },
-      "HeatwaveEvent": {
-        "properties": {
-          "beneficial_day_count": {
-            "minimum": 0.0,
-            "title": "Beneficial Day Count",
-            "type": "integer"
-          },
-          "duration_days": {
-            "minimum": 1.0,
-            "title": "Duration Days",
-            "type": "integer"
-          },
-          "end_date_local": {
-            "format": "date-time",
-            "title": "End Date Local",
-            "type": "string"
-          },
-          "mean_maximum_air_temperature_c": {
-            "title": "Mean Maximum Air Temperature C",
-            "type": "number"
-          },
-          "mean_skin_improvement_c": {
-            "title": "Mean Skin Improvement C",
-            "type": "number"
-          },
-          "p90_skin_improvement_c": {
-            "title": "P90 Skin Improvement C",
-            "type": "number"
-          },
-          "peak_air_temperature_c": {
-            "title": "Peak Air Temperature C",
-            "type": "number"
-          },
-          "start_date_local": {
-            "format": "date-time",
-            "title": "Start Date Local",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start_date_local",
-          "end_date_local",
-          "duration_days",
-          "mean_maximum_air_temperature_c",
-          "peak_air_temperature_c",
-          "mean_skin_improvement_c",
-          "p90_skin_improvement_c",
-          "beneficial_day_count"
-        ],
-        "title": "HeatwaveEvent",
-        "type": "object"
-      },
-      "MaterialCreate": {
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "initial_version": {
-            "$ref": "#/components/schemas/MaterialVersionCreate"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "name": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "maxLength": 200,
-            "minLength": 1,
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "slug",
-          "initial_version"
-        ],
-        "title": "MaterialCreate",
-        "type": "object"
-      },
-      "MaterialInput": {
-        "properties": {
-          "absorbed_solar_to_body_fraction": {
-            "default": 0.35,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Absorbed Solar To Body Fraction",
-            "type": "number"
-          },
-          "clothing_insulation_clo": {
-            "default": 0.5,
-            "maximum": 5.0,
-            "minimum": 0.0,
-            "title": "Clothing Insulation Clo",
-            "type": "number"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "anyOf": [
-              {
-                "maximum": 1000.0,
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaporative Resistance M2Pa W"
-          },
-          "infrared_emissivity": {
-            "default": 0.9,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Emissivity",
-            "type": "number"
-          },
-          "infrared_transmittance": {
-            "default": 0.0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Transmittance",
-            "type": "number"
-          },
-          "material_version_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Material Version Id"
-          },
-          "name": {
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "parameter_sources": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/ParameterSource"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parameter Sources"
-          },
-          "projected_solar_area_factor": {
-            "default": 0.25,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Projected Solar Area Factor",
-            "type": "number"
-          },
-          "solar_reflectance": {
-            "default": 0.5,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Reflectance",
-            "type": "number"
-          },
-          "solar_transmittance": {
-            "default": 0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Transmittance",
-            "type": "number"
-          },
-          "source_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Reference"
-          },
-          "source_type": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Type"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "MaterialInput",
-        "type": "object"
-      },
-      "MaterialListItem": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "is_archived": {
-            "title": "Is Archived",
-            "type": "boolean"
-          },
-          "latest_version_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Version Number"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "slug",
-          "institution",
-          "is_archived",
-          "latest_version_number",
-          "created_at"
-        ],
-        "title": "MaterialListItem",
-        "type": "object"
-      },
-      "MaterialListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/MaterialListItem"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "MaterialListResponse",
-        "type": "object"
-      },
-      "MaterialResponse": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "is_archived": {
-            "title": "Is Archived",
-            "type": "boolean"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          },
-          "versions": {
-            "items": {
-              "$ref": "#/components/schemas/MaterialVersionResponse"
-            },
-            "title": "Versions",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "slug",
-          "description",
-          "institution",
-          "is_archived",
-          "created_at",
-          "updated_at",
-          "versions"
-        ],
-        "title": "MaterialResponse",
-        "type": "object"
-      },
-      "MaterialUpdate": {
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "is_archived": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Archived"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          }
-        },
-        "title": "MaterialUpdate",
-        "type": "object"
-      },
-      "MaterialVersionCreate": {
-        "properties": {
-          "absorbed_solar_to_body_fraction": {
-            "default": 0.35,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Absorbed Solar To Body Fraction",
-            "type": "number"
-          },
-          "areal_density_g_m2": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Areal Density G M2"
-          },
-          "clothing_insulation_clo": {
-            "default": 0.5,
-            "maximum": 5.0,
-            "minimum": 0.0,
-            "title": "Clothing Insulation Clo",
-            "type": "number"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaporative Resistance M2Pa W"
-          },
-          "infrared_emissivity": {
-            "default": 0.9,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Emissivity",
-            "type": "number"
-          },
-          "infrared_transmittance": {
-            "default": 0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Transmittance",
-            "type": "number"
-          },
-          "mode": {
-            "default": "opaque_emitter",
-            "enum": [
-              "ordinary",
-              "opaque_emitter",
-              "infrared_transparent",
-              "hybrid"
-            ],
-            "title": "Mode",
-            "type": "string"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "parameter_sources": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/ParameterSource"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parameter Sources"
-          },
-          "projected_solar_area_factor": {
-            "default": 0.25,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Projected Solar Area Factor",
-            "type": "number"
-          },
-          "solar_reflectance": {
-            "default": 0.5,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Reflectance",
-            "type": "number"
-          },
-          "solar_transmittance": {
-            "default": 0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Transmittance",
-            "type": "number"
-          },
-          "source_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Reference"
-          },
-          "source_type": {
-            "default": "manual",
-            "maxLength": 50,
-            "title": "Source Type",
-            "type": "string"
-          },
-          "specific_heat_j_kgk": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Specific Heat J Kgk"
-          }
-        },
-        "title": "MaterialVersionCreate",
-        "type": "object"
-      },
-      "MaterialVersionResponse": {
-        "properties": {
-          "absorbed_solar_to_body_fraction": {
-            "title": "Absorbed Solar To Body Fraction",
-            "type": "number"
-          },
-          "areal_density_g_m2": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Areal Density G M2"
-          },
-          "clothing_insulation_clo": {
-            "title": "Clothing Insulation Clo",
-            "type": "number"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaporative Resistance M2Pa W"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "infrared_emissivity": {
-            "title": "Infrared Emissivity",
-            "type": "number"
-          },
-          "infrared_transmittance": {
-            "title": "Infrared Transmittance",
-            "type": "number"
-          },
-          "material_id": {
-            "title": "Material Id",
-            "type": "string"
-          },
-          "mode": {
-            "title": "Mode",
-            "type": "string"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "parameter_sources": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/ParameterSource"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parameter Sources"
-          },
-          "projected_solar_area_factor": {
-            "title": "Projected Solar Area Factor",
-            "type": "number"
-          },
-          "solar_reflectance": {
-            "title": "Solar Reflectance",
-            "type": "number"
-          },
-          "solar_transmittance": {
-            "title": "Solar Transmittance",
-            "type": "number"
-          },
-          "source_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Reference"
-          },
-          "source_type": {
-            "title": "Source Type",
-            "type": "string"
-          },
-          "specific_heat_j_kgk": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Specific Heat J Kgk"
-          },
-          "spectra": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/SpectrumSummary"
-            },
-            "title": "Spectra",
-            "type": "array"
-          },
-          "version_number": {
-            "title": "Version Number",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "material_id",
-          "version_number",
-          "mode",
-          "clothing_insulation_clo",
-          "evaporative_resistance_m2pa_w",
-          "solar_reflectance",
-          "solar_transmittance",
-          "infrared_emissivity",
-          "infrared_transmittance",
-          "projected_solar_area_factor",
-          "absorbed_solar_to_body_fraction",
-          "areal_density_g_m2",
-          "specific_heat_j_kgk",
-          "source_type",
-          "source_reference",
-          "notes",
-          "created_at"
-        ],
-        "title": "MaterialVersionResponse",
-        "type": "object"
-      },
-      "ModelMetadata": {
-        "description": "Written into every simulation response for traceability.",
-        "properties": {
-          "parameter_set_sha256": {
-            "title": "Parameter Set Sha256",
-            "type": "string"
-          },
-          "parameter_set_version": {
-            "title": "Parameter Set Version",
-            "type": "string"
-          }
-        },
-        "required": [
-          "parameter_set_version",
-          "parameter_set_sha256"
-        ],
-        "title": "ModelMetadata",
-        "type": "object"
-      },
-      "ModelParameter": {
-        "description": "A physical constant used by the thermal model.",
-        "properties": {
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "reference": {
-            "title": "Reference",
-            "type": "string"
-          },
-          "source_type": {
-            "enum": [
-              "measured",
-              "manufacturer",
-              "literature",
-              "standard",
-              "derived",
-              "assumed",
-              "manual"
-            ],
-            "title": "Source Type",
-            "type": "string"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          }
-        },
-        "required": [
-          "name",
-          "value",
-          "unit",
-          "description",
-          "source_type",
-          "reference"
-        ],
-        "title": "ModelParameter",
-        "type": "object"
-      },
-      "ModelParameterManifest": {
-        "properties": {
-          "parameter_set_sha256": {
-            "title": "Parameter Set Sha256",
-            "type": "string"
-          },
-          "parameter_set_version": {
-            "title": "Parameter Set Version",
-            "type": "string"
-          },
-          "parameters": {
-            "items": {
-              "$ref": "#/components/schemas/ModelParameter"
-            },
-            "title": "Parameters",
-            "type": "array"
-          }
-        },
-        "required": [
-          "parameter_set_version",
-          "parameter_set_sha256",
-          "parameters"
-        ],
-        "title": "ModelParameterManifest",
-        "type": "object"
-      },
-      "MonthlyAdaptationResult": {
-        "properties": {
-          "average_core_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Average Core Improvement C"
-          },
-          "average_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Average Skin Improvement C"
-          },
-          "beneficial": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Beneficial"
-          },
-          "beneficial_weighted_days": {
-            "default": 0,
-            "title": "Beneficial Weighted Days",
-            "type": "integer"
-          },
-          "climate_adaptation_rate_percent": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Climate Adaptation Rate Percent"
-          },
-          "eligible_sample_count": {
-            "default": 0,
-            "title": "Eligible Sample Count",
-            "type": "integer"
-          },
-          "evaluated_weighted_days": {
-            "default": 0,
-            "title": "Evaluated Weighted Days",
-            "type": "integer"
-          },
-          "exposure_coverage_percent": {
-            "default": 0.0,
-            "title": "Exposure Coverage Percent",
-            "type": "number"
-          },
-          "final_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Final Skin Improvement C"
-          },
-          "maximum_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum Skin Improvement C"
-          },
-          "month": {
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "Month",
-            "type": "integer"
-          },
-          "representative_date_local": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Representative Date Local"
-          },
-          "sampled_day_count": {
-            "default": 1,
-            "title": "Sampled Day Count",
-            "type": "integer"
-          },
-          "samples": {
-            "items": {
-              "$ref": "#/components/schemas/DailyAdaptationResult"
-            },
-            "title": "Samples",
-            "type": "array"
-          },
-          "skipped_samples": {
-            "items": {
-              "$ref": "#/components/schemas/SkippedSample"
-            },
-            "title": "Skipped Samples",
-            "type": "array"
-          },
-          "skipped_weighted_days": {
-            "default": 0,
-            "title": "Skipped Weighted Days",
-            "type": "integer"
-          },
-          "total_weighted_days": {
-            "default": 0,
-            "title": "Total Weighted Days",
-            "type": "integer"
-          },
-          "weight_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Weight Days"
-          }
-        },
-        "required": [
-          "month"
-        ],
-        "title": "MonthlyAdaptationResult",
-        "type": "object"
-      },
-      "ParameterSource": {
-        "additionalProperties": false,
-        "description": "Provenance of one numeric input.",
-        "properties": {
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 1000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "reference": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reference"
-          },
-          "source_type": {
-            "default": "assumed",
-            "enum": [
-              "measured",
-              "manufacturer",
-              "literature",
-              "standard",
-              "derived",
-              "assumed",
-              "manual"
-            ],
-            "title": "Source Type",
-            "type": "string"
-          }
-        },
-        "title": "ParameterSource",
-        "type": "object"
-      },
-      "PersonInput": {
-        "properties": {
-          "body_surface_area_m2": {
-            "default": 1.8,
-            "maximum": 3.0,
-            "minimum": 1.0,
-            "title": "Body Surface Area M2",
-            "type": "number"
-          },
-          "initial_core_temperature_c": {
-            "default": 36.8,
-            "maximum": 40.0,
-            "minimum": 34.0,
-            "title": "Initial Core Temperature C",
-            "type": "number"
-          },
-          "initial_skin_temperature_c": {
-            "default": 33.7,
-            "maximum": 40.0,
-            "minimum": 20.0,
-            "title": "Initial Skin Temperature C",
-            "type": "number"
-          },
-          "met": {
-            "default": 2.6,
-            "maximum": 10.0,
-            "minimum": 0.7,
-            "title": "Met",
-            "type": "number"
-          }
-        },
-        "title": "PersonInput",
-        "type": "object"
-      },
-      "PrototypeBenchmarkOutput": {
-        "properties": {
-          "core_temperature_c": {
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "energy_residual_percent": {
-            "title": "Energy Residual Percent",
-            "type": "number"
-          },
-          "evaporation_w_m2": {
-            "title": "Evaporation W M2",
-            "type": "number"
-          },
-          "skin_temperature_c": {
-            "title": "Skin Temperature C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "core_temperature_c",
-          "skin_temperature_c",
-          "evaporation_w_m2",
-          "energy_residual_percent"
-        ],
-        "title": "PrototypeBenchmarkOutput",
-        "type": "object"
-      },
-      "ScenarioResult": {
-        "properties": {
-          "assumptions_applied": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Assumptions Applied",
-            "type": "array"
-          },
-          "clothing": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ClothingSummary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "diagnostics": {
-            "$ref": "#/components/schemas/EnergyDiagnostics"
-          },
-          "final_core_temperature_c": {
-            "title": "Final Core Temperature C",
-            "type": "number"
-          },
-          "final_skin_temperature_c": {
-            "title": "Final Skin Temperature C",
-            "type": "number"
-          },
-          "material_name": {
-            "title": "Material Name",
-            "type": "string"
-          },
-          "peak_core_temperature_c": {
-            "title": "Peak Core Temperature C",
-            "type": "number"
-          },
-          "peak_skin_temperature_c": {
-            "title": "Peak Skin Temperature C",
-            "type": "number"
-          },
-          "time_series": {
-            "items": {
-              "$ref": "#/components/schemas/TimeSeriesPoint"
-            },
-            "title": "Time Series",
-            "type": "array"
-          }
-        },
-        "required": [
-          "material_name",
-          "time_series",
-          "final_core_temperature_c",
-          "final_skin_temperature_c",
-          "peak_core_temperature_c",
-          "peak_skin_temperature_c",
-          "diagnostics"
-        ],
-        "title": "ScenarioResult",
-        "type": "object"
-      },
-      "SimulationJobDetail": {
-        "properties": {
-          "celery_task_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Task Id"
-          },
-          "city_id": {
-            "title": "City Id",
-            "type": "string"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "request": {
-            "$ref": "#/components/schemas/WeatherSimulationRequest"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_task_id",
-          "status",
-          "stage",
-          "progress",
-          "city_id",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at",
-          "request"
-        ],
-        "title": "SimulationJobDetail",
-        "type": "object"
-      },
-      "SimulationJobListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SimulationJobResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "SimulationJobListResponse",
-        "type": "object"
-      },
-      "SimulationJobResponse": {
-        "properties": {
-          "celery_task_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Task Id"
-          },
-          "city_id": {
-            "title": "City Id",
-            "type": "string"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_task_id",
-          "status",
-          "stage",
-          "progress",
-          "city_id",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at"
-        ],
-        "title": "SimulationJobResponse",
-        "type": "object"
-      },
-      "SimulationRequest": {
-        "properties": {
-          "city": {
-            "default": "Dubai",
-            "minLength": 1,
-            "title": "City",
-            "type": "string"
-          },
-          "control_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "duration_minutes": {
-            "default": 120,
-            "maximum": 1440.0,
-            "minimum": 1.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment": {
-            "$ref": "#/components/schemas/EnvironmentInput"
-          },
-          "output_interval_minutes": {
-            "default": 1,
-            "maximum": 60.0,
-            "minimum": 1.0,
-            "title": "Output Interval Minutes",
-            "type": "integer"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "rc_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          }
-        },
-        "required": [
-          "environment",
-          "person",
-          "control_material",
-          "rc_material"
-        ],
-        "title": "SimulationRequest",
-        "type": "object"
-      },
-      "SimulationResponse": {
-        "properties": {
-          "city": {
-            "title": "City",
-            "type": "string"
-          },
-          "control": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "duration_minutes": {
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "model_metadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "model_name": {
-            "title": "Model Name",
-            "type": "string"
-          },
-          "model_version": {
-            "title": "Model Version",
-            "type": "string"
-          },
-          "radiative_cooling": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/SimulationSummary"
-          },
-          "warning": {
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "model_name",
-          "model_version",
-          "city",
-          "duration_minutes",
-          "control",
-          "radiative_cooling",
-          "summary",
-          "warning"
-        ],
-        "title": "SimulationResponse",
-        "type": "object"
-      },
-      "SimulationSummary": {
-        "properties": {
-          "average_skin_temperature_improvement_c": {
-            "title": "Average Skin Temperature Improvement C",
-            "type": "number"
-          },
-          "final_core_temperature_improvement_c": {
-            "title": "Final Core Temperature Improvement C",
-            "type": "number"
-          },
-          "final_skin_temperature_improvement_c": {
-            "title": "Final Skin Temperature Improvement C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "final_skin_temperature_improvement_c",
-          "final_core_temperature_improvement_c",
-          "average_skin_temperature_improvement_c"
-        ],
-        "title": "SimulationSummary",
-        "type": "object"
-      },
-      "SkippedSample": {
-        "description": "A planned sample day that could not be simulated for data reasons.",
-        "properties": {
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "reason_code": {
-            "title": "Reason Code",
-            "type": "string"
-          },
-          "sample_date_local": {
-            "format": "date-time",
-            "title": "Sample Date Local",
-            "type": "string"
-          },
-          "weight_days": {
-            "minimum": 1.0,
-            "title": "Weight Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "sample_date_local",
-          "weight_days",
-          "reason_code",
-          "message"
-        ],
-        "title": "SkippedSample",
-        "type": "object"
-      },
-      "SpectrumPoint": {
-        "properties": {
-          "value": {
-            "title": "Value",
-            "type": "number"
-          },
-          "wavelength_um": {
-            "title": "Wavelength Um",
-            "type": "number"
-          }
-        },
-        "required": [
-          "wavelength_um",
-          "value"
-        ],
-        "title": "SpectrumPoint",
-        "type": "object"
-      },
-      "SpectrumResponse": {
-        "properties": {
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/SpectrumPoint"
-            },
-            "title": "Points",
-            "type": "array"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/SpectrumSummary"
-          }
-        },
-        "required": [
-          "summary",
-          "points"
-        ],
-        "title": "SpectrumResponse",
-        "type": "object"
-      },
-      "SpectrumSummary": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "file_checksum_sha256": {
-            "title": "File Checksum Sha256",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "maximum_wavelength_um": {
-            "title": "Maximum Wavelength Um",
-            "type": "number"
-          },
-          "minimum_wavelength_um": {
-            "title": "Minimum Wavelength Um",
-            "type": "number"
-          },
-          "original_filename": {
-            "title": "Original Filename",
-            "type": "string"
-          },
-          "point_count": {
-            "title": "Point Count",
-            "type": "integer"
-          },
-          "spectrum_type": {
-            "title": "Spectrum Type",
-            "type": "string"
-          },
-          "wavelength_unit": {
-            "title": "Wavelength Unit",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "spectrum_type",
-          "wavelength_unit",
-          "point_count",
-          "minimum_wavelength_um",
-          "maximum_wavelength_um",
-          "original_filename",
-          "file_checksum_sha256",
-          "created_at"
-        ],
-        "title": "SpectrumSummary",
-        "type": "object"
-      },
-      "TimeSeriesPoint": {
-        "properties": {
-          "absorbed_solar_w_m2": {
-            "title": "Absorbed Solar W M2",
-            "type": "number"
-          },
-          "convection_w_m2": {
-            "title": "Convection W M2",
-            "type": "number"
-          },
-          "core_temperature_c": {
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "core_to_skin_w_m2": {
-            "title": "Core To Skin W M2",
-            "type": "number"
-          },
-          "evaporation_w_m2": {
-            "title": "Evaporation W M2",
-            "type": "number"
-          },
-          "longwave_radiation_w_m2": {
-            "title": "Longwave Radiation W M2",
-            "type": "number"
-          },
-          "maximum_evaporation_w_m2": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum Evaporation W M2"
-          },
-          "minute": {
-            "title": "Minute",
-            "type": "number"
-          },
-          "skin_temperature_c": {
-            "title": "Skin Temperature C",
-            "type": "number"
-          },
-          "skin_wettedness": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Wettedness"
-          }
-        },
-        "required": [
-          "minute",
-          "core_temperature_c",
-          "skin_temperature_c",
-          "convection_w_m2",
-          "longwave_radiation_w_m2",
-          "evaporation_w_m2",
-          "absorbed_solar_w_m2",
-          "core_to_skin_w_m2"
-        ],
-        "title": "TimeSeriesPoint",
-        "type": "object"
-      },
-      "ValidationError": {
-        "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      },
-      "WeatherGap": {
-        "description": "A break in the hourly timeline between two consecutive points.",
-        "properties": {
-          "end": {
-            "format": "date-time",
-            "title": "End",
-            "type": "string"
-          },
-          "missing_steps": {
-            "minimum": 1.0,
-            "title": "Missing Steps",
-            "type": "integer"
-          },
-          "start": {
-            "format": "date-time",
-            "title": "Start",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start",
-          "end",
-          "missing_steps"
-        ],
-        "title": "WeatherGap",
-        "type": "object"
-      },
-      "WeatherPoint": {
-        "properties": {
-          "air_temperature_c": {
-            "title": "Air Temperature C",
-            "type": "number"
-          },
-          "diffuse_radiation_w_m2": {
-            "title": "Diffuse Radiation W M2",
-            "type": "number"
-          },
-          "direct_radiation_w_m2": {
-            "title": "Direct Radiation W M2",
-            "type": "number"
-          },
-          "dni_w_m2": {
-            "title": "Dni W M2",
-            "type": "number"
-          },
-          "ghi_w_m2": {
-            "title": "Ghi W M2",
-            "type": "number"
-          },
-          "relative_humidity_percent": {
-            "title": "Relative Humidity Percent",
-            "type": "number"
-          },
-          "timestamp": {
-            "format": "date-time",
-            "title": "Timestamp",
-            "type": "string"
-          },
-          "wind_speed_m_s": {
-            "title": "Wind Speed M S",
-            "type": "number"
-          }
-        },
-        "required": [
-          "timestamp",
-          "air_temperature_c",
-          "relative_humidity_percent",
-          "wind_speed_m_s",
-          "ghi_w_m2",
-          "direct_radiation_w_m2",
-          "diffuse_radiation_w_m2",
-          "dni_w_m2"
-        ],
-        "title": "WeatherPoint",
-        "type": "object"
-      },
-      "WeatherQualityReport": {
-        "description": "Result of normalising a raw weather timeline (Stage 1, PR-1).",
-        "properties": {
-          "duplicates_removed": {
-            "default": 0,
-            "title": "Duplicates Removed",
-            "type": "integer"
-          },
-          "expected_step_seconds": {
-            "exclusiveMinimum": 0.0,
-            "title": "Expected Step Seconds",
-            "type": "integer"
-          },
-          "first_timestamp": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Timestamp"
-          },
-          "gaps": {
-            "items": {
-              "$ref": "#/components/schemas/WeatherGap"
-            },
-            "title": "Gaps",
-            "type": "array"
-          },
-          "last_timestamp": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Timestamp"
-          },
-          "notes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Notes",
-            "type": "array"
-          },
-          "point_count": {
-            "minimum": 0.0,
-            "title": "Point Count",
-            "type": "integer"
-          },
-          "was_sorted": {
-            "default": true,
-            "title": "Was Sorted",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "expected_step_seconds",
-          "point_count"
-        ],
-        "title": "WeatherQualityReport",
-        "type": "object"
-      },
-      "WeatherSimulationRequest": {
-        "properties": {
-          "city_id": {
-            "default": "dubai",
-            "minLength": 1,
-            "title": "City Id",
-            "type": "string"
-          },
-          "control_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "duration_minutes": {
-            "default": 120,
-            "maximum": 1440.0,
-            "minimum": 1.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment_assumptions": {
-            "$ref": "#/components/schemas/EnvironmentAssumptions"
-          },
-          "output_interval_minutes": {
-            "default": 1,
-            "maximum": 60.0,
-            "minimum": 1.0,
-            "title": "Output Interval Minutes",
-            "type": "integer"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "rc_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "start_time_local": {
-            "format": "date-time",
-            "title": "Start Time Local",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start_time_local",
-          "person",
-          "control_material",
-          "rc_material"
-        ],
-        "title": "WeatherSimulationRequest",
-        "type": "object"
-      },
-      "WeatherSimulationResponse": {
-        "properties": {
-          "city": {
-            "title": "City",
-            "type": "string"
-          },
-          "control": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "duration_minutes": {
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment_assumptions": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/EnvironmentAssumptions"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "environment_model_note": {
-            "title": "Environment Model Note",
-            "type": "string"
-          },
-          "model_metadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "model_name": {
-            "title": "Model Name",
-            "type": "string"
-          },
-          "model_version": {
-            "title": "Model Version",
-            "type": "string"
-          },
-          "radiative_cooling": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/SimulationSummary"
-          },
-          "warning": {
-            "title": "Warning",
-            "type": "string"
-          },
-          "weather": {
-            "$ref": "#/components/schemas/WeatherTimeSeries"
-          }
-        },
-        "required": [
-          "model_name",
-          "model_version",
-          "city",
-          "duration_minutes",
-          "control",
-          "radiative_cooling",
-          "summary",
-          "warning",
-          "weather",
-          "environment_model_note"
-        ],
-        "title": "WeatherSimulationResponse",
-        "type": "object"
-      },
-      "WeatherSourceMetadata": {
-        "properties": {
-          "attribution": {
-            "title": "Attribution",
-            "type": "string"
-          },
-          "dataset": {
-            "title": "Dataset",
-            "type": "string"
-          },
-          "downloaded_at": {
-            "format": "date-time",
-            "title": "Downloaded At",
-            "type": "string"
-          },
-          "elevation_m": {
-            "title": "Elevation M",
-            "type": "number"
-          },
-          "from_cache": {
-            "title": "From Cache",
-            "type": "boolean"
-          },
-          "latitude": {
-            "title": "Latitude",
-            "type": "number"
-          },
-          "longitude": {
-            "title": "Longitude",
-            "type": "number"
-          },
-          "model": {
-            "title": "Model",
-            "type": "string"
-          },
-          "payload_sha256": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payload Sha256"
-          },
-          "provider": {
-            "title": "Provider",
-            "type": "string"
-          },
-          "quality": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WeatherQualityReport"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "timezone": {
-            "title": "Timezone",
-            "type": "string"
-          }
-        },
-        "required": [
-          "provider",
-          "dataset",
-          "model",
-          "latitude",
-          "longitude",
-          "elevation_m",
-          "timezone",
-          "downloaded_at",
-          "from_cache",
-          "attribution"
-        ],
-        "title": "WeatherSourceMetadata",
-        "type": "object"
-      },
-      "WeatherTimeSeries": {
-        "properties": {
-          "city": {
-            "$ref": "#/components/schemas/CityResponse"
-          },
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/WeatherPoint"
-            },
-            "title": "Points",
-            "type": "array"
-          },
-          "requested_end_time": {
-            "format": "date-time",
-            "title": "Requested End Time",
-            "type": "string"
-          },
-          "requested_start_time": {
-            "format": "date-time",
-            "title": "Requested Start Time",
-            "type": "string"
-          },
-          "source": {
-            "$ref": "#/components/schemas/WeatherSourceMetadata"
-          }
-        },
-        "required": [
-          "city",
-          "requested_start_time",
-          "requested_end_time",
-          "points",
-          "source"
-        ],
-        "title": "WeatherTimeSeries",
-        "type": "object"
-      }
-    }
-  },
-  "info": {
-    "description": "Backend API for simulating and evaluating radiative cooling clothing under global climate conditions.",
-    "title": "Global Radiative Cooling Clothing Climate Adaptation API",
-    "version": "0.2.0"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/api/v1/benchmarks/gagge": {
-      "post": {
-        "operationId": "compare_with_gagge_api_v1_benchmarks_gagge_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GaggeBenchmarkRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GaggeBenchmarkResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Compare With Gagge",
-        "tags": [
-          "benchmarks"
-        ]
-      }
-    },
-    "/api/v1/global-batches": {
-      "get": {
-        "operationId": "list_global_batches_api_v1_global_batches_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Global Batches",
-        "tags": [
-          "global-batches"
-        ]
-      },
-      "post": {
-        "operationId": "create_global_batch_api_v1_global_batches_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GlobalBatchCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/cities": {
-      "get": {
-        "operationId": "get_supported_cities_api_v1_global_batches_cities_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Supported Cities Api V1 Global Batches Cities Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Supported Cities",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/estimate": {
-      "post": {
-        "operationId": "estimate_global_batch_api_v1_global_batches_estimate_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GlobalBatchCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchEstimateResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Estimate Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}": {
-      "get": {
-        "operationId": "get_global_batch_api_v1_global_batches__batch_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/cancel": {
-      "post": {
-        "operationId": "cancel_global_batch_api_v1_global_batches__batch_id__cancel_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Cancel Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/export": {
-      "get": {
-        "operationId": "export_global_batch_api_v1_global_batches__batch_id__export_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Export Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/geojson": {
-      "get": {
-        "operationId": "get_global_batch_geojson_api_v1_global_batches__batch_id__geojson_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Global Batch Geojson Api V1 Global Batches  Batch Id  Geojson Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Global Batch Geojson",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/retry-failed": {
-      "post": {
-        "operationId": "retry_failed_cities_api_v1_global_batches__batch_id__retry_failed_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Retry Failed Cities",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/health": {
-      "get": {
-        "operationId": "health_check_api_v1_health_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Health Check"
-      }
-    },
-    "/api/v1/materials": {
-      "get": {
-        "operationId": "list_materials_api_v1_materials_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "include_archived",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Include Archived",
-              "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
-            "name": "search",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Search"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Materials",
-        "tags": [
-          "materials"
-        ]
-      },
-      "post": {
-        "operationId": "create_material_api_v1_materials_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Material",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/versions/{version_id}/simulation-input": {
-      "get": {
-        "operationId": "material_version_to_simulation_input_api_v1_materials_versions__version_id__simulation_input_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "version_id",
-            "required": true,
-            "schema": {
-              "title": "Version Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialInput"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Material Version To Simulation Input",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/versions/{version_id}/spectra": {
-      "post": {
-        "operationId": "upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "version_id",
-            "required": true,
-            "schema": {
-              "title": "Version Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpectrumResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upload Material Spectrum",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/versions/{version_id}/spectra/{spectrum_type}": {
-      "get": {
-        "operationId": "get_material_spectrum_api_v1_materials_versions__version_id__spectra__spectrum_type__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "version_id",
-            "required": true,
-            "schema": {
-              "title": "Version Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "spectrum_type",
-            "required": true,
-            "schema": {
-              "title": "Spectrum Type",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpectrumResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Material Spectrum",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/{material_id}": {
-      "get": {
-        "operationId": "get_material_api_v1_materials__material_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "material_id",
-            "required": true,
-            "schema": {
-              "title": "Material Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Material",
-        "tags": [
-          "materials"
-        ]
-      },
-      "patch": {
-        "operationId": "update_material_api_v1_materials__material_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "material_id",
-            "required": true,
-            "schema": {
-              "title": "Material Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Material",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/{material_id}/versions": {
-      "post": {
-        "operationId": "create_material_version_api_v1_materials__material_id__versions_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "material_id",
-            "required": true,
-            "schema": {
-              "title": "Material Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialVersionCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialVersionResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Material Version",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/model/environment-assumptions/defaults": {
-      "get": {
-        "operationId": "get_default_environment_assumptions_api_v1_model_environment_assumptions_defaults_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EnvironmentAssumptions"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Default Environment Assumptions",
-        "tags": [
-          "model"
-        ]
-      }
-    },
-    "/api/v1/model/parameters": {
-      "get": {
-        "operationId": "get_model_parameters_api_v1_model_parameters_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelParameterManifest"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Model Parameters",
-        "tags": [
-          "model"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs": {
-      "get": {
-        "operationId": "list_simulation_jobs_api_v1_simulations_jobs_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Simulation Jobs",
-        "tags": [
-          "simulations"
-        ]
-      },
-      "post": {
-        "operationId": "create_simulation_job_api_v1_simulations_jobs_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WeatherSimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Simulation Job",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}": {
-      "get": {
-        "operationId": "get_simulation_job_api_v1_simulations_jobs__job_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Simulation Job",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/cancel": {
-      "post": {
-        "operationId": "cancel_simulation_job_api_v1_simulations_jobs__job_id__cancel_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Cancel Simulation Job",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/events": {
-      "get": {
-        "operationId": "simulation_job_events_api_v1_simulations_jobs__job_id__events_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Simulation Job Events",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/export": {
-      "get": {
-        "operationId": "export_simulation_result_api_v1_simulations_jobs__job_id__export_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "format",
-            "required": false,
-            "schema": {
-              "default": "csv",
-              "pattern": "^(csv|json)$",
-              "title": "Format",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Export Simulation Result",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/result": {
-      "get": {
-        "operationId": "get_simulation_result_api_v1_simulations_jobs__job_id__result_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeatherSimulationResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Simulation Result",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/run": {
-      "post": {
-        "operationId": "run_simulation_api_v1_simulations_run_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Run Simulation",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/run-weather": {
-      "post": {
-        "operationId": "run_weather_simulation_api_v1_simulations_run_weather_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WeatherSimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeatherSimulationResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Run Weather Simulation",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/weather/cities": {
-      "get": {
-        "operationId": "list_cities_api_v1_weather_cities_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CityResponse"
-                  },
-                  "title": "Response List Cities Api V1 Weather Cities Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Cities",
-        "tags": [
-          "weather"
-        ]
-      }
-    },
-    "/api/v1/weather/history": {
-      "get": {
-        "operationId": "weather_history_api_v1_weather_history_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "city_id",
-            "required": true,
-            "schema": {
-              "title": "City Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "start_time_local",
-            "required": true,
-            "schema": {
-              "format": "date-time",
-              "title": "Start Time Local",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "duration_minutes",
-            "required": false,
-            "schema": {
-              "default": 120,
-              "maximum": 1440,
-              "minimum": 1,
-              "title": "Duration Minutes",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeatherTimeSeries"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Weather History",
-        "tags": [
-          "weather"
-        ]
-      }
-    }
-  }
-}
-```
-
-### File: `.stage-3-api-contract-after.json`
-```json
-{
-  "components": {
-    "schemas": {
-      "BenchmarkMetric": {
-        "properties": {
-          "final_difference_c": {
-            "title": "Final Difference C",
-            "type": "number"
-          },
-          "maximum_absolute_difference_c": {
-            "title": "Maximum Absolute Difference C",
-            "type": "number"
-          },
-          "passed": {
-            "title": "Passed",
-            "type": "boolean"
-          },
-          "root_mean_square_difference_c": {
-            "title": "Root Mean Square Difference C",
-            "type": "number"
-          },
-          "tolerance_c": {
-            "title": "Tolerance C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "final_difference_c",
-          "maximum_absolute_difference_c",
-          "root_mean_square_difference_c",
-          "tolerance_c",
-          "passed"
-        ],
-        "title": "BenchmarkMetric",
-        "type": "object"
-      },
-      "BenchmarkSeriesPoint": {
-        "properties": {
-          "minute": {
-            "title": "Minute",
-            "type": "integer"
-          },
-          "prototype_core_temperature_c": {
-            "title": "Prototype Core Temperature C",
-            "type": "number"
-          },
-          "prototype_evaporation_w_m2": {
-            "title": "Prototype Evaporation W M2",
-            "type": "number"
-          },
-          "prototype_skin_temperature_c": {
-            "title": "Prototype Skin Temperature C",
-            "type": "number"
-          },
-          "reference_core_temperature_c": {
-            "title": "Reference Core Temperature C",
-            "type": "number"
-          },
-          "reference_evaporation_w_m2": {
-            "title": "Reference Evaporation W M2",
-            "type": "number"
-          },
-          "reference_skin_temperature_c": {
-            "title": "Reference Skin Temperature C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "minute",
-          "prototype_core_temperature_c",
-          "prototype_skin_temperature_c",
-          "prototype_evaporation_w_m2",
-          "reference_core_temperature_c",
-          "reference_skin_temperature_c",
-          "reference_evaporation_w_m2"
-        ],
-        "title": "BenchmarkSeriesPoint",
-        "type": "object"
-      },
-      "BenchmarkTolerances": {
-        "description": "Acceptance thresholds on the maximum absolute trajectory difference.",
-        "properties": {
-          "core_temperature_c": {
-            "default": 0.3,
-            "exclusiveMinimum": 0.0,
-            "maximum": 5.0,
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "skin_temperature_c": {
-            "default": 1.0,
-            "exclusiveMinimum": 0.0,
-            "maximum": 10.0,
-            "title": "Skin Temperature C",
-            "type": "number"
-          }
-        },
-        "title": "BenchmarkTolerances",
-        "type": "object"
-      },
-      "BodyThermalSummary": {
-        "description": "Heat capacities derived from PersonInput (Stage 3, ADR 0001).",
-        "properties": {
-          "body_mass_kg": {
-            "title": "Body Mass Kg",
-            "type": "number"
-          },
-          "body_surface_area_m2": {
-            "title": "Body Surface Area M2",
-            "type": "number"
-          },
-          "core_heat_capacity_j_m2k": {
-            "title": "Core Heat Capacity J M2K",
-            "type": "number"
-          },
-          "skin_heat_capacity_j_m2k": {
-            "title": "Skin Heat Capacity J M2K",
-            "type": "number"
-          }
-        },
-        "required": [
-          "body_mass_kg",
-          "body_surface_area_m2",
-          "core_heat_capacity_j_m2k",
-          "skin_heat_capacity_j_m2k"
-        ],
-        "title": "BodyThermalSummary",
-        "type": "object"
-      },
-      "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post": {
-        "properties": {
-          "file": {
-            "contentMediaType": "application/octet-stream",
-            "title": "File",
-            "type": "string"
-          },
-          "spectrum_type": {
-            "title": "Spectrum Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "spectrum_type",
-          "file"
-        ],
-        "title": "Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
-        "type": "object"
-      },
-      "CityResponse": {
-        "properties": {
-          "climate_type": {
-            "title": "Climate Type",
-            "type": "string"
-          },
-          "country": {
-            "title": "Country",
-            "type": "string"
-          },
-          "elevation_m": {
-            "title": "Elevation M",
-            "type": "number"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "latitude": {
-            "title": "Latitude",
-            "type": "number"
-          },
-          "longitude": {
-            "title": "Longitude",
-            "type": "number"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "timezone": {
-            "title": "Timezone",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "country",
-          "latitude",
-          "longitude",
-          "elevation_m",
-          "timezone",
-          "climate_type"
-        ],
-        "title": "CityResponse",
-        "type": "object"
-      },
-      "ClothingSummary": {
-        "description": "Resolved clothing quantities actually used by the solver.",
-        "properties": {
-          "clothing_area_factor": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clothing Area Factor"
-          },
-          "clothing_area_factor_source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "material_input",
-                  "derived_from_clo"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clothing Area Factor Source"
-          },
-          "dry_resistance_m2k_w": {
-            "title": "Dry Resistance M2K W",
-            "type": "number"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "title": "Evaporative Resistance M2Pa W",
-            "type": "number"
-          },
-          "evaporative_resistance_source": {
-            "enum": [
-              "material_input",
-              "derived_from_clo"
-            ],
-            "title": "Evaporative Resistance Source",
-            "type": "string"
-          },
-          "infrared_transmittance": {
-            "title": "Infrared Transmittance",
-            "type": "number"
-          }
-        },
-        "required": [
-          "dry_resistance_m2k_w",
-          "evaporative_resistance_m2pa_w",
-          "evaporative_resistance_source",
-          "infrared_transmittance"
-        ],
-        "title": "ClothingSummary",
-        "type": "object"
-      },
-      "DailyAdaptationResult": {
-        "properties": {
-          "average_core_improvement_c": {
-            "title": "Average Core Improvement C",
-            "type": "number"
-          },
-          "average_skin_improvement_c": {
-            "title": "Average Skin Improvement C",
-            "type": "number"
-          },
-          "beneficial": {
-            "title": "Beneficial",
-            "type": "boolean"
-          },
-          "exposure_eligible": {
-            "title": "Exposure Eligible",
-            "type": "boolean"
-          },
-          "final_skin_improvement_c": {
-            "title": "Final Skin Improvement C",
-            "type": "number"
-          },
-          "maximum_air_temperature_c": {
-            "title": "Maximum Air Temperature C",
-            "type": "number"
-          },
-          "maximum_skin_improvement_c": {
-            "title": "Maximum Skin Improvement C",
-            "type": "number"
-          },
-          "maximum_solar_radiation_w_m2": {
-            "title": "Maximum Solar Radiation W M2",
-            "type": "number"
-          },
-          "mean_air_temperature_c": {
-            "title": "Mean Air Temperature C",
-            "type": "number"
-          },
-          "mean_solar_radiation_w_m2": {
-            "title": "Mean Solar Radiation W M2",
-            "type": "number"
-          },
-          "sample_date_local": {
-            "format": "date-time",
-            "title": "Sample Date Local",
-            "type": "string"
-          },
-          "weather_from_cache": {
-            "title": "Weather From Cache",
-            "type": "boolean"
-          },
-          "weight_days": {
-            "minimum": 1.0,
-            "title": "Weight Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "sample_date_local",
-          "weight_days",
-          "mean_air_temperature_c",
-          "maximum_air_temperature_c",
-          "mean_solar_radiation_w_m2",
-          "maximum_solar_radiation_w_m2",
-          "exposure_eligible",
-          "beneficial",
-          "average_skin_improvement_c",
-          "final_skin_improvement_c",
-          "average_core_improvement_c",
-          "maximum_skin_improvement_c",
-          "weather_from_cache"
-        ],
-        "title": "DailyAdaptationResult",
-        "type": "object"
-      },
-      "EnergyDiagnostics": {
-        "properties": {
-          "energy_residual_j_m2": {
-            "title": "Energy Residual J M2",
-            "type": "number"
-          },
-          "integrated_net_heat_j_m2": {
-            "title": "Integrated Net Heat J M2",
-            "type": "number"
-          },
-          "maximum_core_step_c": {
-            "title": "Maximum Core Step C",
-            "type": "number"
-          },
-          "maximum_skin_step_c": {
-            "title": "Maximum Skin Step C",
-            "type": "number"
-          },
-          "normalized_residual_percent": {
-            "title": "Normalized Residual Percent",
-            "type": "number"
-          },
-          "solver_function_evaluations": {
-            "title": "Solver Function Evaluations",
-            "type": "integer"
-          },
-          "stored_energy_change_j_m2": {
-            "title": "Stored Energy Change J M2",
-            "type": "number"
-          }
-        },
-        "required": [
-          "stored_energy_change_j_m2",
-          "integrated_net_heat_j_m2",
-          "energy_residual_j_m2",
-          "normalized_residual_percent",
-          "maximum_core_step_c",
-          "maximum_skin_step_c",
-          "solver_function_evaluations"
-        ],
-        "title": "EnergyDiagnostics",
-        "type": "object"
-      },
-      "EnvironmentAssumptions": {
-        "additionalProperties": false,
-        "properties": {
-          "fixed_sky_offset_k": {
-            "default": 15.0,
-            "description": "fixed_offset: T_air - T_sky",
-            "maximum": 50.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Fixed Sky Offset K",
-            "type": "number"
-          },
-          "mean_radiant_temperature_method": {
-            "default": "air_plus_solar_linear",
-            "enum": [
-              "air_plus_solar_linear",
-              "equal_to_air"
-            ],
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Mean Radiant Temperature Method",
-            "type": "string"
-          },
-          "sky_offset_base_k": {
-            "default": 5.0,
-            "description": "humidity_offset: depression at 100 % RH",
-            "maximum": 40.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Sky Offset Base K",
-            "type": "number"
-          },
-          "sky_offset_humidity_range_k": {
-            "default": 10.0,
-            "description": "humidity_offset: additional depression at 0 % RH",
-            "maximum": 40.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Sky Offset Humidity Range K",
-            "type": "number"
-          },
-          "sky_temperature_method": {
-            "default": "humidity_offset",
-            "enum": [
-              "humidity_offset",
-              "fixed_offset",
-              "swinbank"
-            ],
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Sky Temperature Method",
-            "type": "string"
-          },
-          "sky_view_factor": {
-            "default": 0.5,
-            "description": "Fraction of the body's radiative view occupied by sky",
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "reference": "Standing person on an open, unobstructed site",
-            "source_type": "assumed",
-            "title": "Sky View Factor",
-            "type": "number"
-          },
-          "solar_mrt_gain_cap_k": {
-            "default": 15.0,
-            "description": "Upper bound of the solar MRT rise",
-            "maximum": 40.0,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Solar Mrt Gain Cap K",
-            "type": "number"
-          },
-          "solar_mrt_gain_k_per_w_m2": {
-            "default": 0.012,
-            "description": "MRT rise per W/m^2 of GHI (air_plus_solar_linear only)",
-            "maximum": 0.05,
-            "minimum": 0.0,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Solar Mrt Gain K Per W M2",
-            "type": "number"
-          },
-          "wind_speed_scaling_factor": {
-            "default": 1.0,
-            "description": "Multiplier from ERA5 10 m wind to body-height wind. 1.0 keeps Stage 1 behaviour; ~0.67 approximates 1.1 m height via a logarithmic profile over open terrain.",
-            "exclusiveMinimum": 0.0,
-            "maximum": 1.5,
-            "reference": "Stage 1 prototype",
-            "source_type": "assumed",
-            "title": "Wind Speed Scaling Factor",
-            "type": "number"
-          }
-        },
-        "title": "EnvironmentAssumptions",
-        "type": "object"
-      },
-      "EnvironmentInput": {
-        "properties": {
-          "air_temperature_c": {
-            "default": 38.0,
-            "maximum": 70.0,
-            "minimum": -50.0,
-            "title": "Air Temperature C",
-            "type": "number"
-          },
-          "mean_radiant_temperature_c": {
-            "default": 45.0,
-            "maximum": 100.0,
-            "minimum": -50.0,
-            "title": "Mean Radiant Temperature C",
-            "type": "number"
-          },
-          "relative_humidity_percent": {
-            "default": 40.0,
-            "maximum": 100.0,
-            "minimum": 0.0,
-            "title": "Relative Humidity Percent",
-            "type": "number"
-          },
-          "sky_temperature_c": {
-            "anyOf": [
-              {
-                "maximum": 70.0,
-                "minimum": -100.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sky Temperature C"
-          },
-          "sky_view_factor": {
-            "default": 0.5,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Sky View Factor",
-            "type": "number"
-          },
-          "solar_radiation_w_m2": {
-            "default": 800.0,
-            "maximum": 1500.0,
-            "minimum": 0.0,
-            "title": "Solar Radiation W M2",
-            "type": "number"
-          },
-          "wind_speed_m_s": {
-            "default": 1.5,
-            "maximum": 30.0,
-            "minimum": 0.0,
-            "title": "Wind Speed M S",
-            "type": "number"
-          }
-        },
-        "title": "EnvironmentInput",
-        "type": "object"
-      },
-      "GaggeBenchmarkRequest": {
-        "properties": {
-          "duration_minutes": {
-            "default": 60,
-            "maximum": 240.0,
-            "minimum": 1.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment": {
-            "$ref": "#/components/schemas/EnvironmentInput"
-          },
-          "material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "tolerances": {
-            "$ref": "#/components/schemas/BenchmarkTolerances"
-          }
-        },
-        "required": [
-          "environment",
-          "person",
-          "material"
-        ],
-        "title": "GaggeBenchmarkRequest",
-        "type": "object"
-      },
-      "GaggeBenchmarkResponse": {
-        "properties": {
-          "alignment_applied": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Alignment Applied",
-            "type": "array"
-          },
-          "core_temperature": {
-            "$ref": "#/components/schemas/BenchmarkMetric"
-          },
-          "difference_core_temperature_c": {
-            "title": "Difference Core Temperature C",
-            "type": "number"
-          },
-          "difference_skin_temperature_c": {
-            "title": "Difference Skin Temperature C",
-            "type": "number"
-          },
-          "environment_note": {
-            "title": "Environment Note",
-            "type": "string"
-          },
-          "gagge": {
-            "$ref": "#/components/schemas/GaggeModelOutput"
-          },
-          "passed": {
-            "title": "Passed",
-            "type": "boolean"
-          },
-          "prototype": {
-            "$ref": "#/components/schemas/PrototypeBenchmarkOutput"
-          },
-          "reference_library": {
-            "title": "Reference Library",
-            "type": "string"
-          },
-          "reference_library_version": {
-            "title": "Reference Library Version",
-            "type": "string"
-          },
-          "reference_model": {
-            "title": "Reference Model",
-            "type": "string"
-          },
-          "reference_port_parity": {
-            "$ref": "#/components/schemas/ReferencePortParity"
-          },
-          "skin_temperature": {
-            "$ref": "#/components/schemas/BenchmarkMetric"
-          },
-          "time_series": {
-            "items": {
-              "$ref": "#/components/schemas/BenchmarkSeriesPoint"
-            },
-            "title": "Time Series",
-            "type": "array"
-          },
-          "warning": {
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "reference_model",
-          "reference_library",
-          "reference_library_version",
-          "environment_note",
-          "alignment_applied",
-          "prototype",
-          "gagge",
-          "difference_core_temperature_c",
-          "difference_skin_temperature_c",
-          "core_temperature",
-          "skin_temperature",
-          "passed",
-          "time_series",
-          "reference_port_parity",
-          "warning"
-        ],
-        "title": "GaggeBenchmarkResponse",
-        "type": "object"
-      },
-      "GaggeModelOutput": {
-        "properties": {
-          "core_temperature_c": {
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "respiratory_heat_loss_w_m2": {
-            "title": "Respiratory Heat Loss W M2",
-            "type": "number"
-          },
-          "skin_blood_flow_kg_h_m2": {
-            "title": "Skin Blood Flow Kg H M2",
-            "type": "number"
-          },
-          "skin_evaporation_w_m2": {
-            "title": "Skin Evaporation W M2",
-            "type": "number"
-          },
-          "skin_heat_loss_w_m2": {
-            "title": "Skin Heat Loss W M2",
-            "type": "number"
-          },
-          "skin_temperature_c": {
-            "title": "Skin Temperature C",
-            "type": "number"
-          },
-          "skin_wettedness": {
-            "title": "Skin Wettedness",
-            "type": "number"
-          },
-          "standard_effective_temperature_c": {
-            "title": "Standard Effective Temperature C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "core_temperature_c",
-          "skin_temperature_c",
-          "skin_evaporation_w_m2",
-          "skin_heat_loss_w_m2",
-          "respiratory_heat_loss_w_m2",
-          "skin_blood_flow_kg_h_m2",
-          "skin_wettedness",
-          "standard_effective_temperature_c"
-        ],
-        "title": "GaggeModelOutput",
-        "type": "object"
-      },
-      "GlobalBatchCreate": {
-        "properties": {
-          "analysis_resolution": {
-            "default": "representative",
-            "enum": [
-              "representative",
-              "daily"
-            ],
-            "title": "Analysis Resolution",
-            "type": "string"
-          },
-          "city_ids": {
-            "items": {
-              "type": "string"
-            },
-            "maxItems": 100,
-            "minItems": 1,
-            "title": "City Ids",
-            "type": "array"
-          },
-          "control_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "daily_stride_days": {
-            "default": 1,
-            "maximum": 7.0,
-            "minimum": 1.0,
-            "title": "Daily Stride Days",
-            "type": "integer"
-          },
-          "duration_minutes": {
-            "default": 120,
-            "maximum": 1440.0,
-            "minimum": 30.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "enable_heatwave_analysis": {
-            "default": true,
-            "title": "Enable Heatwave Analysis",
-            "type": "boolean"
-          },
-          "end_month": {
-            "default": 12,
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "End Month",
-            "type": "integer"
-          },
-          "environment_assumptions": {
-            "$ref": "#/components/schemas/EnvironmentAssumptions"
-          },
-          "execution_profile": {
-            "default": "auto",
-            "enum": [
-              "auto",
-              "standard",
-              "large"
-            ],
-            "title": "Execution Profile",
-            "type": "string"
-          },
-          "exposure_match_mode": {
-            "default": "all",
-            "enum": [
-              "all",
-              "any"
-            ],
-            "title": "Exposure Match Mode",
-            "type": "string"
-          },
-          "heatwave_minimum_consecutive_days": {
-            "default": 3,
-            "maximum": 30.0,
-            "minimum": 2.0,
-            "title": "Heatwave Minimum Consecutive Days",
-            "type": "integer"
-          },
-          "heatwave_temperature_threshold_c": {
-            "default": 35.0,
-            "maximum": 70.0,
-            "minimum": -20.0,
-            "title": "Heatwave Temperature Threshold C",
-            "type": "number"
-          },
-          "local_start_hour": {
-            "default": 12,
-            "maximum": 23.0,
-            "minimum": 0.0,
-            "title": "Local Start Hour",
-            "type": "integer"
-          },
-          "minimum_air_temperature_c": {
-            "anyOf": [
-              {
-                "maximum": 70.0,
-                "minimum": -50.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": 30.0,
-            "title": "Minimum Air Temperature C"
-          },
-          "minimum_skin_improvement_c": {
-            "default": 0.2,
-            "maximum": 10.0,
-            "minimum": -5.0,
-            "title": "Minimum Skin Improvement C",
-            "type": "number"
-          },
-          "minimum_solar_radiation_w_m2": {
-            "anyOf": [
-              {
-                "maximum": 1500.0,
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": 300.0,
-            "title": "Minimum Solar Radiation W M2"
-          },
-          "name": {
-            "default": "Global multi-day climate adaptation analysis",
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "output_interval_minutes": {
-            "default": 10,
-            "maximum": 60.0,
-            "minimum": 1.0,
-            "title": "Output Interval Minutes",
-            "type": "integer"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "rc_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "representative_day": {
-            "anyOf": [
-              {
-                "maximum": 28.0,
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Representative Day"
-          },
-          "resume_from_checkpoint": {
-            "default": true,
-            "title": "Resume From Checkpoint",
-            "type": "boolean"
-          },
-          "sample_days_per_month": {
-            "default": 3,
-            "maximum": 7.0,
-            "minimum": 1.0,
-            "title": "Sample Days Per Month",
-            "type": "integer"
-          },
-          "start_month": {
-            "default": 1,
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "Start Month",
-            "type": "integer"
-          },
-          "year": {
-            "default": 2023,
-            "maximum": 2100.0,
-            "minimum": 1940.0,
-            "title": "Year",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "city_ids",
-          "person",
-          "control_material",
-          "rc_material"
-        ],
-        "title": "GlobalBatchCreate",
-        "type": "object"
-      },
-      "GlobalBatchDetail": {
-        "properties": {
-          "cancelled_city_count": {
-            "title": "Cancelled City Count",
-            "type": "integer"
-          },
-          "celery_group_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Group Id"
-          },
-          "city_results": {
-            "items": {
-              "$ref": "#/components/schemas/GlobalCityResultResponse"
-            },
-            "title": "City Results",
-            "type": "array"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "completed_city_count": {
-            "title": "Completed City Count",
-            "type": "integer"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "failed_city_count": {
-            "title": "Failed City Count",
-            "type": "integer"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "request": {
-            "$ref": "#/components/schemas/GlobalBatchCreate"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "partial_completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "total_city_count": {
-            "title": "Total City Count",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_group_id",
-          "status",
-          "stage",
-          "progress",
-          "total_city_count",
-          "completed_city_count",
-          "failed_city_count",
-          "cancelled_city_count",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at",
-          "request",
-          "city_results"
-        ],
-        "title": "GlobalBatchDetail",
-        "type": "object"
-      },
-      "GlobalBatchEstimateResponse": {
-        "properties": {
-          "analysis_resolution": {
-            "enum": [
-              "representative",
-              "daily"
-            ],
-            "title": "Analysis Resolution",
-            "type": "string"
-          },
-          "checkpoint_count_per_city": {
-            "title": "Checkpoint Count Per City",
-            "type": "integer"
-          },
-          "city_count": {
-            "title": "City Count",
-            "type": "integer"
-          },
-          "estimated_weather_requests": {
-            "title": "Estimated Weather Requests",
-            "type": "integer"
-          },
-          "heatwave_analysis_available": {
-            "title": "Heatwave Analysis Available",
-            "type": "boolean"
-          },
-          "month_count": {
-            "title": "Month Count",
-            "type": "integer"
-          },
-          "resolved_execution_profile": {
-            "enum": [
-              "auto",
-              "standard",
-              "large"
-            ],
-            "title": "Resolved Execution Profile",
-            "type": "string"
-          },
-          "resolved_queue": {
-            "title": "Resolved Queue",
-            "type": "string"
-          },
-          "samples_per_city": {
-            "title": "Samples Per City",
-            "type": "integer"
-          },
-          "thermal_simulation_count": {
-            "title": "Thermal Simulation Count",
-            "type": "integer"
-          },
-          "total_samples": {
-            "title": "Total Samples",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "city_count",
-          "month_count",
-          "samples_per_city",
-          "total_samples",
-          "thermal_simulation_count",
-          "estimated_weather_requests",
-          "analysis_resolution",
-          "resolved_execution_profile",
-          "resolved_queue",
-          "checkpoint_count_per_city",
-          "heatwave_analysis_available"
-        ],
-        "title": "GlobalBatchEstimateResponse",
-        "type": "object"
-      },
-      "GlobalBatchListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/GlobalBatchResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "GlobalBatchListResponse",
-        "type": "object"
-      },
-      "GlobalBatchResponse": {
-        "properties": {
-          "cancelled_city_count": {
-            "title": "Cancelled City Count",
-            "type": "integer"
-          },
-          "celery_group_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Group Id"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "completed_city_count": {
-            "title": "Completed City Count",
-            "type": "integer"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "failed_city_count": {
-            "title": "Failed City Count",
-            "type": "integer"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "partial_completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "total_city_count": {
-            "title": "Total City Count",
-            "type": "integer"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_group_id",
-          "status",
-          "stage",
-          "progress",
-          "total_city_count",
-          "completed_city_count",
-          "failed_city_count",
-          "cancelled_city_count",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at"
-        ],
-        "title": "GlobalBatchResponse",
-        "type": "object"
-      },
-      "GlobalCityResultResponse": {
-        "properties": {
-          "annual_average_core_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annual Average Core Improvement C"
-          },
-          "annual_average_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Annual Average Skin Improvement C"
-          },
-          "batch_id": {
-            "title": "Batch Id",
-            "type": "string"
-          },
-          "beneficial_weighted_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Beneficial Weighted Days"
-          },
-          "celery_task_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Task Id"
-          },
-          "city_id": {
-            "title": "City Id",
-            "type": "string"
-          },
-          "city_name": {
-            "title": "City Name",
-            "type": "string"
-          },
-          "climate_adaptation_rate_percent": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Climate Adaptation Rate Percent"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "completed_month_count": {
-            "default": 0,
-            "title": "Completed Month Count",
-            "type": "integer"
-          },
-          "core_improvement_p50_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Core Improvement P50 C"
-          },
-          "core_improvement_p90_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Core Improvement P90 C"
-          },
-          "core_improvement_p95_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Core Improvement P95 C"
-          },
-          "country": {
-            "title": "Country",
-            "type": "string"
-          },
-          "data_quality": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Data Quality"
-          },
-          "effective_cooling_hours": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Effective Cooling Hours"
-          },
-          "eligible_sample_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Eligible Sample Count"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "evaluated_weighted_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaluated Weighted Days"
-          },
-          "exposure_coverage_percent": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Exposure Coverage Percent"
-          },
-          "heatwave_event_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Heatwave Event Count"
-          },
-          "heatwave_events": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/HeatwaveEvent"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Heatwave Events"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "last_checkpoint_month": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Checkpoint Month"
-          },
-          "last_heartbeat_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Heartbeat At"
-          },
-          "latitude": {
-            "title": "Latitude",
-            "type": "number"
-          },
-          "longest_heatwave_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Longest Heatwave Days"
-          },
-          "longitude": {
-            "title": "Longitude",
-            "type": "number"
-          },
-          "maximum_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum Skin Improvement C"
-          },
-          "metric_definitions": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Metric Definitions"
-          },
-          "monthly_results": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/MonthlyAdaptationResult"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Monthly Results"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "resumed_from_checkpoint": {
-            "default": false,
-            "title": "Resumed From Checkpoint",
-            "type": "boolean"
-          },
-          "retry_count": {
-            "title": "Retry Count",
-            "type": "integer"
-          },
-          "sampled_day_count": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Sampled Day Count"
-          },
-          "skin_improvement_p50_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Improvement P50 C"
-          },
-          "skin_improvement_p90_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Improvement P90 C"
-          },
-          "skin_improvement_p95_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Improvement P95 C"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelled",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "batch_id",
-          "celery_task_id",
-          "city_id",
-          "city_name",
-          "country",
-          "latitude",
-          "longitude",
-          "status",
-          "stage",
-          "progress",
-          "climate_adaptation_rate_percent",
-          "exposure_coverage_percent",
-          "annual_average_skin_improvement_c",
-          "annual_average_core_improvement_c",
-          "maximum_skin_improvement_c",
-          "effective_cooling_hours",
-          "sampled_day_count",
-          "eligible_sample_count",
-          "evaluated_weighted_days",
-          "beneficial_weighted_days",
-          "retry_count",
-          "monthly_results",
-          "error_message",
-          "started_at",
-          "completed_at"
-        ],
-        "title": "GlobalCityResultResponse",
-        "type": "object"
-      },
-      "HTTPValidationError": {
-        "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
-          }
-        },
-        "title": "HTTPValidationError",
-        "type": "object"
-      },
-      "HeatwaveEvent": {
-        "properties": {
-          "beneficial_day_count": {
-            "minimum": 0.0,
-            "title": "Beneficial Day Count",
-            "type": "integer"
-          },
-          "duration_days": {
-            "minimum": 1.0,
-            "title": "Duration Days",
-            "type": "integer"
-          },
-          "end_date_local": {
-            "format": "date-time",
-            "title": "End Date Local",
-            "type": "string"
-          },
-          "mean_maximum_air_temperature_c": {
-            "title": "Mean Maximum Air Temperature C",
-            "type": "number"
-          },
-          "mean_skin_improvement_c": {
-            "title": "Mean Skin Improvement C",
-            "type": "number"
-          },
-          "p90_skin_improvement_c": {
-            "title": "P90 Skin Improvement C",
-            "type": "number"
-          },
-          "peak_air_temperature_c": {
-            "title": "Peak Air Temperature C",
-            "type": "number"
-          },
-          "start_date_local": {
-            "format": "date-time",
-            "title": "Start Date Local",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start_date_local",
-          "end_date_local",
-          "duration_days",
-          "mean_maximum_air_temperature_c",
-          "peak_air_temperature_c",
-          "mean_skin_improvement_c",
-          "p90_skin_improvement_c",
-          "beneficial_day_count"
-        ],
-        "title": "HeatwaveEvent",
-        "type": "object"
-      },
-      "MaterialCreate": {
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "initial_version": {
-            "$ref": "#/components/schemas/MaterialVersionCreate"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "name": {
-            "maxLength": 200,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "maxLength": 200,
-            "minLength": 1,
-            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "slug",
-          "initial_version"
-        ],
-        "title": "MaterialCreate",
-        "type": "object"
-      },
-      "MaterialInput": {
-        "properties": {
-          "absorbed_solar_to_body_fraction": {
-            "default": 0.35,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Absorbed Solar To Body Fraction",
-            "type": "number"
-          },
-          "clothing_area_factor": {
-            "anyOf": [
-              {
-                "maximum": 2.0,
-                "minimum": 1.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clothing Area Factor"
-          },
-          "clothing_insulation_clo": {
-            "default": 0.5,
-            "maximum": 5.0,
-            "minimum": 0.0,
-            "title": "Clothing Insulation Clo",
-            "type": "number"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "anyOf": [
-              {
-                "maximum": 1000.0,
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaporative Resistance M2Pa W"
-          },
-          "infrared_emissivity": {
-            "default": 0.9,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Emissivity",
-            "type": "number"
-          },
-          "infrared_transmittance": {
-            "default": 0.0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Transmittance",
-            "type": "number"
-          },
-          "material_version_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Material Version Id"
-          },
-          "name": {
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Name",
-            "type": "string"
-          },
-          "parameter_sources": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/ParameterSource"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parameter Sources"
-          },
-          "projected_solar_area_factor": {
-            "default": 0.25,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Projected Solar Area Factor",
-            "type": "number"
-          },
-          "solar_reflectance": {
-            "default": 0.5,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Reflectance",
-            "type": "number"
-          },
-          "solar_transmittance": {
-            "default": 0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Transmittance",
-            "type": "number"
-          },
-          "source_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Reference"
-          },
-          "source_type": {
-            "anyOf": [
-              {
-                "maxLength": 50,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Type"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "MaterialInput",
-        "type": "object"
-      },
-      "MaterialListItem": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "is_archived": {
-            "title": "Is Archived",
-            "type": "boolean"
-          },
-          "latest_version_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latest Version Number"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "slug",
-          "institution",
-          "is_archived",
-          "latest_version_number",
-          "created_at"
-        ],
-        "title": "MaterialListItem",
-        "type": "object"
-      },
-      "MaterialListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/MaterialListItem"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "MaterialListResponse",
-        "type": "object"
-      },
-      "MaterialResponse": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "is_archived": {
-            "title": "Is Archived",
-            "type": "boolean"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          },
-          "versions": {
-            "items": {
-              "$ref": "#/components/schemas/MaterialVersionResponse"
-            },
-            "title": "Versions",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "slug",
-          "description",
-          "institution",
-          "is_archived",
-          "created_at",
-          "updated_at",
-          "versions"
-        ],
-        "title": "MaterialResponse",
-        "type": "object"
-      },
-      "MaterialUpdate": {
-        "properties": {
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "institution": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Institution"
-          },
-          "is_archived": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Is Archived"
-          },
-          "name": {
-            "anyOf": [
-              {
-                "maxLength": 200,
-                "minLength": 1,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Name"
-          }
-        },
-        "title": "MaterialUpdate",
-        "type": "object"
-      },
-      "MaterialVersionCreate": {
-        "properties": {
-          "absorbed_solar_to_body_fraction": {
-            "default": 0.35,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Absorbed Solar To Body Fraction",
-            "type": "number"
-          },
-          "areal_density_g_m2": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Areal Density G M2"
-          },
-          "clothing_area_factor": {
-            "anyOf": [
-              {
-                "maximum": 2.0,
-                "minimum": 1.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clothing Area Factor"
-          },
-          "clothing_insulation_clo": {
-            "default": 0.5,
-            "maximum": 5.0,
-            "minimum": 0.0,
-            "title": "Clothing Insulation Clo",
-            "type": "number"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaporative Resistance M2Pa W"
-          },
-          "infrared_emissivity": {
-            "default": 0.9,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Emissivity",
-            "type": "number"
-          },
-          "infrared_transmittance": {
-            "default": 0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Infrared Transmittance",
-            "type": "number"
-          },
-          "mode": {
-            "default": "opaque_emitter",
-            "enum": [
-              "ordinary",
-              "opaque_emitter",
-              "infrared_transparent",
-              "hybrid"
-            ],
-            "title": "Mode",
-            "type": "string"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "parameter_sources": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/ParameterSource"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parameter Sources"
-          },
-          "projected_solar_area_factor": {
-            "default": 0.25,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Projected Solar Area Factor",
-            "type": "number"
-          },
-          "solar_reflectance": {
-            "default": 0.5,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Reflectance",
-            "type": "number"
-          },
-          "solar_transmittance": {
-            "default": 0,
-            "maximum": 1.0,
-            "minimum": 0.0,
-            "title": "Solar Transmittance",
-            "type": "number"
-          },
-          "source_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Reference"
-          },
-          "source_type": {
-            "default": "manual",
-            "maxLength": 50,
-            "title": "Source Type",
-            "type": "string"
-          },
-          "specific_heat_j_kgk": {
-            "anyOf": [
-              {
-                "minimum": 0.0,
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Specific Heat J Kgk"
-          }
-        },
-        "title": "MaterialVersionCreate",
-        "type": "object"
-      },
-      "MaterialVersionResponse": {
-        "properties": {
-          "absorbed_solar_to_body_fraction": {
-            "title": "Absorbed Solar To Body Fraction",
-            "type": "number"
-          },
-          "areal_density_g_m2": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Areal Density G M2"
-          },
-          "clothing_area_factor": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clothing Area Factor"
-          },
-          "clothing_insulation_clo": {
-            "title": "Clothing Insulation Clo",
-            "type": "number"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "evaporative_resistance_m2pa_w": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Evaporative Resistance M2Pa W"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "infrared_emissivity": {
-            "title": "Infrared Emissivity",
-            "type": "number"
-          },
-          "infrared_transmittance": {
-            "title": "Infrared Transmittance",
-            "type": "number"
-          },
-          "material_id": {
-            "title": "Material Id",
-            "type": "string"
-          },
-          "mode": {
-            "title": "Mode",
-            "type": "string"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "parameter_sources": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "$ref": "#/components/schemas/ParameterSource"
-                },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Parameter Sources"
-          },
-          "projected_solar_area_factor": {
-            "title": "Projected Solar Area Factor",
-            "type": "number"
-          },
-          "solar_reflectance": {
-            "title": "Solar Reflectance",
-            "type": "number"
-          },
-          "solar_transmittance": {
-            "title": "Solar Transmittance",
-            "type": "number"
-          },
-          "source_reference": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Reference"
-          },
-          "source_type": {
-            "title": "Source Type",
-            "type": "string"
-          },
-          "specific_heat_j_kgk": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Specific Heat J Kgk"
-          },
-          "spectra": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/SpectrumSummary"
-            },
-            "title": "Spectra",
-            "type": "array"
-          },
-          "version_number": {
-            "title": "Version Number",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "material_id",
-          "version_number",
-          "mode",
-          "clothing_insulation_clo",
-          "evaporative_resistance_m2pa_w",
-          "solar_reflectance",
-          "solar_transmittance",
-          "infrared_emissivity",
-          "infrared_transmittance",
-          "projected_solar_area_factor",
-          "absorbed_solar_to_body_fraction",
-          "areal_density_g_m2",
-          "specific_heat_j_kgk",
-          "source_type",
-          "source_reference",
-          "notes",
-          "created_at"
-        ],
-        "title": "MaterialVersionResponse",
-        "type": "object"
-      },
-      "ModelMetadata": {
-        "description": "Written into every simulation response for traceability.",
-        "properties": {
-          "parameter_set_sha256": {
-            "title": "Parameter Set Sha256",
-            "type": "string"
-          },
-          "parameter_set_version": {
-            "title": "Parameter Set Version",
-            "type": "string"
-          }
-        },
-        "required": [
-          "parameter_set_version",
-          "parameter_set_sha256"
-        ],
-        "title": "ModelMetadata",
-        "type": "object"
-      },
-      "ModelParameter": {
-        "description": "A physical constant used by the thermal model.",
-        "properties": {
-          "description": {
-            "title": "Description",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "reference": {
-            "title": "Reference",
-            "type": "string"
-          },
-          "source_type": {
-            "enum": [
-              "measured",
-              "manufacturer",
-              "literature",
-              "standard",
-              "derived",
-              "assumed",
-              "manual"
-            ],
-            "title": "Source Type",
-            "type": "string"
-          },
-          "unit": {
-            "title": "Unit",
-            "type": "string"
-          },
-          "value": {
-            "title": "Value",
-            "type": "number"
-          }
-        },
-        "required": [
-          "name",
-          "value",
-          "unit",
-          "description",
-          "source_type",
-          "reference"
-        ],
-        "title": "ModelParameter",
-        "type": "object"
-      },
-      "ModelParameterManifest": {
-        "properties": {
-          "parameter_set_sha256": {
-            "title": "Parameter Set Sha256",
-            "type": "string"
-          },
-          "parameter_set_version": {
-            "title": "Parameter Set Version",
-            "type": "string"
-          },
-          "parameters": {
-            "items": {
-              "$ref": "#/components/schemas/ModelParameter"
-            },
-            "title": "Parameters",
-            "type": "array"
-          }
-        },
-        "required": [
-          "parameter_set_version",
-          "parameter_set_sha256",
-          "parameters"
-        ],
-        "title": "ModelParameterManifest",
-        "type": "object"
-      },
-      "MonthlyAdaptationResult": {
-        "properties": {
-          "average_core_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Average Core Improvement C"
-          },
-          "average_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Average Skin Improvement C"
-          },
-          "beneficial": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Beneficial"
-          },
-          "beneficial_weighted_days": {
-            "default": 0,
-            "title": "Beneficial Weighted Days",
-            "type": "integer"
-          },
-          "climate_adaptation_rate_percent": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Climate Adaptation Rate Percent"
-          },
-          "eligible_sample_count": {
-            "default": 0,
-            "title": "Eligible Sample Count",
-            "type": "integer"
-          },
-          "evaluated_weighted_days": {
-            "default": 0,
-            "title": "Evaluated Weighted Days",
-            "type": "integer"
-          },
-          "exposure_coverage_percent": {
-            "default": 0.0,
-            "title": "Exposure Coverage Percent",
-            "type": "number"
-          },
-          "final_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Final Skin Improvement C"
-          },
-          "maximum_skin_improvement_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum Skin Improvement C"
-          },
-          "month": {
-            "maximum": 12.0,
-            "minimum": 1.0,
-            "title": "Month",
-            "type": "integer"
-          },
-          "representative_date_local": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Representative Date Local"
-          },
-          "sampled_day_count": {
-            "default": 1,
-            "title": "Sampled Day Count",
-            "type": "integer"
-          },
-          "samples": {
-            "items": {
-              "$ref": "#/components/schemas/DailyAdaptationResult"
-            },
-            "title": "Samples",
-            "type": "array"
-          },
-          "skipped_samples": {
-            "items": {
-              "$ref": "#/components/schemas/SkippedSample"
-            },
-            "title": "Skipped Samples",
-            "type": "array"
-          },
-          "skipped_weighted_days": {
-            "default": 0,
-            "title": "Skipped Weighted Days",
-            "type": "integer"
-          },
-          "total_weighted_days": {
-            "default": 0,
-            "title": "Total Weighted Days",
-            "type": "integer"
-          },
-          "weight_days": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Weight Days"
-          }
-        },
-        "required": [
-          "month"
-        ],
-        "title": "MonthlyAdaptationResult",
-        "type": "object"
-      },
-      "ParameterSource": {
-        "additionalProperties": false,
-        "description": "Provenance of one numeric input.",
-        "properties": {
-          "note": {
-            "anyOf": [
-              {
-                "maxLength": 1000,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Note"
-          },
-          "reference": {
-            "anyOf": [
-              {
-                "maxLength": 500,
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Reference"
-          },
-          "source_type": {
-            "default": "assumed",
-            "enum": [
-              "measured",
-              "manufacturer",
-              "literature",
-              "standard",
-              "derived",
-              "assumed",
-              "manual"
-            ],
-            "title": "Source Type",
-            "type": "string"
-          }
-        },
-        "title": "ParameterSource",
-        "type": "object"
-      },
-      "PersonInput": {
-        "properties": {
-          "body_mass_kg": {
-            "default": 70.0,
-            "maximum": 200.0,
-            "minimum": 30.0,
-            "title": "Body Mass Kg",
-            "type": "number"
-          },
-          "body_surface_area_m2": {
-            "default": 1.8,
-            "maximum": 3.0,
-            "minimum": 1.0,
-            "title": "Body Surface Area M2",
-            "type": "number"
-          },
-          "initial_core_temperature_c": {
-            "default": 36.8,
-            "maximum": 40.0,
-            "minimum": 34.0,
-            "title": "Initial Core Temperature C",
-            "type": "number"
-          },
-          "initial_skin_temperature_c": {
-            "default": 33.7,
-            "maximum": 40.0,
-            "minimum": 20.0,
-            "title": "Initial Skin Temperature C",
-            "type": "number"
-          },
-          "met": {
-            "default": 2.6,
-            "maximum": 10.0,
-            "minimum": 0.7,
-            "title": "Met",
-            "type": "number"
-          }
-        },
-        "title": "PersonInput",
-        "type": "object"
-      },
-      "PrototypeBenchmarkOutput": {
-        "properties": {
-          "core_temperature_c": {
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "energy_residual_percent": {
-            "title": "Energy Residual Percent",
-            "type": "number"
-          },
-          "evaporation_w_m2": {
-            "title": "Evaporation W M2",
-            "type": "number"
-          },
-          "skin_blood_flow_kg_h_m2": {
-            "title": "Skin Blood Flow Kg H M2",
-            "type": "number"
-          },
-          "skin_temperature_c": {
-            "title": "Skin Temperature C",
-            "type": "number"
-          },
-          "skin_wettedness": {
-            "title": "Skin Wettedness",
-            "type": "number"
-          }
-        },
-        "required": [
-          "core_temperature_c",
-          "skin_temperature_c",
-          "evaporation_w_m2",
-          "skin_wettedness",
-          "skin_blood_flow_kg_h_m2",
-          "energy_residual_percent"
-        ],
-        "title": "PrototypeBenchmarkOutput",
-        "type": "object"
-      },
-      "ReferencePortParity": {
-        "description": "Port vs. library after 60 minutes (the only duration the library runs).",
-        "properties": {
-          "library_core_temperature_c": {
-            "title": "Library Core Temperature C",
-            "type": "number"
-          },
-          "library_skin_temperature_c": {
-            "title": "Library Skin Temperature C",
-            "type": "number"
-          },
-          "maximum_absolute_difference_c": {
-            "title": "Maximum Absolute Difference C",
-            "type": "number"
-          },
-          "port_core_temperature_c": {
-            "title": "Port Core Temperature C",
-            "type": "number"
-          },
-          "port_skin_temperature_c": {
-            "title": "Port Skin Temperature C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "library_core_temperature_c",
-          "port_core_temperature_c",
-          "library_skin_temperature_c",
-          "port_skin_temperature_c",
-          "maximum_absolute_difference_c"
-        ],
-        "title": "ReferencePortParity",
-        "type": "object"
-      },
-      "ScenarioResult": {
-        "properties": {
-          "assumptions_applied": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Assumptions Applied",
-            "type": "array"
-          },
-          "body": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/BodyThermalSummary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "clothing": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ClothingSummary"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "diagnostics": {
-            "$ref": "#/components/schemas/EnergyDiagnostics"
-          },
-          "final_core_temperature_c": {
-            "title": "Final Core Temperature C",
-            "type": "number"
-          },
-          "final_skin_temperature_c": {
-            "title": "Final Skin Temperature C",
-            "type": "number"
-          },
-          "material_name": {
-            "title": "Material Name",
-            "type": "string"
-          },
-          "peak_core_temperature_c": {
-            "title": "Peak Core Temperature C",
-            "type": "number"
-          },
-          "peak_skin_temperature_c": {
-            "title": "Peak Skin Temperature C",
-            "type": "number"
-          },
-          "time_series": {
-            "items": {
-              "$ref": "#/components/schemas/TimeSeriesPoint"
-            },
-            "title": "Time Series",
-            "type": "array"
-          }
-        },
-        "required": [
-          "material_name",
-          "time_series",
-          "final_core_temperature_c",
-          "final_skin_temperature_c",
-          "peak_core_temperature_c",
-          "peak_skin_temperature_c",
-          "diagnostics"
-        ],
-        "title": "ScenarioResult",
-        "type": "object"
-      },
-      "SimulationJobDetail": {
-        "properties": {
-          "celery_task_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Task Id"
-          },
-          "city_id": {
-            "title": "City Id",
-            "type": "string"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "request": {
-            "$ref": "#/components/schemas/WeatherSimulationRequest"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_task_id",
-          "status",
-          "stage",
-          "progress",
-          "city_id",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at",
-          "request"
-        ],
-        "title": "SimulationJobDetail",
-        "type": "object"
-      },
-      "SimulationJobListResponse": {
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/SimulationJobResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          },
-          "offset": {
-            "title": "Offset",
-            "type": "integer"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
-        "title": "SimulationJobListResponse",
-        "type": "object"
-      },
-      "SimulationJobResponse": {
-        "properties": {
-          "celery_task_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Celery Task Id"
-          },
-          "city_id": {
-            "title": "City Id",
-            "type": "string"
-          },
-          "completed_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Completed At"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "error_message": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Error Message"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "progress": {
-            "title": "Progress",
-            "type": "integer"
-          },
-          "stage": {
-            "title": "Stage",
-            "type": "string"
-          },
-          "started_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Started At"
-          },
-          "status": {
-            "enum": [
-              "queued",
-              "running",
-              "cancelling",
-              "cancelled",
-              "completed",
-              "failed"
-            ],
-            "title": "Status",
-            "type": "string"
-          },
-          "summary": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Summary"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "celery_task_id",
-          "status",
-          "stage",
-          "progress",
-          "city_id",
-          "summary",
-          "error_message",
-          "created_at",
-          "updated_at",
-          "started_at",
-          "completed_at"
-        ],
-        "title": "SimulationJobResponse",
-        "type": "object"
-      },
-      "SimulationRequest": {
-        "properties": {
-          "city": {
-            "default": "Dubai",
-            "minLength": 1,
-            "title": "City",
-            "type": "string"
-          },
-          "control_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "duration_minutes": {
-            "default": 120,
-            "maximum": 1440.0,
-            "minimum": 1.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment": {
-            "$ref": "#/components/schemas/EnvironmentInput"
-          },
-          "output_interval_minutes": {
-            "default": 1,
-            "maximum": 60.0,
-            "minimum": 1.0,
-            "title": "Output Interval Minutes",
-            "type": "integer"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "rc_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          }
-        },
-        "required": [
-          "environment",
-          "person",
-          "control_material",
-          "rc_material"
-        ],
-        "title": "SimulationRequest",
-        "type": "object"
-      },
-      "SimulationResponse": {
-        "properties": {
-          "city": {
-            "title": "City",
-            "type": "string"
-          },
-          "control": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "duration_minutes": {
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "model_metadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "model_name": {
-            "title": "Model Name",
-            "type": "string"
-          },
-          "model_version": {
-            "title": "Model Version",
-            "type": "string"
-          },
-          "radiative_cooling": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/SimulationSummary"
-          },
-          "warning": {
-            "title": "Warning",
-            "type": "string"
-          }
-        },
-        "required": [
-          "model_name",
-          "model_version",
-          "city",
-          "duration_minutes",
-          "control",
-          "radiative_cooling",
-          "summary",
-          "warning"
-        ],
-        "title": "SimulationResponse",
-        "type": "object"
-      },
-      "SimulationSummary": {
-        "properties": {
-          "average_skin_temperature_improvement_c": {
-            "title": "Average Skin Temperature Improvement C",
-            "type": "number"
-          },
-          "final_core_temperature_improvement_c": {
-            "title": "Final Core Temperature Improvement C",
-            "type": "number"
-          },
-          "final_skin_temperature_improvement_c": {
-            "title": "Final Skin Temperature Improvement C",
-            "type": "number"
-          }
-        },
-        "required": [
-          "final_skin_temperature_improvement_c",
-          "final_core_temperature_improvement_c",
-          "average_skin_temperature_improvement_c"
-        ],
-        "title": "SimulationSummary",
-        "type": "object"
-      },
-      "SkippedSample": {
-        "description": "A planned sample day that could not be simulated for data reasons.",
-        "properties": {
-          "message": {
-            "title": "Message",
-            "type": "string"
-          },
-          "reason_code": {
-            "title": "Reason Code",
-            "type": "string"
-          },
-          "sample_date_local": {
-            "format": "date-time",
-            "title": "Sample Date Local",
-            "type": "string"
-          },
-          "weight_days": {
-            "minimum": 1.0,
-            "title": "Weight Days",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "sample_date_local",
-          "weight_days",
-          "reason_code",
-          "message"
-        ],
-        "title": "SkippedSample",
-        "type": "object"
-      },
-      "SpectrumPoint": {
-        "properties": {
-          "value": {
-            "title": "Value",
-            "type": "number"
-          },
-          "wavelength_um": {
-            "title": "Wavelength Um",
-            "type": "number"
-          }
-        },
-        "required": [
-          "wavelength_um",
-          "value"
-        ],
-        "title": "SpectrumPoint",
-        "type": "object"
-      },
-      "SpectrumResponse": {
-        "properties": {
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/SpectrumPoint"
-            },
-            "title": "Points",
-            "type": "array"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/SpectrumSummary"
-          }
-        },
-        "required": [
-          "summary",
-          "points"
-        ],
-        "title": "SpectrumResponse",
-        "type": "object"
-      },
-      "SpectrumSummary": {
-        "properties": {
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "file_checksum_sha256": {
-            "title": "File Checksum Sha256",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "maximum_wavelength_um": {
-            "title": "Maximum Wavelength Um",
-            "type": "number"
-          },
-          "minimum_wavelength_um": {
-            "title": "Minimum Wavelength Um",
-            "type": "number"
-          },
-          "original_filename": {
-            "title": "Original Filename",
-            "type": "string"
-          },
-          "point_count": {
-            "title": "Point Count",
-            "type": "integer"
-          },
-          "spectrum_type": {
-            "title": "Spectrum Type",
-            "type": "string"
-          },
-          "wavelength_unit": {
-            "title": "Wavelength Unit",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "spectrum_type",
-          "wavelength_unit",
-          "point_count",
-          "minimum_wavelength_um",
-          "maximum_wavelength_um",
-          "original_filename",
-          "file_checksum_sha256",
-          "created_at"
-        ],
-        "title": "SpectrumSummary",
-        "type": "object"
-      },
-      "TimeSeriesPoint": {
-        "properties": {
-          "absorbed_solar_w_m2": {
-            "title": "Absorbed Solar W M2",
-            "type": "number"
-          },
-          "clothing_surface_temperature_c": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Clothing Surface Temperature C"
-          },
-          "convection_w_m2": {
-            "title": "Convection W M2",
-            "type": "number"
-          },
-          "core_temperature_c": {
-            "title": "Core Temperature C",
-            "type": "number"
-          },
-          "core_to_skin_w_m2": {
-            "title": "Core To Skin W M2",
-            "type": "number"
-          },
-          "evaporation_w_m2": {
-            "title": "Evaporation W M2",
-            "type": "number"
-          },
-          "longwave_radiation_w_m2": {
-            "title": "Longwave Radiation W M2",
-            "type": "number"
-          },
-          "maximum_evaporation_w_m2": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Maximum Evaporation W M2"
-          },
-          "minute": {
-            "title": "Minute",
-            "type": "number"
-          },
-          "skin_blood_flow_kg_h_m2": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Blood Flow Kg H M2"
-          },
-          "skin_temperature_c": {
-            "title": "Skin Temperature C",
-            "type": "number"
-          },
-          "skin_wettedness": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skin Wettedness"
-          }
-        },
-        "required": [
-          "minute",
-          "core_temperature_c",
-          "skin_temperature_c",
-          "convection_w_m2",
-          "longwave_radiation_w_m2",
-          "evaporation_w_m2",
-          "absorbed_solar_w_m2",
-          "core_to_skin_w_m2"
-        ],
-        "title": "TimeSeriesPoint",
-        "type": "object"
-      },
-      "ValidationError": {
-        "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "loc": {
-            "items": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "integer"
-                }
-              ]
-            },
-            "title": "Location",
-            "type": "array"
-          },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
-            "type": "string"
-          }
-        },
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
-        "title": "ValidationError",
-        "type": "object"
-      },
-      "WeatherGap": {
-        "description": "A break in the hourly timeline between two consecutive points.",
-        "properties": {
-          "end": {
-            "format": "date-time",
-            "title": "End",
-            "type": "string"
-          },
-          "missing_steps": {
-            "minimum": 1.0,
-            "title": "Missing Steps",
-            "type": "integer"
-          },
-          "start": {
-            "format": "date-time",
-            "title": "Start",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start",
-          "end",
-          "missing_steps"
-        ],
-        "title": "WeatherGap",
-        "type": "object"
-      },
-      "WeatherPoint": {
-        "properties": {
-          "air_temperature_c": {
-            "title": "Air Temperature C",
-            "type": "number"
-          },
-          "diffuse_radiation_w_m2": {
-            "title": "Diffuse Radiation W M2",
-            "type": "number"
-          },
-          "direct_radiation_w_m2": {
-            "title": "Direct Radiation W M2",
-            "type": "number"
-          },
-          "dni_w_m2": {
-            "title": "Dni W M2",
-            "type": "number"
-          },
-          "ghi_w_m2": {
-            "title": "Ghi W M2",
-            "type": "number"
-          },
-          "relative_humidity_percent": {
-            "title": "Relative Humidity Percent",
-            "type": "number"
-          },
-          "timestamp": {
-            "format": "date-time",
-            "title": "Timestamp",
-            "type": "string"
-          },
-          "wind_speed_m_s": {
-            "title": "Wind Speed M S",
-            "type": "number"
-          }
-        },
-        "required": [
-          "timestamp",
-          "air_temperature_c",
-          "relative_humidity_percent",
-          "wind_speed_m_s",
-          "ghi_w_m2",
-          "direct_radiation_w_m2",
-          "diffuse_radiation_w_m2",
-          "dni_w_m2"
-        ],
-        "title": "WeatherPoint",
-        "type": "object"
-      },
-      "WeatherQualityReport": {
-        "description": "Result of normalising a raw weather timeline (Stage 1, PR-1).",
-        "properties": {
-          "duplicates_removed": {
-            "default": 0,
-            "title": "Duplicates Removed",
-            "type": "integer"
-          },
-          "expected_step_seconds": {
-            "exclusiveMinimum": 0.0,
-            "title": "Expected Step Seconds",
-            "type": "integer"
-          },
-          "first_timestamp": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Timestamp"
-          },
-          "gaps": {
-            "items": {
-              "$ref": "#/components/schemas/WeatherGap"
-            },
-            "title": "Gaps",
-            "type": "array"
-          },
-          "last_timestamp": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Last Timestamp"
-          },
-          "notes": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Notes",
-            "type": "array"
-          },
-          "point_count": {
-            "minimum": 0.0,
-            "title": "Point Count",
-            "type": "integer"
-          },
-          "was_sorted": {
-            "default": true,
-            "title": "Was Sorted",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "expected_step_seconds",
-          "point_count"
-        ],
-        "title": "WeatherQualityReport",
-        "type": "object"
-      },
-      "WeatherSimulationRequest": {
-        "properties": {
-          "city_id": {
-            "default": "dubai",
-            "minLength": 1,
-            "title": "City Id",
-            "type": "string"
-          },
-          "control_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "duration_minutes": {
-            "default": 120,
-            "maximum": 1440.0,
-            "minimum": 1.0,
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment_assumptions": {
-            "$ref": "#/components/schemas/EnvironmentAssumptions"
-          },
-          "output_interval_minutes": {
-            "default": 1,
-            "maximum": 60.0,
-            "minimum": 1.0,
-            "title": "Output Interval Minutes",
-            "type": "integer"
-          },
-          "person": {
-            "$ref": "#/components/schemas/PersonInput"
-          },
-          "rc_material": {
-            "$ref": "#/components/schemas/MaterialInput"
-          },
-          "start_time_local": {
-            "format": "date-time",
-            "title": "Start Time Local",
-            "type": "string"
-          }
-        },
-        "required": [
-          "start_time_local",
-          "person",
-          "control_material",
-          "rc_material"
-        ],
-        "title": "WeatherSimulationRequest",
-        "type": "object"
-      },
-      "WeatherSimulationResponse": {
-        "properties": {
-          "city": {
-            "title": "City",
-            "type": "string"
-          },
-          "control": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "duration_minutes": {
-            "title": "Duration Minutes",
-            "type": "integer"
-          },
-          "environment_assumptions": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/EnvironmentAssumptions"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "environment_model_note": {
-            "title": "Environment Model Note",
-            "type": "string"
-          },
-          "model_metadata": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ModelMetadata"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "model_name": {
-            "title": "Model Name",
-            "type": "string"
-          },
-          "model_version": {
-            "title": "Model Version",
-            "type": "string"
-          },
-          "radiative_cooling": {
-            "$ref": "#/components/schemas/ScenarioResult"
-          },
-          "summary": {
-            "$ref": "#/components/schemas/SimulationSummary"
-          },
-          "warning": {
-            "title": "Warning",
-            "type": "string"
-          },
-          "weather": {
-            "$ref": "#/components/schemas/WeatherTimeSeries"
-          }
-        },
-        "required": [
-          "model_name",
-          "model_version",
-          "city",
-          "duration_minutes",
-          "control",
-          "radiative_cooling",
-          "summary",
-          "warning",
-          "weather",
-          "environment_model_note"
-        ],
-        "title": "WeatherSimulationResponse",
-        "type": "object"
-      },
-      "WeatherSourceMetadata": {
-        "properties": {
-          "attribution": {
-            "title": "Attribution",
-            "type": "string"
-          },
-          "dataset": {
-            "title": "Dataset",
-            "type": "string"
-          },
-          "downloaded_at": {
-            "format": "date-time",
-            "title": "Downloaded At",
-            "type": "string"
-          },
-          "elevation_m": {
-            "title": "Elevation M",
-            "type": "number"
-          },
-          "from_cache": {
-            "title": "From Cache",
-            "type": "boolean"
-          },
-          "latitude": {
-            "title": "Latitude",
-            "type": "number"
-          },
-          "longitude": {
-            "title": "Longitude",
-            "type": "number"
-          },
-          "model": {
-            "title": "Model",
-            "type": "string"
-          },
-          "payload_sha256": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Payload Sha256"
-          },
-          "provider": {
-            "title": "Provider",
-            "type": "string"
-          },
-          "quality": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WeatherQualityReport"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "timezone": {
-            "title": "Timezone",
-            "type": "string"
-          }
-        },
-        "required": [
-          "provider",
-          "dataset",
-          "model",
-          "latitude",
-          "longitude",
-          "elevation_m",
-          "timezone",
-          "downloaded_at",
-          "from_cache",
-          "attribution"
-        ],
-        "title": "WeatherSourceMetadata",
-        "type": "object"
-      },
-      "WeatherTimeSeries": {
-        "properties": {
-          "city": {
-            "$ref": "#/components/schemas/CityResponse"
-          },
-          "points": {
-            "items": {
-              "$ref": "#/components/schemas/WeatherPoint"
-            },
-            "title": "Points",
-            "type": "array"
-          },
-          "requested_end_time": {
-            "format": "date-time",
-            "title": "Requested End Time",
-            "type": "string"
-          },
-          "requested_start_time": {
-            "format": "date-time",
-            "title": "Requested Start Time",
-            "type": "string"
-          },
-          "source": {
-            "$ref": "#/components/schemas/WeatherSourceMetadata"
-          }
-        },
-        "required": [
-          "city",
-          "requested_start_time",
-          "requested_end_time",
-          "points",
-          "source"
-        ],
-        "title": "WeatherTimeSeries",
-        "type": "object"
-      }
-    }
-  },
-  "info": {
-    "description": "Backend API for simulating and evaluating radiative cooling clothing under global climate conditions.",
-    "title": "Global Radiative Cooling Clothing Climate Adaptation API",
-    "version": "0.2.0"
-  },
-  "openapi": "3.1.0",
-  "paths": {
-    "/api/v1/benchmarks/gagge": {
-      "post": {
-        "operationId": "compare_with_gagge_api_v1_benchmarks_gagge_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GaggeBenchmarkRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GaggeBenchmarkResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Compare With Gagge",
-        "tags": [
-          "benchmarks"
-        ]
-      }
-    },
-    "/api/v1/global-batches": {
-      "get": {
-        "operationId": "list_global_batches_api_v1_global_batches_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Global Batches",
-        "tags": [
-          "global-batches"
-        ]
-      },
-      "post": {
-        "operationId": "create_global_batch_api_v1_global_batches_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GlobalBatchCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/cities": {
-      "get": {
-        "operationId": "get_supported_cities_api_v1_global_batches_cities_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Supported Cities Api V1 Global Batches Cities Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Supported Cities",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/estimate": {
-      "post": {
-        "operationId": "estimate_global_batch_api_v1_global_batches_estimate_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GlobalBatchCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchEstimateResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Estimate Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}": {
-      "get": {
-        "operationId": "get_global_batch_api_v1_global_batches__batch_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/cancel": {
-      "post": {
-        "operationId": "cancel_global_batch_api_v1_global_batches__batch_id__cancel_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Cancel Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/export": {
-      "get": {
-        "operationId": "export_global_batch_api_v1_global_batches__batch_id__export_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Export Global Batch",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/geojson": {
-      "get": {
-        "operationId": "get_global_batch_geojson_api_v1_global_batches__batch_id__geojson_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Global Batch Geojson Api V1 Global Batches  Batch Id  Geojson Get",
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Global Batch Geojson",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/global-batches/{batch_id}/retry-failed": {
-      "post": {
-        "operationId": "retry_failed_cities_api_v1_global_batches__batch_id__retry_failed_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "batch_id",
-            "required": true,
-            "schema": {
-              "title": "Batch Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/GlobalBatchResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Retry Failed Cities",
-        "tags": [
-          "global-batches"
-        ]
-      }
-    },
-    "/api/v1/health": {
-      "get": {
-        "operationId": "health_check_api_v1_health_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Health Check"
-      }
-    },
-    "/api/v1/materials": {
-      "get": {
-        "operationId": "list_materials_api_v1_materials_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "include_archived",
-            "required": false,
-            "schema": {
-              "default": false,
-              "title": "Include Archived",
-              "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
-            "name": "search",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Search"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Materials",
-        "tags": [
-          "materials"
-        ]
-      },
-      "post": {
-        "operationId": "create_material_api_v1_materials_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Material",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/versions/{version_id}/simulation-input": {
-      "get": {
-        "operationId": "material_version_to_simulation_input_api_v1_materials_versions__version_id__simulation_input_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "version_id",
-            "required": true,
-            "schema": {
-              "title": "Version Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialInput"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Material Version To Simulation Input",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/versions/{version_id}/spectra": {
-      "post": {
-        "operationId": "upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "version_id",
-            "required": true,
-            "schema": {
-              "title": "Version Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/Body_upload_material_spectrum_api_v1_materials_versions__version_id__spectra_post"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpectrumResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Upload Material Spectrum",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/versions/{version_id}/spectra/{spectrum_type}": {
-      "get": {
-        "operationId": "get_material_spectrum_api_v1_materials_versions__version_id__spectra__spectrum_type__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "version_id",
-            "required": true,
-            "schema": {
-              "title": "Version Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "spectrum_type",
-            "required": true,
-            "schema": {
-              "title": "Spectrum Type",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SpectrumResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Material Spectrum",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/{material_id}": {
-      "get": {
-        "operationId": "get_material_api_v1_materials__material_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "material_id",
-            "required": true,
-            "schema": {
-              "title": "Material Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Material",
-        "tags": [
-          "materials"
-        ]
-      },
-      "patch": {
-        "operationId": "update_material_api_v1_materials__material_id__patch",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "material_id",
-            "required": true,
-            "schema": {
-              "title": "Material Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialUpdate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Update Material",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/materials/{material_id}/versions": {
-      "post": {
-        "operationId": "create_material_version_api_v1_materials__material_id__versions_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "material_id",
-            "required": true,
-            "schema": {
-              "title": "Material Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaterialVersionCreate"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MaterialVersionResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Material Version",
-        "tags": [
-          "materials"
-        ]
-      }
-    },
-    "/api/v1/model/environment-assumptions/defaults": {
-      "get": {
-        "operationId": "get_default_environment_assumptions_api_v1_model_environment_assumptions_defaults_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EnvironmentAssumptions"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Default Environment Assumptions",
-        "tags": [
-          "model"
-        ]
-      }
-    },
-    "/api/v1/model/parameters": {
-      "get": {
-        "operationId": "get_model_parameters_api_v1_model_parameters_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelParameterManifest"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "Get Model Parameters",
-        "tags": [
-          "model"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs": {
-      "get": {
-        "operationId": "list_simulation_jobs_api_v1_simulations_jobs_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "maximum": 100,
-              "minimum": 1,
-              "title": "Limit",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "offset",
-            "required": false,
-            "schema": {
-              "default": 0,
-              "minimum": 0,
-              "title": "Offset",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobListResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "List Simulation Jobs",
-        "tags": [
-          "simulations"
-        ]
-      },
-      "post": {
-        "operationId": "create_simulation_job_api_v1_simulations_jobs_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WeatherSimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "202": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Create Simulation Job",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}": {
-      "get": {
-        "operationId": "get_simulation_job_api_v1_simulations_jobs__job_id__get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobDetail"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Simulation Job",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/cancel": {
-      "post": {
-        "operationId": "cancel_simulation_job_api_v1_simulations_jobs__job_id__cancel_post",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationJobResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Cancel Simulation Job",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/events": {
-      "get": {
-        "operationId": "simulation_job_events_api_v1_simulations_jobs__job_id__events_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Simulation Job Events",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/export": {
-      "get": {
-        "operationId": "export_simulation_result_api_v1_simulations_jobs__job_id__export_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "format",
-            "required": false,
-            "schema": {
-              "default": "csv",
-              "pattern": "^(csv|json)$",
-              "title": "Format",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Export Simulation Result",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/jobs/{job_id}/result": {
-      "get": {
-        "operationId": "get_simulation_result_api_v1_simulations_jobs__job_id__result_get",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "job_id",
-            "required": true,
-            "schema": {
-              "title": "Job Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeatherSimulationResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Get Simulation Result",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/run": {
-      "post": {
-        "operationId": "run_simulation_api_v1_simulations_run_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SimulationResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Run Simulation",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/simulations/run-weather": {
-      "post": {
-        "operationId": "run_weather_simulation_api_v1_simulations_run_weather_post",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/WeatherSimulationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeatherSimulationResponse"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Run Weather Simulation",
-        "tags": [
-          "simulations"
-        ]
-      }
-    },
-    "/api/v1/weather/cities": {
-      "get": {
-        "operationId": "list_cities_api_v1_weather_cities_get",
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/CityResponse"
-                  },
-                  "title": "Response List Cities Api V1 Weather Cities Get",
-                  "type": "array"
-                }
-              }
-            },
-            "description": "Successful Response"
-          }
-        },
-        "summary": "List Cities",
-        "tags": [
-          "weather"
-        ]
-      }
-    },
-    "/api/v1/weather/history": {
-      "get": {
-        "operationId": "weather_history_api_v1_weather_history_get",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "city_id",
-            "required": true,
-            "schema": {
-              "title": "City Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "start_time_local",
-            "required": true,
-            "schema": {
-              "format": "date-time",
-              "title": "Start Time Local",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "duration_minutes",
-            "required": false,
-            "schema": {
-              "default": 120,
-              "maximum": 1440,
-              "minimum": 1,
-              "title": "Duration Minutes",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/WeatherTimeSeries"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "summary": "Weather History",
-        "tags": [
-          "weather"
-        ]
-      }
-    }
-  }
-}
 ```
 
