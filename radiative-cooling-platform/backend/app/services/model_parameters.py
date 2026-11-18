@@ -23,6 +23,12 @@ Stage 5 changes
 * Renamed: effective_radiation_area_ratio -> effective_radiation_area_ratio_standing;
   added effective_radiation_area_ratio_sitting (selected by PersonInput.position).
 * Added: diffuse_hemisphere_fraction (ASHRAE 55 Appendix C shortwave geometry).
+
+Stage 11 changes (ADR 0008)
+---------------------------
+* Added: brutsaert_coefficient, brutsaert_exponent, ground convection still-air
+  and wind coefficients (Watmuff 1977).
+* MODEL_PARAMETER_SET_VERSION 5.0.0 -> 6.0.0.
 """
 
 from __future__ import annotations
@@ -38,7 +44,7 @@ from app.schemas.provenance import (
 )
 
 
-MODEL_PARAMETER_SET_VERSION = "5.0.0"
+MODEL_PARAMETER_SET_VERSION = "6.0.0"
 
 GAGGE_1986 = (
     "Gagge, Fobelets & Berglund (1986). A standard predictive index of "
@@ -229,6 +235,21 @@ _PARAMETERS: tuple[ModelParameter, ...] = (
     _p("swinbank_coefficient", 0.0552, "K^-0.5",
        "Clear-sky T_sky[K] = 0.0552 * T_air[K]^1.5",
        "literature", "Swinbank (1963) Q. J. R. Meteorol. Soc. 89:339-348"),
+
+    # --- radiant environment (Stage 11, ADR 0008) ---------------------------
+    _p("brutsaert_coefficient", 1.24, "(K/hPa)^(1/7)",
+       "Clear-sky emissivity eps = 1.24 (e_a[hPa] / T_a[K])^(1/7)",
+       "literature", "Brutsaert (1975) Water Resour. Res. 11:742-744"),
+    _p("brutsaert_exponent", 1.0 / 7.0, "-",
+       "Exponent of the Brutsaert clear-sky emissivity",
+       "literature", "Brutsaert (1975) Water Resour. Res. 11:742-744"),
+    _p("ground_convection_still_air_coefficient", 2.8, "W/(m^2 K)",
+       "h_g = a + b v for a horizontal ground surface",
+       "literature", "Watmuff, Charters & Proctor (1977) COMPLES 2:56"),
+    _p("ground_convection_wind_coefficient", 3.0, "W/(m^2 K (m/s))",
+       "Wind term b of the ground convection coefficient",
+       "literature", "Watmuff, Charters & Proctor (1977) COMPLES 2:56",
+       "Evaluated with the body-height wind; a 2 m wind would be slightly lower."),
 )
 
 
