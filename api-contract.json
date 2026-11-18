@@ -725,11 +725,32 @@
               "title": "Ground Albedo",
               "type": "number"
             },
+            "ground_emissivity": {
+              "default": 0.95,
+              "description": "Longwave emissivity of the ground surface",
+              "maximum": 1.0,
+              "minimum": 0.8,
+              "reference": "Typical soil, asphalt and concrete (0.92-0.97)",
+              "source_type": "assumed",
+              "title": "Ground Emissivity",
+              "type": "number"
+            },
+            "ground_soil_conductance_w_m2k": {
+              "default": 15.0,
+              "description": "Effective conductance between the ground surface and the ERA5 0-7 cm soil layer (k/d)",
+              "maximum": 200.0,
+              "minimum": 2.0,
+              "reference": "Order of magnitude for dry soil to pavement; not measured",
+              "source_type": "assumed",
+              "title": "Ground Soil Conductance W M2K",
+              "type": "number"
+            },
             "mean_radiant_temperature_method": {
               "default": "air_plus_solar_linear",
               "enum": [
                 "air_plus_solar_linear",
-                "equal_to_air"
+                "equal_to_air",
+                "ground_energy_balance"
               ],
               "reference": "Stage 1 prototype",
               "source_type": "assumed",
@@ -772,7 +793,8 @@
               "enum": [
                 "humidity_offset",
                 "fixed_offset",
-                "swinbank"
+                "swinbank",
+                "brutsaert_cloud"
               ],
               "reference": "Stage 1 prototype",
               "source_type": "assumed",
@@ -6298,6 +6320,17 @@
               ],
               "title": "Skin Wettedness"
             },
+            "sky_temperature_c": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sky Temperature C"
+            },
             "solar_absorbed_by_textile_w_m2": {
               "anyOf": [
                 {
@@ -6330,6 +6363,17 @@
                 }
               ],
               "title": "Solar Transmitted W M2"
+            },
+            "surround_temperature_c": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Surround Temperature C"
             }
           },
           "required": [
@@ -6418,6 +6462,17 @@
               "title": "Air Temperature C",
               "type": "number"
             },
+            "cloud_cover_percent": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cloud Cover Percent"
+            },
             "diffuse_radiation_w_m2": {
               "title": "Diffuse Radiation W M2",
               "type": "number"
@@ -6437,6 +6492,17 @@
             "relative_humidity_percent": {
               "title": "Relative Humidity Percent",
               "type": "number"
+            },
+            "soil_temperature_c": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Soil Temperature C"
             },
             "timestamp": {
               "format": "date-time",
