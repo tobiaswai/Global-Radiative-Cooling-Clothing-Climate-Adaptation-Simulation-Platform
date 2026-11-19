@@ -9,7 +9,7 @@ from app.schemas.optimization import (
     OptimizationResult,
 )
 from app.services.leases import derive_lease_state
-
+from app.services.stored_requests import load_stored_request
 
 def optimization_to_response(job: OptimizationJob, *, now: datetime | None = None) -> OptimizationJobResponse:
     return OptimizationJobResponse(
@@ -30,7 +30,7 @@ def optimization_to_response(job: OptimizationJob, *, now: datetime | None = Non
 def optimization_to_detail(job: OptimizationJob, *, now: datetime | None = None) -> OptimizationJobDetail:
     return OptimizationJobDetail(
         **optimization_to_response(job, now=now).model_dump(),
-        request=OptimizationCreate.model_validate(job.request_json),
+        request=load_stored_request(OptimizationCreate, job.request_json),
         history=[GenerationRecord.model_validate(r) for r in (job.history_json or [])],
         result=None if job.result_json is None else OptimizationResult.model_validate(job.result_json),
     )

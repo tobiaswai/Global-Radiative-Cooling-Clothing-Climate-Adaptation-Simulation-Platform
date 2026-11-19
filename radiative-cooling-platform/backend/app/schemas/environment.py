@@ -41,7 +41,8 @@ class EnvironmentAssumptions(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     mean_radiant_temperature_method: MeanRadiantTemperatureMethod = Field(
-        default="air_plus_solar_linear", json_schema_extra=_STAGE1,
+        default="ground_energy_balance",
+        json_schema_extra={"source_type": "assumed", "reference": "ADR 0008, ADR 0009"},
     )
     solar_mrt_gain_k_per_w_m2: float = Field(
         default=0.012, ge=0.0, le=0.05,
@@ -55,7 +56,8 @@ class EnvironmentAssumptions(BaseModel):
     )
 
     sky_temperature_method: SkyTemperatureMethod = Field(
-        default="humidity_offset", json_schema_extra=_STAGE1,
+        default="brutsaert_cloud",
+        json_schema_extra={"source_type": "assumed", "reference": "ADR 0008, ADR 0009"},
     )
     sky_offset_base_k: float = Field(
         default=5.0, ge=0.0, le=40.0,
@@ -127,6 +129,19 @@ class EnvironmentAssumptions(BaseModel):
         },
     )
 
+    # Stage 12 (ADR 0010). Used only by garments with a ground-facing emissivity.
+    zone_view_separation: float = Field(
+        default=0.5, ge=0.0, le=1.0,
+        description=(
+            "How strongly the sky-facing and ground-facing garment zones see different "
+            "hemispheres: 0 = both see the body-average mix, 1 = perfect partition"
+        ),
+        json_schema_extra={
+            "source_type": "assumed",
+            "reference": "ADR 0010; idealised two-zone garment, not measured",
+        },
+    )
+    
     def describe(self) -> list[str]:
         """Human-readable summary written into ``environment_model_note``."""
         if self.mean_radiant_temperature_method == "air_plus_solar_linear":
@@ -185,4 +200,29 @@ class EnvironmentAssumptions(BaseModel):
             "geometry (ADR 0006).",
             f"Ground albedo = {self.ground_albedo}",
             radiation,
+            f"Zone view separation = {self.zone_view_separation} "
+            "(two-zone garments only, ADR 0010)",
         ]
+
+EnvironmentPresetName = Literal["open_ground_physical", "legacy_stage1"]
+
+# Overrides on top of the schema defaults. open_ground_physical IS the default.
+ENVIRONMENT_PRESETS: dict[str, dict[str, object]] = {
+    "open_ground_physical": {},
+    "legacy_stage1": {
+        "mean_radiant_temperature_method": "air_plus_solar_linear",
+        "sky_temperature_method": "humidity_offset",
+    },
+}
+
+LEGACY_PRESET: EnvironmentPresetName = "legacy_stage1"
+
+
+def preset_assumptions(name: str) -> EnvironmentAssumptions:
+    try:
+        overrides = ENVIRONMENT_PRESETS[name]
+    except KeyError as error:
+        raise ValueError(
+            f"Unknown environment preset '{name}'. Known: {sorted(ENVIRONMENT_PRESETS)}"
+        ) from error
+    return EnvironmentAssumptions(**overrides)

@@ -9,6 +9,7 @@ from app.services.ground_surface import (
     solve_ground_surface_temperature_c,
 )
 from app.services.weather_quality import WeatherMissingVariableError
+from tests.helpers.environment import LEGACY
 
 
 PHYSICAL = EnvironmentAssumptions(
@@ -21,15 +22,17 @@ GROUND = dict(air_c=40.0, sky_c=25.0, ghi_w_m2=900.0, albedo=0.2,
 
 
 @pytest.mark.unit
-def test_defaults_need_no_extra_weather_variables():
-    assert required_weather_variables(EnvironmentAssumptions()) == ()
-    assert required_weather_variables(PHYSICAL) == ("cloud_cover", "soil_temperature_0_to_7cm")
+def test_defaults_need_physical_variables_and_legacy_needs_none():
+    assert required_weather_variables(EnvironmentAssumptions()) == (
+        "cloud_cover", "soil_temperature_0_to_7cm",
+    )
+    assert required_weather_variables(LEGACY) == ()
 
 
 @pytest.mark.unit
 def test_legacy_path_is_unchanged():
     env = derive_environment(air_temperature_c=35.0, relative_humidity_percent=40.0,
-                             wind_speed_m_s=2.0, ghi_w_m2=800.0, assumptions=EnvironmentAssumptions())
+                             wind_speed_m_s=2.0, ghi_w_m2=800.0, assumptions=LEGACY)
     assert env.mean_radiant_temperature_c == pytest.approx(35.0 + 9.6)
     assert env.sky_temperature_c == pytest.approx(35.0 - (5.0 + 10.0 * 0.6))
 

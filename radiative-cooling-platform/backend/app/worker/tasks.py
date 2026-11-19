@@ -57,7 +57,7 @@ from app.services.leases import (
 from app.services.result_storage import save_simulation_result
 from app.services.weather_simulation import execute_weather_simulation
 from app.worker.celery_app import celery_app
-
+from app.services.stored_requests import load_stored_request
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +139,7 @@ def run_weather_simulation_task(self: Task, job_id: str) -> dict:
             job = session.get(SimulationJob, job_id)
             if job is None:
                 raise RuntimeError(f"Simulation task not found:{job_id}")
-            request = WeatherSimulationRequest.model_validate(job.request_json)
+            request = load_stored_request(WeatherSimulationRequest, job.request_json)
 
             ok = heartbeat_job_lease(
                 session, job_id, owner,
@@ -327,7 +327,7 @@ def run_global_city_analysis_task(self: Task, city_result_id: str) -> dict:
                 raise RuntimeError(f"Global batch not found: {city_result.batch_id}")
 
             batch_id = batch.id
-            request = GlobalBatchCreate.model_validate(batch.request_json)
+            request = load_stored_request(GlobalBatchCreate, batch.request_json)
             queue_name = resolve_queue_name(request)
             city_id = city_result.city_id
             provenance = CheckpointProvenance.for_request(request)
@@ -573,9 +573,7 @@ def reap_expired_leases() -> dict:
         for city in stale:
             if city.batch_id not in queue_by_batch:
                 batch = db.get(GlobalBatchJob, city.batch_id)
-                queue_by_batch[city.batch_id] = resolve_queue_name(
-                    GlobalBatchCreate.model_validate(batch.request_json)
-                )
+                queue_by_batch[city.batch_id] = load_stored_request(GlobalBatchCreate, batch.request_json)
 
             if city.retry_count < settings.CITY_MAX_RETRIES:
                 assert_city_transition(city.status, CityStatus.QUEUED)

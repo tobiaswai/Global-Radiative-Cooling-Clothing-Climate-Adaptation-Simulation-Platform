@@ -76,6 +76,13 @@ const resolvedRows: ResolvedRow[] = [
             scenario.clothing.infrared_emissivity_outside_window, 3)}`,
   },
   {
+    label: "Ground-facing ε_g",
+    render: (scenario) =>
+      scenario.clothing?.infrared_emissivity_ground_facing == null
+        ? "uniform"
+        : formatNumber(scenario.clothing.infrared_emissivity_ground_facing, 3),
+  },
+  {
     label: "Body mass",
     render: (scenario) => formatNumber(scenario.body?.body_mass_kg, 1, " kg"),
   },

@@ -68,8 +68,8 @@
     }
   ],
   "duration_minutes": 120,
-  "model_version": "0.9.0",
-  "parameter_fingerprint": "ab029f645aecd18872e61c67d9dfa509a9910cba94a79568e554512f4ed78704",
+  "model_version": "0.10.0",
+  "parameter_fingerprint": "80d30c26549f43a45fa553e843ea2b1a73788bf23819c0b72b8fb9d3d6103e7b",
   "parameter_snapshot": {
     "environment_assumptions": {
       "fixed_sky_offset_k": 15.0,
@@ -84,7 +84,8 @@
       "sky_view_factor": 0.5,
       "solar_mrt_gain_cap_k": 15.0,
       "solar_mrt_gain_k_per_w_m2": 0.012,
-      "wind_speed_scaling_factor": 1.0
+      "wind_speed_scaling_factor": 1.0,
+      "zone_view_separation": 0.5
     },
     "model_parameter_set_sha256": "4e08b169ffe11abb73de5a6b130c0cca4a5880cd848c2f6f9f3e42c189ab524c",
     "model_parameter_set_version": "5.0.0",

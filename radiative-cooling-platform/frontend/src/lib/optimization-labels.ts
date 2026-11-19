@@ -17,6 +17,7 @@ export const VARIABLE_LABELS: Record<DecisionVariableName, string> = {
   infrared_transmittance: "IR transmittance τ_IR",
   clothing_insulation_clo: "Insulation (clo)",
   evaporative_resistance_m2pa_w: "Re,cl (m²·Pa/W)",
+  infrared_emissivity_ground_facing: "IR emissivity ε_g (ground-facing)",
 };
 
 /** Mirrors DEFAULT_DEMAND_DIRECTION in app/schemas/optimization.py. */
@@ -29,6 +30,7 @@ export const DEFAULT_DEMAND_DIRECTION: Record<DecisionVariableName, DemandDirect
   infrared_transmittance: "increasing",
   clothing_insulation_clo: "decreasing",
   evaporative_resistance_m2pa_w: "decreasing",
+  infrared_emissivity_ground_facing: "decreasing",
 };
 
 export const EMISSIVITY_BAND_VARIABLES = new Set<DecisionVariableName>([

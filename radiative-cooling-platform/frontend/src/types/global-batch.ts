@@ -115,6 +115,8 @@ export type DailyAdaptationResult = {
   maximum_skin_improvement_c: number;
 
   weather_from_cache: boolean;
+  mean_sky_temperature_c?: number | null; 
+  mean_surround_temperature_c?: number | null;
 };
 
 

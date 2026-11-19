@@ -225,6 +225,10 @@ class DailyAdaptationResult(BaseModel):
 
     weather_from_cache: bool
 
+# Stage 12. Exposure-window means of the longwave boundary temperatures.
+    mean_sky_temperature_c: float | None = None
+    mean_surround_temperature_c: float | None = None
+
 class SkippedSample(BaseModel):
     """A planned sample day that could not be simulated for data reasons."""
 

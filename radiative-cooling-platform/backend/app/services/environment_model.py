@@ -70,7 +70,7 @@ def derive_environment(
     ghi = max(0.0, float(ghi_w_m2))
     relative_humidity = min(100.0, max(0.0, float(relative_humidity_percent)))
     wind = max(0.0, float(wind_speed_m_s)) * assumptions.wind_speed_scaling_factor
-
+    zone_view_separation = assumptions.zone_view_separation
     sky = _sky_temperature_c(air, relative_humidity, cloud_cover_percent, assumptions)
 
     method = assumptions.mean_radiant_temperature_method
@@ -109,4 +109,5 @@ def derive_environment(
         direct_normal_irradiance_w_m2=dni,
         diffuse_horizontal_irradiance_w_m2=dhi,
         ground_albedo=assumptions.ground_albedo,
+        zone_view_separation=zone_view_separation,   # was missing
     )

@@ -32,6 +32,7 @@ frontend/src/app/simulations/weather/page.tsx
 frontend/src/components/charts/benchmark-chart.tsx
 frontend/src/components/charts/heat-flux-chart.tsx
 frontend/src/components/charts/physiology-chart.tsx
+frontend/src/components/charts/radiant-environment-chart.tsx
 frontend/src/components/charts/temperature-chart.tsx
 frontend/src/components/charts/weather-chart.tsx
 frontend/src/components/forms/number-field.tsx
@@ -5807,6 +5808,7 @@ import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import { WeatherQualityPanel } from "@/components/simulation/weather-quality-panel";
 import { getSimulationExportUrl } from "@/lib/api-client";
 import { isTerminalJobStatus, useSimulationJob } from "@/lib/use-simulation-job";
+import { RadiantEnvironmentChart } from "@/components/charts/radiant-environment-chart";
 
 const stageLabels: Record<string, string> = {
   queued: "Waiting for computing resources",
@@ -5964,6 +5966,7 @@ export default function SimulationJobPage() {
             <WeatherQualityPanel weather={result.weather} />
             <TemperatureChart result={result} />
             <HeatFluxChart result={result} />
+            <RadiantEnvironmentChart result={result} />
             <PhysiologyChart result={result} />
             <ModelQualityPanel result={result} />
             <ModelProvenancePanel result={result} />
@@ -6024,6 +6027,7 @@ import { ModelQualityPanel } from "@/components/simulation/model-quality-panel";
 import { PersonInputFields } from "@/components/simulation/person-input-fields";
 import { runSimulation } from "@/lib/api-client";
 import type { SimulationRequest, SimulationResponse } from "@/types/simulation";
+import { RadiantEnvironmentChart } from "@/components/charts/radiant-environment-chart";
 
 const initialRequest: SimulationRequest = {
   city: "Dubai",
@@ -6242,6 +6246,7 @@ export default function NewSimulationPage() {
             <TemperatureChart result={result} />
             <PhysiologyChart result={result} />
             <HeatFluxChart result={result} />
+            <RadiantEnvironmentChart result={result} />
             <ModelQualityPanel result={result} />
             <ModelProvenancePanel result={result} />
           </section>
@@ -7255,6 +7260,61 @@ export function PhysiologyChart({ result }: PhysiologyChartProps) {
         Skin blood flow follows the Gagge two-node control law ported in
         Stage 3. Skin wettedness is shown on the right axis; toggle it from the
         legend.
+      </p>
+    </div>
+  );
+}
+```
+
+### File: `frontend/src/components/charts/radiant-environment-chart.tsx`
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import type { Data } from "plotly.js";
+
+import { hasOptionalSeries, pluckOptionalSeries } from "@/lib/time-series";
+import type { SimulationResponse } from "@/types/simulation";
+
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+
+/** Longwave boundary temperatures actually used, plus clothing surfaces (Stage 11). */
+export function RadiantEnvironmentChart({ result }: { result: SimulationResponse }) {
+  const rc = result.radiative_cooling.time_series;
+  const control = result.control.time_series;
+  if (!hasOptionalSeries(rc, "sky_temperature_c")) return null;
+
+  const minutes = rc.map((p) => p.minute);
+  const data: Data[] = [
+    { x: minutes, y: pluckOptionalSeries(rc, "sky_temperature_c"), type: "scatter", mode: "lines",
+      name: "Sky (effective)", line: { color: "#60a5fa", width: 3 } },
+    { x: minutes, y: pluckOptionalSeries(rc, "surround_temperature_c"), type: "scatter", mode: "lines",
+      name: "Non-sky surroundings", line: { color: "#f97316", width: 3 } },
+    { x: control.map((p) => p.minute), y: pluckOptionalSeries(control, "clothing_surface_temperature_c"),
+      type: "scatter", mode: "lines", name: "Control clothing surface", line: { color: "#fdba74", dash: "dot" } },
+    { x: minutes, y: pluckOptionalSeries(rc, "clothing_surface_temperature_c"),
+      type: "scatter", mode: "lines", name: "RC clothing surface", line: { color: "#67e8f9", dash: "dot" } },
+  ];
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4">
+      <h2 className="mb-4 text-xl font-semibold">Radiant Environment</h2>
+      <Plot
+        data={data}
+        layout={{
+          autosize: true, height: 380, paper_bgcolor: "#0f172a", plot_bgcolor: "#0f172a",
+          font: { color: "#cbd5e1" }, margin: { l: 65, r: 30, t: 20, b: 55 },
+          xaxis: { title: { text: "Time (min)" }, gridcolor: "#334155" },
+          yaxis: { title: { text: "Temperature (°C)" }, gridcolor: "#334155" },
+          legend: { orientation: "h", y: -0.25 }, hovermode: "x unified",
+        }}
+        config={{ responsive: true, displaylogo: false }}
+        useResizeHandler
+        style={{ width: "100%", height: "100%" }}
+      />
+      <p className="mt-2 text-sm text-slate-400">
+        A garment surface below the surroundings temperature gains longwave heat from them; a low
+        emissivity then helps. Whether that happens depends on how the surroundings are modelled.
       </p>
     </div>
   );
@@ -9679,129 +9739,107 @@ type Props = {
   onChange: (value: EnvironmentAssumptions) => void;
 };
 
-/**
- * Rules that turn ERA5 variables into model boundary conditions (Stage 2,
- * Stage 5 adds ground albedo). Every value is echoed back in the result.
- */
+/** Rules that turn ERA5 variables into model boundary conditions (Stage 2, 5, 11). */
 export function EnvironmentAssumptionsFields({ value, disabled = false, onChange }: Props) {
-  function update<K extends keyof EnvironmentAssumptions>(
-    key: K,
-    next: EnvironmentAssumptions[K],
-  ) {
+  function update<K extends keyof EnvironmentAssumptions>(key: K, next: EnvironmentAssumptions[K]) {
     onChange({ ...value, [key]: next });
   }
 
-  const solarMrt = value.mean_radiant_temperature_method === "air_plus_solar_linear";
-  const humidityOffset = value.sky_temperature_method === "humidity_offset";
-  const fixedOffset = value.sky_temperature_method === "fixed_offset";
+  const mrt = value.mean_radiant_temperature_method;
+  const sky = value.sky_temperature_method;
 
   return (
     <details className="rounded-xl border border-slate-800 bg-slate-950/50 p-5">
-      <summary className="cursor-pointer text-lg font-semibold">
-        Environment assumptions
-      </summary>
+      <summary className="cursor-pointer text-lg font-semibold">Environment assumptions</summary>
 
       <p className="mt-2 text-sm text-slate-400">
-        How ERA5 air temperature, humidity, wind and irradiance become mean
-        radiant temperature, sky temperature and body-height wind. Defaults
-        reproduce the Stage 1 estimates.
+        How ERA5 variables become the longwave temperatures of the sky and of the non-sky
+        surroundings, and body-height wind. Defaults reproduce the Stage 1 estimates.
       </p>
+
+      {mrt === "air_plus_solar_linear" && (
+        <p className="mt-2 text-sm text-amber-300">
+          The legacy surroundings rule adds a GHI term although body shortwave is computed
+          explicitly, so the sun is counted twice (ADR 0008). Prefer the ground energy balance
+          for infrared material studies.
+        </p>
+      )}
 
       <div className="mt-4 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
         <SelectField
-          label="Mean radiant temperature"
-          value={value.mean_radiant_temperature_method}
+          label="Non-sky surroundings temperature"
+          value={mrt}
           disabled={disabled}
           options={[
-            { value: "air_plus_solar_linear", label: "Air + linear solar gain" },
+            { value: "air_plus_solar_linear", label: "Air + linear solar gain (legacy)" },
             { value: "equal_to_air", label: "Equal to air (shaded)" },
+            { value: "ground_energy_balance", label: "Ground surface energy balance" },
           ]}
           onChange={(v) => update("mean_radiant_temperature_method", v)}
         />
 
-        {solarMrt && (
+        {mrt === "air_plus_solar_linear" && (
           <>
-            <NumberField
-              label="Solar MRT gain"
-              suffix="K/(W/m²)"
-              value={value.solar_mrt_gain_k_per_w_m2}
-              min={0} max={0.05} step={0.001}
-              disabled={disabled}
-              onChange={(v) => update("solar_mrt_gain_k_per_w_m2", v)}
-            />
-            <NumberField
-              label="Solar MRT cap"
-              suffix="K"
-              value={value.solar_mrt_gain_cap_k}
-              min={0} max={40} step={0.5}
-              disabled={disabled}
-              onChange={(v) => update("solar_mrt_gain_cap_k", v)}
-            />
+            <NumberField label="Solar MRT gain" suffix="K/(W/m²)" value={value.solar_mrt_gain_k_per_w_m2}
+              min={0} max={0.05} step={0.001} disabled={disabled}
+              onChange={(v) => update("solar_mrt_gain_k_per_w_m2", v)} />
+            <NumberField label="Solar MRT cap" suffix="K" value={value.solar_mrt_gain_cap_k}
+              min={0} max={40} step={0.5} disabled={disabled}
+              onChange={(v) => update("solar_mrt_gain_cap_k", v)} />
+          </>
+        )}
+
+        {mrt === "ground_energy_balance" && (
+          <>
+            <NumberField label="Ground emissivity" value={value.ground_emissivity}
+              min={0.8} max={1} step={0.01} disabled={disabled}
+              onChange={(v) => update("ground_emissivity", v)} />
+            <NumberField label="Surface–soil conductance" suffix="W/(m²·K)"
+              value={value.ground_soil_conductance_w_m2k} min={2} max={200} step={1} disabled={disabled}
+              hint="Couples the surface to ERA5 0–7 cm soil temperature. Assumed, not measured."
+              onChange={(v) => update("ground_soil_conductance_w_m2k", v)} />
           </>
         )}
 
         <SelectField
           label="Sky temperature"
-          value={value.sky_temperature_method}
+          value={sky}
           disabled={disabled}
           options={[
             { value: "humidity_offset", label: "Humidity-dependent offset" },
             { value: "fixed_offset", label: "Fixed offset" },
             { value: "swinbank", label: "Swinbank clear sky" },
+            { value: "brutsaert_cloud", label: "Brutsaert + ERA5 cloud cover" },
           ]}
           onChange={(v) => update("sky_temperature_method", v)}
         />
 
-        {humidityOffset && (
+        {sky === "humidity_offset" && (
           <>
-            <NumberField
-              label="Sky offset at 100 % RH"
-              suffix="K"
-              value={value.sky_offset_base_k}
-              min={0} max={40} step={0.5}
-              disabled={disabled}
-              onChange={(v) => update("sky_offset_base_k", v)}
-            />
-            <NumberField
-              label="Extra offset at 0 % RH"
-              suffix="K"
-              value={value.sky_offset_humidity_range_k}
-              min={0} max={40} step={0.5}
-              disabled={disabled}
-              onChange={(v) => update("sky_offset_humidity_range_k", v)}
-            />
+            <NumberField label="Sky offset at 100 % RH" suffix="K" value={value.sky_offset_base_k}
+              min={0} max={40} step={0.5} disabled={disabled}
+              onChange={(v) => update("sky_offset_base_k", v)} />
+            <NumberField label="Extra offset at 0 % RH" suffix="K" value={value.sky_offset_humidity_range_k}
+              min={0} max={40} step={0.5} disabled={disabled}
+              onChange={(v) => update("sky_offset_humidity_range_k", v)} />
           </>
         )}
 
-        {fixedOffset && (
-          <NumberField
-            label="Fixed sky offset"
-            suffix="K"
-            value={value.fixed_sky_offset_k}
-            min={0} max={50} step={0.5}
-            disabled={disabled}
-            onChange={(v) => update("fixed_sky_offset_k", v)}
-          />
+        {sky === "fixed_offset" && (
+          <NumberField label="Fixed sky offset" suffix="K" value={value.fixed_sky_offset_k}
+            min={0} max={50} step={0.5} disabled={disabled}
+            onChange={(v) => update("fixed_sky_offset_k", v)} />
         )}
 
-        <NumberField
-          label="Sky view factor"
-          value={value.sky_view_factor}
-          min={0} max={1} step={0.05}
-          disabled={disabled}
-          onChange={(v) => update("sky_view_factor", v)}
-        />
+        <NumberField label="Sky view factor" value={value.sky_view_factor}
+          min={0} max={1} step={0.05} disabled={disabled}
+          onChange={(v) => update("sky_view_factor", v)} />
 
-        <NumberField
-          label="Ground albedo"
-          value={value.ground_albedo}
-          min={0} max={1} step={0.05}
-          disabled={disabled}
-          hint="Shortwave reflectance of the ground (Stage 5, ADR 0006)."
-          onChange={(v) => update("ground_albedo", v)}
-        />
+        <NumberField label="Ground albedo" value={value.ground_albedo}
+          min={0} max={1} step={0.05} disabled={disabled}
+          hint="Reflected shortwave on the body and, with the ground balance, absorbed shortwave of the ground."
+          onChange={(v) => update("ground_albedo", v)} />
 
-        {/* ★ 新增：Hourly irradiance convention（放在 Ground albedo 之後） */}
         <SelectField
           label="Hourly irradiance convention"
           value={value.radiation_time_convention}
@@ -9810,18 +9848,14 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
             { value: "preceding_hour_mean_step", label: "Preceding-hour mean (energy-conserving)" },
             { value: "instantaneous_linear", label: "Instantaneous, linear (legacy approximation)" },
           ]}
-          hint="Open-Meteo stamps each hourly value as the mean over the preceding hour. The linear option shifts the solar profile by up to 30 min."
+          hint="Open-Meteo stamps each hourly value as the mean over the preceding hour."
           onChange={(v) => update("radiation_time_convention", v)}
         />
 
-        <NumberField
-          label="Wind scaling (10 m → body)"
-          value={value.wind_speed_scaling_factor}
-          min={0.05} max={1.5} step={0.01}
-          disabled={disabled}
+        <NumberField label="Wind scaling (10 m → body)" value={value.wind_speed_scaling_factor}
+          min={0.05} max={1.5} step={0.01} disabled={disabled}
           hint="0.67 ≈ logarithmic profile to 1.1 m over open terrain."
-          onChange={(v) => update("wind_speed_scaling_factor", v)}
-        />
+          onChange={(v) => update("wind_speed_scaling_factor", v)} />
       </div>
     </details>
   );
@@ -11845,6 +11879,8 @@ export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
   wind_speed_scaling_factor: 1,
   ground_albedo: 0.2,
   radiation_time_convention: "instantaneous_linear",
+  ground_emissivity: 0.95,
+  ground_soil_conductance_w_m2k: 15,
 };
 ```
 
@@ -12171,7 +12207,9 @@ export type OptionalSeriesKey =
   | "solar_incident_w_m2"
   | "solar_absorbed_by_textile_w_m2"
   | "solar_transmitted_w_m2"
-  | "longwave_window_w_m2";
+  | "longwave_window_w_m2"
+  | "sky_temperature_c"
+  | "surround_temperature_c";
 
 export function hasOptionalSeries(
   points: TimeSeriesPoint[],
@@ -13609,8 +13647,16 @@ export type ParameterSource = {
 
 /** How the solver obtained a resolved clothing quantity. */
 export type ResolvedParameterSource = "material_input" | "derived_from_clo";
-export type MeanRadiantTemperatureMethod = "air_plus_solar_linear" | "equal_to_air";
-export type SkyTemperatureMethod = "humidity_offset" | "fixed_offset" | "swinbank";
+export type MeanRadiantTemperatureMethod =
+  | "air_plus_solar_linear"
+  | "equal_to_air"
+  | "ground_energy_balance";
+  
+export type SkyTemperatureMethod =
+  | "humidity_offset"
+  | "fixed_offset"
+  | "swinbank"
+  | "brutsaert_cloud";
 
 export type RadiationTimeConvention =
   | "instantaneous_linear"
@@ -13628,6 +13674,8 @@ export type EnvironmentAssumptions = {
   wind_speed_scaling_factor: number;
   ground_albedo: number;
   radiation_time_convention: RadiationTimeConvention;
+  ground_emissivity: number;
+  ground_soil_conductance_w_m2k: number;
 };
 
 export type WeatherGap = { start: string; end: string; missing_steps: number };
@@ -13724,6 +13772,8 @@ export type TimeSeriesPoint = {
   solar_absorbed_by_textile_w_m2?: number | null; 
   solar_transmitted_w_m2?: number | null;
   longwave_window_w_m2?: number | null;
+  sky_temperature_c?: number | null;
+  surround_temperature_c?: number | null;
 };
 
 export type EnergyDiagnostics = {
@@ -13817,6 +13867,8 @@ export type WeatherPoint = {
   direct_radiation_w_m2: number;
   diffuse_radiation_w_m2: number;
   dni_w_m2: number;
+  cloud_cover_percent?: number | null;
+  soil_temperature_c?: number | null;
 };
 
 export type WeatherTimeSeries = {

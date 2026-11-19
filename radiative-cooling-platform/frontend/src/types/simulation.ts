@@ -44,6 +44,7 @@ export type EnvironmentAssumptions = {
   radiation_time_convention: RadiationTimeConvention;
   ground_emissivity: number;
   ground_soil_conductance_w_m2k: number;
+  zone_view_separation: number;
 };
 
 export type WeatherGap = { start: string; end: string; missing_steps: number };
@@ -74,6 +75,7 @@ export type EnvironmentInput = {
   direct_normal_irradiance_w_m2: number | null;
   diffuse_horizontal_irradiance_w_m2: number | null;
   ground_albedo: number;
+  zone_view_separation?: number;
 };
 
 export type PersonInput = {
@@ -105,6 +107,8 @@ export type MaterialInput = {
   source_reference?: string | null;
   /** Stage 10: emissivity in 8–13 µm. null/absent = gray emitter. */
   infrared_emissivity_window?: number | null;
+  /** Stage 12 (ADR 0010): gray emissivity of the ground-facing zone. null = uniform. */
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 export type SimulationRequest = {
@@ -165,6 +169,7 @@ export type ClothingSummary = {
   clothing_area_factor_source?: ResolvedParameterSource | null;
   infrared_emissivity_window?: number | null;
   infrared_emissivity_outside_window?: number | null;
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 /** Stage 3 (ADR 0001): heat capacities derived from PersonInput. */

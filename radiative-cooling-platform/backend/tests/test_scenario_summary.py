@@ -8,7 +8,7 @@ from app.services.scenario_summary import (
 )
 from app.services.two_node import simulate_material
 from app.services.weather_simulation import execute_weather_simulation_with_weather
-
+from tests.helpers.environment import with_physical_series
 
 @pytest.mark.unit
 def test_average_is_time_weighted_not_arithmetic(environment, person, control_material, rc_material):
@@ -42,7 +42,9 @@ def test_single_run_and_annual_sample_agree(hourly_weather, person, control_mate
         control_material=control_material,
         rc_material=rc_material,
     )
-    single = execute_weather_simulation_with_weather(request=request, weather=hourly_weather, city_name="Dubai")
+    single = execute_weather_simulation_with_weather(
+        request=request, weather=with_physical_series(hourly_weather), city_name="Dubai"
+    )
     paired = pair_scenarios(single.control, single.radiative_cooling)  # what climate_adaptation uses
 
     assert single.summary.average_skin_temperature_improvement_c == pytest.approx(

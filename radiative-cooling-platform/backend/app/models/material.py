@@ -120,6 +120,17 @@ class MaterialVersion(Base):
             "infrared_emissivity_window + infrared_transmittance <= 1.000001",
             name="ck_material_ir_window_energy_sum",
         ),
+        # Stage 12 (migration e3b8c1d5f702).
+        CheckConstraint(
+            "infrared_emissivity_ground_facing IS NULL OR "
+            "(infrared_emissivity_ground_facing >= 0 AND infrared_emissivity_ground_facing <= 1)",
+            name="ck_material_ir_ground_facing",
+        ),
+        CheckConstraint(
+            "infrared_emissivity_ground_facing IS NULL OR "
+            "infrared_emissivity_ground_facing + infrared_transmittance <= 1.000001",
+            name="ck_material_ir_ground_facing_energy_sum",
+        ),
     )
 
     id: Mapped[str] = mapped_column(
@@ -185,6 +196,9 @@ class MaterialVersion(Base):
 
     # Stage 10. Atmospheric-window emissivity; None -> gray emitter.
     infrared_emissivity_window: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    # Stage 12. Gray emissivity of the ground-facing zone; None -> uniform garment.
+    infrared_emissivity_ground_facing: Mapped[float | None] = mapped_column(Float, nullable=True)
     
     infrared_transmittance: Mapped[float] = mapped_column(
         Float,

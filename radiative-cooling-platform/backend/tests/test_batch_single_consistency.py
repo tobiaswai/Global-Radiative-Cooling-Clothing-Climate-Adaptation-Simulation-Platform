@@ -12,7 +12,8 @@ from app.services.climate_adaptation import analyze_city_climate_adaptation
 from app.services.weather import slice_weather_time_series
 from app.services.weather_simulation import execute_weather_simulation_with_weather
 from tests.test_stage_8_resume_benchmark import SyntheticWeatherProvider, make_request
-
+from app.services.environment_model import required_weather_variables
+from tests.helpers.environment import PHYSICAL
 
 @pytest.mark.integration
 @pytest.mark.asyncio
@@ -20,11 +21,13 @@ async def test_batch_sample_matches_single_run(monkeypatch, person, control_mate
     provider = SyntheticWeatherProvider()
     monkeypatch.setattr(climate_adaptation, "get_historical_weather_range", provider)
 
-    request = make_request(person, control_material, rc_material).model_copy(
-        update={"start_month": 7, "end_month": 7}
-    )
+    request = make_request(
+        person, control_material, rc_material, environment_assumptions=PHYSICAL
+    ).model_copy(update={"start_month": 7, "end_month": 7})
     annual = await analyze_city_climate_adaptation(city_id="dubai", request=request)
     sample = annual["monthly_results"][0]["samples"][0]
+    assert provider.extra_variables_seen == [required_weather_variables(PHYSICAL)]
+    assert sample["mean_sky_temperature_c"] is not None
     start = datetime.fromisoformat(sample["sample_date_local"]).replace(tzinfo=None)
 
     city = get_city("dubai")
@@ -36,6 +39,7 @@ async def test_batch_sample_matches_single_run(monkeypatch, person, control_mate
         ),
         padding_hours=1,
         require_window_coverage=False,
+        extra_variables=required_weather_variables(request.environment_assumptions),
     )
     sliced = slice_weather_time_series(
         weather=month_weather, start_time_local=start,

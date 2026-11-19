@@ -8,13 +8,6 @@ IGNORE_DIRS = {
     'data', '__pycache__', '.numba_cache', '.pytest_cache', '.venv', 'venv',
     'dist', 'build', '.mypy_cache', '.coverage', 'htmlcov',
     'node_modules',
-    # === 新增：大幅減少體積 ===
-    'tests',          # 測試程式碼通常佔最大比例
-    'docs',           # 文件、acceptance、decisions
-    'scripts',        # 輔助腳本
-    'alembic',        # 整個 Alembic（含 versions 歷史）
-    # 若還想更激進可再加：
-    # 'worker',
 }
 
 # 2. 忽略的大型檔案、二進位檔與編譯檔
@@ -51,7 +44,7 @@ def collect_backend_files():
         print(f"⚠️ 錯誤：找不到 '{TARGET_DIR}' 資料夾！請確認腳本是否放置於專案根目錄。")
         return []
 
-    print(f"🔍 開始掃描 `{TARGET_DIR}` 目錄（已排除 tests/docs/alembic/scripts/data 等）...")
+    print(f"🔍 開始掃描 `{TARGET_DIR}` 目錄...")
     
     for root, dirs, files in os.walk(TARGET_DIR):
         # 原地過濾掉需要忽略的資料夾
@@ -91,7 +84,7 @@ def main():
     print(f"📦 找到 {len(matched_files)} 個後端檔案，開始打包成 Markdown...")
     
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as out_f:
-        out_f.write(f"# Complete Backend Source Code (`{TARGET_DIR}/` - Excluding tests/docs/alembic/scripts/data)\n\n")
+        out_f.write(f"# Complete Backend Source Code (`{TARGET_DIR}/`)\n\n")
         
         # 寫入目錄結構
         out_f.write("## Directory Structure\n```text\n")

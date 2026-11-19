@@ -16,6 +16,7 @@ from app.services.reproducibility import (
     summarize_result_for_regression,
 )
 from app.services.weather_simulation import execute_weather_simulation
+from tests.helpers.environment import LEGACY
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "dubai_2h"
@@ -45,6 +46,9 @@ async def test_dubai_two_hour_golden_case(monkeypatch):
 
     request = WeatherSimulationRequest.model_validate(
         json.loads(REQUEST_PATH.read_text(encoding="utf-8"))
+    )
+    request = request.model_copy(
+        update={"environment_assumptions": LEGACY}
     )
 
     result = await execute_weather_simulation(request)

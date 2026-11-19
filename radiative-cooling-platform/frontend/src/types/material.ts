@@ -25,6 +25,7 @@ export type MaterialVersionInput = {
   notes: string | null;
   parameter_sources?: Record<string, ParameterSource> | null;
   infrared_emissivity_window?: number | null;
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 export type MaterialCreate = {
@@ -102,6 +103,7 @@ export type MaterialVersionListItem = {
   is_archived: boolean;
   created_at: string;
   infrared_emissivity_window?: number | null;
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 export type MaterialVersionListResponse = {

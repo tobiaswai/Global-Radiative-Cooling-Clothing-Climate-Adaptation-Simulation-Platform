@@ -241,6 +241,11 @@ function MaterialDetailContent({
                     value={version.infrared_emissivity_window}
                     fallback="Gray"
                   />
+                  <Metric
+                    label="IR emissivity, ground-facing"
+                    value={version.infrared_emissivity_ground_facing}
+                    fallback="Uniform"
+                  />
                 </div>
 
                 <div className="mt-5">

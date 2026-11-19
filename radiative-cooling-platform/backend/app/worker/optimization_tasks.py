@@ -30,7 +30,7 @@ from app.services.optimization.runner import OptimizationCancelled
 from app.services.optimization.service import execute_optimization
 from app.worker.celery_app import celery_app
 from app.worker.tasks import LeaseLostError, _owner_id
-
+from app.services.stored_requests import load_stored_request
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ def run_optimization_task(self: Task, job_id: str) -> dict:
             job = session.get(OptimizationJob, job_id)
             if job is None:
                 raise RuntimeError(f"Optimization job not found: {job_id}")
-            request = OptimizationCreate.model_validate(job.request_json)
+            request = load_stored_request(OptimizationCreate, job.request_json)
             ok = heartbeat_optimization_lease(
                 session, job_id, owner,
                 stage="preparing_samples", progress=1, error_message=None,

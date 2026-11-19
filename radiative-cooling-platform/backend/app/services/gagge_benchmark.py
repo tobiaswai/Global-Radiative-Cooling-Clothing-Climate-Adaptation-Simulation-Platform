@@ -91,6 +91,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
             "evaporative_resistance_m2pa_w": None,
             "clothing_area_factor": None,
             "infrared_emissivity_window": None,
+            "infrared_emissivity_ground_facing": None,
         }
     )
     alignment.append(
@@ -99,7 +100,8 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
     )
     alignment.append(
         "evaporative_resistance_m2pa_w and clothing_area_factor derived from clo "
-        "(the reference accepts clo only), and the material is treated as gray"
+        "(the reference accepts clo only), and the material is treated as gray, "
+        "and the material is treated as a uniform gray emitter"
     )
 
     # --- prototype ------------------------------------------------------------

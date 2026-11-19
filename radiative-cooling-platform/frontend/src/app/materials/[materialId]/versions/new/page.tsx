@@ -28,6 +28,7 @@ function versionToInput(version: MaterialVersion): MaterialVersionInput {
     notes: null,
     parameter_sources: version.parameter_sources ?? null,
     infrared_emissivity_window: version.infrared_emissivity_window ?? null,
+    infrared_emissivity_ground_facing: version.infrared_emissivity_ground_facing ?? null,
   };
 }
 

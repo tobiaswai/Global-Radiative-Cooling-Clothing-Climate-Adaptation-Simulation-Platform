@@ -27,6 +27,10 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
   const infraredSumTooHigh =
     value.infrared_emissivity + value.infrared_transmittance > 1 + 1e-6;
 
+  const groundSumTooHigh =
+    value.infrared_emissivity_ground_facing != null &&
+    value.infrared_emissivity_ground_facing + value.infrared_transmittance > 1 + 1e-6;
+    
   const spectral =
     value.infrared_emissivity_window == null
       ? null
@@ -35,6 +39,7 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
           value.infrared_emissivity_window,
           value.infrared_transmittance,
         );
+
 
   return (
     <div className="space-y-4">
@@ -108,6 +113,14 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
           disabled={disabled}
           onChange={(v) => onChange("infrared_emissivity_window", v)}
         />
+        <OptionalNumberField
+          label="Ground-facing IR emissivity (ε_g)"
+          value={value.infrared_emissivity_ground_facing ?? null}
+          placeholder="Uniform garment"
+          min={0} max={1} step={0.01} disabled={disabled}
+          hint="Gray emissivity of the zone facing the ground. Empty = same optics everywhere (ADR 0010)."
+          onChange={(v) => onChange("infrared_emissivity_ground_facing", v)}
+        />
         <NumberField
           label="Infrared Transmittance"
           value={value.infrared_transmittance}
@@ -135,10 +148,11 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
         />
       </div>
 
-      {(solarSumTooHigh || infraredSumTooHigh) && (
+      {(solarSumTooHigh || infraredSumTooHigh || groundSumTooHigh) && (
         <p role="alert" className="text-sm text-amber-300">
           {solarSumTooHigh && "Solar reflectance + transmittance must not exceed 1. "}
           {infraredSumTooHigh && "Infrared emissivity + transmittance must not exceed 1."}
+          {groundSumTooHigh && " Ground-facing emissivity + transmittance must not exceed 1."}
         </p>
       )}
       {spectral && (

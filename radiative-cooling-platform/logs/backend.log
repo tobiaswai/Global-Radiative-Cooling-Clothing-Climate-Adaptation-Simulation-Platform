@@ -1,13 +1,45 @@
 INFO:     Will watch for changes in these directories: ['C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-INFO:     Started reloader process [10012] using WatchFiles
-INFO:     Started server process [2420]
+INFO:     Started reloader process [28072] using WatchFiles
+INFO:     Started server process [10844]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-INFO:     127.0.0.1:54355 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:54355 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:54355 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:54355 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:54355 - "POST /api/v1/optimizations HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:54355 - "POST /api/v1/global-batches HTTP/1.1" 202 Accepted
-INFO:     127.0.0.1:54355 - "POST /api/v1/global-batches HTTP/1.1" 202 Accepted
+INFO:     127.0.0.1:61437 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53663 - "GET /api/v1/weather/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63163 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51659 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64835 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64835 - "GET /api/v1/materials HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64835 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56721 - "GET /api/v1/global-batches/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56256 - "GET /api/v1/global-batches/cities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57870 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59665 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59665 - "OPTIONS /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59665 - "POST /api/v1/global-batches/estimate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59665 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57870 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56256 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56721 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64835 - "GET /api/v1/materials/versions?include_archived=false&limit=200 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57870 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59665 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56256 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "OPTIONS /api/v1/benchmarks/gagge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "POST /api/v1/benchmarks/gagge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/materials/versions/9cf021ac-df8a-4f1c-af3f-cc8f6d1243bc/simulation-input HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "POST /api/v1/benchmarks/gagge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/materials/versions/fcae850f-db20-47e3-a6d4-c5e1a8060af1/simulation-input HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "POST /api/v1/benchmarks/gagge HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65288 - "GET /api/v1/optimizations?limit=20&offset=0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50630 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65288 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64473 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50490 - "GET /api/v1/ops/status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59840 - "GET /api/v1/ops/status HTTP/1.1" 200 OK

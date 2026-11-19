@@ -8,7 +8,8 @@ export type DecisionVariableName =
   | "infrared_emissivity_outside_window"
   | "infrared_transmittance"
   | "clothing_insulation_clo"
-  | "evaporative_resistance_m2pa_w";
+  | "evaporative_resistance_m2pa_w"
+  | "infrared_emissivity_ground_facing";
 
 export type MetricName =
   | "mean_skin_temperature_c"

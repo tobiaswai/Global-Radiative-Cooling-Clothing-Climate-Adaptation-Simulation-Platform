@@ -468,6 +468,17 @@
               "title": "Evaporative Resistance Source",
               "type": "string"
             },
+            "infrared_emissivity_ground_facing": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Ground Facing"
+            },
             "infrared_emissivity_outside_window": {
               "anyOf": [
                 {
@@ -554,9 +565,31 @@
               "title": "Mean Air Temperature C",
               "type": "number"
             },
+            "mean_sky_temperature_c": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mean Sky Temperature C"
+            },
             "mean_solar_radiation_w_m2": {
               "title": "Mean Solar Radiation W M2",
               "type": "number"
+            },
+            "mean_surround_temperature_c": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Mean Surround Temperature C"
             },
             "sample_date_local": {
               "format": "date-time",
@@ -626,6 +659,7 @@
                 "infrared_emissivity",
                 "infrared_emissivity_window",
                 "infrared_emissivity_outside_window",
+                "infrared_emissivity_ground_facing",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -746,13 +780,13 @@
               "type": "number"
             },
             "mean_radiant_temperature_method": {
-              "default": "air_plus_solar_linear",
+              "default": "ground_energy_balance",
               "enum": [
                 "air_plus_solar_linear",
                 "equal_to_air",
                 "ground_energy_balance"
               ],
-              "reference": "Stage 1 prototype",
+              "reference": "ADR 0008, ADR 0009",
               "source_type": "assumed",
               "title": "Mean Radiant Temperature Method",
               "type": "string"
@@ -789,14 +823,14 @@
               "type": "number"
             },
             "sky_temperature_method": {
-              "default": "humidity_offset",
+              "default": "brutsaert_cloud",
               "enum": [
                 "humidity_offset",
                 "fixed_offset",
                 "swinbank",
                 "brutsaert_cloud"
               ],
-              "reference": "Stage 1 prototype",
+              "reference": "ADR 0008, ADR 0009",
               "source_type": "assumed",
               "title": "Sky Temperature Method",
               "type": "string"
@@ -839,6 +873,16 @@
               "reference": "Stage 1 prototype",
               "source_type": "assumed",
               "title": "Wind Speed Scaling Factor",
+              "type": "number"
+            },
+            "zone_view_separation": {
+              "default": 0.5,
+              "description": "How strongly the sky-facing and ground-facing garment zones see different hemispheres: 0 = both see the body-average mix, 1 = perfect partition",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "reference": "ADR 0010; idealised two-zone garment, not measured",
+              "source_type": "assumed",
+              "title": "Zone View Separation",
               "type": "number"
             }
           },
@@ -892,7 +936,7 @@
             },
             "mean_radiant_temperature_c": {
               "default": 45.0,
-              "maximum": 100.0,
+              "maximum": 150.0,
               "minimum": -50.0,
               "title": "Mean Radiant Temperature C",
               "type": "number"
@@ -937,6 +981,14 @@
               "maximum": 30.0,
               "minimum": 0.0,
               "title": "Wind Speed M S",
+              "type": "number"
+            },
+            "zone_view_separation": {
+              "default": 0.5,
+              "description": "Hemisphere separation of the two garment zones (two-zone garments only)",
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "title": "Zone View Separation",
               "type": "number"
             }
           },
@@ -2803,6 +2855,22 @@
               "type": "number",
               "unit": "-"
             },
+            "infrared_emissivity_ground_facing": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "derived_when_null": "uniform garment: same longwave optics on every zone",
+              "description": "Longwave emissivity of the garment zone facing the ground and surroundings",
+              "title": "Infrared Emissivity Ground Facing",
+              "unit": "-"
+            },
             "infrared_emissivity_window": {
               "anyOf": [
                 {
@@ -3195,6 +3263,19 @@
               "title": "Infrared Emissivity",
               "type": "number"
             },
+            "infrared_emissivity_ground_facing": {
+              "anyOf": [
+                {
+                  "maximum": 1.0,
+                  "minimum": 0.0,
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Ground Facing"
+            },
             "infrared_emissivity_window": {
               "anyOf": [
                 {
@@ -3346,6 +3427,17 @@
             "infrared_emissivity": {
               "title": "Infrared Emissivity",
               "type": "number"
+            },
+            "infrared_emissivity_ground_facing": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Ground Facing"
             },
             "infrared_emissivity_window": {
               "anyOf": [
@@ -3506,6 +3598,17 @@
             "infrared_emissivity": {
               "title": "Infrared Emissivity",
               "type": "number"
+            },
+            "infrared_emissivity_ground_facing": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Infrared Emissivity Ground Facing"
             },
             "infrared_emissivity_window": {
               "anyOf": [
@@ -4893,6 +4996,7 @@
                 "infrared_emissivity",
                 "infrared_emissivity_window",
                 "infrared_emissivity_outside_window",
+                "infrared_emissivity_ground_facing",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -5287,6 +5391,7 @@
                 "infrared_emissivity",
                 "infrared_emissivity_window",
                 "infrared_emissivity_outside_window",
+                "infrared_emissivity_ground_facing",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -5317,6 +5422,7 @@
                 "infrared_emissivity",
                 "infrared_emissivity_window",
                 "infrared_emissivity_outside_window",
+                "infrared_emissivity_ground_facing",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -5356,6 +5462,7 @@
                 "infrared_emissivity",
                 "infrared_emissivity_window",
                 "infrared_emissivity_outside_window",
+                "infrared_emissivity_ground_facing",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -5371,6 +5478,7 @@
                 "infrared_emissivity",
                 "infrared_emissivity_window",
                 "infrared_emissivity_outside_window",
+                "infrared_emissivity_ground_facing",
                 "infrared_transmittance",
                 "clothing_insulation_clo",
                 "evaporative_resistance_m2pa_w"
@@ -7991,6 +8099,31 @@
             }
           },
           "summary": "Get Default Environment Assumptions",
+          "tags": [
+            "model"
+          ]
+        }
+      },
+      "/api/v1/model/environment-assumptions/presets": {
+        "get": {
+          "operationId": "get_environment_presets_api_v1_model_environment_assumptions_presets_get",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/EnvironmentAssumptions"
+                    },
+                    "title": "Response Get Environment Presets Api V1 Model Environment Assumptions Presets Get",
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            }
+          },
+          "summary": "Get Environment Presets",
           "tags": [
             "model"
           ]

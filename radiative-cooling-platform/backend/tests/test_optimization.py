@@ -20,6 +20,7 @@ from app.services.optimization.search_space import build_search_space
 from app.services.optimization.service import estimate_optimization
 from app.services.two_node import simulate_material_with_interpolator
 from app.services.weather_interpolation import WeatherInterpolator
+from tests.helpers.environment import LEGACY
 
 
 RHO_EPS = [
@@ -34,6 +35,7 @@ def make_request(person, control_material, rc_material, **overrides) -> Optimiza
         person=person, control_material=control_material, base_material=rc_material,
         variables=RHO_EPS, requirement_map=RequirementMapSpec(resolution=3),
         population_multiplier=4, max_generations=2,
+        environment_assumptions=LEGACY,
     )
     payload.update(overrides)
     return OptimizationCreate(**payload)
@@ -101,7 +103,7 @@ def test_estimate_counts(person, control_material, rc_material):
 
 @pytest.fixture
 def prepared(hourly_weather, person, control_material):
-    interpolator = WeatherInterpolator.from_series(hourly_weather)
+    interpolator = WeatherInterpolator.from_series(hourly_weather, assumptions=LEGACY)
     control = simulate_material_with_interpolator(120, 10, interpolator, person, control_material)
     return PreparedSample(hourly_weather.requested_start_time, 1, interpolator, control)
 

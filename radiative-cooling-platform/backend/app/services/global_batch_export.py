@@ -248,6 +248,18 @@ def build_batch_geojson(
             "heatwave_analysis_available": (
                 heatwave_analysis_available
             ),
+            "mean_radiant_temperature_method": (
+                (request.get("environment_assumptions") or {}).get(
+                    "mean_radiant_temperature_method",
+                    "air_plus_solar_linear",
+                )
+            ),
+            "sky_temperature_method": (
+                (request.get("environment_assumptions") or {}).get(
+                    "sky_temperature_method",
+                    "humidity_offset",
+                )
+            ),
         },
         "features": features,
     }
@@ -700,6 +712,8 @@ def build_sample_results_csv(
             "final_skin_improvement_c",
             "average_core_improvement_c",
             "maximum_skin_improvement_c",
+            "mean_sky_temperature_c", 
+            "mean_surround_temperature_c",
             "weather_from_cache",
         ]
     )
@@ -797,9 +811,10 @@ def build_sample_results_csv(
                                 "improvement_c"
                             )
                         ),
-                        sample.get(
-                            "weather_from_cache"
-                        ),
+                        # Stage 12
+                        sample.get("mean_sky_temperature_c"),
+                        sample.get("mean_surround_temperature_c"),
+                        sample.get("weather_from_cache"),
                     ]
                 )
 
@@ -1242,6 +1257,12 @@ def build_readme_text(
             (
                 "Execution profile: "
                 f"{request.get('execution_profile', 'auto')}"
+            ),
+            (
+                "Environment: "
+                f"{request.get('mean_radiant_temperature_method', 'air_plus_solar_linear')}"
+                f" / "
+                f"{request.get('sky_temperature_method', 'humidity_offset')}"
             ),
             "",
             "Files",

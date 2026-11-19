@@ -1,5 +1,7 @@
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from tests.helpers.environment import LEGACY
+
 
 import pytest
 
@@ -105,7 +107,7 @@ def test_weather_interpolation_at_start(
 ):
     interpolator = (
         WeatherInterpolator.from_series(
-            weather_series
+            weather_series, assumptions=LEGACY
         )
     )
 
@@ -130,7 +132,7 @@ def test_weather_interpolation_at_half_hour(
 ):
     interpolator = (
         WeatherInterpolator.from_series(
-            weather_series
+            weather_series, assumptions=LEGACY
         )
     )
 
@@ -174,6 +176,7 @@ def test_environment_clamps_negative_wind_and_solar():
         ghi_values=np.array(
             [-100.0, -50.0]
         ),
+        assumptions=LEGACY
     )
 
     environment = interpolator.environment_at(
@@ -209,6 +212,7 @@ def test_mean_radiant_temperature_increase_is_capped():
         ghi_values=np.array(
             [1500.0, 1500.0]
         ),
+        assumptions=LEGACY
     )
 
     environment = interpolator.environment_at(
@@ -234,7 +238,7 @@ from app.services.weather_quality import WeatherInsufficientCoverageError
 
 @pytest.mark.unit
 def test_interpolation_outside_range_raises(weather_series):
-    interpolator = WeatherInterpolator.from_series(weather_series)
+    interpolator = WeatherInterpolator.from_series(weather_series, assumptions=LEGACY)
 
     with pytest.raises(InterpolationOutOfRangeError):
         interpolator.environment_at(24 * 60 * 60)
@@ -245,7 +249,7 @@ def test_interpolation_outside_range_raises(weather_series):
 
 @pytest.mark.unit
 def test_interpolation_at_exact_boundaries_is_allowed(weather_series):
-    interpolator = WeatherInterpolator.from_series(weather_series)
+    interpolator = WeatherInterpolator.from_series(weather_series, assumptions=LEGACY)
 
     first = interpolator.environment_at(-3600)   # 09:00 point
     last = interpolator.environment_at(7200)     # 12:00 point
@@ -263,4 +267,4 @@ def test_from_series_rejects_series_not_covering_requested_window(
     )
 
     with pytest.raises(WeatherInsufficientCoverageError):
-        WeatherInterpolator.from_series(truncated)
+        WeatherInterpolator.from_series(truncated, assumptions=LEGACY)

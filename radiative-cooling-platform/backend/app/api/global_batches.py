@@ -44,7 +44,7 @@ from app.services.job_state import (
 )
 
 from app.services.leases import db_now
-
+from app.services.stored_requests import load_stored_request
 from app.schemas.global_batch import (
     GlobalBatchCreate,
     GlobalBatchDetail,
@@ -639,9 +639,7 @@ def retry_failed_cities(
             ),
         )
 
-    request = GlobalBatchCreate.model_validate(
-        batch.request_json
-    )
+    request = load_stored_request(GlobalBatchCreate, batch.request_json)
 
     queue_name = resolve_queue_name(
         request

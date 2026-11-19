@@ -40,6 +40,7 @@ const VARIABLE_DEFAULTS: Record<DecisionVariableName, { lower: number; upper: nu
   infrared_transmittance: { lower: 0, upper: 0.5, step: 0.01 },
   clothing_insulation_clo: { lower: 0.2, upper: 0.8, step: 0.05 },
   evaporative_resistance_m2pa_w: { lower: 5, upper: 30, step: 0.5 },
+  infrared_emissivity_ground_facing: { lower: 0.05, upper: 0.99, step: 0.01 },
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

@@ -7,6 +7,7 @@ from app.schemas.simulation import (
     WeatherSimulationRequest,
 )
 from app.services import weather_simulation
+from app.services.environment_model import required_weather_variables
 
 
 class FakeWeatherSimulationResponse(
@@ -96,8 +97,10 @@ async def test_execute_weather_simulation(
         duration_minutes,
         extra_variables: tuple[str, ...] = (),
     ):
-        # Default assumptions must not request Stage 11 variables.
-        assert extra_variables == (), extra_variables
+        # The request's assumptions decide which extra variables are fetched.
+        assert tuple(extra_variables) == required_weather_variables(
+            request.environment_assumptions
+        ), extra_variables
         weather_calls.append(
             {
                 "city": city,

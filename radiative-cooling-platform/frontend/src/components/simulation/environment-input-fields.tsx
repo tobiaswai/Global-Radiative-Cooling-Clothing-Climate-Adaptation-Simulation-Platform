@@ -42,7 +42,7 @@ export function EnvironmentInputFields({
         suffix="°C"
         value={environment.mean_radiant_temperature_c}
         min={-50}
-        max={100}
+        max={150}
         step={0.1}
         disabled={disabled}
         onChange={(value) => update("mean_radiant_temperature_c", value)}
@@ -130,6 +130,15 @@ export function EnvironmentInputFields({
         step={0.05}
         disabled={disabled}
         onChange={(value) => update("sky_view_factor", value)}
+      />
+
+      <NumberField
+        label="Zone View Separation"
+        value={environment.zone_view_separation ?? 0.5}
+        min={0} max={1} step={0.05}
+        disabled={disabled}
+        hint="Used only when the garment has a ground-facing emissivity (ADR 0010)."
+        onChange={(value) => update("zone_view_separation", value)}
       />
     </div>
   );

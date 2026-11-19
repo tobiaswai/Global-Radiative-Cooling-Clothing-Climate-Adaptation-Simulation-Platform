@@ -7,6 +7,7 @@ to change. A parameter that is stored but never used fails here.
 import pytest
 
 from app.schemas.environment import EnvironmentAssumptions
+from tests.helpers.environment import legacy, physical, with_physical_series
 from app.services.two_node import (
     simulate_material,
     simulate_material_with_weather,
@@ -101,23 +102,36 @@ ENVIRONMENT_PERTURBATIONS = [
     (SOLAR_SPLIT, {**SOLAR_SPLIT, "ground_albedo": 0.6}),
 ]
 
+# Stage 11/12: parameters of the physical default (ADR 0008, 0009).
+PHYSICAL_PERTURBATIONS = [
+    {"ground_emissivity": 0.85},
+    {"ground_soil_conductance_w_m2k": 60.0},
+    {"ground_albedo": 0.5},
+]
+
+
 @pytest.mark.unit
-@pytest.mark.parametrize(("baseline_update", "perturbed_update"), ASSUMPTION_PERTURBATIONS)
-def test_every_environment_assumption_participates(
-    hourly_weather, person, rc_material, baseline_update, perturbed_update
-):
+@pytest.mark.parametrize("perturbed_update", PHYSICAL_PERTURBATIONS)
+def test_every_physical_assumption_participates(hourly_weather, person, rc_material, perturbed_update):
+    weather = with_physical_series(hourly_weather)
+    baseline = simulate_material_with_weather(120, 10, weather, person, rc_material, assumptions=physical())
+    perturbed = simulate_material_with_weather(
+        120, 10, weather, person, rc_material, assumptions=physical(**perturbed_update)
+    )
+    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, perturbed_update
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("weather_update", [{"cloud_cover_percent": 80.0}, {"soil_temperature_c": 30.0}])
+def test_physical_weather_variables_participate(hourly_weather, person, rc_material, weather_update):
     baseline = simulate_material_with_weather(
-        120, 10, hourly_weather, person, rc_material,
-        assumptions=EnvironmentAssumptions(**baseline_update),
+        120, 10, with_physical_series(hourly_weather), person, rc_material, assumptions=physical()
     )
     perturbed = simulate_material_with_weather(
-        120, 10, hourly_weather, person, rc_material,
-        assumptions=EnvironmentAssumptions(**perturbed_update),
+        120, 10, with_physical_series(hourly_weather, **weather_update), person, rc_material,
+        assumptions=physical(),
     )
-
-    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, (
-        f"EnvironmentAssumptions {perturbed_update} does not influence the result"
-    )
+    assert abs(final_skin(perturbed) - final_skin(baseline)) > THRESHOLD_C, weather_update
     
 @pytest.mark.unit
 @pytest.mark.parametrize(("baseline_update", "perturbed_update"), ENVIRONMENT_PERTURBATIONS)

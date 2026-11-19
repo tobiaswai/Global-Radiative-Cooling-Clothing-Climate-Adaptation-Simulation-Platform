@@ -135,6 +135,7 @@ def list_material_versions(
                 is_archived=version.material.is_archived,
                 created_at=version.created_at,
                 infrared_emissivity_window=version.infrared_emissivity_window,
+                infrared_emissivity_ground_facing=version.infrared_emissivity_ground_facing,
             )
             for version in versions
         ],

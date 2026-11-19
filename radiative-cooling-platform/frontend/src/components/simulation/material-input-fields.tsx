@@ -119,6 +119,14 @@ export function MaterialInputFields({
           hint="Leave empty for a gray textile. Set it for a selective emitter (ADR 0007)."
           onChange={(value) => updatePhysical("infrared_emissivity_window", value)}
         />
+        <OptionalNumberField
+          label="Ground-facing IR emissivity (ε_g)"
+          value={material.infrared_emissivity_ground_facing ?? null}
+          placeholder="Uniform garment"
+          min={0} max={1} step={0.01} disabled={disabled}
+          hint="Gray emissivity of the zone facing the ground. Empty = same optics everywhere (ADR 0010)."
+          onChange={(value) => updatePhysical("infrared_emissivity_ground_facing", value)}
+        />
         <NumberField
           label="Infrared Transmittance" value={material.infrared_transmittance ?? 0}
           min={0} max={1} step={0.01} disabled={disabled}

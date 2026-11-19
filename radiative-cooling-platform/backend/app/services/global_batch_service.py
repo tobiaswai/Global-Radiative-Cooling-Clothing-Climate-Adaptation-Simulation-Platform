@@ -21,7 +21,7 @@ from app.schemas.global_batch import (
 )
 from app.services.checkpoints import CheckpointProvenance, load_resume_state
 from app.services.leases import db_now, derive_lease_state  # noqa: F401 (re-exported)
-
+from app.services.stored_requests import load_stored_request
 from collections import defaultdict
 import hashlib
 import json
@@ -200,7 +200,7 @@ def batch_to_detail(
     months = checkpoint_months or {}
     return GlobalBatchDetail(
         **batch_to_response(batch).model_dump(),
-        request=batch.request_json,
+        request=load_stored_request(GlobalBatchCreate, batch.request_json),
         city_results=[
             city_result_to_response(item, checkpoint_months=months.get(item.id), now=now)
             for item in batch.city_results
@@ -249,7 +249,7 @@ def _payload_sha256(payload: dict) -> str:
 def city_checkpoints_to_response(
     session: Session, *, batch: GlobalBatchJob, city_result: GlobalCityResult,
 ) -> CityCheckpointListResponse:
-    request = GlobalBatchCreate.model_validate(batch.request_json)
+    request = load_stored_request(GlobalBatchCreate, batch.request_json)
     provenance = CheckpointProvenance.for_request(request)
 
     rows = session.scalars(

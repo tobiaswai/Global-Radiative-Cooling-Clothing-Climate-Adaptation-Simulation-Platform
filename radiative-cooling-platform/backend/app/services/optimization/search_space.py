@@ -101,3 +101,19 @@ def build_search_space(request: OptimizationCreate) -> SearchSpace:
         linear_pairs=tuple(pairs),
         directions=tuple(demand_direction(v) for v in request.variables),
     )
+
+GROUND_IR_PAIRS: tuple[tuple[str, str], ...] = (
+    ("infrared_emissivity_ground_facing", "infrared_transmittance"),
+)
+
+
+def has_ground_facing_zone(request: OptimizationCreate) -> bool:
+    names = {v.name for v in request.variables}
+    return "infrared_emissivity_ground_facing" in names or (
+        request.base_material.infrared_emissivity_ground_facing is not None
+    )
+
+
+def optical_pairs(request: OptimizationCreate) -> tuple[tuple[str, str], ...]:
+    pairs = SOLAR_PAIRS + (BAND_IR_PAIRS if is_selective_study(request) else GRAY_IR_PAIRS)
+    return pairs + (GROUND_IR_PAIRS if has_ground_facing_zone(request) else ())

@@ -36,10 +36,20 @@ def test_planck_constants_match_registry():
 @pytest.mark.unit
 def test_environment_defaults_match_schema():
     text = _read("environment-assumptions.ts")
-    pairs = dict(re.findall(r"^\s*(\w+):\s*\"?([\w.]+)\"?,?\s*$", text, flags=re.M))
+    block = re.search(r"DEFAULT_ENVIRONMENT_ASSUMPTIONS[^=]*=\s*\{(.*?)\};", text, flags=re.S)
+    assert block, "DEFAULT_ENVIRONMENT_ASSUMPTIONS block not found"
+    pairs = dict(re.findall(r"^\s*(\w+):\s*\"?([\w.]+)\"?,?\s*$", block.group(1), flags=re.M))
     for key, value in EnvironmentAssumptions().model_dump().items():
         assert key in pairs, f"{key} missing in DEFAULT_ENVIRONMENT_ASSUMPTIONS"
         if isinstance(value, (int, float)):
             assert float(pairs[key]) == pytest.approx(value), key
         else:
             assert pairs[key] == value, key
+
+
+@pytest.mark.unit
+def test_environment_presets_are_mirrored():
+    from app.schemas.environment import ENVIRONMENT_PRESETS
+    text = _read("environment-assumptions.ts")
+    for name in ENVIRONMENT_PRESETS:
+        assert re.search(rf"\b{name}\b", text), f"preset {name} missing in frontend"

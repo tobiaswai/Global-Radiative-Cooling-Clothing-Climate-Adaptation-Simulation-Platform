@@ -67,6 +67,8 @@ class MaterialVersionCreate(BaseModel):
 
     infrared_emissivity_window: float | None = Field(default=None, ge=0, le=1)
     
+    infrared_emissivity_ground_facing: float | None = Field(default=None, ge=0, le=1)
+    
     infrared_transmittance: float = Field(
         default=0,
         ge=0,
@@ -125,6 +127,11 @@ class MaterialVersionCreate(BaseModel):
                 self.infrared_emissivity,
                 self.infrared_emissivity_window,
                 self.infrared_transmittance,
+            )
+        ground = self.infrared_emissivity_ground_facing
+        if ground is not None and ground + self.infrared_transmittance > 1.0 + 1e-6:
+            raise ValueError(
+                "infrared_emissivity_ground_facing + infrared_transmittance cannot be greater than 1"
             )
         validate_parameter_source_keys(self.parameter_sources)
         return self
@@ -208,12 +215,13 @@ class MaterialVersionResponse(BaseModel):
 
     clothing_insulation_clo: float
     evaporative_resistance_m2pa_w: float | None
-
+    
     solar_reflectance: float
     solar_transmittance: float
     infrared_emissivity: float
     infrared_transmittance: float
-
+    infrared_emissivity_ground_facing: float | None = None
+    
     projected_solar_area_factor: float
     absorbed_solar_to_body_fraction: float
 
@@ -293,6 +301,7 @@ class MaterialVersionListItem(BaseModel):
     solar_transmittance: float
     infrared_emissivity: float
     infrared_transmittance: float
+    infrared_emissivity_ground_facing: float | None = None
 
     source_type: str
     is_archived: bool

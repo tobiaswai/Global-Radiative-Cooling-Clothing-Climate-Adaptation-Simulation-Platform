@@ -35,6 +35,7 @@ from app.services.climate_analytics import build_city_analytics
 from app.services.exposure_statistics import (
     compute_daily_maximum_air_temperature,
     compute_exposure_window_statistics,
+    time_weighted_mean,
 )
 from app.services.scenario_summary import pair_scenarios
 from app.services.weather import (
@@ -471,7 +472,11 @@ async def analyze_city_climate_adaptation(
                         maximum_skin_improvement_c, 4
                     ),
                     weather_from_cache=month_weather.source.from_cache,
-                    daily_maximum_air_temperature_c=round_optional(daily_maximum_air_temperature_c)
+                    daily_maximum_air_temperature_c=round_optional(daily_maximum_air_temperature_c),
+                    mean_sky_temperature_c=_series_mean(simulation.radiative_cooling, "sky_temperature_c"),
+                    mean_surround_temperature_c=_series_mean(
+                        simulation.radiative_cooling, "surround_temperature_c"
+                    ),
                 )
             )
 
@@ -603,3 +608,13 @@ async def analyze_city_climate_adaptation(
             r.model_dump(mode="json") for r in monthly_results
         ],
     }
+
+def _series_mean(result, attribute: str) -> float | None:
+    points = [
+        (p.minute, getattr(p, attribute))
+        for p in result.time_series
+        if getattr(p, attribute, None) is not None
+    ]
+    if not points:
+        return None
+    return round(time_weighted_mean([m for m, _ in points], [v for _, v in points]), 4)

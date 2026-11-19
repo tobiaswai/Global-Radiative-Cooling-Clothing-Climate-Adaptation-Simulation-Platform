@@ -1,8 +1,8 @@
 {
-  "recorded_at": "2026-11-18T14:47:05.045993+08:00",
+  "recorded_at": "2026-11-19T17:17:55.628429+08:00",
   "crash_after_month": 4,
-  "full_run_seconds": 0.359,
-  "resumed_run_seconds": 0.32,
+  "full_run_seconds": 0.434,
+  "resumed_run_seconds": 0.374,
   "months_restored": 4,
   "months_computed": 8,
   "weather_fetches_full": 12,

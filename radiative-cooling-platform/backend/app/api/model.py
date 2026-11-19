@@ -15,6 +15,7 @@ from app.services.model_parameters import (
     build_model_metadata,
     build_model_parameter_manifest,
 )
+from app.schemas.environment import ENVIRONMENT_PRESETS, EnvironmentAssumptions, preset_assumptions
 
 
 router = APIRouter(prefix="/api/v1/model", tags=["model"])
@@ -56,3 +57,10 @@ def get_material_fields() -> MaterialFieldManifest:
 )
 def get_default_environment_assumptions() -> EnvironmentAssumptions:
     return EnvironmentAssumptions()
+
+@router.get(
+    "/environment-assumptions/presets",
+    response_model=dict[str, EnvironmentAssumptions],
+)
+def get_environment_presets() -> dict[str, EnvironmentAssumptions]:
+    return {name: preset_assumptions(name) for name in ENVIRONMENT_PRESETS}

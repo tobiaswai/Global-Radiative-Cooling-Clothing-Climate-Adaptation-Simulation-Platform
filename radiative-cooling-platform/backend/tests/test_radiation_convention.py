@@ -3,7 +3,7 @@ import pytest
 
 from app.schemas.environment import EnvironmentAssumptions
 from app.services.weather_interpolation import WeatherInterpolator
-
+from tests.helpers.environment import legacy
 
 def make_interpolator(convention):
     return WeatherInterpolator(
@@ -12,7 +12,7 @@ def make_interpolator(convention):
         humidities=np.array([40.0] * 4),
         wind_speeds=np.array([1.0] * 4),
         ghi_values=np.array([200.0, 600.0, 800.0, 700.0]),
-        assumptions=EnvironmentAssumptions(radiation_time_convention=convention),
+        assumptions=legacy(radiation_time_convention=convention),
     )
 
 
@@ -38,3 +38,4 @@ def test_default_convention_is_unchanged_legacy_behaviour():
     interp = make_interpolator("instantaneous_linear")
     assert interp.environment_at(1800.0).solar_radiation_w_m2 == pytest.approx(700.0)
     assert "approximation" in " ".join(EnvironmentAssumptions().describe())
+    assert EnvironmentAssumptions().radiation_time_convention == "instantaneous_linear"

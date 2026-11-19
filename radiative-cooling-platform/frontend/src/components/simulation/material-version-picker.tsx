@@ -129,6 +129,9 @@ export function MaterialVersionPicker({
                   {version.infrared_emissivity_window != null
                     ? ` · ε_W ${version.infrared_emissivity_window.toFixed(2)}`
                     : ""}
+                  {version.infrared_emissivity_ground_facing != null
+                    ? ` · ε_g ${version.infrared_emissivity_ground_facing.toFixed(2)}`
+                    : ""}
                 </option>
               ))}
             </optgroup>

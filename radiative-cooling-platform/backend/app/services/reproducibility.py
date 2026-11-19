@@ -224,8 +224,9 @@ def summarize_result_for_regression(
         else getattr(result, "environment_assumptions", None)
     )
     if assumptions is None:
-        # Stage 1 results stored before PR-2 carry no assumptions block.
-        assumptions = EnvironmentAssumptions()
+        # Results stored before Stage 2 were produced by the Stage 1 rules.
+        from app.schemas.environment import LEGACY_PRESET, preset_assumptions
+        assumptions = preset_assumptions(LEGACY_PRESET)
         
     snapshot = parameter_snapshot(assumptions)
     return {

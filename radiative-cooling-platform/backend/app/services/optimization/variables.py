@@ -42,6 +42,10 @@ def variable_value(material: MaterialInput, name: str) -> float:
             return float(window)
         return float(outside_window_emissivity(material.infrared_emissivity, window))
 
+    if name == "infrared_emissivity_ground_facing" and material.infrared_emissivity_ground_facing is None:
+        # Uniform base garment: the ground-facing zone starts at the broadband value.
+        return float(material.infrared_emissivity)
+    
     if name == "evaporative_resistance_m2pa_w" and material.evaporative_resistance_m2pa_w is None:
         return float(derive_evaporative_resistance_m2pa_w(material.clothing_insulation_clo))
 

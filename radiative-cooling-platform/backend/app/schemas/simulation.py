@@ -22,7 +22,7 @@ BodyPosition = Literal["standing", "sitting"]
 
 class EnvironmentInput(BaseModel):
     air_temperature_c: float = Field(default=38.0, ge=-50, le=70)
-    mean_radiant_temperature_c: float = Field(default=45.0, ge=-50, le=100)
+    mean_radiant_temperature_c: float = Field(default=45.0, ge=-50, le=150)
     sky_temperature_c: float | None = Field(default=None, ge=-100, le=70)
     relative_humidity_percent: float = Field(default=40.0, ge=0, le=100)
     wind_speed_m_s: float = Field(default=1.5, ge=0, le=30)
@@ -45,7 +45,12 @@ class EnvironmentInput(BaseModel):
         default=0.2, ge=0, le=1,
         description="Shortwave reflectance of the ground (reflected-diffuse term)",
     )
-
+    # Stage 12 (ADR 0010).
+    zone_view_separation: float = Field(
+        default=0.5, ge=0, le=1,
+        description="Hemisphere separation of the two garment zones (two-zone garments only)",
+    )
+    
     @model_validator(mode="after")
     def validate_solar_split(self):
         has_dni = self.direct_normal_irradiance_w_m2 is not None
@@ -158,6 +163,16 @@ class MaterialInput(BaseModel):
         },
     )
 
+    # Stage 12 (ADR 0010). Gray emissivity of the ground-facing garment zone.
+    infrared_emissivity_ground_facing: float | None = Field(
+        default=None, ge=0, le=1,
+        description="Longwave emissivity of the garment zone facing the ground and surroundings",
+        json_schema_extra={
+            "unit": "-",
+            "derived_when_null": "uniform garment: same longwave optics on every zone",
+        },
+    )
+    
     # Stage 2. Longwave transmittance of the textile (IR-transparent designs).
     infrared_transmittance: float = Field(
         default=0.0, ge=0, le=1,
@@ -205,6 +220,12 @@ class MaterialInput(BaseModel):
                 self.infrared_emissivity,
                 self.infrared_emissivity_window,
                 self.infrared_transmittance,
+            )
+            
+        ground = self.infrared_emissivity_ground_facing
+        if ground is not None and ground + self.infrared_transmittance > 1.0 + 1e-6:
+            raise ValueError(
+                "infrared_emissivity_ground_facing + infrared_transmittance cannot be greater than 1"
             )
             
         validate_parameter_source_keys(self.parameter_sources)
@@ -286,6 +307,8 @@ class ClothingSummary(BaseModel):
     # Stage 10
     infrared_emissivity_window: float | None = None
     infrared_emissivity_outside_window: float | None = None
+    # Stage 12
+    infrared_emissivity_ground_facing: float | None = None
 
 class BodyThermalSummary(BaseModel):
     """Heat capacities derived from PersonInput (Stage 3, ADR 0001)."""

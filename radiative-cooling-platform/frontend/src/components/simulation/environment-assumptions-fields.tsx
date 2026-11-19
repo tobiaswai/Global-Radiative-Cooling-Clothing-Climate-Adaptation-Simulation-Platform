@@ -3,6 +3,12 @@
 import { NumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
 import type { EnvironmentAssumptions } from "@/types/simulation";
+import {
+  ENVIRONMENT_PRESETS,
+  type EnvironmentPresetName,
+  matchPreset,
+  presetAssumptions,
+} from "@/lib/environment-assumptions";
 
 type Props = {
   value: EnvironmentAssumptions;
@@ -25,7 +31,8 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
 
       <p className="mt-2 text-sm text-slate-400">
         How ERA5 variables become the longwave temperatures of the sky and of the non-sky
-        surroundings, and body-height wind. Defaults reproduce the Stage 1 estimates.
+        surroundings, and body-height wind. The default is the open-ground physical environment
+        (ADR 0009); choose the legacy preset only to reproduce results stored before Stage 12.
       </p>
 
       {mrt === "air_plus_solar_linear" && (
@@ -37,6 +44,21 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
       )}
 
       <div className="mt-4 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <SelectField<EnvironmentPresetName | "custom">
+          label="Preset"
+          value={matchPreset(value)}
+          disabled={disabled}
+          options={[
+            ...(Object.keys(ENVIRONMENT_PRESETS) as EnvironmentPresetName[]).map((name) => ({
+              value: name,
+              label: ENVIRONMENT_PRESETS[name].label,
+            })),
+            { value: "custom" as const, label: "Custom (edited below)" },
+          ]}
+          onChange={(name) => {
+            if (name !== "custom") onChange(presetAssumptions(name));
+          }}
+        />
         <SelectField
           label="Non-sky surroundings temperature"
           value={mrt}
@@ -127,6 +149,11 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
           min={0.05} max={1.5} step={0.01} disabled={disabled}
           hint="0.67 ≈ logarithmic profile to 1.1 m over open terrain."
           onChange={(v) => update("wind_speed_scaling_factor", v)} />
+
+        <NumberField label="Zone view separation" value={value.zone_view_separation}
+          min={0} max={1} step={0.05} disabled={disabled}
+          hint="Two-zone garments only: 0 = zones see the same field, 1 = sky zone sees only sky."
+          onChange={(v) => update("zone_view_separation", v)} />
       </div>
     </details>
   );

@@ -1,10 +1,10 @@
  
  -------------- celery@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
--- ******* ---- Windows-11-10.0.26200-SP0 2026-11-18 15:07:08
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-19 17:19:35
 - *** --- * --- 
 - ** ---------- [config]
-- ** ---------- .> app:         radiative_cooling_worker:0x1b392bb9370
+- ** ---------- .> app:         radiative_cooling_worker:0x18f21987110
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -24,53 +24,25 @@
   . simulation.reap_expired_leases
   . simulation.run_weather
 
-[2026-11-18 15:07:08,109: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2026-11-18 15:07:08,120: INFO/MainProcess] mingle: searching for neighbors
-[2026-11-18 15:07:09,144: INFO/MainProcess] mingle: all alone
-[2026-11-18 15:07:09,174: INFO/MainProcess] celery@p2104180 ready.
-[2026-11-18 15:07:09,177: INFO/MainProcess] Task global_batch.run_city[7e53572a-774a-45c2-b45c-3d050c88ff8d] received
-[2026-11-18 15:07:09,270: INFO/MainProcess] Task global_batch.run_city[7e53572a-774a-45c2-b45c-3d050c88ff8d] succeeded in 0.0779999999977008s: {'city_result_id': 'ab9b0ed9-1cb4-45a2-96b5-29dbba19c6ea', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-18 15:07:09,273: INFO/MainProcess] Task global_batch.run_city[195dd22b-7196-4ec5-8ac8-21e692aea77c] received
-[2026-11-18 15:07:09,279: INFO/MainProcess] Task global_batch.run_city[195dd22b-7196-4ec5-8ac8-21e692aea77c] succeeded in 0.0s: {'city_result_id': '80b13888-6d26-4d18-8da8-5e526bfb1c9e', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-18 15:07:09,281: INFO/MainProcess] Task global_batch.run_city[db7bb0b8-5f1f-413d-822e-27f0db7a8130] received
-[2026-11-18 15:07:09,285: INFO/MainProcess] Task global_batch.run_city[db7bb0b8-5f1f-413d-822e-27f0db7a8130] succeeded in 0.0s: {'city_result_id': 'e2db6972-3e1a-4122-a5f8-49c47ee47e0f', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-18 15:07:09,287: INFO/MainProcess] Task global_batch.run_city[60bc5703-e1d5-4a51-8b01-bf8baa3db24f] received
-[2026-11-18 15:07:09,292: INFO/MainProcess] Task global_batch.run_city[60bc5703-e1d5-4a51-8b01-bf8baa3db24f] succeeded in 0.0s: {'city_result_id': '6958e355-0e7c-4776-bd3d-42a10c0f7f0f', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-18 15:08:12,634: INFO/MainProcess] Task global_batch.reap_expired_leases[cd00e5e9-b350-4895-9dd9-746e81621ac3] received
-[2026-11-18 15:08:12,649: INFO/MainProcess] Task global_batch.reap_expired_leases[cd00e5e9-b350-4895-9dd9-746e81621ac3] succeeded in 0.01600000000325963s: {'requeued': [], 'batches': []}
-[2026-11-18 15:08:12,651: INFO/MainProcess] Task simulation.reap_expired_leases[e2e97ab1-e36c-4816-9048-7c605ed23d20] received
-[2026-11-18 15:08:12,663: INFO/MainProcess] Task simulation.reap_expired_leases[e2e97ab1-e36c-4816-9048-7c605ed23d20] succeeded in 0.01599999999962165s: {'requeued': [], 'failed': []}
-[2026-11-18 15:08:12,667: INFO/MainProcess] Task optimization.reap_expired_leases[4559db85-83b2-4af1-baa6-a39494f4e2e6] received
-[2026-11-18 15:08:12,748: INFO/MainProcess] Task optimization.reap_expired_leases[4559db85-83b2-4af1-baa6-a39494f4e2e6] succeeded in 0.0779999999977008s: {'requeued': [], 'failed': []}
-[2026-11-18 15:09:12,584: INFO/MainProcess] Task global_batch.reap_expired_leases[4dc77f65-4f2f-4d53-bd7e-bc284d0a3a03] received
-[2026-11-18 15:09:12,595: INFO/MainProcess] Task global_batch.reap_expired_leases[4dc77f65-4f2f-4d53-bd7e-bc284d0a3a03] succeeded in 0.0s: {'requeued': [], 'batches': []}
-[2026-11-18 15:09:12,636: INFO/MainProcess] Task simulation.reap_expired_leases[bdc9d0e3-22ca-4536-b63e-c3a51ae6e159] received
-[2026-11-18 15:09:12,643: INFO/MainProcess] Task simulation.reap_expired_leases[bdc9d0e3-22ca-4536-b63e-c3a51ae6e159] succeeded in 0.0s: {'requeued': [], 'failed': []}
-[2026-11-18 15:09:12,646: INFO/MainProcess] Task optimization.reap_expired_leases[adf41c7f-e02b-4758-be76-f6eb1d9aec0e] received
-[2026-11-18 15:09:12,651: INFO/MainProcess] Task optimization.reap_expired_leases[adf41c7f-e02b-4758-be76-f6eb1d9aec0e] succeeded in 0.0s: {'requeued': [], 'failed': []}
-[2026-11-18 15:10:12,584: INFO/MainProcess] Task global_batch.reap_expired_leases[c233f625-8c78-4ece-8e85-d5ea0d523e1c] received
-[2026-11-18 15:10:12,591: INFO/MainProcess] Task global_batch.reap_expired_leases[c233f625-8c78-4ece-8e85-d5ea0d523e1c] succeeded in 0.0s: {'requeued': [], 'batches': []}
-[2026-11-18 15:10:12,636: INFO/MainProcess] Task simulation.reap_expired_leases[0e01c1a8-b1b4-4d8b-870e-aed4216c73a8] received
-[2026-11-18 15:10:12,640: INFO/MainProcess] Task simulation.reap_expired_leases[0e01c1a8-b1b4-4d8b-870e-aed4216c73a8] succeeded in 0.0s: {'requeued': [], 'failed': []}
-[2026-11-18 15:10:12,642: INFO/MainProcess] Task optimization.reap_expired_leases[c1e5399e-851c-484d-94d7-f918404f65cb] received
-[2026-11-18 15:10:12,647: INFO/MainProcess] Task optimization.reap_expired_leases[c1e5399e-851c-484d-94d7-f918404f65cb] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
-[2026-11-18 15:11:12,586: INFO/MainProcess] Task global_batch.reap_expired_leases[816df6fd-26ff-4038-9a6d-8a8e92d44aa7] received
-[2026-11-18 15:11:12,595: INFO/MainProcess] Task global_batch.reap_expired_leases[816df6fd-26ff-4038-9a6d-8a8e92d44aa7] succeeded in 0.0s: {'requeued': [], 'batches': []}
-[2026-11-18 15:11:12,637: INFO/MainProcess] Task simulation.reap_expired_leases[6b71129b-eb19-4dc7-bda4-f2aa4c9c1a22] received
-[2026-11-18 15:11:12,643: INFO/MainProcess] Task simulation.reap_expired_leases[6b71129b-eb19-4dc7-bda4-f2aa4c9c1a22] succeeded in 0.0s: {'requeued': [], 'failed': []}
-[2026-11-18 15:11:12,644: INFO/MainProcess] Task optimization.reap_expired_leases[7ecd0e08-de0c-4889-bf3e-724667c50ae4] received
-[2026-11-18 15:11:12,649: INFO/MainProcess] Task optimization.reap_expired_leases[7ecd0e08-de0c-4889-bf3e-724667c50ae4] succeeded in 0.01600000000325963s: {'requeued': [], 'failed': []}
-[2026-11-18 15:11:21,740: INFO/MainProcess] Task optimization.run[6aa10f09-80cd-4bd2-a335-62d8c2ea2ca2] received
-[2026-11-18 15:11:23,675: INFO/MainProcess] HTTP Request: GET https://archive-api.open-meteo.com/v1/archive?latitude=25.2048&longitude=55.2708&elevation=16.0&start_date=2023-06-30&end_date=2023-08-01&hourly=temperature_2m%2Crelative_humidity_2m%2Cwind_speed_10m%2Cshortwave_radiation%2Cdirect_radiation%2Cdiffuse_radiation%2Cdirect_normal_irradiance%2Ccloud_cover%2Csoil_temperature_0_to_7cm&timezone=Asia%2FDubai&wind_speed_unit=ms&temperature_unit=celsius&models=era5&cell_selection=land "HTTP/1.1 200 OK"
-[2026-11-18 15:11:31,339: INFO/MainProcess] Task optimization.run[6aa10f09-80cd-4bd2-a335-62d8c2ea2ca2] succeeded in 9.59400000000096s: {'job_id': '1c8ca1ae-c86f-44ef-88ae-53975f9b43b6', 'status': 'completed', 'verdict': 'unconstrained'}
-[2026-11-18 15:11:31,341: INFO/MainProcess] Task global_batch.run_city[3a74c3f9-6650-45b9-826a-84ae60151cf2] received
-[2026-11-18 15:11:31,607: INFO/MainProcess] Task global_batch.run_city[3a74c3f9-6650-45b9-826a-84ae60151cf2] succeeded in 0.2649999999994179s: {'batch_id': '3aa4099c-485a-4224-be72-fae914fa066f', 'city_result_id': 'e60bb2f1-16e3-4243-a519-48a1bddd56b5', 'status': 'completed'}
-[2026-11-18 15:11:31,608: INFO/MainProcess] Task optimization.run[8b630747-22b9-48f7-a74d-caff3689fe89] received
-[2026-11-18 15:11:39,461: INFO/MainProcess] Task optimization.run[8b630747-22b9-48f7-a74d-caff3689fe89] succeeded in 7.860000000000582s: {'job_id': '271e6073-95c2-4082-b84b-59b7dfcd6621', 'status': 'completed', 'verdict': 'unconstrained'}
-[2026-11-18 15:11:39,463: INFO/MainProcess] Task global_batch.run_city[6f4fac26-9b25-4c72-b76c-cb5e5e1a9b6b] received
-[2026-11-18 15:11:39,775: INFO/MainProcess] Task global_batch.run_city[6f4fac26-9b25-4c72-b76c-cb5e5e1a9b6b] succeeded in 0.3120000000017171s: {'batch_id': '3aa4099c-485a-4224-be72-fae914fa066f', 'city_result_id': 'f493efab-750c-48c1-83c7-100857e0e2ac', 'status': 'completed'}
-[2026-11-18 15:11:39,777: INFO/MainProcess] Task optimization.run[a5ac2a16-1950-42e7-aaf4-bec8858c3eba] received
-[2026-11-18 15:11:48,895: INFO/MainProcess] Task optimization.run[a5ac2a16-1950-42e7-aaf4-bec8858c3eba] succeeded in 9.10899999999674s: {'job_id': 'ff17a793-f97b-41df-95bf-23c95eee9b6b', 'status': 'completed', 'verdict': 'unconstrained'}
-[2026-11-18 15:11:48,898: INFO/MainProcess] Task global_batch.run_city[172f04b1-cb27-4621-967a-cf66200eb581] received
-[2026-11-18 15:11:49,212: INFO/MainProcess] Task global_batch.run_city[172f04b1-cb27-4621-967a-cf66200eb581] succeeded in 0.3129999999982829s: {'batch_id': '3aa4099c-485a-4224-be72-fae914fa066f', 'city_result_id': 'a329ee32-c663-4d85-95e2-13129eb8a5a7', 'status': 'completed'}
-[2026-11-18 15:11:49,214: INFO/MainProcess] Task optimization.run[7e04f264-02b1-4c53-9125-a1d16f69bae3] received
+[2026-11-19 17:19:35,084: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-19 17:19:35,091: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-19 17:19:36,119: INFO/MainProcess] mingle: all alone
+[2026-11-19 17:19:36,164: INFO/MainProcess] celery@p2104180 ready.
+[2026-11-19 17:19:36,170: INFO/MainProcess] Task global_batch.run_city[dc9a2981-7ba7-4690-a36c-72e5b5202a86] received
+[2026-11-19 17:19:36,310: INFO/MainProcess] Task global_batch.run_city[dc9a2981-7ba7-4690-a36c-72e5b5202a86] succeeded in 0.14100000000325963s: {'city_result_id': 'f1920d5b-cfee-4867-b6d7-906086444c67', 'status': 'skipped', 'reason': 'lease_not_acquired'}
+[2026-11-19 17:19:36,315: INFO/MainProcess] Task global_batch.run_city[c48d5b07-8c22-4603-a475-274d5845aad9] received
+[2026-11-19 17:19:36,324: INFO/MainProcess] Task global_batch.run_city[c48d5b07-8c22-4603-a475-274d5845aad9] succeeded in 0.01599999999962165s: {'city_result_id': 'a1b5538f-1e8f-46f8-bcb0-259be2d03d5d', 'status': 'skipped', 'reason': 'lease_not_acquired'}
+[2026-11-19 17:19:36,327: INFO/MainProcess] Task global_batch.run_city[4c80fbb1-24a2-447a-baeb-00002d337ee1] received
+[2026-11-19 17:19:36,336: INFO/MainProcess] Task global_batch.run_city[4c80fbb1-24a2-447a-baeb-00002d337ee1] succeeded in 0.0s: {'city_result_id': '1ba55045-63a0-4b4b-bd48-d586850f049f', 'status': 'skipped', 'reason': 'lease_not_acquired'}
+[2026-11-19 17:19:36,339: INFO/MainProcess] Task global_batch.run_city[b31ea9a3-a7ef-4662-9515-b903a8b9d420] received
+[2026-11-19 17:19:36,346: INFO/MainProcess] Task global_batch.run_city[b31ea9a3-a7ef-4662-9515-b903a8b9d420] succeeded in 0.0s: {'city_result_id': '777afdca-3902-456c-a07a-c8898f282650', 'status': 'skipped', 'reason': 'lease_not_acquired'}
+[2026-11-19 17:19:36,350: INFO/MainProcess] Task global_batch.run_city[1ef4060f-ef4b-4317-b935-6ff7fba3c9df] received
+[2026-11-19 17:19:36,357: INFO/MainProcess] Task global_batch.run_city[1ef4060f-ef4b-4317-b935-6ff7fba3c9df] succeeded in 0.01599999999962165s: {'city_result_id': '2d95c078-e98d-4652-9535-e2321a586a4f', 'status': 'skipped', 'reason': 'lease_not_acquired'}
+[2026-11-19 17:19:36,359: INFO/MainProcess] Task global_batch.run_city[f37da84f-2a9e-41b9-957b-9b429ed35bd0] received
+[2026-11-19 17:19:36,370: INFO/MainProcess] Task global_batch.run_city[f37da84f-2a9e-41b9-957b-9b429ed35bd0] succeeded in 0.01599999999962165s: {'city_result_id': '076cb9b1-6943-4f69-8e54-ddd12db7e5ec', 'status': 'skipped', 'reason': 'lease_not_acquired'}
+[2026-11-19 17:20:39,791: INFO/MainProcess] Task global_batch.reap_expired_leases[cc574c8e-e12a-4e26-ac65-39b5b06f0f88] received
+[2026-11-19 17:20:39,804: INFO/MainProcess] Task global_batch.reap_expired_leases[cc574c8e-e12a-4e26-ac65-39b5b06f0f88] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-19 17:20:39,806: INFO/MainProcess] Task simulation.reap_expired_leases[a34cc990-4124-48a2-ae02-1222bd7e928e] received
+[2026-11-19 17:20:39,901: INFO/MainProcess] Task simulation.reap_expired_leases[a34cc990-4124-48a2-ae02-1222bd7e928e] succeeded in 0.09399999999732245s: {'requeued': [], 'failed': []}
+[2026-11-19 17:20:39,903: INFO/MainProcess] Task optimization.reap_expired_leases[df182908-3a93-47bd-8a0f-c0d1db2e0909] received
+[2026-11-19 17:20:39,914: INFO/MainProcess] Task optimization.reap_expired_leases[df182908-3a93-47bd-8a0f-c0d1db2e0909] succeeded in 0.0s: {'requeued': [], 'failed': []}

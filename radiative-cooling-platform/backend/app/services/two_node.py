@@ -16,7 +16,7 @@ Every numeric constant is bound from ``model_parameters``.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from math import exp, sqrt
 
@@ -53,13 +53,18 @@ from app.services.longwave import (
     net_exchange_k4,
     radiant_field,
     resolve_longwave_optics,
+    PreparedZone, 
+    prepare_longwave_zones, 
+    surroundings_fourth_power_k4, 
+    zone_notes, 
+    zoned_exchange_k4
 )
 
 from app.services.psychrometrics import saturation_vapor_pressure_kpa
 
 # Version of the physics engine written into every response. Bump together
 # with MODEL_PARAMETER_SET_VERSION whenever results change.
-MODEL_VERSION = "0.9.0"  # Stage 11: radiant environment v2 (ADR 0008)
+MODEL_VERSION = "0.10.0"  # Stage 12: two-zone garment longwave (ADR 0010)
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
@@ -194,6 +199,7 @@ def clothing_surface_temperature_c(
     absorbed_solar_w_m2: float = 0.0,
     optics: LongwaveOptics | None = None,
     field: RadiantField | None = None,
+    zones: Sequence[PreparedZone] | None = None,
 ) -> float:
     """Solve the clothing surface balance (ADR 0003 + 0005 + 0007).
 
@@ -215,7 +221,11 @@ def clothing_surface_temperature_c(
     t = skin_k
 
     for _ in range(SURFACE_TEMPERATURE_MAX_ITERATIONS):
-        if selective:
+        if zones is not None:
+            net, net_slope, _ = zoned_exchange_k4(tuple(zones), t)
+            emission = radiation_area_ratio * SIGMA * net
+            emission_slope = radiation_area_ratio * SIGMA * net_slope
+        elif selective:
             net, net_slope, _ = net_exchange_k4(optics, field, t)
             emission = radiation_area_ratio * SIGMA * net
             emission_slope = radiation_area_ratio * SIGMA * net_slope
@@ -287,7 +297,11 @@ def calculate_fluxes(
     # --- dry heat: clothing surface balance with the solar source -----------
     convection_coefficient = convection_coefficient_w_m2k(environment.wind_speed_m_s)
 
-    if optics.selective:
+    zones = prepare_longwave_zones(material, environment, optics)
+    if zones is not None:
+        field = None
+        environment_fourth = surroundings_fourth_power_k4(environment)
+    elif optics.selective:
         field = radiant_field(environment)
         environment_fourth = field.total_k4
     else:
@@ -305,6 +319,7 @@ def calculate_fluxes(
         absorbed_solar_w_m2=solar.absorbed_by_textile_w_m2,
         optics=optics,
         field=field,
+        zones=zones,
     )
     surface_k = surface_c + KELVIN_OFFSET
     skin_k = skin_temperature_c + KELVIN_OFFSET
@@ -314,7 +329,12 @@ def calculate_fluxes(
     )
 
     longwave_window: float | None = None
-    if field is not None:
+    if zones is not None:
+        net, _, net_window = zoned_exchange_k4(zones, surface_k)
+        scale = clothing.area_factor * area_ratio * SIGMA
+        longwave_surface = scale * net
+        longwave_window = None if net_window is None else scale * net_window
+    elif field is not None:
         net, _, net_window = net_exchange_k4(optics, field, surface_k)
         longwave_surface = clothing.area_factor * area_ratio * SIGMA * net
         longwave_window = clothing.area_factor * area_ratio * SIGMA * net_window
@@ -327,8 +347,8 @@ def calculate_fluxes(
             * (surface_k**4 - environment_fourth)
         )
 
-    # Skin emission transmitted directly through an IR-transparent textile
-    # (skin and transmittance are gray).
+    # Skin emission transmitted through an IR-transparent textile sees the
+    # body-average field (zone views are area-consistent, ADR 0010).
     longwave_transmitted = (
         area_ratio
         * clothing.infrared_transmittance
@@ -483,7 +503,9 @@ def _integrate(
     optics = resolve_longwave_optics(material)
     capacities = body_heat_capacities(person)
     area_ratio = effective_radiation_area_ratio(person.position)
-    solar_split_available = environment_at(0.0).has_solar_split
+    initial_environment = environment_at(0.0)
+    solar_split_available = initial_environment.has_solar_split
+    initial_zones = prepare_longwave_zones(material, initial_environment, optics)
 
     duration_seconds = duration_minutes * 60.0
     output_times = _output_times(duration_seconds, output_interval_minutes * 60.0)
@@ -604,10 +626,11 @@ def _integrate(
             clothing_area_factor_source=clothing.area_factor_source,
             infrared_emissivity_window=round(optics.window, 6) if optics.selective else None,
             infrared_emissivity_outside_window=round(optics.outside, 6) if optics.selective else None,
+            infrared_emissivity_ground_facing=material.infrared_emissivity_ground_facing,
         ),
         assumptions_applied=(
             assumptions_applied(clothing, solar_split_available=solar_split_available)
-            + longwave_notes(optics)
+            + longwave_notes(optics) + zone_notes(initial_zones)
         ),
         body=BodyThermalSummary(
             body_mass_kg=person.body_mass_kg,

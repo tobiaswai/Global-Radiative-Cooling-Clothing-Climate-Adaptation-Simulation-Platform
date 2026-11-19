@@ -327,7 +327,7 @@ def build_warnings(
 
     # 7. Mean radiant temperature proxy (ADR 0007, ADR 0008).
     method = request.environment_assumptions.mean_radiant_temperature_method
-    ir_names = {"infrared_emissivity", "infrared_emissivity_window", "infrared_emissivity_outside_window"}
+    ir_names = {"infrared_emissivity", "infrared_emissivity_window", "infrared_emissivity_outside_window", "infrared_emissivity_ground_facing"}
     if method == "air_plus_solar_linear" and ir_names & set(space.names):
         warnings.append(
             "air_plus_solar_linear adds a GHI term to the non-sky longwave temperature although "
@@ -342,6 +342,21 @@ def build_warnings(
                     "this without the ground_energy_balance rerun"
                 )
 
+    # 8. Two-zone garments (ADR 0010).
+    if "infrared_emissivity_ground_facing" in space.names:
+        s = request.environment_assumptions.zone_view_separation
+        if s < 0.05:
+            warnings.append(
+                "zone_view_separation is ~0: both zones see the same radiant field, so only "
+                "the area-weighted emissivity is identifiable; ground-facing and sky-facing "
+                "values are not separately meaningful"
+            )
+        warnings.append(
+            f"the ground-facing emissivity requirement depends on the assumed "
+            f"zone_view_separation = {s:g} (not measured, ADR 0010); report it together "
+            "with the separation sweep of experiment L2"
+        )
+        
     return warnings
 
 

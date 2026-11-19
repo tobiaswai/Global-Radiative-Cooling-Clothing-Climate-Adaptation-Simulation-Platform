@@ -36,7 +36,8 @@ from app.schemas.weather import (
 from app.services import climate_adaptation
 from app.services.climate_adaptation import analyze_city_climate_adaptation
 from app.services.weather import city_to_response, normalize_local_datetime, to_utc
-
+from app.schemas.environment import EnvironmentAssumptions
+from tests.helpers.environment import LEGACY, with_physical_variables
 
 RECORD_PATH = (
     Path(__file__).resolve().parents[1]
@@ -74,18 +75,14 @@ class SyntheticWeatherProvider:
 
     def __init__(self) -> None:
         self.calls = 0
+        self.extra_variables_seen: list[tuple[str, ...]] = []
 
     async def __call__(
-        self,
-        *,
-        city,
-        start_time_local,
-        end_time_local,
-        padding_hours=1,
-        require_window_coverage=True,
-        extra_variables: tuple[str, ...] = (),
+        self, *, city, start_time_local, end_time_local, padding_hours=1,
+        require_window_coverage=True, extra_variables: tuple[str, ...] = (),
     ) -> WeatherTimeSeries:
         self.calls += 1
+        self.extra_variables_seen.append(tuple(extra_variables))
 
         tz = ZoneInfo(city.timezone)
         start = normalize_local_datetime(start_time_local, city.timezone)
@@ -121,8 +118,11 @@ class SyntheticWeatherProvider:
             )
             cursor += timedelta(hours=1)
 
+        if extra_variables:
+            points = with_physical_variables(points)
+
         digest = hashlib.sha256(f"{city.id}|{start.isoformat()}|{end.isoformat()}".encode()).hexdigest()
-        assert extra_variables == (), extra_variables
+        # delete the old line:  assert extra_variables == (), extra_variables
 
         return WeatherTimeSeries(
             city=city_to_response(city),
@@ -146,7 +146,10 @@ class SyntheticWeatherProvider:
         )
 
 
-def make_request(person, control_material, rc_material) -> GlobalBatchCreate:
+def make_request(
+    person, control_material, rc_material,
+    environment_assumptions: EnvironmentAssumptions = LEGACY,
+) -> GlobalBatchCreate:
     return GlobalBatchCreate(
         name="Stage 8 resume benchmark",
         city_ids=["dubai"],
@@ -161,6 +164,7 @@ def make_request(person, control_material, rc_material) -> GlobalBatchCreate:
         person=person,
         control_material=control_material,
         rc_material=rc_material,
+        environment_assumptions=environment_assumptions,
     )
 
 
@@ -180,6 +184,7 @@ async def test_resume_recomputes_only_missing_months_and_matches_uninterrupted(
     full_seconds = perf_counter() - started
 
     assert provider.calls == 12
+    assert set(provider.extra_variables_seen) == {()}
     assert full["completed_month_count"] == 12
 
     # --- 2. crash after CRASH_AFTER_MONTH -----------------------------------

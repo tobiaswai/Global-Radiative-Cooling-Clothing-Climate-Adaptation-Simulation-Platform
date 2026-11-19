@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.services.leases import derive_lease_state
+from app.services.stored_requests import load_stored_request
 
 from app.models.simulation_job import (
     SimulationJob,
@@ -44,7 +45,7 @@ def job_to_response(job: SimulationJob, *, now: datetime | None = None) -> Simul
 def job_to_detail(job: SimulationJob, *, now: datetime | None = None) -> SimulationJobDetail:
     return SimulationJobDetail(
         **job_to_response(job, now=now).model_dump(),
-        request=WeatherSimulationRequest.model_validate(job.request_json),
+        request=load_stored_request(WeatherSimulationRequest, job.request_json)
     )
 
 
