@@ -3838,6 +3838,11 @@ function MaterialDetailContent({
                     value={version.infrared_emissivity_window}
                     fallback="Gray"
                   />
+                  <Metric
+                    label="IR emissivity, ground-facing"
+                    value={version.infrared_emissivity_ground_facing}
+                    fallback="Uniform"
+                  />
                 </div>
 
                 <div className="mt-5">
@@ -4122,6 +4127,7 @@ function versionToInput(version: MaterialVersion): MaterialVersionInput {
     notes: null,
     parameter_sources: version.parameter_sources ?? null,
     infrared_emissivity_window: version.infrared_emissivity_window ?? null,
+    infrared_emissivity_ground_facing: version.infrared_emissivity_ground_facing ?? null,
   };
 }
 
@@ -5310,6 +5316,7 @@ const VARIABLE_DEFAULTS: Record<DecisionVariableName, { lower: number; upper: nu
   infrared_transmittance: { lower: 0, upper: 0.5, step: 0.01 },
   clothing_insulation_clo: { lower: 0.2, upper: 0.8, step: 0.05 },
   evaporative_resistance_m2pa_w: { lower: 5, upper: 30, step: 0.5 },
+  infrared_emissivity_ground_facing: { lower: 0.05, upper: 0.99, step: 0.01 },
 };
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -9209,6 +9216,10 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
   const infraredSumTooHigh =
     value.infrared_emissivity + value.infrared_transmittance > 1 + 1e-6;
 
+  const groundSumTooHigh =
+    value.infrared_emissivity_ground_facing != null &&
+    value.infrared_emissivity_ground_facing + value.infrared_transmittance > 1 + 1e-6;
+    
   const spectral =
     value.infrared_emissivity_window == null
       ? null
@@ -9217,6 +9228,7 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
           value.infrared_emissivity_window,
           value.infrared_transmittance,
         );
+
 
   return (
     <div className="space-y-4">
@@ -9290,6 +9302,14 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
           disabled={disabled}
           onChange={(v) => onChange("infrared_emissivity_window", v)}
         />
+        <OptionalNumberField
+          label="Ground-facing IR emissivity (ε_g)"
+          value={value.infrared_emissivity_ground_facing ?? null}
+          placeholder="Uniform garment"
+          min={0} max={1} step={0.01} disabled={disabled}
+          hint="Gray emissivity of the zone facing the ground. Empty = same optics everywhere (ADR 0010)."
+          onChange={(v) => onChange("infrared_emissivity_ground_facing", v)}
+        />
         <NumberField
           label="Infrared Transmittance"
           value={value.infrared_transmittance}
@@ -9317,10 +9337,11 @@ export function MaterialVersionFields({ value, disabled = false, onChange }: Pro
         />
       </div>
 
-      {(solarSumTooHigh || infraredSumTooHigh) && (
+      {(solarSumTooHigh || infraredSumTooHigh || groundSumTooHigh) && (
         <p role="alert" className="text-sm text-amber-300">
           {solarSumTooHigh && "Solar reflectance + transmittance must not exceed 1. "}
           {infraredSumTooHigh && "Infrared emissivity + transmittance must not exceed 1."}
+          {groundSumTooHigh && " Ground-facing emissivity + transmittance must not exceed 1."}
         </p>
       )}
       {spectral && (
@@ -9732,6 +9753,12 @@ export function RequirementMapChart({ map, metric }: { map: RequirementMapResult
 import { NumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
 import type { EnvironmentAssumptions } from "@/types/simulation";
+import {
+  ENVIRONMENT_PRESETS,
+  type EnvironmentPresetName,
+  matchPreset,
+  presetAssumptions,
+} from "@/lib/environment-assumptions";
 
 type Props = {
   value: EnvironmentAssumptions;
@@ -9754,7 +9781,8 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
 
       <p className="mt-2 text-sm text-slate-400">
         How ERA5 variables become the longwave temperatures of the sky and of the non-sky
-        surroundings, and body-height wind. Defaults reproduce the Stage 1 estimates.
+        surroundings, and body-height wind. The default is the open-ground physical environment
+        (ADR 0009); choose the legacy preset only to reproduce results stored before Stage 12.
       </p>
 
       {mrt === "air_plus_solar_linear" && (
@@ -9766,6 +9794,21 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
       )}
 
       <div className="mt-4 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <SelectField<EnvironmentPresetName | "custom">
+          label="Preset"
+          value={matchPreset(value)}
+          disabled={disabled}
+          options={[
+            ...(Object.keys(ENVIRONMENT_PRESETS) as EnvironmentPresetName[]).map((name) => ({
+              value: name,
+              label: ENVIRONMENT_PRESETS[name].label,
+            })),
+            { value: "custom" as const, label: "Custom (edited below)" },
+          ]}
+          onChange={(name) => {
+            if (name !== "custom") onChange(presetAssumptions(name));
+          }}
+        />
         <SelectField
           label="Non-sky surroundings temperature"
           value={mrt}
@@ -9856,6 +9899,11 @@ export function EnvironmentAssumptionsFields({ value, disabled = false, onChange
           min={0.05} max={1.5} step={0.01} disabled={disabled}
           hint="0.67 ≈ logarithmic profile to 1.1 m over open terrain."
           onChange={(v) => update("wind_speed_scaling_factor", v)} />
+
+        <NumberField label="Zone view separation" value={value.zone_view_separation}
+          min={0} max={1} step={0.05} disabled={disabled}
+          hint="Two-zone garments only: 0 = zones see the same field, 1 = sky zone sees only sky."
+          onChange={(v) => update("zone_view_separation", v)} />
       </div>
     </details>
   );
@@ -9908,7 +9956,7 @@ export function EnvironmentInputFields({
         suffix="°C"
         value={environment.mean_radiant_temperature_c}
         min={-50}
-        max={100}
+        max={150}
         step={0.1}
         disabled={disabled}
         onChange={(value) => update("mean_radiant_temperature_c", value)}
@@ -9996,6 +10044,15 @@ export function EnvironmentInputFields({
         step={0.05}
         disabled={disabled}
         onChange={(value) => update("sky_view_factor", value)}
+      />
+
+      <NumberField
+        label="Zone View Separation"
+        value={environment.zone_view_separation ?? 0.5}
+        min={0} max={1} step={0.05}
+        disabled={disabled}
+        hint="Used only when the garment has a ground-facing emissivity (ADR 0010)."
+        onChange={(value) => update("zone_view_separation", value)}
       />
     </div>
   );
@@ -10124,6 +10181,14 @@ export function MaterialInputFields({
           min={0} max={1} step={0.01} disabled={disabled}
           hint="Leave empty for a gray textile. Set it for a selective emitter (ADR 0007)."
           onChange={(value) => updatePhysical("infrared_emissivity_window", value)}
+        />
+        <OptionalNumberField
+          label="Ground-facing IR emissivity (ε_g)"
+          value={material.infrared_emissivity_ground_facing ?? null}
+          placeholder="Uniform garment"
+          min={0} max={1} step={0.01} disabled={disabled}
+          hint="Gray emissivity of the zone facing the ground. Empty = same optics everywhere (ADR 0010)."
+          onChange={(value) => updatePhysical("infrared_emissivity_ground_facing", value)}
         />
         <NumberField
           label="Infrared Transmittance" value={material.infrared_transmittance ?? 0}
@@ -10305,6 +10370,9 @@ export function MaterialVersionPicker({
                   {version.infrared_emissivity_window != null
                     ? ` · ε_W ${version.infrared_emissivity_window.toFixed(2)}`
                     : ""}
+                  {version.infrared_emissivity_ground_facing != null
+                    ? ` · ε_g ${version.infrared_emissivity_ground_facing.toFixed(2)}`
+                    : ""}
                 </option>
               ))}
             </optgroup>
@@ -10425,6 +10493,13 @@ const resolvedRows: ResolvedRow[] = [
         ? "gray"
         : `${formatNumber(scenario.clothing.infrared_emissivity_window, 3)} / ${formatNumber(
             scenario.clothing.infrared_emissivity_outside_window, 3)}`,
+  },
+  {
+    label: "Ground-facing ε_g",
+    render: (scenario) =>
+      scenario.clothing?.infrared_emissivity_ground_facing == null
+        ? "uniform"
+        : formatNumber(scenario.clothing.infrared_emissivity_ground_facing, 3),
   },
   {
     label: "Body mass",
@@ -11866,12 +11941,12 @@ export function getDefaultSimulationDateTime(now: Date = new Date()): string {
 ```typescript
 import type { EnvironmentAssumptions } from "@/types/simulation";
 
-/** Mirrors the backend defaults (GET /api/v1/model/environment-assumptions/defaults). */
+/** Mirrors the backend defaults (ADR 0009): open-ground physical environment. */
 export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
-  mean_radiant_temperature_method: "air_plus_solar_linear",
+  mean_radiant_temperature_method: "ground_energy_balance",
   solar_mrt_gain_k_per_w_m2: 0.012,
   solar_mrt_gain_cap_k: 15,
-  sky_temperature_method: "humidity_offset",
+  sky_temperature_method: "brutsaert_cloud",
   sky_offset_base_k: 5,
   sky_offset_humidity_range_k: 10,
   fixed_sky_offset_k: 15,
@@ -11881,7 +11956,38 @@ export const DEFAULT_ENVIRONMENT_ASSUMPTIONS: EnvironmentAssumptions = {
   radiation_time_convention: "instantaneous_linear",
   ground_emissivity: 0.95,
   ground_soil_conductance_w_m2k: 15,
+  zone_view_separation: 0.5,
 };
+
+export type EnvironmentPresetName = "open_ground_physical" | "legacy_stage1";
+
+/** Mirrors ENVIRONMENT_PRESETS in app/schemas/environment.py. */
+export const ENVIRONMENT_PRESETS: Record<
+  EnvironmentPresetName,
+  { label: string; overrides: Partial<EnvironmentAssumptions> }
+> = {
+  open_ground_physical: { label: "Open ground, physical sky and ground (default)", overrides: {} },
+  legacy_stage1: {
+    label: "Legacy Stage 1 proxies (reproduces stored results)",
+    overrides: {
+      mean_radiant_temperature_method: "air_plus_solar_linear",
+      sky_temperature_method: "humidity_offset",
+    },
+  },
+};
+
+export function presetAssumptions(name: EnvironmentPresetName): EnvironmentAssumptions {
+  return { ...DEFAULT_ENVIRONMENT_ASSUMPTIONS, ...ENVIRONMENT_PRESETS[name].overrides };
+}
+
+export function matchPreset(value: EnvironmentAssumptions): EnvironmentPresetName | "custom" {
+  for (const name of Object.keys(ENVIRONMENT_PRESETS) as EnvironmentPresetName[]) {
+    const preset = presetAssumptions(name);
+    const keys = Object.keys(preset) as (keyof EnvironmentAssumptions)[];
+    if (keys.every((key) => preset[key] === value[key])) return name;
+  }
+  return "custom";
+}
 ```
 
 ### File: `frontend/src/lib/format.ts`
@@ -11990,6 +12096,7 @@ export const VARIABLE_LABELS: Record<DecisionVariableName, string> = {
   infrared_transmittance: "IR transmittance τ_IR",
   clothing_insulation_clo: "Insulation (clo)",
   evaporative_resistance_m2pa_w: "Re,cl (m²·Pa/W)",
+  infrared_emissivity_ground_facing: "IR emissivity ε_g (ground-facing)",
 };
 
 /** Mirrors DEFAULT_DEMAND_DIRECTION in app/schemas/optimization.py. */
@@ -12002,6 +12109,7 @@ export const DEFAULT_DEMAND_DIRECTION: Record<DecisionVariableName, DemandDirect
   infrared_transmittance: "increasing",
   clothing_insulation_clo: "decreasing",
   evaporative_resistance_m2pa_w: "decreasing",
+  infrared_emissivity_ground_facing: "decreasing",
 };
 
 export const EMISSIVITY_BAND_VARIABLES = new Set<DecisionVariableName>([
@@ -12793,6 +12901,8 @@ export type DailyAdaptationResult = {
   maximum_skin_improvement_c: number;
 
   weather_from_cache: boolean;
+  mean_sky_temperature_c?: number | null; 
+  mean_surround_temperature_c?: number | null;
 };
 
 
@@ -13276,6 +13386,7 @@ export type MaterialVersionInput = {
   notes: string | null;
   parameter_sources?: Record<string, ParameterSource> | null;
   infrared_emissivity_window?: number | null;
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 export type MaterialCreate = {
@@ -13353,6 +13464,7 @@ export type MaterialVersionListItem = {
   is_archived: boolean;
   created_at: string;
   infrared_emissivity_window?: number | null;
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 export type MaterialVersionListResponse = {
@@ -13427,7 +13539,8 @@ export type DecisionVariableName =
   | "infrared_emissivity_outside_window"
   | "infrared_transmittance"
   | "clothing_insulation_clo"
-  | "evaporative_resistance_m2pa_w";
+  | "evaporative_resistance_m2pa_w"
+  | "infrared_emissivity_ground_facing";
 
 export type MetricName =
   | "mean_skin_temperature_c"
@@ -13676,6 +13789,7 @@ export type EnvironmentAssumptions = {
   radiation_time_convention: RadiationTimeConvention;
   ground_emissivity: number;
   ground_soil_conductance_w_m2k: number;
+  zone_view_separation: number;
 };
 
 export type WeatherGap = { start: string; end: string; missing_steps: number };
@@ -13706,6 +13820,7 @@ export type EnvironmentInput = {
   direct_normal_irradiance_w_m2: number | null;
   diffuse_horizontal_irradiance_w_m2: number | null;
   ground_albedo: number;
+  zone_view_separation?: number;
 };
 
 export type PersonInput = {
@@ -13737,6 +13852,8 @@ export type MaterialInput = {
   source_reference?: string | null;
   /** Stage 10: emissivity in 8–13 µm. null/absent = gray emitter. */
   infrared_emissivity_window?: number | null;
+  /** Stage 12 (ADR 0010): gray emissivity of the ground-facing zone. null = uniform. */
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 export type SimulationRequest = {
@@ -13797,6 +13914,7 @@ export type ClothingSummary = {
   clothing_area_factor_source?: ResolvedParameterSource | null;
   infrared_emissivity_window?: number | null;
   infrared_emissivity_outside_window?: number | null;
+  infrared_emissivity_ground_facing?: number | null;
 };
 
 /** Stage 3 (ADR 0001): heat capacities derived from PersonInput. */

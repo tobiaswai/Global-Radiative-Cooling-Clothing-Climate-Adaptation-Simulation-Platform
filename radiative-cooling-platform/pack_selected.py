@@ -8,6 +8,9 @@ IGNORE_DIRS = {
     'data', '__pycache__', '.numba_cache', '.pytest_cache', '.venv', 'venv',
     'dist', 'build', '.mypy_cache', '.coverage', 'htmlcov',
     'node_modules',
+    # === 新增：大幅減少體積 ===
+    'tests',          # 測試程式碼通常佔最大比例
+    'docs',           # 文件、acceptance、decisions
 }
 
 # 2. 忽略的大型檔案、二進位檔與編譯檔
@@ -84,7 +87,7 @@ def main():
     print(f"📦 找到 {len(matched_files)} 個後端檔案，開始打包成 Markdown...")
     
     with open(OUTPUT_FILE, 'w', encoding='utf-8') as out_f:
-        out_f.write(f"# Complete Backend Source Code (`{TARGET_DIR}/`)\n\n")
+        out_f.write(f"# Complete Backend Source Code (`{TARGET_DIR}/` - Excluding tests/docs/alembic/scripts/data)\n\n")
         
         # 寫入目錄結構
         out_f.write("## Directory Structure\n```text\n")

@@ -1,10 +1,10 @@
  
  -------------- celery@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
--- ******* ---- Windows-11-10.0.26200-SP0 2026-11-19 17:19:35
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-19 17:59:43
 - *** --- * --- 
 - ** ---------- [config]
-- ** ---------- .> app:         radiative_cooling_worker:0x18f21987110
+- ** ---------- .> app:         radiative_cooling_worker:0x1f0311ed640
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -24,25 +24,20 @@
   . simulation.reap_expired_leases
   . simulation.run_weather
 
-[2026-11-19 17:19:35,084: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2026-11-19 17:19:35,091: INFO/MainProcess] mingle: searching for neighbors
-[2026-11-19 17:19:36,119: INFO/MainProcess] mingle: all alone
-[2026-11-19 17:19:36,164: INFO/MainProcess] celery@p2104180 ready.
-[2026-11-19 17:19:36,170: INFO/MainProcess] Task global_batch.run_city[dc9a2981-7ba7-4690-a36c-72e5b5202a86] received
-[2026-11-19 17:19:36,310: INFO/MainProcess] Task global_batch.run_city[dc9a2981-7ba7-4690-a36c-72e5b5202a86] succeeded in 0.14100000000325963s: {'city_result_id': 'f1920d5b-cfee-4867-b6d7-906086444c67', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-19 17:19:36,315: INFO/MainProcess] Task global_batch.run_city[c48d5b07-8c22-4603-a475-274d5845aad9] received
-[2026-11-19 17:19:36,324: INFO/MainProcess] Task global_batch.run_city[c48d5b07-8c22-4603-a475-274d5845aad9] succeeded in 0.01599999999962165s: {'city_result_id': 'a1b5538f-1e8f-46f8-bcb0-259be2d03d5d', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-19 17:19:36,327: INFO/MainProcess] Task global_batch.run_city[4c80fbb1-24a2-447a-baeb-00002d337ee1] received
-[2026-11-19 17:19:36,336: INFO/MainProcess] Task global_batch.run_city[4c80fbb1-24a2-447a-baeb-00002d337ee1] succeeded in 0.0s: {'city_result_id': '1ba55045-63a0-4b4b-bd48-d586850f049f', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-19 17:19:36,339: INFO/MainProcess] Task global_batch.run_city[b31ea9a3-a7ef-4662-9515-b903a8b9d420] received
-[2026-11-19 17:19:36,346: INFO/MainProcess] Task global_batch.run_city[b31ea9a3-a7ef-4662-9515-b903a8b9d420] succeeded in 0.0s: {'city_result_id': '777afdca-3902-456c-a07a-c8898f282650', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-19 17:19:36,350: INFO/MainProcess] Task global_batch.run_city[1ef4060f-ef4b-4317-b935-6ff7fba3c9df] received
-[2026-11-19 17:19:36,357: INFO/MainProcess] Task global_batch.run_city[1ef4060f-ef4b-4317-b935-6ff7fba3c9df] succeeded in 0.01599999999962165s: {'city_result_id': '2d95c078-e98d-4652-9535-e2321a586a4f', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-19 17:19:36,359: INFO/MainProcess] Task global_batch.run_city[f37da84f-2a9e-41b9-957b-9b429ed35bd0] received
-[2026-11-19 17:19:36,370: INFO/MainProcess] Task global_batch.run_city[f37da84f-2a9e-41b9-957b-9b429ed35bd0] succeeded in 0.01599999999962165s: {'city_result_id': '076cb9b1-6943-4f69-8e54-ddd12db7e5ec', 'status': 'skipped', 'reason': 'lease_not_acquired'}
-[2026-11-19 17:20:39,791: INFO/MainProcess] Task global_batch.reap_expired_leases[cc574c8e-e12a-4e26-ac65-39b5b06f0f88] received
-[2026-11-19 17:20:39,804: INFO/MainProcess] Task global_batch.reap_expired_leases[cc574c8e-e12a-4e26-ac65-39b5b06f0f88] succeeded in 0.0s: {'requeued': [], 'batches': []}
-[2026-11-19 17:20:39,806: INFO/MainProcess] Task simulation.reap_expired_leases[a34cc990-4124-48a2-ae02-1222bd7e928e] received
-[2026-11-19 17:20:39,901: INFO/MainProcess] Task simulation.reap_expired_leases[a34cc990-4124-48a2-ae02-1222bd7e928e] succeeded in 0.09399999999732245s: {'requeued': [], 'failed': []}
-[2026-11-19 17:20:39,903: INFO/MainProcess] Task optimization.reap_expired_leases[df182908-3a93-47bd-8a0f-c0d1db2e0909] received
-[2026-11-19 17:20:39,914: INFO/MainProcess] Task optimization.reap_expired_leases[df182908-3a93-47bd-8a0f-c0d1db2e0909] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-19 17:59:43,158: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-19 17:59:43,165: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-19 17:59:44,186: INFO/MainProcess] mingle: all alone
+[2026-11-19 17:59:44,226: INFO/MainProcess] celery@p2104180 ready.
+[2026-11-19 17:59:44,228: INFO/MainProcess] Task optimization.run[0f73d22c-b0e2-4159-b24a-c7fb4e186d2c] received
+[2026-11-19 18:03:07,692: INFO/MainProcess] Task optimization.run[0f73d22c-b0e2-4159-b24a-c7fb4e186d2c] succeeded in 203.45300000000134s: {'job_id': '94dedc8c-73ed-4a1e-97bd-fa2dabb9120d', 'status': 'completed', 'verdict': 'infeasible'}
+[2026-11-19 18:03:07,711: INFO/MainProcess] Task global_batch.reap_expired_leases[fe191e44-efb6-48f1-9606-249cec57bf0a] received
+[2026-11-19 18:03:07,723: INFO/MainProcess] Task global_batch.reap_expired_leases[fe191e44-efb6-48f1-9606-249cec57bf0a] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-19 18:03:07,726: INFO/MainProcess] Task optimization.reap_expired_leases[07910572-ecc8-4de9-8512-15e3cee74697] received
+[2026-11-19 18:03:07,741: INFO/MainProcess] Task optimization.reap_expired_leases[07910572-ecc8-4de9-8512-15e3cee74697] succeeded in 0.0s: {'requeued': ['d659f8c5-c187-4f79-95be-d2a8ae4eaec4'], 'failed': []}
+[2026-11-19 18:03:07,744: INFO/MainProcess] Task optimization.run[18116606-f6fd-444e-8e3b-18e69262e8d2] received
+
+worker: Hitting Ctrl+C again will initiate cold shutdown, terminating all running tasks!
+
+worker: Warm shutdown (MainProcess)
+[2026-11-19 18:11:36,558: INFO/MainProcess] Task optimization.run[18116606-f6fd-444e-8e3b-18e69262e8d2] succeeded in 508.8119999999981s: {'job_id': 'd659f8c5-c187-4f79-95be-d2a8ae4eaec4', 'status': 'completed', 'verdict': 'infeasible'}
+[2026-11-19 18:11:37,137: WARNING/MainProcess] Requeuing undeliverable message for queue 'default': No consumers.
