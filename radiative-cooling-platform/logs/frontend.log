@@ -1,0 +1,21 @@
+
+> frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.3.7 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.240.17:3000
+- Environments: .env.local
+✓ Ready in 942ms
+✓ Running next.config.ts took 64ms
+
+ GET /simulations/weather 200 in 585ms (next.js: 326ms, application-code: 260ms)
+ GET /materials 200 in 95ms (next.js: 57ms, application-code: 38ms)
+ GET /global-analysis 200 in 81ms (next.js: 51ms, application-code: 30ms)
+ GET /benchmarks/gagge 200 in 71ms (next.js: 47ms, application-code: 24ms)
+ GET /ops 200 in 76ms (next.js: 51ms, application-code: 25ms)
+ GET /optimizations 200 in 86ms (next.js: 60ms, application-code: 26ms)
+ GET /ops 200 in 32ms (next.js: 8ms, application-code: 24ms)
+ GET /benchmarks/gagge 200 in 36ms (next.js: 7ms, application-code: 29ms)
+ GET /optimizations 200 in 51ms (next.js: 9ms, application-code: 42ms)
+ GET /ops 200 in 32ms (next.js: 10ms, application-code: 23ms)
