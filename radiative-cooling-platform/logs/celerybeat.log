@@ -1,0 +1,4 @@
+[2026-11-20 11:50:19,549: INFO/MainProcess] beat: Starting...
+[2026-11-20 11:51:19,574: INFO/MainProcess] Scheduler: Sending due task reap-expired-job-leases (simulation.reap_expired_leases)
+[2026-11-20 11:51:19,590: INFO/MainProcess] Scheduler: Sending due task reap-expired-city-leases (global_batch.reap_expired_leases)
+[2026-11-20 11:51:19,593: INFO/MainProcess] Scheduler: Sending due task reap-expired-optimization-leases (optimization.reap_expired_leases)

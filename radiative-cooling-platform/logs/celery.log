@@ -1,0 +1,36 @@
+ 
+ -------------- celery@p2104180 v5.6.3 (recovery)
+--- ***** ----- 
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-20 11:50:14
+- *** --- * --- 
+- ** ---------- [config]
+- ** ---------- .> app:         radiative_cooling_worker:0x1aeb8a612b0
+- ** ---------- .> transport:   redis://localhost:6379/0
+- ** ---------- .> results:     redis://localhost:6379/1
+- *** --- * --- .> concurrency: 1 (solo)
+-- ******* ---- .> task events: OFF (enable -E to monitor tasks in this worker)
+--- ***** ----- 
+ -------------- [queues]
+                .> default          exchange=default(direct) key=default
+                .> global_large     exchange=default(direct) key=default
+                .> global_standard  exchange=default(direct) key=default
+                .> optimization     exchange=default(direct) key=default
+
+[tasks]
+  . global_batch.reap_expired_leases
+  . global_batch.run_city
+  . optimization.reap_expired_leases
+  . optimization.run
+  . simulation.reap_expired_leases
+  . simulation.run_weather
+
+[2026-11-20 11:50:14,389: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-20 11:50:14,393: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-20 11:50:15,426: INFO/MainProcess] mingle: all alone
+[2026-11-20 11:50:15,456: INFO/MainProcess] celery@p2104180 ready.
+[2026-11-20 11:51:19,592: INFO/MainProcess] Task simulation.reap_expired_leases[fc318595-c545-412e-812c-9cb243dc25f4] received
+[2026-11-20 11:51:19,640: INFO/MainProcess] Task simulation.reap_expired_leases[fc318595-c545-412e-812c-9cb243dc25f4] succeeded in 0.046000000000276486s: {'requeued': [], 'failed': []}
+[2026-11-20 11:51:19,644: INFO/MainProcess] Task global_batch.reap_expired_leases[317cfcf2-2d47-45f8-8785-9cad0475193d] received
+[2026-11-20 11:51:19,654: INFO/MainProcess] Task global_batch.reap_expired_leases[317cfcf2-2d47-45f8-8785-9cad0475193d] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-20 11:51:19,655: INFO/MainProcess] Task optimization.reap_expired_leases[cf1f6d3c-3ebf-4f77-ac08-e6454c97ad31] received
+[2026-11-20 11:51:19,716: INFO/MainProcess] Task optimization.reap_expired_leases[cf1f6d3c-3ebf-4f77-ac08-e6454c97ad31] succeeded in 0.06300000000010186s: {'requeued': [], 'failed': []}
