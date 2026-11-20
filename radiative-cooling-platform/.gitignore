@@ -55,4 +55,4 @@ backend/coverage.xml
 backend/htmlcov/
 backend/.pytest_cache/
 backend/celerybeat-schedule*
-logs/
+logs/*
