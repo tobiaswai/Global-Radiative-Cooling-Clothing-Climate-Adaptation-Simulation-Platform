@@ -494,3 +494,6 @@
 [2026-11-21 21:43:43,071: INFO/MainProcess] Scheduler: Sending due task reap-expired-city-leases (global_batch.reap_expired_leases)
 [2026-11-21 21:43:43,083: INFO/MainProcess] Scheduler: Sending due task reap-expired-job-leases (simulation.reap_expired_leases)
 [2026-11-21 21:43:43,158: INFO/MainProcess] Scheduler: Sending due task reap-expired-optimization-leases (optimization.reap_expired_leases)
+[2026-11-21 21:44:43,072: INFO/MainProcess] Scheduler: Sending due task reap-expired-city-leases (global_batch.reap_expired_leases)
+[2026-11-21 21:44:43,084: INFO/MainProcess] Scheduler: Sending due task reap-expired-job-leases (simulation.reap_expired_leases)
+[2026-11-21 21:44:43,158: INFO/MainProcess] Scheduler: Sending due task reap-expired-optimization-leases (optimization.reap_expired_leases)
