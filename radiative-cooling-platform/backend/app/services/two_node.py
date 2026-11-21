@@ -64,7 +64,7 @@ from app.services.psychrometrics import saturation_vapor_pressure_kpa
 
 # Version of the physics engine written into every response. Bump together
 # with MODEL_PARAMETER_SET_VERSION whenever results change.
-MODEL_VERSION = "0.10.0"  # Stage 12: two-zone garment longwave (ADR 0010)
+MODEL_VERSION = "0.11.0"  # Stage 13: walking speed in the relative air speed (ADR 0012)
 
 # Bound once at import. The registry is the single source of truth.
 SIGMA = _param("stefan_boltzmann_constant")
@@ -295,7 +295,8 @@ def calculate_fluxes(
     solar = solar_load(environment, material, area_ratio)
 
     # --- dry heat: clothing surface balance with the solar source -----------
-    convection_coefficient = convection_coefficient_w_m2k(environment.wind_speed_m_s)
+    air_speed = relative_air_speed_m_s(environment.wind_speed_m_s, person.walking_speed_m_s)
+    convection_coefficient = convection_coefficient_w_m2k(air_speed)
 
     zones = prepare_longwave_zones(material, environment, optics)
     if zones is not None:
@@ -379,7 +380,8 @@ def calculate_fluxes(
     )
     regulatory_evaporation = regulatory_sweating_g_h_m2 * LATENT_HEAT_PER_GRAM_HOUR
 
-    w_max = maximum_skin_wettedness(environment.wind_speed_m_s, clothing)
+    w_max = maximum_skin_wettedness(air_speed, clothing)
+
 
     if maximum_evaporation <= 0.0:
         skin_wettedness = w_max
@@ -630,7 +632,7 @@ def _integrate(
         ),
         assumptions_applied=(
             assumptions_applied(clothing, solar_split_available=solar_split_available)
-            + longwave_notes(optics) + zone_notes(initial_zones)
+            + longwave_notes(optics) + zone_notes(initial_zones) + activity_notes(person)
         ),
         body=BodyThermalSummary(
             body_mass_kg=person.body_mass_kg,
@@ -639,6 +641,7 @@ def _integrate(
             skin_heat_capacity_j_m2k=round(capacities.skin_j_m2k, 2),
             position=person.position,
             effective_radiation_area_ratio=area_ratio,
+            walking_speed_m_s=person.walking_speed_m_s,
         ),
     )
 
@@ -709,3 +712,25 @@ def _diagnostic_times(duration_seconds: float, output_times: np.ndarray) -> np.n
     if fine[-1] < duration_seconds:
         fine = np.append(fine, duration_seconds)
     return np.unique(np.concatenate([fine, output_times]))
+
+def relative_air_speed_m_s(wind_speed_m_s: float, walking_speed_m_s: float = 0.0) -> float:
+    """Relative air speed at the body (ADR 0012).
+
+    Root-mean-square relative speed for a walking direction uniformly
+    distributed with respect to the wind: sqrt(v_wind^2 + v_walk^2).
+    A stationary person returns the wind speed exactly (bit-identical results).
+    """
+    wind = max(0.0, wind_speed_m_s)
+    walk = max(0.0, walking_speed_m_s)
+    if walk == 0.0:
+        return wind
+    return sqrt(wind * wind + walk * walk)
+
+def activity_notes(person: PersonInput) -> list[str]:
+    if person.walking_speed_m_s <= 0.0:
+        return []
+    return [
+        f"walking at {person.walking_speed_m_s:.2f} m/s: relative air speed = "
+        "sqrt(v_wind^2 + v_walk^2) (RMS over a uniformly distributed walking "
+        "direction, ADR 0012); clothing pumping is not modelled"
+    ]

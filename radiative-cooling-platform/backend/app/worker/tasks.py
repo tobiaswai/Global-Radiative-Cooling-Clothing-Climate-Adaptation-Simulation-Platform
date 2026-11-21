@@ -573,8 +573,10 @@ def reap_expired_leases() -> dict:
         for city in stale:
             if city.batch_id not in queue_by_batch:
                 batch = db.get(GlobalBatchJob, city.batch_id)
-                queue_by_batch[city.batch_id] = load_stored_request(GlobalBatchCreate, batch.request_json)
-
+                # Stage 13 fix: the queue NAME, not the request object.
+                queue_by_batch[city.batch_id] = resolve_queue_name(
+                    load_stored_request(GlobalBatchCreate, batch.request_json)
+                )
             if city.retry_count < settings.CITY_MAX_RETRIES:
                 assert_city_transition(city.status, CityStatus.QUEUED)
                 city.status = CityStatus.QUEUED

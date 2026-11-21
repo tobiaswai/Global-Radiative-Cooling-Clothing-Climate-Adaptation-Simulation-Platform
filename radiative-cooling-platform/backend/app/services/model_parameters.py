@@ -23,6 +23,12 @@ Stage 5 changes
 * Renamed: effective_radiation_area_ratio -> effective_radiation_area_ratio_standing;
   added effective_radiation_area_ratio_sitting (selected by PersonInput.position).
 * Added: diffuse_hemisphere_fraction (ASHRAE 55 Appendix C shortwave geometry).
+
+Stage 11 changes
+----------------
+* Added: brutsaert_coefficient, brutsaert_exponent,
+  ground_convection_still_air_coefficient, ground_convection_wind_coefficient.
+  (Version bumped to 6.0.0 in Stage 13; the constants were added in Stage 11.)
 """
 
 from __future__ import annotations
@@ -38,7 +44,7 @@ from app.schemas.provenance import (
 )
 
 
-MODEL_PARAMETER_SET_VERSION = "5.0.0"
+MODEL_PARAMETER_SET_VERSION = "6.0.0"
 
 GAGGE_1986 = (
     "Gagge, Fobelets & Berglund (1986). A standard predictive index of "

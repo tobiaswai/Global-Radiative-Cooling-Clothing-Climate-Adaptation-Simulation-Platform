@@ -2,6 +2,88 @@
   "openapi": {
     "components": {
       "schemas": {
+        "AcceptanceCheck": {
+          "properties": {
+            "interval_coverage": {
+              "title": "Interval Coverage",
+              "type": "number"
+            },
+            "mae": {
+              "title": "Mae",
+              "type": "number"
+            },
+            "mae_threshold": {
+              "title": "Mae Threshold",
+              "type": "number"
+            },
+            "minimum_coverage": {
+              "title": "Minimum Coverage",
+              "type": "number"
+            },
+            "passed": {
+              "title": "Passed",
+              "type": "boolean"
+            },
+            "split": {
+              "title": "Split",
+              "type": "string"
+            },
+            "target": {
+              "title": "Target",
+              "type": "string"
+            }
+          },
+          "required": [
+            "split",
+            "target",
+            "mae",
+            "mae_threshold",
+            "interval_coverage",
+            "minimum_coverage",
+            "passed"
+          ],
+          "title": "AcceptanceCheck",
+          "type": "object"
+        },
+        "ActivityPreset": {
+          "properties": {
+            "label": {
+              "title": "Label",
+              "type": "string"
+            },
+            "met": {
+              "title": "Met",
+              "type": "number"
+            },
+            "name": {
+              "enum": [
+                "standing",
+                "slow_walk",
+                "moderate_walk",
+                "brisk_walk"
+              ],
+              "title": "Name",
+              "type": "string"
+            },
+            "reference": {
+              "title": "Reference",
+              "type": "string"
+            },
+            "walking_speed_m_s": {
+              "title": "Walking Speed M S",
+              "type": "number"
+            }
+          },
+          "required": [
+            "name",
+            "label",
+            "met",
+            "walking_speed_m_s",
+            "reference"
+          ],
+          "title": "ActivityPreset",
+          "type": "object"
+        },
         "BenchmarkMetric": {
           "properties": {
             "final_difference_c": {
@@ -143,6 +225,17 @@
             "skin_heat_capacity_j_m2k": {
               "title": "Skin Heat Capacity J M2K",
               "type": "number"
+            },
+            "walking_speed_m_s": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Walking Speed M S"
             }
           },
           "required": [
@@ -3074,6 +3167,88 @@
           "title": "MaterialListResponse",
           "type": "object"
         },
+        "MaterialPrediction": {
+          "properties": {
+            "message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Message"
+            },
+            "out_of_domain_features": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Out Of Domain Features",
+              "type": "array"
+            },
+            "parameters": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Parameters",
+              "type": "object"
+            },
+            "physics": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "type": "number"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Physics"
+            },
+            "source": {
+              "enum": [
+                "surrogate",
+                "physics",
+                "none"
+              ],
+              "title": "Source",
+              "type": "string"
+            },
+            "surrogate": {
+              "anyOf": [
+                {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/TargetPrediction"
+                  },
+                  "type": "object"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Surrogate"
+            },
+            "valid": {
+              "title": "Valid",
+              "type": "boolean"
+            },
+            "within_domain": {
+              "title": "Within Domain",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "parameters",
+            "valid",
+            "within_domain",
+            "source"
+          ],
+          "title": "MaterialPrediction",
+          "type": "object"
+        },
         "MaterialResponse": {
           "properties": {
             "created_at": {
@@ -5114,6 +5289,14 @@
               ],
               "title": "Position",
               "type": "string"
+            },
+            "walking_speed_m_s": {
+              "default": 0.0,
+              "description": "Walking speed over the ground; 0 = stationary",
+              "maximum": 2.5,
+              "minimum": 0.0,
+              "title": "Walking Speed M S",
+              "type": "number"
             }
           },
           "title": "PersonInput",
@@ -6339,6 +6522,1230 @@
           "title": "SpectrumSummary",
           "type": "object"
         },
+        "SplitReport": {
+          "properties": {
+            "fold_count": {
+              "title": "Fold Count",
+              "type": "integer"
+            },
+            "group_mae": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              "title": "Group Mae",
+              "type": "object"
+            },
+            "metrics": {
+              "items": {
+                "$ref": "#/components/schemas/TargetMetrics"
+              },
+              "title": "Metrics",
+              "type": "array"
+            },
+            "split": {
+              "title": "Split",
+              "type": "string"
+            }
+          },
+          "required": [
+            "split",
+            "fold_count",
+            "metrics",
+            "group_mae"
+          ],
+          "title": "SplitReport",
+          "type": "object"
+        },
+        "SurrogateDatasetChunkResponse": {
+          "properties": {
+            "attempt": {
+              "title": "Attempt",
+              "type": "integer"
+            },
+            "city_id": {
+              "title": "City Id",
+              "type": "string"
+            },
+            "elapsed_seconds": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Elapsed Seconds"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "month": {
+              "title": "Month",
+              "type": "integer"
+            },
+            "row_count": {
+              "title": "Row Count",
+              "type": "integer"
+            },
+            "skipped_sample_count": {
+              "title": "Skipped Sample Count",
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "running",
+                "completed",
+                "failed",
+                "cancelled"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "city_id",
+            "month",
+            "status",
+            "attempt",
+            "row_count",
+            "skipped_sample_count",
+            "elapsed_seconds",
+            "error_message"
+          ],
+          "title": "SurrogateDatasetChunkResponse",
+          "type": "object"
+        },
+        "SurrogateDatasetCreate": {
+          "properties": {
+            "base_material": {
+              "$ref": "#/components/schemas/MaterialInput"
+            },
+            "city_ids": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 100,
+              "minItems": 1,
+              "title": "City Ids",
+              "type": "array"
+            },
+            "control_material": {
+              "$ref": "#/components/schemas/MaterialInput"
+            },
+            "core_threshold_c": {
+              "default": 38.0,
+              "maximum": 41.0,
+              "minimum": 36.5,
+              "title": "Core Threshold C",
+              "type": "number"
+            },
+            "duration_minutes": {
+              "default": 120,
+              "maximum": 480.0,
+              "minimum": 30.0,
+              "title": "Duration Minutes",
+              "type": "integer"
+            },
+            "environment_assumptions": {
+              "$ref": "#/components/schemas/EnvironmentAssumptions"
+            },
+            "local_start_hour": {
+              "default": 12,
+              "maximum": 23.0,
+              "minimum": 0.0,
+              "title": "Local Start Hour",
+              "type": "integer"
+            },
+            "material_count": {
+              "default": 512,
+              "title": "Material Count",
+              "type": "integer"
+            },
+            "months": {
+              "items": {
+                "type": "integer"
+              },
+              "maxItems": 12,
+              "minItems": 1,
+              "title": "Months",
+              "type": "array"
+            },
+            "name": {
+              "default": "Surrogate training set",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Name",
+              "type": "string"
+            },
+            "output_interval_minutes": {
+              "default": 5,
+              "maximum": 30.0,
+              "minimum": 1.0,
+              "title": "Output Interval Minutes",
+              "type": "integer"
+            },
+            "person": {
+              "$ref": "#/components/schemas/PersonInput"
+            },
+            "sample_days_per_month": {
+              "default": 3,
+              "maximum": 10.0,
+              "minimum": 1.0,
+              "title": "Sample Days Per Month",
+              "type": "integer"
+            },
+            "seed": {
+              "default": 0,
+              "minimum": 0.0,
+              "title": "Seed",
+              "type": "integer"
+            },
+            "skin_threshold_c": {
+              "default": 35.0,
+              "maximum": 42.0,
+              "minimum": 30.0,
+              "title": "Skin Threshold C",
+              "type": "number"
+            },
+            "variables": {
+              "items": {
+                "$ref": "#/components/schemas/DecisionVariable"
+              },
+              "maxItems": 8,
+              "minItems": 1,
+              "title": "Variables",
+              "type": "array"
+            },
+            "year": {
+              "default": 2023,
+              "maximum": 2100.0,
+              "minimum": 1940.0,
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "city_ids",
+            "person",
+            "control_material",
+            "base_material",
+            "variables"
+          ],
+          "title": "SurrogateDatasetCreate",
+          "type": "object"
+        },
+        "SurrogateDatasetDetail": {
+          "properties": {
+            "chunks": {
+              "items": {
+                "$ref": "#/components/schemas/SurrogateDatasetChunkResponse"
+              },
+              "title": "Chunks",
+              "type": "array"
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At"
+            },
+            "completed_chunks": {
+              "title": "Completed Chunks",
+              "type": "integer"
+            },
+            "context_sha256": {
+              "title": "Context Sha256",
+              "type": "string"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "failed_chunks": {
+              "title": "Failed Chunks",
+              "type": "integer"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "parameter_fingerprint": {
+              "title": "Parameter Fingerprint",
+              "type": "string"
+            },
+            "row_count": {
+              "title": "Row Count",
+              "type": "integer"
+            },
+            "spec": {
+              "$ref": "#/components/schemas/SurrogateDatasetCreate"
+            },
+            "status": {
+              "enum": [
+                "running",
+                "finalizing",
+                "completed",
+                "partial_completed",
+                "failed",
+                "cancelled"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "total_chunks": {
+              "title": "Total Chunks",
+              "type": "integer"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            },
+            "valid_material_count": {
+              "title": "Valid Material Count",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "status",
+            "total_chunks",
+            "completed_chunks",
+            "failed_chunks",
+            "row_count",
+            "valid_material_count",
+            "model_version",
+            "parameter_fingerprint",
+            "context_sha256",
+            "error_message",
+            "created_at",
+            "updated_at",
+            "completed_at",
+            "spec",
+            "chunks"
+          ],
+          "title": "SurrogateDatasetDetail",
+          "type": "object"
+        },
+        "SurrogateDatasetEstimate": {
+          "properties": {
+            "chunk_count": {
+              "title": "Chunk Count",
+              "type": "integer"
+            },
+            "material_count": {
+              "title": "Material Count",
+              "type": "integer"
+            },
+            "rejected_material_count": {
+              "title": "Rejected Material Count",
+              "type": "integer"
+            },
+            "thermal_simulation_count": {
+              "title": "Thermal Simulation Count",
+              "type": "integer"
+            },
+            "valid_material_count": {
+              "title": "Valid Material Count",
+              "type": "integer"
+            },
+            "weather_sample_count": {
+              "title": "Weather Sample Count",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "chunk_count",
+            "weather_sample_count",
+            "material_count",
+            "valid_material_count",
+            "rejected_material_count",
+            "thermal_simulation_count"
+          ],
+          "title": "SurrogateDatasetEstimate",
+          "type": "object"
+        },
+        "SurrogateDatasetListResponse": {
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/SurrogateDatasetResponse"
+              },
+              "title": "Items",
+              "type": "array"
+            },
+            "limit": {
+              "title": "Limit",
+              "type": "integer"
+            },
+            "offset": {
+              "title": "Offset",
+              "type": "integer"
+            },
+            "total": {
+              "title": "Total",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "items",
+            "total",
+            "limit",
+            "offset"
+          ],
+          "title": "SurrogateDatasetListResponse",
+          "type": "object"
+        },
+        "SurrogateDatasetResponse": {
+          "properties": {
+            "completed_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At"
+            },
+            "completed_chunks": {
+              "title": "Completed Chunks",
+              "type": "integer"
+            },
+            "context_sha256": {
+              "title": "Context Sha256",
+              "type": "string"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "failed_chunks": {
+              "title": "Failed Chunks",
+              "type": "integer"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "parameter_fingerprint": {
+              "title": "Parameter Fingerprint",
+              "type": "string"
+            },
+            "row_count": {
+              "title": "Row Count",
+              "type": "integer"
+            },
+            "status": {
+              "enum": [
+                "running",
+                "finalizing",
+                "completed",
+                "partial_completed",
+                "failed",
+                "cancelled"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "total_chunks": {
+              "title": "Total Chunks",
+              "type": "integer"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            },
+            "valid_material_count": {
+              "title": "Valid Material Count",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "status",
+            "total_chunks",
+            "completed_chunks",
+            "failed_chunks",
+            "row_count",
+            "valid_material_count",
+            "model_version",
+            "parameter_fingerprint",
+            "context_sha256",
+            "error_message",
+            "created_at",
+            "updated_at",
+            "completed_at"
+          ],
+          "title": "SurrogateDatasetResponse",
+          "type": "object"
+        },
+        "SurrogateModelDetail": {
+          "properties": {
+            "accepted": {
+              "title": "Accepted",
+              "type": "boolean"
+            },
+            "base_parameters": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Base Parameters",
+              "type": "object"
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "dataset_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset Id"
+            },
+            "duration_minutes": {
+              "title": "Duration Minutes",
+              "type": "integer"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "headline_mae": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Headline Mae",
+              "type": "object"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "local_start_hour": {
+              "title": "Local Start Hour",
+              "type": "integer"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "months": {
+              "items": {
+                "type": "integer"
+              },
+              "title": "Months",
+              "type": "array"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "parameter_fingerprint": {
+              "title": "Parameter Fingerprint",
+              "type": "string"
+            },
+            "report": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ValidationReport"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "stale": {
+              "title": "Stale",
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "training",
+                "completed",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "targets": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Targets",
+              "type": "array"
+            },
+            "training": {
+              "$ref": "#/components/schemas/SurrogateTrainingCreate"
+            },
+            "training_cities": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Training Cities",
+              "type": "array"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            },
+            "variables": {
+              "items": {
+                "$ref": "#/components/schemas/DecisionVariable"
+              },
+              "title": "Variables",
+              "type": "array"
+            },
+            "year": {
+              "title": "Year",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "dataset_id",
+            "status",
+            "accepted",
+            "targets",
+            "model_version",
+            "parameter_fingerprint",
+            "stale",
+            "headline_mae",
+            "error_message",
+            "created_at",
+            "updated_at",
+            "completed_at",
+            "training",
+            "report",
+            "variables",
+            "base_parameters",
+            "training_cities",
+            "year",
+            "months",
+            "local_start_hour",
+            "duration_minutes"
+          ],
+          "title": "SurrogateModelDetail",
+          "type": "object"
+        },
+        "SurrogateModelListResponse": {
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/components/schemas/SurrogateModelResponse"
+              },
+              "title": "Items",
+              "type": "array"
+            },
+            "limit": {
+              "title": "Limit",
+              "type": "integer"
+            },
+            "offset": {
+              "title": "Offset",
+              "type": "integer"
+            },
+            "total": {
+              "title": "Total",
+              "type": "integer"
+            }
+          },
+          "required": [
+            "items",
+            "total",
+            "limit",
+            "offset"
+          ],
+          "title": "SurrogateModelListResponse",
+          "type": "object"
+        },
+        "SurrogateModelResponse": {
+          "properties": {
+            "accepted": {
+              "title": "Accepted",
+              "type": "boolean"
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At"
+            },
+            "created_at": {
+              "format": "date-time",
+              "title": "Created At",
+              "type": "string"
+            },
+            "dataset_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Dataset Id"
+            },
+            "error_message": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error Message"
+            },
+            "headline_mae": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Headline Mae",
+              "type": "object"
+            },
+            "id": {
+              "title": "Id",
+              "type": "string"
+            },
+            "model_version": {
+              "title": "Model Version",
+              "type": "string"
+            },
+            "name": {
+              "title": "Name",
+              "type": "string"
+            },
+            "parameter_fingerprint": {
+              "title": "Parameter Fingerprint",
+              "type": "string"
+            },
+            "stale": {
+              "title": "Stale",
+              "type": "boolean"
+            },
+            "status": {
+              "enum": [
+                "queued",
+                "training",
+                "completed",
+                "failed"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "targets": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Targets",
+              "type": "array"
+            },
+            "updated_at": {
+              "format": "date-time",
+              "title": "Updated At",
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "dataset_id",
+            "status",
+            "accepted",
+            "targets",
+            "model_version",
+            "parameter_fingerprint",
+            "stale",
+            "headline_mae",
+            "error_message",
+            "created_at",
+            "updated_at",
+            "completed_at"
+          ],
+          "title": "SurrogateModelResponse",
+          "type": "object"
+        },
+        "SurrogatePredictRequest": {
+          "properties": {
+            "city_id": {
+              "minLength": 1,
+              "title": "City Id",
+              "type": "string"
+            },
+            "materials": {
+              "items": {
+                "additionalProperties": {
+                  "type": "number"
+                },
+                "type": "object"
+              },
+              "maxItems": 500,
+              "minItems": 1,
+              "title": "Materials",
+              "type": "array"
+            },
+            "mode": {
+              "default": "surrogate",
+              "enum": [
+                "surrogate",
+                "physics",
+                "both"
+              ],
+              "title": "Mode",
+              "type": "string"
+            },
+            "model_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            },
+            "physics_fallback": {
+              "default": true,
+              "title": "Physics Fallback",
+              "type": "boolean"
+            },
+            "sample_date": {
+              "format": "date",
+              "title": "Sample Date",
+              "type": "string"
+            }
+          },
+          "required": [
+            "city_id",
+            "sample_date",
+            "materials"
+          ],
+          "title": "SurrogatePredictRequest",
+          "type": "object"
+        },
+        "SurrogatePredictResponse": {
+          "properties": {
+            "accepted": {
+              "title": "Accepted",
+              "type": "boolean"
+            },
+            "city_id": {
+              "title": "City Id",
+              "type": "string"
+            },
+            "city_in_training": {
+              "title": "City In Training",
+              "type": "boolean"
+            },
+            "duration_minutes": {
+              "title": "Duration Minutes",
+              "type": "integer"
+            },
+            "elapsed_ms": {
+              "title": "Elapsed Ms",
+              "type": "number"
+            },
+            "model_id": {
+              "title": "Model Id",
+              "type": "string"
+            },
+            "model_name": {
+              "title": "Model Name",
+              "type": "string"
+            },
+            "physics_evaluations": {
+              "title": "Physics Evaluations",
+              "type": "integer"
+            },
+            "physics_limit": {
+              "title": "Physics Limit",
+              "type": "integer"
+            },
+            "predictions": {
+              "items": {
+                "$ref": "#/components/schemas/MaterialPrediction"
+              },
+              "title": "Predictions",
+              "type": "array"
+            },
+            "sample_date": {
+              "format": "date",
+              "title": "Sample Date",
+              "type": "string"
+            },
+            "stale": {
+              "title": "Stale",
+              "type": "boolean"
+            },
+            "start_time_local": {
+              "format": "date-time",
+              "title": "Start Time Local",
+              "type": "string"
+            },
+            "warnings": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Warnings",
+              "type": "array"
+            },
+            "weather_features": {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "title": "Weather Features",
+              "type": "object"
+            },
+            "weather_payload_sha256": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Weather Payload Sha256"
+            }
+          },
+          "required": [
+            "model_id",
+            "model_name",
+            "accepted",
+            "stale",
+            "city_id",
+            "sample_date",
+            "city_in_training",
+            "start_time_local",
+            "duration_minutes",
+            "weather_features",
+            "weather_payload_sha256",
+            "predictions",
+            "physics_evaluations",
+            "physics_limit",
+            "elapsed_ms",
+            "warnings"
+          ],
+          "title": "SurrogatePredictResponse",
+          "type": "object"
+        },
+        "SurrogateTrainingCreate": {
+          "properties": {
+            "dataset_id": {
+              "title": "Dataset Id",
+              "type": "string"
+            },
+            "l2_regularization": {
+              "default": 0.0,
+              "minimum": 0.0,
+              "title": "L2 Regularization",
+              "type": "number"
+            },
+            "learning_rate": {
+              "default": 0.08,
+              "exclusiveMinimum": 0.0,
+              "maximum": 1.0,
+              "title": "Learning Rate",
+              "type": "number"
+            },
+            "lower_quantile": {
+              "default": 0.1,
+              "exclusiveMaximum": 0.5,
+              "exclusiveMinimum": 0.0,
+              "title": "Lower Quantile",
+              "type": "number"
+            },
+            "mae_thresholds": {
+              "additionalProperties": {
+                "type": "number"
+              },
+              "title": "Mae Thresholds",
+              "type": "object"
+            },
+            "max_iter": {
+              "default": 300,
+              "maximum": 2000.0,
+              "minimum": 10.0,
+              "title": "Max Iter",
+              "type": "integer"
+            },
+            "max_leaf_nodes": {
+              "default": 31,
+              "maximum": 255.0,
+              "minimum": 4.0,
+              "title": "Max Leaf Nodes",
+              "type": "integer"
+            },
+            "max_rows": {
+              "anyOf": [
+                {
+                  "minimum": 1000.0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Max Rows"
+            },
+            "min_samples_leaf": {
+              "default": 40,
+              "maximum": 10000.0,
+              "minimum": 1.0,
+              "title": "Min Samples Leaf",
+              "type": "integer"
+            },
+            "minimum_interval_coverage": {
+              "default": 0.75,
+              "exclusiveMinimum": 0.0,
+              "maximum": 1.0,
+              "title": "Minimum Interval Coverage",
+              "type": "number"
+            },
+            "name": {
+              "default": "Surrogate model",
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Name",
+              "type": "string"
+            },
+            "random_seed": {
+              "default": 0,
+              "title": "Random Seed",
+              "type": "integer"
+            },
+            "targets": {
+              "items": {
+                "enum": [
+                  "mean_skin_temperature_c",
+                  "peak_skin_temperature_c",
+                  "peak_core_temperature_c",
+                  "skin_exceedance_fraction",
+                  "core_exceedance_fraction",
+                  "skin_excess_degree_hours",
+                  "core_excess_degree_hours",
+                  "mean_skin_cooling_c",
+                  "mean_core_cooling_c"
+                ],
+                "type": "string"
+              },
+              "maxItems": 9,
+              "minItems": 1,
+              "title": "Targets",
+              "type": "array"
+            },
+            "upper_quantile": {
+              "default": 0.9,
+              "exclusiveMaximum": 1.0,
+              "exclusiveMinimum": 0.5,
+              "title": "Upper Quantile",
+              "type": "number"
+            },
+            "validation_splits": {
+              "items": {
+                "enum": [
+                  "grouped_kfold",
+                  "leave_one_city",
+                  "leave_one_season"
+                ],
+                "type": "string"
+              },
+              "title": "Validation Splits",
+              "type": "array"
+            }
+          },
+          "required": [
+            "dataset_id"
+          ],
+          "title": "SurrogateTrainingCreate",
+          "type": "object"
+        },
+        "TargetMetrics": {
+          "properties": {
+            "count": {
+              "title": "Count",
+              "type": "integer"
+            },
+            "interval_coverage": {
+              "title": "Interval Coverage",
+              "type": "number"
+            },
+            "mae": {
+              "title": "Mae",
+              "type": "number"
+            },
+            "mean_interval_width": {
+              "title": "Mean Interval Width",
+              "type": "number"
+            },
+            "r2": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "R2"
+            },
+            "rmse": {
+              "title": "Rmse",
+              "type": "number"
+            },
+            "target": {
+              "title": "Target",
+              "type": "string"
+            }
+          },
+          "required": [
+            "target",
+            "count",
+            "mae",
+            "rmse",
+            "r2",
+            "interval_coverage",
+            "mean_interval_width"
+          ],
+          "title": "TargetMetrics",
+          "type": "object"
+        },
+        "TargetPrediction": {
+          "properties": {
+            "lower": {
+              "title": "Lower",
+              "type": "number"
+            },
+            "upper": {
+              "title": "Upper",
+              "type": "number"
+            },
+            "value": {
+              "title": "Value",
+              "type": "number"
+            }
+          },
+          "required": [
+            "value",
+            "lower",
+            "upper"
+          ],
+          "title": "TargetPrediction",
+          "type": "object"
+        },
         "TimeSeriesPoint": {
           "properties": {
             "absorbed_solar_w_m2": {
@@ -6535,6 +7942,95 @@
             "type"
           ],
           "title": "ValidationError",
+          "type": "object"
+        },
+        "ValidationReport": {
+          "properties": {
+            "acceptance": {
+              "items": {
+                "$ref": "#/components/schemas/AcceptanceCheck"
+              },
+              "title": "Acceptance",
+              "type": "array"
+            },
+            "feature_columns": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Feature Columns",
+              "type": "array"
+            },
+            "nominal_interval_coverage": {
+              "title": "Nominal Interval Coverage",
+              "type": "number"
+            },
+            "passed": {
+              "title": "Passed",
+              "type": "boolean"
+            },
+            "physics_seconds_per_simulation": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Physics Seconds Per Simulation"
+            },
+            "prediction_microseconds_per_row": {
+              "title": "Prediction Microseconds Per Row",
+              "type": "number"
+            },
+            "row_count": {
+              "title": "Row Count",
+              "type": "integer"
+            },
+            "sklearn_version": {
+              "title": "Sklearn Version",
+              "type": "string"
+            },
+            "splits": {
+              "items": {
+                "$ref": "#/components/schemas/SplitReport"
+              },
+              "title": "Splits",
+              "type": "array"
+            },
+            "targets": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Targets",
+              "type": "array"
+            },
+            "training_cities": {
+              "items": {
+                "type": "string"
+              },
+              "title": "Training Cities",
+              "type": "array"
+            },
+            "training_seconds": {
+              "title": "Training Seconds",
+              "type": "number"
+            }
+          },
+          "required": [
+            "row_count",
+            "feature_columns",
+            "targets",
+            "training_cities",
+            "splits",
+            "acceptance",
+            "passed",
+            "nominal_interval_coverage",
+            "training_seconds",
+            "prediction_microseconds_per_row",
+            "sklearn_version"
+          ],
+          "title": "ValidationReport",
           "type": "object"
         },
         "WeatherGap": {
@@ -8083,6 +9579,31 @@
           ]
         }
       },
+      "/api/v1/model/activity-presets": {
+        "get": {
+          "operationId": "get_activity_presets_api_v1_model_activity_presets_get",
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/ActivityPreset"
+                    },
+                    "title": "Response Get Activity Presets Api V1 Model Activity Presets Get",
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            }
+          },
+          "summary": "Get Activity Presets",
+          "tags": [
+            "model"
+          ]
+        }
+      },
       "/api/v1/model/environment-assumptions/defaults": {
         "get": {
           "operationId": "get_default_environment_assumptions_api_v1_model_environment_assumptions_defaults_get",
@@ -8886,6 +10407,446 @@
           "summary": "Run Weather Simulation",
           "tags": [
             "simulations"
+          ]
+        }
+      },
+      "/api/v1/surrogate/datasets": {
+        "get": {
+          "operationId": "list_datasets_api_v1_surrogate_datasets_get",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "default": 20,
+                "maximum": 100,
+                "minimum": 1,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Offset",
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateDatasetListResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List Datasets",
+          "tags": [
+            "surrogate"
+          ]
+        },
+        "post": {
+          "operationId": "create_dataset_api_v1_surrogate_datasets_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurrogateDatasetCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "202": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateDatasetResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Create Dataset",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/datasets/estimate": {
+        "post": {
+          "operationId": "estimate_dataset_api_v1_surrogate_datasets_estimate_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurrogateDatasetCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateDatasetEstimate"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Estimate Dataset",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/datasets/{dataset_id}": {
+        "get": {
+          "operationId": "get_dataset_api_v1_surrogate_datasets__dataset_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "dataset_id",
+              "required": true,
+              "schema": {
+                "title": "Dataset Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateDatasetDetail"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Dataset",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/datasets/{dataset_id}/cancel": {
+        "post": {
+          "operationId": "cancel_dataset_api_v1_surrogate_datasets__dataset_id__cancel_post",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "dataset_id",
+              "required": true,
+              "schema": {
+                "title": "Dataset Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateDatasetResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Cancel Dataset",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/models": {
+        "get": {
+          "operationId": "list_models_api_v1_surrogate_models_get",
+          "parameters": [
+            {
+              "in": "query",
+              "name": "limit",
+              "required": false,
+              "schema": {
+                "default": 20,
+                "maximum": 100,
+                "minimum": 1,
+                "title": "Limit",
+                "type": "integer"
+              }
+            },
+            {
+              "in": "query",
+              "name": "offset",
+              "required": false,
+              "schema": {
+                "default": 0,
+                "minimum": 0,
+                "title": "Offset",
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateModelListResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "List Models",
+          "tags": [
+            "surrogate"
+          ]
+        },
+        "post": {
+          "operationId": "train_model_api_v1_surrogate_models_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurrogateTrainingCreate"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "202": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateModelResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Train Model",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/models/{model_id}": {
+        "get": {
+          "operationId": "get_model_api_v1_surrogate_models__model_id__get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "model_id",
+              "required": true,
+              "schema": {
+                "title": "Model Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogateModelDetail"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Model",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/models/{model_id}/report.md": {
+        "get": {
+          "operationId": "get_model_report_api_v1_surrogate_models__model_id__report_md_get",
+          "parameters": [
+            {
+              "in": "path",
+              "name": "model_id",
+              "required": true,
+              "schema": {
+                "title": "Model Id",
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "content": {
+                "text/plain": {
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Get Model Report",
+          "tags": [
+            "surrogate"
+          ]
+        }
+      },
+      "/api/v1/surrogate/predict": {
+        "post": {
+          "operationId": "predict_api_v1_surrogate_predict_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SurrogatePredictRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/SurrogatePredictResponse"
+                  }
+                }
+              },
+              "description": "Successful Response"
+            },
+            "422": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              },
+              "description": "Validation Error"
+            }
+          },
+          "summary": "Predict",
+          "tags": [
+            "surrogate"
           ]
         }
       },

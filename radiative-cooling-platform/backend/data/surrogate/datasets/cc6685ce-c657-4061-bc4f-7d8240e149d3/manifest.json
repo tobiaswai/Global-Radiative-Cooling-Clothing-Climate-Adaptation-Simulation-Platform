@@ -1,0 +1,157 @@
+{
+  "chunks": [
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\cc6685ce-c657-4061-bc4f-7d8240e149d3\\part-dubai-07.parquet",
+      "month": 7,
+      "rows": 32,
+      "sha256": "116b2f35d4de5e730ae6eed2679545e815483e88f5940a94471275fb5e32a928",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "84288270c880e8d5832ab25a89f257e83754432ac93a1b182217ba2cc2d3d799"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\cc6685ce-c657-4061-bc4f-7d8240e149d3\\part-dubai-01.parquet",
+      "month": 1,
+      "rows": 32,
+      "sha256": "1152775c5d8a86813c7affbcabf10f32b992a23f90d8897dc9182f57fd8ca7ed",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ec12fe5a673188963873da812ab2f2c06d7d7cb131a10abd537a090da9931f11"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\cc6685ce-c657-4061-bc4f-7d8240e149d3\\part-sydney-01.parquet",
+      "month": 1,
+      "rows": 32,
+      "sha256": "63bec1a796435db956e1cb6dced236ab4ad865f90c6bd753cb220a413f1b9cbc",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a3b825ca0a026c667e8efcb16ad873df66e7f75348a920aa6f43fd05f90b8229"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\cc6685ce-c657-4061-bc4f-7d8240e149d3\\part-sydney-07.parquet",
+      "month": 7,
+      "rows": 32,
+      "sha256": "1743a21c520fdbcba51dcbb90385f56c3ca0342bc34dfc7d4dc18dfc19477091",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "fe0c96489bdf8e39e45da7d89dc0262e094bcd7dac09ebe7845738f315d36863"
+    }
+  ],
+  "context_sha256": "549e9f78dbf7f0a74e9f56aeac4baf4beb817619c62cee9003917d86e4b7e965",
+  "dataset_id": "cc6685ce-c657-4061-bc4f-7d8240e149d3",
+  "materials_file": "materials.parquet",
+  "model_version": "0.11.0",
+  "parameter_fingerprint": "38ef6d3a2f68eb94b7596c80af61020156ae0b15ec9d6485bde6cefdfd8d4796",
+  "row_count": 128,
+  "spec": {
+    "base_material": {
+      "absorbed_solar_to_body_fraction": 0.35,
+      "clothing_area_factor": null,
+      "clothing_insulation_clo": 0.4,
+      "evaporative_resistance_m2pa_w": null,
+      "infrared_emissivity": 0.95,
+      "infrared_emissivity_ground_facing": null,
+      "infrared_emissivity_window": null,
+      "infrared_transmittance": 0.0,
+      "material_version_id": null,
+      "name": "RC candidate",
+      "parameter_sources": null,
+      "projected_solar_area_factor": 0.25,
+      "solar_reflectance": 0.9,
+      "solar_transmittance": 0.0,
+      "source_reference": null,
+      "source_type": null
+    },
+    "city_ids": [
+      "dubai",
+      "sydney"
+    ],
+    "control_material": {
+      "absorbed_solar_to_body_fraction": 0.35,
+      "clothing_area_factor": null,
+      "clothing_insulation_clo": 0.5,
+      "evaporative_resistance_m2pa_w": null,
+      "infrared_emissivity": 0.9,
+      "infrared_emissivity_ground_facing": null,
+      "infrared_emissivity_window": null,
+      "infrared_transmittance": 0.0,
+      "material_version_id": null,
+      "name": "Conventional clothing",
+      "parameter_sources": null,
+      "projected_solar_area_factor": 0.25,
+      "solar_reflectance": 0.3,
+      "solar_transmittance": 0.0,
+      "source_reference": null,
+      "source_type": null
+    },
+    "core_threshold_c": 38.0,
+    "duration_minutes": 120,
+    "environment_assumptions": {
+      "fixed_sky_offset_k": 15.0,
+      "ground_albedo": 0.2,
+      "ground_emissivity": 0.95,
+      "ground_soil_conductance_w_m2k": 15.0,
+      "mean_radiant_temperature_method": "ground_energy_balance",
+      "radiation_time_convention": "instantaneous_linear",
+      "sky_offset_base_k": 5.0,
+      "sky_offset_humidity_range_k": 10.0,
+      "sky_temperature_method": "brutsaert_cloud",
+      "sky_view_factor": 0.5,
+      "solar_mrt_gain_cap_k": 15.0,
+      "solar_mrt_gain_k_per_w_m2": 0.012,
+      "wind_speed_scaling_factor": 1.0,
+      "zone_view_separation": 0.5
+    },
+    "local_start_hour": 12,
+    "material_count": 32,
+    "months": [
+      1,
+      7
+    ],
+    "name": "S13-D3 smoke",
+    "output_interval_minutes": 5,
+    "person": {
+      "body_mass_kg": 70.0,
+      "body_surface_area_m2": 1.8,
+      "initial_core_temperature_c": 36.8,
+      "initial_skin_temperature_c": 33.7,
+      "met": 2.8,
+      "position": "standing",
+      "walking_speed_m_s": 1.11
+    },
+    "sample_days_per_month": 1,
+    "seed": 0,
+    "skin_threshold_c": 35.0,
+    "variables": [
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.3,
+        "name": "solar_reflectance",
+        "upper": 0.98
+      },
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.05,
+        "name": "infrared_emissivity",
+        "upper": 0.99
+      },
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.05,
+        "name": "infrared_emissivity_ground_facing",
+        "upper": 0.99
+      },
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.2,
+        "name": "clothing_insulation_clo",
+        "upper": 0.8
+      }
+    ],
+    "year": 2023
+  }
+}

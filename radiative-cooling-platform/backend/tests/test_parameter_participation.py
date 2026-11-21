@@ -56,6 +56,7 @@ PERSON_PERTURBATIONS = {
     "initial_core_temperature_c": 37.4,
     "initial_skin_temperature_c": 31.0,
     "position": "sitting",  # Stage 5
+    "walking_speed_m_s": 1.11,
 }
 
 

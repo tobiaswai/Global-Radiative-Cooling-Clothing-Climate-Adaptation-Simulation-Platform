@@ -62,10 +62,15 @@ def is_selective_study(request: OptimizationCreate) -> bool:
         request.base_material.infrared_emissivity_window is not None
     )
 
+GROUND_IR_PAIRS: tuple[tuple[str, str], ...] = (
+    ("infrared_emissivity_ground_facing", "infrared_transmittance"),
+)
 
-def optical_pairs(request: OptimizationCreate) -> tuple[tuple[str, str], ...]:
-    return SOLAR_PAIRS + (BAND_IR_PAIRS if is_selective_study(request) else GRAY_IR_PAIRS)
-
+def has_ground_facing_zone(request: OptimizationCreate) -> bool:
+    names = {v.name for v in request.variables}
+    return "infrared_emissivity_ground_facing" in names or (
+        request.base_material.infrared_emissivity_ground_facing is not None
+    )
 
 def build_search_space(request: OptimizationCreate) -> SearchSpace:
     names = tuple(v.name for v in request.variables)
@@ -100,17 +105,6 @@ def build_search_space(request: OptimizationCreate) -> SearchSpace:
         upper=np.asarray([upper[n] for n in names], dtype=float),
         linear_pairs=tuple(pairs),
         directions=tuple(demand_direction(v) for v in request.variables),
-    )
-
-GROUND_IR_PAIRS: tuple[tuple[str, str], ...] = (
-    ("infrared_emissivity_ground_facing", "infrared_transmittance"),
-)
-
-
-def has_ground_facing_zone(request: OptimizationCreate) -> bool:
-    names = {v.name for v in request.variables}
-    return "infrared_emissivity_ground_facing" in names or (
-        request.base_material.infrared_emissivity_ground_facing is not None
     )
 
 

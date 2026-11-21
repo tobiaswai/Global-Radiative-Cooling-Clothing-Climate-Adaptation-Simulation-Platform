@@ -13,7 +13,8 @@ from datetime import datetime, timedelta
 
 from app.core.cities import get_city
 from app.schemas.optimization import EvaluationMetrics, OptimizationCreate
-from app.schemas.simulation import MaterialInput, ScenarioResult
+from app.schemas.environment import EnvironmentAssumptions
+from app.schemas.simulation import MaterialInput, PersonInput, ScenarioResult
 from app.services.annual_sampling import build_weighted_sample_days
 from app.services.climate_adaptation import get_next_month_start
 from app.services.optimization.metrics import compute_metrics
@@ -41,11 +42,26 @@ class PreparationReport:
     skipped: list[dict] = field(default_factory=list)
     weather_payload_sha256: dict[str, str | None] = field(default_factory=dict)
 
+@dataclass(frozen=True)
+class SampleWindowSpec:
+    """Everything prepare_samples reads; OptimizationCreate satisfies it as well."""
+
+    city_id: str
+    year: int
+    months: tuple[int, ...]
+    sample_days_per_month: int
+    local_start_hour: int
+    duration_minutes: int
+    output_interval_minutes: int
+    person: PersonInput
+    control_material: MaterialInput
+    environment_assumptions: EnvironmentAssumptions
 
 async def prepare_samples(
-    request: OptimizationCreate,
+    request: OptimizationCreate | SampleWindowSpec,
     *,
     progress: Callable[[int, str], None] | None = None,
+    require_samples: bool = True,
 ) -> PreparationReport:
     city = get_city(request.city_id)
     report = PreparationReport(samples=[])
@@ -92,7 +108,7 @@ async def prepare_samples(
 
             report.samples.append(PreparedSample(start, weight, interpolator, control))
 
-    if not report.samples:
+    if require_samples and not report.samples:
         raise RuntimeError("No usable sample day: every sample failed weather validation")
 
     return report

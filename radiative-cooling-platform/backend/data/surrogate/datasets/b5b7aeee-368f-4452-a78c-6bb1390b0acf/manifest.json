@@ -1,0 +1,1873 @@
+{
+  "chunks": [
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "ff8723b7421d7a99ccf62874f93e5f2ec6d1c637a5f65bd47999ab2d82de6a47",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "579aa3e51b2fcad48fde1d49a441b5f85e361274d89b15a3722523aa93fd025f"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "c5fa1392e77297be626d163e025690e68c67fb42da0cf9d9c1e5a60a4a0a1ab3",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f812eb544d16b92ed2648039dae551cfcc0f7f1e485090ba827a00d0abff03f6"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "688c7988fa248ac74e6ec9e7cc8c9a08a73ff003557909c775362af521406846",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "aa7edfc95f7f27ce47d1e5358d2180e1f1677389d6b7a464c218df39e45d81f8"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "a0c52c3bb536cc9786329b4b358de4941005db245884c40fc730f93d8b59109b",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "192c5fc187a073ec74fe734021db29ade6517d72b4cc1eac0e3ca62e6812ac97"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "724928664090c7e32fbe8232079871825c3b7bfb2bd8d84623a3ca47044e5977",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "63ef8c33438549d340b47af0759e2e4110387e39b2c76a038c7d1d82e690af4e"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "003381b38b47aa9b37624aafdafe43625d885d752d11b087f3dcca51ffd73cfe",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "4a4143c232187127cafb31556398f3a81f81bf0765ffa75950f4e207c8bf6f36"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "31236dd85ed0cdc5b42a5ee04c0c7debfb956eea2ef8b5a066ac3310aa4fc6e3",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f9adb3bbeeb1e6bc9a679375772e6026b8433a9852e14e39d1c9c792b3df1cf5"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "6058f589b924573eee9089ad810270534cfbf1fcf241bf67a78fbbf74958d6e9",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f773bea6bb7829af257d8e7bd3d15d366336abacc098dc4db538a3973145e6ff"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "d21593ca35e063afa0a99abdd27bde1341496ad7f4809ad6e5472ea66337a995",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "be0d740efd8e708542461c5ed11e6ab059c2af572ebb62dc78e9515187b29b5f"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "f5eb8baf8806bfa25404a60e1536f8274efda0d72464154d72be9b16bce55c2f",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "1f79bc44018e2917528f1d723b753f1db6aa24ba777e9ece676eef78b4dd8dd0"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "5f933b7a515e0cab3336164eb0ccd62be314f715e2231d278038bee6df67843e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "82626ad5a55d7dd131d2a529715fa8ea9d360cee6d9875636a61aa95850c878d"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "4ca0fde98f78a598a659555d399c7940a5dec6e911dbb5b3365682fd6d6cabd9",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "815a1542a987225b352d86f5d2323d7f942dea97477bdf2c087b740fe7f49ed6"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "c194f7844c95468b53588c34aca801651b28d6a6a9201bf75802f8f106204fd3",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "729856b9befa4360b179f718c30954fdebf08e51039065b91322d5fecb796cb8"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "9b31470f8d5de5e5c0183202e9c191049098e8638835995c1a666e3236b6e981",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f2f1dc502f977bf1bf84f225c2982f09021a46742a91baa1583f2dfc1039b421"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "6fe9b0140183f4f5c1df697e5390ea1c892f101c7ffc0466ce26505932579220",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "287bf432e9e8dd21d784fd2ef893eead7d092b138998db7065d3bd7f639421e0"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "b4fff1793fd4290e6ba58142608d0e7eca994408ec5d5139bcb291faf1ae474e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e0bfb01e3b1042ba189e8e1cc9550af1ad1f2eaddad8e2b44faffae2c4e36f76"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "c4cc498c409e00c9a651e241eab7988c0164b70ec22b24a3a15941b4abc05617",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "29943869eea7d7a1d43c204b1d0f5423cae61636fe1bf3c089c729676bea3b54"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "d992379a04c5bfc2c585a7fd920e65bf55735b995cf80f8c5063c31209ccbd71",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "addbb36bfd9ed9416ba712bda56f3865ac4afbc4d7c9974f4b336ed553180051"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "79629cd1187cefa2d0c99c739b34e572a502456f52eef3c7900dc8e5cb9242b8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "cade087643911326d631a35ca957dbffd148f800bb5d2317e0a9a49c64ee526d"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "dd3ddf4319edb19fc3580df28f700b61ae6120da91543034b28872adb7a59f90",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "fceec826c8646211335e02563a8e6e70247267e20faf7b30fdb0ea4a7d3da153"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "20bea7c1bd1e3c610a1900e175604692d951c31917e088215afd861bb1a427aa",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5702a2d51b915ba5f3d77a458f2bf217b33dd4eb0e45d2a5f63382d3007cd576"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "d0df902e8b10d6df93670e00eddacc4eff92379b10b4fe1be64b9668c21c423b",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a3f9cbdea4afb0250629801340901d575111cd21c2f67dd13a69bc821f346774"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "0dd9f884ed0e6b9f8e8a92f3628f4f5db597a7b114a9a7a477c344327e1a8c79",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "213e9b4b163b1816924b32fcb3636ad4291951713c7a68063aa76ca517845f8b"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "5729b527609a567caf6cdc16f9f696ee8f55d24b65fbb2611322bd028c36c19b",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a368cb824358db3b51ab45bef59e84d68159707f62cba119fd1a773e11eaf04f"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "6331a151664fce46ddeba9c1215536d5de20958c9c29b78c49aa6c1d3c34812f",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "621dd022068b4b4e24a938276edecd919742d354009d22d284c58804742bd33c"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "27d9fc8779766279fc9654febc390f229b3bb668d38fe3195338d84ff897e631",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f7d31e66400dfd980629fbd29e545e6ee3ac7798379152a5e8b243ab4cccd275"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "7a238e419e32254ed912dc2d0ca3c712a728d0f59031b11ecbfcf70817c22242",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "370b8e08b6851bf380f1c1ba82ec65b846a51af9265db8df8015520379f31810"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "96044aef2e924b5a4f35e8ffb9cb465c4b99d1f5e041cc34319838b46c6d2bf8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3af52f105966fca7ffd1326cf9cf13d639810008237750b98c57e3496378bc88"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "c5b0356cece8b17b3e71abf5e99a31d8beb7a3503524d941bed505ba6e337b9a",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "349a516c1f7ae451c88329ce7b0823d83e816faac6c057d9d2e9c2512363ec97"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "5c597e678c7e1023f899b65ea54123bf6f43ac340566e23d73cc185006bddc24",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "0dd1067ab45a1940be94677f02982504054c5a80e18c476226326931617fc86a"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "a57e91b78ac0acc7fd1fbdef531a3f5085424ac02b64e7b4bf6b6eda24902000",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "2a1085d9a6c7cbb683334ba556f6cd5e7be0482d09d947258acbcb3eddfdfcc7"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "8235e1d34c3144c90d0f40d56af355d556a432fabb5f8e7c1a88d551f4b07801",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c224079cd7e192186c820a0cd7edb166a884c8ab59aa32444db591143a99b46e"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "b908b55731e36d7ad370171674a689d4cf197d8b2d692aea4ac57b0645479318",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "cde252f6b47e42e22bef42e9ce3b77aa53dd298c9d88b794824a3aa24013907c"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "eea6075a1111dc0006f1a9a020a56100c4c69fdf7af22c2dc5b6f92b7eaa6f38",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6264b93ba0cab815bd3ac296482c7f20f8f94c616b9f4dd4eb6c09f3b956c61e"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "254977ce2daea6a00eb16c65e7f914296e5306e13fff5ac54c1a6945bc5209e9",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "9c3479d3c10ed1bc6fbad24b6f697c9573f8deda7a89d677a5fa088e481fb55c"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "0fd75ad491108894e47ad8a10789189ef16f62bf27d88a5820a78b381b4d176d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "b7d80cc0944d98f4a2f8ff2264fcc640a07a63da8cc1e4c322d0416e58e5b3f7"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "8dc2976c1b3a64fe1ce90070b5cfed7300fef8553968a10c0a2345ae74d25ba0",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8b57efd8ce6b80fe1522a57910f1c1b78caeab41352351f9d6209a71fe7025b4"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "878a86f3defaafb179996716740a0a4901eddd36c1b679e641f90a003abe2118",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a24aa13a7088c60d9f6580def8feac67cda30588e071e105d8e17c68437aa82f"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "0d4fa0350e510433efcba2b5b896b06ff58972e47253aa2bb62bd243b23cb52b",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ee646c1a5ab296b5e5e4afc9410e6686bbc8ee218ea418195b8ae3161f30aa0e"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "70bebb1fd519766d8af28f80c5532eadbd35588a56740d70c2f90cce1ccb1924",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "413670ee09ab73c7ed6fa964c1d00f9e68e2062c11cff7192a414fbab7efdb0e"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "53dfb613311648168b3052179596f3a8b93f6e94fc3f7599ac6b175eee035ae9",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "0989075a67ed85acd91b069b857ca88b7511773739a199d733e8fd250e8d959c"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "aa64476eb151e53aec5a093196bd51778833a2748d47faf72236636ace9a955e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d713cfaaf9d301c1329d7471d4ffe9e24a85b6ab61e6172218283885a4144d35"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "3dfbbd2247968f15cdd219666e44c18643b50d7a9c604e8bfc32747ba7bc4371",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "0d1ce219fdf3e9cb0fb3d70c44c9af1a93a85fb8efeaa6255e186f923456af9a"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "e68042c85cd87a39aa94b847fbd5edbde02f7cf615b6a264903691d582aaa0b1",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e8f356700334f9853ad08a1ad8cf5f4418fe71955343b2cc964d051764aa3c0c"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "36a68ef2212ffdf4edacf31555f65da18553fad7ed7bfb934ca41588340dbd12",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d809434d6ffec2c4bc07dd6d469ba40304ae197c7816d6dce04382ca6b33a265"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "2f2b688947a734dcbff048bf84174e9654a2aa8c3e045c5e1402169efc700291",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5184cb34bc3e47777d39101c88e6b4af8b6c1b8e00838a783e88966b140458df"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "623487f175f63bcdb05f4875f599cf4053f5bd54da22ef1a66dafc1375c2f23a",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "03e7c63ccbb255089fa27927d52a29f31da8c493d2d1729a145fe7104e57aeaf"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "bce50e9cbc44c4a55cf8fc0a0c7270dbc167d282dc1943f072665bf97d8a5474",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "416804467c80c50ae11c494168ca9c39c44f22bcf5facdf9a867146c4100b904"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "004b87ab1673778f15b53d9818175760bf6f295bfc06a683dd6bc220597e853d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f703f165367e67d478e34b2ab1b0214ab8fdce71cb2f7697514c59ce8e58fac2"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "8e5a8948d545eebb79ee8d484e1e6f5bb8302480541284e54a0b11149c9a20fc",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "fe0c96489bdf8e39e45da7d89dc0262e094bcd7dac09ebe7845738f315d36863"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "8f1679861572428c46589b5036cfcc31b0631fe24a5df0e50df51940d1977860",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "dad193594987d242778c81a8cfe3e88ed4dee28d7d608acceac895c5a6d74cd3"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "6a13266525a0fca389ae205e6d921eb7b9703fc7adacf8f4adf54cb4b5c98f74",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f0fada749e2cb8ac94cb7e8027d3d9fdc4432933c51477d1eb59b6c3353f264d"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "e37745bd5fc8e4815fc5a1a0894020e8d199ecb2a50db2bfa7f122991a8c25f2",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ec12fe5a673188963873da812ab2f2c06d7d7cb131a10abd537a090da9931f11"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "28a5fa40369c9fab9e3aaa65f34369751a23a67c2e06306f5d5adca77ec6099c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "1a796ec5094f7eaacf3f24bc18aaf046f8a0944783d80a455f804d55d08c5c51"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "849aa888e2640e9eff409aa25e27a1dd2692a5928eac284b2ac0ff5da5b872e2",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8928fd378ff79c396362bd3e48d03eeacb815703b3f05d6b565578ac6d0b7778"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "41b769116d27213852741a0612e4794b2fa58f60150972e24392403e087506e0",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f6a0b5c880e5d6e25d841cdda0cdea09091356d3230d60a4f9605336e4d7cc28"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "83310d3bd1c1bebea308dc5ee7f3efde8b828b19441c51d4187fe474b0d9a1d5",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8c1fafe1b4697a0c58630a6993514d2ffcce1482d40f2ab822100bf2657dcf5f"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "1c8dee6f7bf98eb55987274034683a95da5fb063834feda2859c226cf9a8a121",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "84288270c880e8d5832ab25a89f257e83754432ac93a1b182217ba2cc2d3d799"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "178fe756edce60a16f88b31facefe477a2202b5541e5804af61f7a39db0aa4cb",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "410dc016be08b6f3b56266a97986be16bf54a76cbffeca8f6ed24b86c760aa4f"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "fe7d0dcbea0a97c5cbbb784a4be22bc8a1cbe9dac8a9afbe8ecd0a28c39904a5",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6ab07372b41bed99ccf899c56249524a58def16bf3020e7d9241a7d024c5951b"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "bf316315b985bf7ac302783205e5b3b513d29969a7eadb56054751913b1ac727",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "68878f58c6928cb6cf5c01405d566f6e4a1308eb36daa032cd32eac3fb06f729"
+    },
+    {
+      "city_id": "dubai",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-dubai-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "7b8c98a05c194bd81b8847608d29a7ba959edc4a60e585b5be13a25a621ed6f4",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6208e75e42bc37141bc991db8d22ea069a1320ce6a27d660c0f4bc5d7e8c2219"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "c39f524ef600df45baa48cff6590062819d2fdc7772e146507479db5b969e6d0",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "65bed4fba2d9d62be71f1efea7be5ed17ba92f1ddfe70f7de23a8f2c44a62b02"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "86ab70ff0f77815657c8583ead2cdc89effa408174699489b776bf652dae3ed2",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8e73625c97291b42f32ac64e13f1ce78fda825aa0c1afe8c3d371ee9a1a86654"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "29124b786829af9f8517d5f7b345fe0ff91d0449691f53af488cb3e03a830d6e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "07c7417e73f89fa7a0719ac43be545137cfc0fd37d56bca99b3a606c4c395b68"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "a161c87ea8aec2c0d9c704fee7e484813c326241c42f9c7986efb1ffdb9a9e8e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "b8edc7072b8a7f9ac1dbcc9d99d3db7ec9baf7b4cb04d5cb38efe75b6b0014d5"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "23e7839b5b81ed4c2ca23ae9db0b11ba9b658f6915e7c85d36f4a297e9a70463",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "34ecc20c432519714ce1181e3f1cb37354dcc8b9c823a45c6b682f5b85c254bd"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "f4de449fc94ec82107bf2d491fa63354ea0fa5e0d2c05fbb8f2454f61082a9a1",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "26ea337b9fbc4c6b807e55e0743ede36920123a877a1e613645ba43e82927b78"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "7b3b665bc1536b4aa807d578d3c05bccdfd94a1ffef4bbe413f0f0e02d436883",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e1662570b5a9dc10e80a901488c46f9b8987b60ba5b5b2c2fca1246404ebc5f7"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "49721883609576f99315d36823adad0df14ac2fb4daa4ae988d6adbb3332cd5e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3e27a94afb316ac5c92bd68e0bb1b01492044c6b62130b4712e87cd31289349d"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "8bbbe95342eb93d2301e4b442f331a900e561a7977d87074c484903b6dc45c61",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3795086b08c145a47848bf8b699de9306b797cb8fdec00ac02a9f064de2a40c2"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "770838dc3d2e34c2d30d3a6854f4657dd0187758328511e211f309720b25a0a0",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "972be6cd47da6e159cf2bbc63d85719bb1372986451848b23744725b547b8d7a"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "ddc2b9dc4c0e64f72c66c0f6ae8fe440ada47a2836e0ad170ba4874db2e3d183",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "4b5895c54b19f79c13373c09fa45c24277fe64505698c4e8f2d1187d9960fe25"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "14f0fbdc41958ee705c01ebcb9b4c2a191db3ba1cf9ed52629300e061ac4f529",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "28ac4d989553c24d8d8f602f1d150ba9f8867254e4a53c142d5c5eddf2119a96"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "3aa23f98e65dc16e1f1ce491b48350c2751173295891886411581da074c89344",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ea6d8cf2c54d012bd91e05dc5cadd21a39581427653ea7c9eace74b2559358d6"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "da1b92a6d8103d3cf3251c77c1950c41236158e5c6e701e65f0083a19bcd8d3a",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6262c793146edff21396341c74bead1205cbf9ef4d2571386690a4dce780470c"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "f236376176fe1041288d81bdc5c5bd2029b0a6c8b6e74688c5843317b2372db7",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "98eed01ec57437c86b0faa1de0792d5cd9295304c14eff1fc4d2a4736f08717e"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "2eaa7dbcba1fd85b3434e9129ed092ba97f4e8a73c2ecf79a782043ba20eae78",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "1559addeb78688f8ca7098f683e4f339e8ce2a92aad6949ea1cff8070504107e"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "510deab5b6f62447d496bd00e0aba0b63ac736743893e7ac0925511045c26317",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e2defcb06b5d11fed25455c6f9c13d3c51984ae50e574ebbed329366a4d55318"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "6004744b3051ef4bccc608ed80e0e3972a43bb70dd58dc16efcbdeb3e1eefdd1",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6943f24aff048e07874c369b52cc646493ce84eb2b82a2d535730db584915853"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "b39ec03bd72fb8cf5fcaca3d8a8847354e48aca5dbc6f309515d9a865127ec87",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3b5524a8644e14fa062d2a1ccfb27f38c0895ca585d3eee643e96a640a6238d5"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "4b45bc769f0a726db33cd68d1d7b880c28c7f3bdabfec8229e6296d03864ff9f",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d8676941c7eb096e7c8ab1b8bf21ff227a0af1b898ff7e1f76edc0e2f9529a28"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "301f99f2812758aebfcba9c9711c610b7e900b83083dbb62e6d1d3a4b4342e9a",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "760fdba39424864daf4e19b8c7e194d3b04df66ed25116c83927991f0c9c7413"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "8065483fbc832fc9b1f5fed7c0695cd776fed4a6a4db0a6127f95be2770cde85",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "512cd76feed0963d559666d9eeb2e62387971cc9074089fa65b32f16c25dd8b4"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "db3b427dfdbb21610f3c11b45eefd12843dc98a5f3511e1d55e2c637de680d36",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "38795582a57839e76d6562844e9a6a339db3c9d6cafcf43cf8f53e94706433f1"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "f5561d6b530bfb3a4d930e647ac8e71d726c506be2431bb758b4b09b5005fcd7",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "14c39582674f7543066ea0e436b30eef565dec339f78250c738467da02644598"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "1d683ee76ecb7cd0ee10488fa133e8c55c2ff81b7cb4d6cde86c3e7943000470",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8f4762511759f62a85792ca5f731dde3a1d765e9b6fcc8e1b5ac3f14c3402f6c"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "81d902b2a1933fd88d67c4379c85b6f250fabc7dbc5f20bca16cda840ecce61c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "0a46a6cd8f6c528dd5c789d4939e70d0582d2647ec59ba36574eeacd1b603f34"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "e279690ed4392faf867299ffb8277101aed030a15be6734eb2f0b9a9ec9d94fa",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "745e4c4ed5aeace0a811fe87d3778f7fab8b6bc63bf8fa2437509f6994b1018a"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "4dc723d4554dea369f2a4b3b2f9fd7f2e59843e681aba49ed3a705cd22520470",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "636c00de19ebe231dd3be5779da1cdc4de3b3357d1c8c387f6603ae588fa120b"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "8d8a817e71f10fc8228c3fdd7df04ad87275687379aeba6d89e1c61027dbc8d8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "cabf337d48ce2cff4612023ee1535d06cc2be512201513597251f801714293b1"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "c7099a58b068c48a5548417bc6be59be74aebef979b81d38c8a2d689cbafa35c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "238eb15c1e32fc8d72c231a26393dd6b8fdd173d9456de19c2c0011209f9df55"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "40ffa3f849e5fdf3f58725451a87e6f0542b7c3b39d0a2681b6a33cef89e51f5",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d3d74cf5d5203a068be670ebed6803e2a3af182c36bea6de5c0dd81471d11d77"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "f1ac19275e82fd03a23efa717549239c1b4287dd50e18aaca29e9329bdee3bc1",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "be095966b41ff4fdc9b458e61d3ff2760cb4b2e79893a574d71bf917d3a2d783"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "757c947e210f00a42118fa2b8b60a2033d3c0ac9440f67230cb65a11877137a9",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8d2a69d497438380a2856ef45ef2ecf1c8321519decdb60d6e81dcde9961108f"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "90c1e6b284cc4bb013a74e2b501675ffb5d1f7b30d66a1e6bc08e1dd63061421",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8403121c7a211fdd6699cda86b0948e3a7e3a58fea9c671c66dc8b5782231e4b"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "7f397349b76b8e9658dc117597510881920e1e5be4e3037133c660a7b6bab8c6",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "4a2dfbd211c374d75a203027ec14d2d54e632c6e14cc1aff1410687d71947678"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "3d2d280acb6f723c670ad4d9adf0b790acf1c3096ad5e08ac6fea5ccee60c242",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a0cc815ca9b0ade26773f15a8019396a5b1e0397afd57dd3eb3cf256e6da8319"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "594aa691ac2d02309f5b2aa90e4f8e4bf54e45216612ee0271da744baf80f9de",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "1c2c14b76ec01fc36facd924e98cf8fbbf180c071f8e8366a119bfb1ea12cd43"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "f3843b54ac959992e7b4b75de322e2bd9a212a68bf351aae01947009cab15645",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ad4e17e33526cf8aac943581be6992f4bf0ae3b507106dde7fce3fce2c602872"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "1e146943a51a7844044259c98d9d23986a0187103eb49b9e4ca82764a37f10f8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "126fb09617da46560e575c1b64265062d8642073e570831a4546d07659669cec"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "5455a07eff076d94d0d24552a0a054a5400209882c6a043de5c599c52cd369b7",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "df34b25b32c1ed95cf8f1ed762b6eba2c26b1f767cf096a55fb8892735fb298d"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "a8c713935697880121902d259c42c91f00b530def9c9193d9d0ee3b412ab9d0f",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "7fc6507bf687b230f0db6553028da0104a7a79f171b21aae92cf73e8b5f404c2"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "6b2e144891c4da16d16fbff041abe792a25a8e9c359da2a82cab60427619b0c2",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e00bd857653d059c5c61578ce52ebdfcf257547d3abedb753185d39482188bf2"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "e032e6e240214fb0f85da390368b423fa33b4940cf88ba5b71aa1e019c9973c6",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ff11e8e30b87fc518e2dd8f998dcd7d7f82ac353766ee4732bf4d7c6f3722b0c"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "64b532a1e5428ffbee132c13a014b069f47aae73c597be70d9d4ca413c1d0472",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c2279f0368745189e757f8b3796f808466b3c9711b8753dfcaf9f9cecc4e6688"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "73b0223d5a972512b2012fd16438e15283e353f4b50cc35b6f206e4573dd7475",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5434ff52924db5308489fc22f037421fd4dc97fb400498a3f0365b6a8f6b91aa"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "9eadf1e77dc3c97ec329fd4932cfc68be84d4f4986fc4aeef50ec8d752722dee",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5cac1f2c6c183ccfb720340f5d0753c3cdb1343cb7f5719790cd70a94b9e8de0"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "4222549707797fb4ce120202b973938d4107250393b08206043a536c552b1bba",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3ae861e39986e96b3bf266ab32d6754891d812826ce269e1055cc195b451f8f7"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "ba79978170fe62ef0875e60cb31258b5075f06b751ff382ded2d3d2cc91ff91d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "aeb330303cfb624fd96952fadeaab9ccaa6619cd5b9ce63959364a8106188cfb"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "219a95c77eec7a0ceb4b3db3827f4b55c5591277c630d9be57e0c691426e2372",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6901cc86a15b026c9c61a620f6638c2cbcba0a764bcd78d1f77086908999633f"
+    },
+    {
+      "city_id": "guangzhou",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-guangzhou-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "2a618e93495c7440cb1d7784db9a6fd61725e58219a66ba873549431f3c65f0f",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "758fc883f0964104512fc5299d9529c99455e72fb12db8598aa073177b2473d9"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "599fab346c220eaefca20fe23ee17f3fc0c2f8c45ca3956bbe2089317cff8dad",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "7821798fa0f7ac4356a19225e306d7964d9945e717b61342c63d3469b4c42a85"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "77efa33ceaa2da6bac441061385ea14664b00fb1b4d1abc19b312178bff22283",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c4311a9b9a96f2f62c013ddb304a48d5aa3e5aa28210de5f52d2595ba9a0d346"
+    },
+    {
+      "city_id": "lhasa",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lhasa-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "fff8fb8e66b32c55af115f4ed82db1f5898af293fdaf3af35a7d61c212c9d030",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "4af208fc65216098c5955692bbf818c7445865a3107d46d13138ba4e387dff89"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "689c76c93fc83fb5c9937a923848dae420bc54b4468bfb1581ce00d150949ced",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "bbf4141bd543c893bd97370b6fbb4581278c1f4d25a40dca49ff710331e7377f"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "7e67c922e5ee73a98ef4937a9556521356ef618bb6f6775de5aa5c4b95980e61",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f2ea00e0acd9233b97e48dc56013ae7e640eaade782deef47c4ca7a8bd9bc567"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "a4ed64585258a23368ae7df45cf82990ad0fe4dc879b2cdece3977b82609210d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ba7367d97d5242c791892293347f21b548f86b902b990c667ab777bc95f6be70"
+    },
+    {
+      "city_id": "singapore",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-singapore-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "d234ef2dc0659ecd4d6e29e66414b171cce2a3e357f5dd804172e11a93bb271e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "362c0452aebfebbb20ad4532916de84f4dc255e31fcac7234e333959e47a70af"
+    },
+    {
+      "city_id": "delhi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-delhi-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "28d5ae319661b1d080dd23efe3aa3e7e8218fa35a1832d4cd32321df7a6af468",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "013b63604903884e0dec647318fc2dff0b8456018ee83b473fdff50edb51afeb"
+    },
+    {
+      "city_id": "riyadh",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-riyadh-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "cc21ded4e33acf6ea5d4c88c150803f88e7ebdeef98db81fde1b7f56f81f889b",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8f09aee800e19c05ea29973d95960fdb3b6b0169e8156210bfaf5d966aace457"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "2bdc1e39b373204507edefbfd5cbe400400637794ee79b1979f2cd98460705b7",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "da5c48cacf532e01b8bc21a453e521a8faeb24aae356cd9aa825c67b907a4c59"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "cde7bdd67b572c419375a5ae4d71d2adc79623efdf5613e825826f1d03dfe7cf",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "9621cdaa068e721e6b67798f3b40924acf81b12960c86338151df9dd5b3fcfac"
+    },
+    {
+      "city_id": "cairo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-cairo-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "244cf64cb70a1b1b500c1af5749fa46a605027f7a407c2f8fe65076a6d3df384",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "b2f678548713159cd336f62c6566e077b7fa463e6ec2f5002602f749c3bbdf31"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "8d1f9d15000cc4c08a258d690570eda69246f6f0866c3ff13e0db79b9634712d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a286a0734460fd1884434fca017baa876d5691f70ef1b4ba4a921166cdd73a07"
+    },
+    {
+      "city_id": "lagos",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-lagos-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "ab5bbd7b4dfb02ebfb9d79bdac135367d8bd9b8df830e1fa6999cc277c620873",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "b79654816047a041ba486ac65baae66148bb6e2876c6244233b133769e3ec27b"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "e2653588ff9ef3617a439dd15fbd487522e5df880f44c55139f1362aec7075f5",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "22cf117c7bea8427511823cca20aa1b99c290d37eefb16ddbeda5b7dcf84c397"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "58bc30b5ea4724a753a26f7307935d85f8d6dd67293525fb29caad9c8a8edafe",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "4e10978bdd80434f770ff07cb7d9815099d41c3bd031856f69088010e4b062db"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "3f8ea661ffcdea384346b9523f7915443bb904dbdc733712d460a2801d4398a2",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c8a94487cc5dbf7e3cb05de053544a6dfed79b512c6b2894071112ce698c3cdd"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "89c64881d96593b5a4329926e77c557f993ad2aa1a2bc1767f959db125e391ae",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "894499c7657fdcaf3624360bf4ad95be03d43f9d450beef0e8aa04d66531b3fb"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "dcb5bd3297b7d1127ca83a82dae8e89cc633807c095db654fb660c12271c8294",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3c23dbd179aa73541c039eccd41b55efd0312a009e2b46c537b829b5857b0913"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "11d90d3c8dc75b073934c0d1fab8a9e66371094b0b7fa60fe60f7c57eb8eb272",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "60c7bf721be7a798710b92d4013b5a3e7a94800f1431d539c100ac2cf1d1ccdf"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "d618b5276a820e03f555342c5b6818d2cff17fac392fcbe3b2822457da45a737",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d9779002539a6b7fe1bf2fac96e61b8fc77b7e566850326b5f259d36c5df3b7c"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "e2c309cd493e75d3b819451ded1e4dc9cfa64d9fe5748ded1b5fd07958a1480c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "3c834907ece25ef144f22fb63ae28eed9d31ef758ef1e4d8219ccc71cd1c18eb"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "5d9bc5725623457e6580a8dadbcf157c4bb86a0a0f1d7008506c7c8af88ebb35",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "da888e9bdb9cb9504ca66f6269fe72be53e573dc0abef83e89e76ae05bd95df2"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "f892e9ce0236c9fbbbd369a4f39ef7021b4ccb89cc4b254a0cc33ac350248450",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a3b825ca0a026c667e8efcb16ad873df66e7f75348a920aa6f43fd05f90b8229"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "d145577666ff1ffdc565152ac0175b8af3add6fead476aff0ad9814aff6609aa",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "1b2c3cbe2e8d98696f46f58bbe45028f07cbe2c3c43c7832c1d4af1ce93f119c"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "c528e29caa7f84bc3df09107915d077c61434b8c2220a05c8e8ddbf54435fa4e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ad3c51c9b0f56201892b55079cd4606327de49c68f63fadfb0077d7bcc113cb9"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "943bdbdd64fb5acec8a23a1842ab361c8631a50f6458f21c4b4a1678421f2fff",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "409abeb27939cd3189a796c2dee40ba7ccd3ac41763c35d2e5d33ecf307c6c91"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "309ef27edca616f4f87ecf853f92d567a34feaf454e6f20a3dcb92dd24287d52",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "fb6fdd158725442e9e86b864c1f4cb7d27c95cabb9b45c726a23417a7aebf6c7"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "748c1b24320cfa3d075cc160c052b9d288352cb1fd39ecf5ec6295a38cab9852",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "293cae17573bbda4d28b1f70f494b9c69ae8f158c1c6d863b00e9fbd3241bde7"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "d1fc0fdd8904d44cb847b0da66b42ad086093e1878a4070226adffe6ba47d14c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c61fbf99047ee55bc9786564abc71fb1bceccf40ec8f8fb8de6989e63971e7f5"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "f81291ba5c6f49a527acf5c8279b6fa1c9c7826a0eaa5c155043c57e6cfec8e8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "16e52fa2de6cd15ad1ccafb5e8f7fa94c554e9a5dbd9ea6dd9361f4ad8b78235"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "b05276ba34792f1c5a31b8e0dbc4a25e635df449f886a94828a5124370851b88",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "92cd439658561b4bca40b49d811882eef3086f5c76696ce8090db7911837f636"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "eb14d8083a6e8c0d736a0daf5e1084d790cbffe03e617cbbf88f1a0ba0822b30",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "babccfef5ca6f80c4a288f520528eb1c03286155f334a9c2a214f43bd7db40cf"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "fb780d156dea25a1d27ad96816d0dce635fcb4eebf4d2a7ec3a922cf3476a0a8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6af24148a2ddc919a7947ed87853e28395f9225108c9f9483b149ae83ed7e4bb"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "b158e2b20a281fddac14733e08d2d46c6385ca32f9e1e4eb2324582f1a814734",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "37fd18e3caed8c65457137d116e45b0eda2e89a78694ec05b2ba8aad35f6073c"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "61e071980017f76685d738c55985f28cdd255fcd96267801fda0169e8cad278c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5c731352496748a827b48a9c1426f7d48fe0f24064c0fdd294dc58e684bceeb3"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "a16a55b7f69e06427f1e4d6d51f51b846a4dc94057c766b477770268219581f4",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "2b16a05a89c30416707746c4a21b29211d544d5b3010087bc522cba1a8ea3952"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "068aa43bf656f652d95579d7e3fab0fad4f5a163ecd3cb5edc12e28dba743b08",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5d62ff74c3df4476964b5bdff42dac85802d3f13e93e6b4a03c8bd721d20ca2d"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "a5ce7c90b5d41a7f66fd4413c631be5485eac465470b22447a9505da55e2a562",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "02f19cb55e0dfc1e01e24ff7e59350c57150e98019cc7876fc93380a04527b99"
+    },
+    {
+      "city_id": "nairobi",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-nairobi-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "5bf99359e87a2606ac5a50273205940ab59bd8cf3bc90ac369df8d22e5c04f3d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "37750b5a3dac18c3a81b87e844534458433525d3fd2418c9d08faf4439266e54"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "0c3f9a09e3252b458609a2e6b0b441f05105c49237dbccd741adcc61c2317fb0",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d7f5a711a295bc821c7bb53ec1ecb2a77639562a9cac03af3b1746cc8523d8b0"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "37e2340388057f2ebeb55ca88a6458dec5675bf57ea9cadc9d9d6bb5c7f44699",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "713048d7b75cb4e3761d2d44a1737d456add9c4c17fdc42353894522103b1d03"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "49ff13b673b2a9eb3b0d9ea6a47d48e4cbafeac3350f2fa1ac9c03c8d220df5d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "999c92411fedfeec7af466cf2501ad2a1b5311c32b4bbfd3b81a19e0a400b3e4"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "f5a44d14386392b07729a2136d36a5a4f480cee33a5db205f6943bd91a0e4bec",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "129fcdd6d3645d2f175d4ee46c5de5da953c7d5ec710283aad6d3bff949b5119"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "d20de353626c29cdfe0c95727e06a1a69c6781e4afaa91fff9d53cb57fbfffa5",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "78059e1e1575abe30d79c552cac8d99374a8fa55dc0870ada93bce356740e1af"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "297e15e3fb24702b0069838100c306c9087efe66a6f384adced61bedca2ee207",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "8be3717e472d64124a205107b7c9e1377f866299c9363e5bd8ab9902d2a60d97"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "27809a16eaa93e23bca88d3db9a149540aa1e54b024853e21075d058b95f2dc2",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c49573648913c7423f3815ba403f6a5ffefb2ebaf1d4c2e33a82a26c2a9d8d4d"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "9a66f1f68a3feae76cfd0361762a414efb38c5dfe3e98c967d3b6777dcc74140",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6d053f0b8b664728f5f4dc6d8a25597aa52f3ef0ef6466c5f33b5716dd0a3821"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "b81d28fef01eb56e06b6a90c510ebc70d83ea650c1933886c6d90c076fa03ef0",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e60cd02ef6eef3e83fc5c8c457ad7e74e7cb8b021d90cd981fe43a89c5251a29"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "982ed033f86ca3d406889574354239c41b40adfd9f7bdf17e30d31e2d2e22b13",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "e8863412ce5191fa9240dcd4e6e9e1fc3a4ac0f4aa2b77a896569f591626abb5"
+    },
+    {
+      "city_id": "phoenix",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-phoenix-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "a20f90a8c6a574d0200e5c3c49af3e5b414b1a63f14ef3749b799cd6b1ed3470",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "4c2897f5822a337ac6f574a8bee7183319746e0b244c4997d4df41f92a8fd501"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "5ea61a6550396be4e2796dcd924bd696b0dd5a17217f7e5888869d47813b250d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "a9e0cfa4852518c948d93ffa4b0dd1fa0ccd499835d6a19fd5ff1a630034b7af"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "0b8811fea734590ec799b95138010c470ca028c5d4c8c4bbce44f6944ae7c1d7",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5e9140ec4125623fdc4637eddea5699995be289d30de977751bfc668c54fedf8"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "c7081f8370771a8b38224f8bf1c8dd6265b3e4086eaaff8f8ba44efad360192e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "7bf6f1027f79d96426ff6ad3a7a72d93136612b5f0f87dc814125007f9869c89"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "202d4f3b74c8f542270c9a709b45a9e9d5b002ae7d8408debbe30b1fb1a005a7",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "7c7fc9e6e2e3062575b6daf002f675d343e818ceb7a2f7f18d834e1d4295633a"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "938d64da25bfbce5640a1f028cc754031fed3273a5d5048141de0f6e4261da09",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "9c54901b8f796cbc0b341222a3f41ee08798a47550a5e068a191272448294b73"
+    },
+    {
+      "city_id": "houston",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-houston-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "c3ad531163fed23b4d17e8b8405a4e7721fb1de0ab9323ef2893b7ea3805f88a",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "96c5e2a402b25b66a7cbb1bf57607994c00a7ce300ef7720e9ce10e43c8d0323"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-01.parquet",
+      "month": 1,
+      "rows": 1536,
+      "sha256": "ffd202b3c6a6fd4e3bb37d3511020695e59155ee7ad2d382b5b8cab8d4461ebf",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "657266144e32ec7040c689f8c4a69ca22ce66cd56f2a2e1af6240f80d40c5a3b"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "afabd42016ef309a4a81ca5a78e4c23f1d36db3bc8314aecf781c248121e30ca",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "75506dbecfa9c107e7007d009782280409ff30e14962786a0ff698416142c0f5"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "b68b2988a994aa852cd0191f774f30863d7cc178c07fce2d3283da1c787ae44a",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "1391b4acda09431bed072dc13e7d1fac50149b0f173a7a355facba8c96a78c76"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-05.parquet",
+      "month": 5,
+      "rows": 1536,
+      "sha256": "b568183ba6e31927b1512005f37a34cd8b074c83e7891821e6ad244f1fa0d645",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "156cff484d3958f1286bb085da60e77128f5c28ffe0a595e278cf67b09a356c5"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "bc1a7433a7950d7beb5cfd8fdc2c6235a5bf689781d60359903b9b504053e378",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "83c6c494bcba25a018e4291fd3856c7a2c7070c33ab5e1869b5114b9336bc02a"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "af3c4690d9d15ef27a8cf0c8b68eab4667ea584d5ff0de093cc2969abf670ebc",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "b47348e3accb7c85ec195da089bf090e851e1c6f751d42db5a822d423c1a2de4"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "1abdbcd4d6d1b77ef2d7fa4196492168d8fbd9c1dedec8f07be93c56c190c29c",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "0cc91738d3577b994df71b0796b987cf1692aa9c0d155efb2c12d4ebbb221164"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "6b3819b8e3254f6dd75b020192666da3d590c2d1a58c8d0e42cde05e486c664f",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "dd0f378fe3f8d5276b2c06ae7abd224609ad8c89dd8252f931e07138c34bbb62"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "620ebdb14a7bfd250fcbc6fe82ef8f86c889e4b106cc552980bed68688e2bac8",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "acd37b7bd034f7323ae1fd4d89ecf1434249a48189725a97321523f4a6465782"
+    },
+    {
+      "city_id": "sao-paulo",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sao-paulo-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "7394be5a980fb3e5d743f5d538fff30982aa35266e9d1245aae2ef27787837fd",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "dcb0901413aa4ab738f209f98b2d3aca6adc8c8addff583f8a615cbdcbd54a6f"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "e19a74394dba92b919ca8de4fb6b69c12b8afddd1f64e823e36e4182a9c94e09",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "f2caa2cae7ed16e0605fe46a226e75476a3175553b61d7f9e2393d48cdb66106"
+    },
+    {
+      "city_id": "darwin",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-darwin-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "cd3e440def9c656dcd958e9461bf9e8e711c35a8b1aea72afde490bd409b28e4",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "ea22cf272d0eda2f2af62d8344a5dd9a7cd61838ffa667de672a8b65bd288d84"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-08.parquet",
+      "month": 8,
+      "rows": 1536,
+      "sha256": "e48ebda789e31879cf4a97f347eee2f2981909fb136c3fb3b5ace7cff8707e11",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6273e33c794025d79a5bcff1e088591c7e59706e696bc826bcf7c6596fa98e34"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-11.parquet",
+      "month": 11,
+      "rows": 1536,
+      "sha256": "35cc413add3c03f1d09648316348bd5d45e05138cb7226aa2a1a904ab53b29dd",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "9a34f374152674df4fb907a2bd6b260f5a7114d3b61c1d7d22a06cd87fe9f418"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-03.parquet",
+      "month": 3,
+      "rows": 1536,
+      "sha256": "6ae32d0ed12f225c28aabf9f97cf62fd7842d5dbdd71221b59f00f65e4de848d",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "22fce546234a60e741db0dcf19c37378baa8a5e0dbb2ba3a16d3314d583a9965"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-07.parquet",
+      "month": 7,
+      "rows": 1536,
+      "sha256": "99dca7980b2f43800f6b57495b39daaccad88d3f336c19e5d463d8edc8744094",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "6993d784cc2100c03a74415ae3ad1d5b43b11ba642d5b07ad0cf2f1df1d949e4"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-09.parquet",
+      "month": 9,
+      "rows": 1536,
+      "sha256": "a7c1e42bad6b93430650274fe74264674ff08725ed54e81fe2e27812f0590b36",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "b0ca4dfe0ad609e906cc59116c7492aef50f47e9fcab696393b78eaca2c48e0f"
+    },
+    {
+      "city_id": "mexico-city",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-mexico-city-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "67269685c83a9b27f86927413b6c1486efca89f6d449dff42e5a4fe7609d5aaa",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "261aa14094315ec87894f3023818f98eac0d35269033e64fce5a4494a658b622"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-04.parquet",
+      "month": 4,
+      "rows": 1536,
+      "sha256": "6f4208bf4e8d6952e58eeed2ac45c3050bd8028d4e64f104e1513ea1baa3641e",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "d7a644440908ae439c3118dea77b3db04b68dde2ae45099eb702d1b48546adea"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-10.parquet",
+      "month": 10,
+      "rows": 1536,
+      "sha256": "0ff163e2595a7f0c445080f9d4d401766bd6eb4d18b1b5eba1e2c450d004ab33",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "5ad361f00d8cb795a2d4ebfbe59ae57be189505d36af91381f4b2f503d811052"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-02.parquet",
+      "month": 2,
+      "rows": 1536,
+      "sha256": "e862a72b1f12418665ca370520b9bb6fc0487fcdb19f1f12a8132d2e9b1215aa",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "74a9120da3661c9c6a99f01ae587cb26dcd7aff15d44ed740c10fd28ec7c3914"
+    },
+    {
+      "city_id": "manaus",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-manaus-06.parquet",
+      "month": 6,
+      "rows": 1536,
+      "sha256": "874cf6c53c7e39be89cb9318a4f1919ca14f33dc79428bc07d172f9fc7d0a76b",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "0141426b8fd084793ce5860deb7cf3a20448c78a862aacecbe425093f5fe22e7"
+    },
+    {
+      "city_id": "sydney",
+      "file": "C:\\Users\\lenovo\\Global-Radiative-Cooling-Clothing-Climate-Adaptation-Simulation-Platform\\radiative-cooling-platform\\backend\\data\\surrogate\\datasets\\b5b7aeee-368f-4452-a78c-6bb1390b0acf\\part-sydney-12.parquet",
+      "month": 12,
+      "rows": 1536,
+      "sha256": "d7a4589307f36297d88ea37f0767c4bcab70aa7900a2e262f6c7b2fd02feacff",
+      "skipped_samples": 0,
+      "weather_payload_sha256": "c837ed8d0c486a5a6667fe91c861a7859ed6dad48a2b296b362c8e0ba4ba728a"
+    }
+  ],
+  "context_sha256": "549e9f78dbf7f0a74e9f56aeac4baf4beb817619c62cee9003917d86e4b7e965",
+  "dataset_id": "b5b7aeee-368f-4452-a78c-6bb1390b0acf",
+  "materials_file": "materials.parquet",
+  "model_version": "0.11.0",
+  "parameter_fingerprint": "38ef6d3a2f68eb94b7596c80af61020156ae0b15ec9d6485bde6cefdfd8d4796",
+  "row_count": 294912,
+  "spec": {
+    "base_material": {
+      "absorbed_solar_to_body_fraction": 0.35,
+      "clothing_area_factor": null,
+      "clothing_insulation_clo": 0.4,
+      "evaporative_resistance_m2pa_w": null,
+      "infrared_emissivity": 0.95,
+      "infrared_emissivity_ground_facing": null,
+      "infrared_emissivity_window": null,
+      "infrared_transmittance": 0.0,
+      "material_version_id": null,
+      "name": "RC candidate",
+      "parameter_sources": null,
+      "projected_solar_area_factor": 0.25,
+      "solar_reflectance": 0.9,
+      "solar_transmittance": 0.0,
+      "source_reference": null,
+      "source_type": null
+    },
+    "city_ids": [
+      "dubai",
+      "guangzhou",
+      "lhasa",
+      "singapore",
+      "delhi",
+      "riyadh",
+      "cairo",
+      "lagos",
+      "nairobi",
+      "phoenix",
+      "houston",
+      "mexico-city",
+      "manaus",
+      "sao-paulo",
+      "darwin",
+      "sydney"
+    ],
+    "control_material": {
+      "absorbed_solar_to_body_fraction": 0.35,
+      "clothing_area_factor": null,
+      "clothing_insulation_clo": 0.5,
+      "evaporative_resistance_m2pa_w": null,
+      "infrared_emissivity": 0.9,
+      "infrared_emissivity_ground_facing": null,
+      "infrared_emissivity_window": null,
+      "infrared_transmittance": 0.0,
+      "material_version_id": null,
+      "name": "Conventional clothing",
+      "parameter_sources": null,
+      "projected_solar_area_factor": 0.25,
+      "solar_reflectance": 0.3,
+      "solar_transmittance": 0.0,
+      "source_reference": null,
+      "source_type": null
+    },
+    "core_threshold_c": 38.0,
+    "duration_minutes": 120,
+    "environment_assumptions": {
+      "fixed_sky_offset_k": 15.0,
+      "ground_albedo": 0.2,
+      "ground_emissivity": 0.95,
+      "ground_soil_conductance_w_m2k": 15.0,
+      "mean_radiant_temperature_method": "ground_energy_balance",
+      "radiation_time_convention": "instantaneous_linear",
+      "sky_offset_base_k": 5.0,
+      "sky_offset_humidity_range_k": 10.0,
+      "sky_temperature_method": "brutsaert_cloud",
+      "sky_view_factor": 0.5,
+      "solar_mrt_gain_cap_k": 15.0,
+      "solar_mrt_gain_k_per_w_m2": 0.012,
+      "wind_speed_scaling_factor": 1.0,
+      "zone_view_separation": 0.5
+    },
+    "local_start_hour": 12,
+    "material_count": 512,
+    "months": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12
+    ],
+    "name": "S13-D1 training, 16 cities, 2023",
+    "output_interval_minutes": 5,
+    "person": {
+      "body_mass_kg": 70.0,
+      "body_surface_area_m2": 1.8,
+      "initial_core_temperature_c": 36.8,
+      "initial_skin_temperature_c": 33.7,
+      "met": 2.8,
+      "position": "standing",
+      "walking_speed_m_s": 1.11
+    },
+    "sample_days_per_month": 3,
+    "seed": 0,
+    "skin_threshold_c": 35.0,
+    "variables": [
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.3,
+        "name": "solar_reflectance",
+        "upper": 0.98
+      },
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.05,
+        "name": "infrared_emissivity",
+        "upper": 0.99
+      },
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.05,
+        "name": "infrared_emissivity_ground_facing",
+        "upper": 0.99
+      },
+      {
+        "demand_direction": null,
+        "demand_weight": 1.0,
+        "lower": 0.2,
+        "name": "clothing_insulation_clo",
+        "upper": 0.8
+      }
+    ],
+    "year": 2023
+  }
+}

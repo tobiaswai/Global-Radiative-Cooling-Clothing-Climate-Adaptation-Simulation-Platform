@@ -201,12 +201,11 @@ export type DataQualityInfo = {
 };
 
 export type MetricDefinition = {
-  label: string;
-  description: string;
   display_name: string;
-  unit?: string | null;
   formula?: string | null;
   interpretation?: string | null;
+  inputs?: Record<string, unknown>;
+  statistics_window?: string | null;
 };
 
 export type GlobalCityResult = {

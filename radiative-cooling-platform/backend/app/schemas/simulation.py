@@ -80,6 +80,11 @@ class PersonInput(BaseModel):
         default="standing",
         description="Posture; selects the effective radiation area ratio",
     )
+    # Stage 13 (ADR 0012). Combined with ambient wind into the relative air speed.
+    walking_speed_m_s: float = Field(
+        default=0.0, ge=0.0, le=2.5,
+        description="Walking speed over the ground; 0 = stationary",
+    )
 
 def _check_spectral_emissivity(broadband: float, window: float, transmittance: float) -> None:
     from app.services.planck import outside_window_emissivity  # lazy: avoid layering cycle
@@ -320,6 +325,8 @@ class BodyThermalSummary(BaseModel):
     # Stage 5
     position: BodyPosition | None = None
     effective_radiation_area_ratio: float | None = None
+    # Stage 13
+    walking_speed_m_s: float | None = None
 
 class ScenarioResult(BaseModel):
     material_name: str

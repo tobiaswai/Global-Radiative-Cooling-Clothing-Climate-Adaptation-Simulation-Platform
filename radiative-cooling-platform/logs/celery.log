@@ -1,10 +1,10 @@
  
- -------------- celery@p2104180 v5.6.3 (recovery)
+ -------------- main@p2104180 v5.6.3 (recovery)
 --- ***** ----- 
--- ******* ---- Windows-11-10.0.26200-SP0 2026-11-20 11:50:14
+-- ******* ---- Windows-11-10.0.26200-SP0 2026-11-21 17:44:41
 - *** --- * --- 
 - ** ---------- [config]
-- ** ---------- .> app:         radiative_cooling_worker:0x1aeb8a612b0
+- ** ---------- .> app:         radiative_cooling_worker:0x2ae53d77320
 - ** ---------- .> transport:   redis://localhost:6379/0
 - ** ---------- .> results:     redis://localhost:6379/1
 - *** --- * --- .> concurrency: 1 (solo)
@@ -23,14 +23,30 @@
   . optimization.run
   . simulation.reap_expired_leases
   . simulation.run_weather
+  . surrogate.generate_chunk
+  . surrogate.train
 
-[2026-11-20 11:50:14,389: INFO/MainProcess] Connected to redis://localhost:6379/0
-[2026-11-20 11:50:14,393: INFO/MainProcess] mingle: searching for neighbors
-[2026-11-20 11:50:15,426: INFO/MainProcess] mingle: all alone
-[2026-11-20 11:50:15,456: INFO/MainProcess] celery@p2104180 ready.
-[2026-11-20 11:51:19,592: INFO/MainProcess] Task simulation.reap_expired_leases[fc318595-c545-412e-812c-9cb243dc25f4] received
-[2026-11-20 11:51:19,640: INFO/MainProcess] Task simulation.reap_expired_leases[fc318595-c545-412e-812c-9cb243dc25f4] succeeded in 0.046000000000276486s: {'requeued': [], 'failed': []}
-[2026-11-20 11:51:19,644: INFO/MainProcess] Task global_batch.reap_expired_leases[317cfcf2-2d47-45f8-8785-9cad0475193d] received
-[2026-11-20 11:51:19,654: INFO/MainProcess] Task global_batch.reap_expired_leases[317cfcf2-2d47-45f8-8785-9cad0475193d] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
-[2026-11-20 11:51:19,655: INFO/MainProcess] Task optimization.reap_expired_leases[cf1f6d3c-3ebf-4f77-ac08-e6454c97ad31] received
-[2026-11-20 11:51:19,716: INFO/MainProcess] Task optimization.reap_expired_leases[cf1f6d3c-3ebf-4f77-ac08-e6454c97ad31] succeeded in 0.06300000000010186s: {'requeued': [], 'failed': []}
+[2026-11-21 17:44:41,224: INFO/MainProcess] Connected to redis://localhost:6379/0
+[2026-11-21 17:44:41,234: INFO/MainProcess] mingle: searching for neighbors
+[2026-11-21 17:44:42,254: INFO/MainProcess] mingle: all alone
+[2026-11-21 17:44:42,280: INFO/MainProcess] main@p2104180 ready.
+[2026-11-21 17:44:46,682: INFO/MainProcess] sync with surrogate1@p2104180
+[2026-11-21 17:44:46,691: INFO/MainProcess] sync with surrogate2@p2104180
+[2026-11-21 17:45:51,789: INFO/MainProcess] Task global_batch.reap_expired_leases[e1dbf8ff-600b-41d6-a326-039d34d8d2cb] received
+[2026-11-21 17:45:51,834: INFO/MainProcess] Task global_batch.reap_expired_leases[e1dbf8ff-600b-41d6-a326-039d34d8d2cb] succeeded in 0.04699999999957072s: {'requeued': [], 'batches': []}
+[2026-11-21 17:45:51,838: INFO/MainProcess] Task optimization.reap_expired_leases[9dc884b1-8a4a-4fb7-9983-40408cdf2cc5] received
+[2026-11-21 17:45:51,850: INFO/MainProcess] Task optimization.reap_expired_leases[9dc884b1-8a4a-4fb7-9983-40408cdf2cc5] succeeded in 0.015000000000327418s: {'requeued': [], 'failed': []}
+[2026-11-21 17:45:51,853: INFO/MainProcess] Task simulation.reap_expired_leases[01d7147f-a72f-4d97-9549-417afe2c2886] received
+[2026-11-21 17:45:51,859: INFO/MainProcess] Task simulation.reap_expired_leases[01d7147f-a72f-4d97-9549-417afe2c2886] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-21 17:46:51,763: INFO/MainProcess] Task global_batch.reap_expired_leases[fc0415ec-60e0-4824-9e19-4d6c9b838783] received
+[2026-11-21 17:46:51,770: INFO/MainProcess] Task global_batch.reap_expired_leases[fc0415ec-60e0-4824-9e19-4d6c9b838783] succeeded in 0.01599999999962165s: {'requeued': [], 'batches': []}
+[2026-11-21 17:46:51,790: INFO/MainProcess] Task optimization.reap_expired_leases[cf648e76-3197-429e-b508-f4272ade107e] received
+[2026-11-21 17:46:51,797: INFO/MainProcess] Task optimization.reap_expired_leases[cf648e76-3197-429e-b508-f4272ade107e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-21 17:46:51,799: INFO/MainProcess] Task simulation.reap_expired_leases[e7abe2b4-43be-4539-8b4c-a35e58a499ae] received
+[2026-11-21 17:46:51,805: INFO/MainProcess] Task simulation.reap_expired_leases[e7abe2b4-43be-4539-8b4c-a35e58a499ae] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}
+[2026-11-21 17:47:51,761: INFO/MainProcess] Task global_batch.reap_expired_leases[0842302c-8f31-4c39-8d82-418b18bbc0a5] received
+[2026-11-21 17:47:51,768: INFO/MainProcess] Task global_batch.reap_expired_leases[0842302c-8f31-4c39-8d82-418b18bbc0a5] succeeded in 0.0s: {'requeued': [], 'batches': []}
+[2026-11-21 17:47:51,790: INFO/MainProcess] Task optimization.reap_expired_leases[d4aec811-ebcd-4b39-b0af-d915d192f87e] received
+[2026-11-21 17:47:51,795: INFO/MainProcess] Task optimization.reap_expired_leases[d4aec811-ebcd-4b39-b0af-d915d192f87e] succeeded in 0.0s: {'requeued': [], 'failed': []}
+[2026-11-21 17:47:51,797: INFO/MainProcess] Task simulation.reap_expired_leases[6460697a-4b3e-4afa-b03b-30b5f285a73c] received
+[2026-11-21 17:47:51,806: INFO/MainProcess] Task simulation.reap_expired_leases[6460697a-4b3e-4afa-b03b-30b5f285a73c] succeeded in 0.014999999999417923s: {'requeued': [], 'failed': []}

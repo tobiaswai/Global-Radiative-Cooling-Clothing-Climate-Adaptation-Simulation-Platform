@@ -43,6 +43,10 @@ import type {
   ModelParameterManifest,
 } from "@/types/simulation";
 
+import type {
+  Paged, SurrogateDataset, SurrogateModel, SurrogateModelDetail,
+  SurrogatePredictRequest, SurrogatePredictResponse,
+} from "@/types/surrogate";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -907,4 +911,32 @@ export async function getSpectrumBandSummary(
     throw new Error(await getErrorMessage(response, "Unable to summarise spectrum"));
   }
   return response.json() as Promise<SpectrumBandSummary>;
+}
+
+async function getJson<T>(path: string, fallback: string): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}${path}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(await getErrorMessage(response, fallback));
+  return response.json() as Promise<T>;
+}
+
+export const listSurrogateDatasets = () =>
+  getJson<Paged<SurrogateDataset>>("/api/v1/surrogate/datasets?limit=50", "Unable to load datasets");
+
+export const listSurrogateModels = () =>
+  getJson<Paged<SurrogateModel>>("/api/v1/surrogate/models?limit=50", "Unable to load models");
+
+export const getSurrogateModel = (id: string) =>
+  getJson<SurrogateModelDetail>(`/api/v1/surrogate/models/${encodeURIComponent(id)}`, "Unable to load model");
+
+export const trainSurrogateModel = (body: { name: string; dataset_id: string }) =>
+  postJson<SurrogateModel>("/api/v1/surrogate/models", body, "Unable to start training");
+
+export const cancelSurrogateDataset = (id: string) =>
+  postJson<SurrogateDataset>(`/api/v1/surrogate/datasets/${encodeURIComponent(id)}/cancel`, {}, "Unable to cancel");
+
+export const predictSurrogate = (body: SurrogatePredictRequest) =>
+  postJson<SurrogatePredictResponse>("/api/v1/surrogate/predict", body, "Surrogate prediction failed");
+
+export function getSurrogateReportUrl(id: string): string {
+  return `${API_BASE_URL}/api/v1/surrogate/models/${encodeURIComponent(id)}/report.md`;
 }

@@ -10,4 +10,5 @@ export const NAV_LINKS: NavLink[] = [
   { href: "/benchmarks/gagge", label: "Gagge Benchmark" },
   { href: "/ops", label: "Operations" },
   { href: "/optimizations", label: "Inverse Design" },
+  { href: "/surrogate", label: "Surrogate" },
 ];

@@ -8,7 +8,7 @@ celery_app = Celery(
     "radiative_cooling_worker",
     broker=settings.celery_broker_url,
     backend=settings.celery_result_backend,
-    include=["app.worker.tasks", "app.worker.optimization_tasks"],
+    include=["app.worker.tasks", "app.worker.optimization_tasks", "app.worker.surrogate_tasks"],
 )
 
 celery_app.conf.update(
@@ -24,16 +24,15 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
     result_expires=3600,
     task_queues=(
-        Queue("default"),
-        Queue("global_standard"),
-        Queue("global_large"),
-        Queue("optimization"),
+        Queue("default"), Queue("global_standard"), Queue("global_large"),
+        Queue("optimization"), Queue("surrogate"),
     ),
     task_default_queue="default",
     task_routes={
         "simulation.run_weather": {"queue": "default"},
         "global_batch.run_city": {"queue": "global_standard"},
         "optimization.run": {"queue": "optimization"},
+        "surrogate.*": {"queue": "surrogate"},
     },
 )
 

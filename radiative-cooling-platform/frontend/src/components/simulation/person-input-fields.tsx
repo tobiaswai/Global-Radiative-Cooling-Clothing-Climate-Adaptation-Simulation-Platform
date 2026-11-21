@@ -3,6 +3,7 @@
 import { NumberField } from "@/components/forms/number-field";
 import { SelectField } from "@/components/forms/select-field";
 import type { PersonInput } from "@/types/simulation";
+import { ACTIVITY_PRESETS, type ActivityPresetName, matchActivity } from "@/lib/activity-presets";
 
 type PersonInputFieldsProps = {
   person: PersonInput;
@@ -21,6 +22,33 @@ export function PersonInputFields({
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-6">
+      <SelectField<ActivityPresetName | "custom">
+        label="Activity"
+        value={matchActivity(person)}
+        disabled={disabled}
+        options={[
+          ...(Object.keys(ACTIVITY_PRESETS) as ActivityPresetName[]).map((name) => ({
+            value: name, label: ACTIVITY_PRESETS[name].label,
+          })),
+          { value: "custom" as const, label: "Custom" },
+        ]}
+        hint="Sets metabolic rate and walking speed together (ISO 8996)."
+        onChange={(name) => {
+          if (name === "custom") return;
+          const preset = ACTIVITY_PRESETS[name];
+          onChange({ ...person, met: preset.met, walking_speed_m_s: preset.walking_speed_m_s });
+        }}
+      />
+      
+      <NumberField
+        label="Walking Speed"
+        suffix="m/s"
+        value={person.walking_speed_m_s ?? 0}
+        min={0} max={2.5} step={0.05}
+        disabled={disabled}
+        hint="Combined with wind into the relative air speed (ADR 0012)."
+        onChange={(value) => update("walking_speed_m_s", value)}
+      />
       <NumberField
         label="Activity Level"
         suffix="MET"

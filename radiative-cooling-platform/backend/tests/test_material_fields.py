@@ -5,13 +5,14 @@ from app.schemas.provenance import MATERIAL_PHYSICAL_FIELD_ORDER
 from app.schemas.simulation import MaterialInput
 from app.services.material_fields import build_material_field_manifest
 from app.services.planck import broadband_emissivity
+from app.services import model_parameters as mp
 
 
 @pytest.mark.unit
 def test_manifest_covers_every_physical_field_in_order():
     manifest = build_material_field_manifest()
     assert [f.name for f in manifest.fields] == list(MATERIAL_PHYSICAL_FIELD_ORDER)
-    assert manifest.parameter_set_version == "5.0.0"
+    assert manifest.parameter_set_version == mp.MODEL_PARAMETER_SET_VERSION
     assert "absorbed_solar_to_body_fraction" not in [f.name for f in manifest.fields]
 
 @pytest.mark.unit

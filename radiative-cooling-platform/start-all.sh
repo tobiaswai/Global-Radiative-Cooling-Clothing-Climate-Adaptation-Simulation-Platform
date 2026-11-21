@@ -30,8 +30,16 @@ BACKEND_PORT="${BACKEND_PORT:-8000}"
 # Celery settings
 CELERY_APP="${CELERY_APP:-app.worker.celery_app:celery_app}"
 CELERY_CONCURRENCY="${CELERY_CONCURRENCY:-4}"
+# Main worker: every queue except the long-running surrogate chunks.
 # IMPORTANT: optimization queue must be included, otherwise optimization tasks stay in "queued"
 CELERY_QUEUES="${CELERY_QUEUES:-default,global_standard,global_large,optimization}"
+
+# Stage 13: dedicated workers for the surrogate queue (0 = disabled).
+# Windows: number of separate solo processes for the main queues.
+# Linux/macOS: ignored (one prefork worker with CELERY_CONCURRENCY is used).
+SURROGATE_WORKERS="${SURROGATE_WORKERS:-2}"
+MAIN_WORKERS="${MAIN_WORKERS:-3}"
+SURROGATE_QUEUE="surrogate"
 
 # Redis settings
 REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
@@ -166,6 +174,72 @@ process_is_running() {
     [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null
 }
 
+STARTED_WORKERS=()
+
+start_celery_worker() {
+    local service="$1"
+    local queues="$2"
+    local node="$3"
+    local pool="$4"
+    local concurrency="$5"
+    shift 5
+
+    local pid_file="${PID_DIR}/${service}.pid"
+
+    if [[ -f "${pid_file}" ]]; then
+        local old_pid
+        old_pid="$(cat "${pid_file}" 2>/dev/null || true)"
+
+        if process_is_running "${old_pid}"; then
+            warning "${service} appears to be running with PID ${old_pid}; skipping"
+            return 0
+        fi
+
+        rm -f "${pid_file}"
+    fi
+
+    (
+        cd "${BACKEND_DIR}"
+
+        exec python -m celery \
+            -A "${CELERY_APP}" \
+            worker \
+            -Q "${queues}" \
+            -n "${node}@%h" \
+            --loglevel=info \
+            --pool="${pool}" \
+            --concurrency="${concurrency}" \
+            "$@"
+    ) > "${LOG_DIR}/${service}.log" 2>&1 &
+
+    save_pid "${service}" "$!"
+    STARTED_WORKERS+=("${service}")
+}
+
+verify_started_workers() {
+    if (( ${#STARTED_WORKERS[@]} == 0 )); then
+        return 0
+    fi
+
+    sleep 5
+
+    local service pid
+    for service in "${STARTED_WORKERS[@]}"; do
+        pid="$(cat "${PID_DIR}/${service}.pid" 2>/dev/null || true)"
+
+        if process_is_running "${pid}"; then
+            success "${service} started with PID ${pid}"
+        else
+            error "${service} failed to start"
+            tail -n 50 "${LOG_DIR}/${service}.log" || true
+            rm -f "${PID_DIR}/${service}.pid"
+            exit 1
+        fi
+    done
+
+    STARTED_WORKERS=()
+}
+
 # ============================================================
 # Validate the project structure
 # ============================================================
@@ -250,8 +324,8 @@ if ! python -c "import uvicorn" >/dev/null 2>&1; then
     exit 1
 fi
 
-if ! python -c "import celery" >/dev/null 2>&1; then
-    error "Celery is not installed in the virtual environment"
+if ! python -c "import pandas, pyarrow, sklearn, joblib" >/dev/null 2>&1; then
+    error "Stage 13 dependencies (pandas, pyarrow, scikit-learn, joblib) are missing"
     echo
     echo "Install the backend dependencies with:"
     echo "  source \"${VENV_ACTIVATE}\""
@@ -270,7 +344,7 @@ success "Required dependencies are available"
 # 1. Start Redis
 # ============================================================
 
-section "1/5 Starting Redis"
+section "1/6 Starting Redis"
 
 if port_is_open "${REDIS_HOST}" "${REDIS_PORT}"; then
     success "Redis is already running at ${REDIS_HOST}:${REDIS_PORT}"
@@ -327,7 +401,16 @@ fi
 # 2. Start FastAPI
 # ============================================================
 
-section "2/5 Starting the FastAPI backend"
+section "Checking database migrations"
+
+if (cd "${BACKEND_DIR}" && python -m alembic current 2>/dev/null | grep -q "(head)"); then
+    success "Database schema is at the latest migration"
+else
+    warning "Database is not at the latest migration (or is unreachable)"
+    warning "Run: cd backend && alembic upgrade head"
+fi
+
+section "2/6 Starting the FastAPI backend"
 
 if port_is_open "${BACKEND_HOST}" "${BACKEND_PORT}"; then
     success "FastAPI is already running at http://${BACKEND_HOST}:${BACKEND_PORT}"
@@ -363,68 +446,54 @@ fi
 # 3. Start the Celery worker
 # ============================================================
 
-section "3/5 Starting the Celery worker"
+section "3/6 Starting the main Celery worker(s)"
 
-if [[ -f "${PID_DIR}/celery.pid" ]]; then
-    OLD_CELERY_PID="$(cat "${PID_DIR}/celery.pid" 2>/dev/null || true)"
+info "Celery application: ${CELERY_APP}"
+info "Celery queues: ${CELERY_QUEUES}"
 
-    if process_is_running "${OLD_CELERY_PID}"; then
-        warning "Celery worker appears to be running with PID ${OLD_CELERY_PID}"
-        warning "Run ./stop-all.sh before restarting it"
-    else
-        rm -f "${PID_DIR}/celery.pid"
-    fi
+if [[ "${PLATFORM}" == "windows-bash" ]]; then
+    info "Windows: ${MAIN_WORKERS} separate solo processes (each runs one task at a time)"
+
+    for ((n = 1; n <= MAIN_WORKERS; n++)); do
+        # prefetch 1: an idle solo worker must not leave tasks reserved by a busy one
+        start_celery_worker "celery-main${n}" "${CELERY_QUEUES}" "main${n}" \
+            solo 1 --prefetch-multiplier=1
+    done
+else
+    CELERY_POOL="${CELERY_POOL:-prefork}"
+    info "Celery pool: ${CELERY_POOL}, concurrency: ${CELERY_CONCURRENCY}"
+
+    start_celery_worker "celery-main1" "${CELERY_QUEUES}" "main1" \
+        "${CELERY_POOL}" "${CELERY_CONCURRENCY}"
 fi
 
-if [[ ! -f "${PID_DIR}/celery.pid" ]]; then
-    if [[ "${PLATFORM}" == "windows-bash" ]]; then
-        # The solo pool avoids common multiprocessing / PermissionError issues on Windows.
-        CELERY_POOL="solo"
-        CELERY_CONCURRENCY="1"
+verify_started_workers
 
-        warning "Windows Git Bash detected"
-        warning "Celery will use the solo pool to avoid Windows multiprocessing errors"
-    else
-        CELERY_POOL="${CELERY_POOL:-prefork}"
-    fi
+# ============================================================
+# 4. Start the Celery surrogate workers (Stage 13)
+# ============================================================
 
-    info "Celery application: ${CELERY_APP}"
-    info "Celery queues: ${CELERY_QUEUES}"
-    info "Celery pool: ${CELERY_POOL}"
-    info "Celery concurrency: ${CELERY_CONCURRENCY}"
+section "4/6 Starting the Celery surrogate workers"
 
-    (
-        cd "${BACKEND_DIR}"
-
-        exec python -m celery \
-            -A "${CELERY_APP}" \
-            worker \
-            -Q "${CELERY_QUEUES}" \
-            --loglevel=info \
-            --pool="${CELERY_POOL}" \
-            --concurrency="${CELERY_CONCURRENCY}"
-    ) > "${LOG_DIR}/celery.log" 2>&1 &
-
-    CELERY_PID=$!
-    save_pid "celery" "${CELERY_PID}"
-
-    sleep 5
-
-    if process_is_running "${CELERY_PID}"; then
-        success "Celery worker started with PID ${CELERY_PID}"
-    else
-        error "Celery worker failed to start"
-        tail -n 50 "${LOG_DIR}/celery.log" || true
-        rm -f "${PID_DIR}/celery.pid"
-        exit 1
-    fi
+if (( SURROGATE_WORKERS <= 0 )); then
+    warning "SURROGATE_WORKERS=0: surrogate datasets and training will stay queued"
+elif [[ "${PLATFORM}" == "windows-bash" ]]; then
+    for ((n = 1; n <= SURROGATE_WORKERS; n++)); do
+        start_celery_worker "celery-surrogate${n}" "${SURROGATE_QUEUE}" "surrogate${n}" \
+            solo 1 --prefetch-multiplier=1
+    done
+    verify_started_workers
+else
+    start_celery_worker "celery-surrogate1" "${SURROGATE_QUEUE}" "surrogate1" \
+        prefork "${SURROGATE_WORKERS}" --prefetch-multiplier=1
+    verify_started_workers
 fi
 
 # ============================================================
 # 4. Start Celery Beat
 # ============================================================
 
-section "4/5 Starting Celery Beat"
+section "5/6 Starting Celery Beat"
 
 if [[ -f "${PID_DIR}/celerybeat.pid" ]]; then
     OLD_BEAT_PID="$(cat "${PID_DIR}/celerybeat.pid" 2>/dev/null || true)"
@@ -469,7 +538,7 @@ fi
 # 5. Install frontend dependencies and start the frontend
 # ============================================================
 
-section "5/5 Starting the frontend"
+section "6/6 Starting the frontend"
 
 cd "${FRONTEND_DIR}"
 
@@ -549,16 +618,15 @@ fi
 
 echo
 echo "Celery queues: ${CELERY_QUEUES}"
+echo "Surrogate workers: ${SURROGATE_WORKERS} on queue ${SURROGATE_QUEUE}"
 echo "Log directory: ${LOG_DIR}"
 echo
 echo "View the backend log:"
 echo "  tail -f logs/backend.log"
 echo
-echo "View the Celery worker log:"
-echo "  tail -f logs/celery.log"
-echo
-echo "View the Celery Beat log:"
-echo "  tail -f logs/celerybeat.log"
+echo "View the Celery worker logs:"
+echo "  tail -f logs/celery-main1.log"
+echo "  tail -f logs/celery-surrogate1.log"
 echo
 echo "View the frontend log:"
 echo "  tail -f logs/frontend.log"

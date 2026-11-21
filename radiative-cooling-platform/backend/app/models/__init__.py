@@ -9,6 +9,8 @@ from app.models.global_batch import GlobalBatchJob, GlobalCityCheckpoint, Global
 
 from app.models.optimization_job import OptimizationJob
 
+from app.models.surrogate import SurrogateDataset, SurrogateDatasetChunk, SurrogateModel
+
 __all__ = [
     "GlobalBatchJob",
     "GlobalCityResult",
@@ -18,4 +20,7 @@ __all__ = [
     "SimulationJob",
     "GlobalCityCheckpoint",
     "OptimizationJob",
+    "SurrogateDataset",
+    "SurrogateDatasetChunk",
+    "SurrogateModel",
 ]

@@ -28,7 +28,7 @@ from app.schemas.simulation import (
     ReferencePortParity,
 )
 from app.services.gagge_reference import run_gagge_reference
-from app.services.two_node import simulate_material
+from app.services.two_node import simulate_material,relative_air_speed_m_s, simulate_material
 
 
 LIBRARY_DURATION_MINUTES = 60
@@ -104,6 +104,16 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
         "and the material is treated as a uniform gray emitter"
     )
 
+# --- relative air speed (ADR 0012) ----------------------------------------
+    air_speed = relative_air_speed_m_s(
+        environment.wind_speed_m_s, request.person.walking_speed_m_s
+    )
+    if request.person.walking_speed_m_s > 0:
+        alignment.append(
+            f"reference air speed = relative air speed {air_speed:.2f} m/s "
+            "(wind combined with walking, ADR 0012)"
+        )
+        
     # --- prototype ------------------------------------------------------------
     prototype = simulate_material(
         duration_minutes=request.duration_minutes,
@@ -117,7 +127,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
     reference_kwargs = dict(
         tdb=environment.air_temperature_c,
         tr=environment.mean_radiant_temperature_c,
-        v=environment.wind_speed_m_s,
+        v=air_speed,
         rh=environment.relative_humidity_percent,
         met=request.person.met,
         clo=material.clothing_insulation_clo,
@@ -138,7 +148,7 @@ def run_gagge_benchmark(request: GaggeBenchmarkRequest) -> GaggeBenchmarkRespons
     library = two_nodes_gagge(
         tdb=environment.air_temperature_c,
         tr=environment.mean_radiant_temperature_c,
-        v=max(environment.wind_speed_m_s, 0.01),
+        v=max(air_speed, 0.01),
         rh=environment.relative_humidity_percent,
         met=request.person.met,
         clo=material.clothing_insulation_clo,

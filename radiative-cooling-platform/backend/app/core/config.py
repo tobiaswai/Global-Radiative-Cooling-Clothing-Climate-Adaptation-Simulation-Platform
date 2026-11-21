@@ -101,13 +101,15 @@ class Settings(BaseSettings):
     CITY_MAX_RETRIES: int = 3                # retry_count 上限
     LEASE_REAPER_INTERVAL_SECONDS: int = 60  # beat 週期
     CHECKPOINT_EVERY_MONTHS: int = 1         # 目前每月一筆
+    # Stage 13 surrogate datasets and model artifacts
+    surrogate_directory: Path = BACKEND_DIRECTORY / "data" / "surrogate"
 
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """Return the cached application settings."""
     application_settings = Settings()
-
+    application_settings.surrogate_directory.mkdir(parents=True, exist_ok=True)
     application_settings.result_directory.mkdir(
         parents=True,
         exist_ok=True,

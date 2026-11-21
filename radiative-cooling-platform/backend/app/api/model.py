@@ -9,6 +9,8 @@ from app.schemas.provenance import (
     ModelParameter,
     ModelParameterManifest,
 )
+from app.schemas.activity import ACTIVITY_PRESETS, ActivityPreset
+
 from app.services.material_fields import build_material_field_manifest
 from app.services.model_parameters import (
     MODEL_PARAMETERS,
@@ -64,3 +66,7 @@ def get_default_environment_assumptions() -> EnvironmentAssumptions:
 )
 def get_environment_presets() -> dict[str, EnvironmentAssumptions]:
     return {name: preset_assumptions(name) for name in ENVIRONMENT_PRESETS}
+
+@router.get("/activity-presets", response_model=dict[str, ActivityPreset])
+def get_activity_presets() -> dict[str, ActivityPreset]:
+    return ACTIVITY_PRESETS

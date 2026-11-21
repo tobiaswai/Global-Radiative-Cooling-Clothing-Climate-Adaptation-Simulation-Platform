@@ -53,3 +53,13 @@ def test_environment_presets_are_mirrored():
     text = _read("environment-assumptions.ts")
     for name in ENVIRONMENT_PRESETS:
         assert re.search(rf"\b{name}\b", text), f"preset {name} missing in frontend"
+        
+@pytest.mark.unit
+def test_activity_presets_are_mirrored():
+    from app.schemas.activity import ACTIVITY_PRESETS
+    text = _read("activity-presets.ts")
+    for name, preset in ACTIVITY_PRESETS.items():
+        match = re.search(rf"{name}:\s*\{{[^}}]*met:\s*([0-9.]+),\s*walking_speed_m_s:\s*([0-9.]+)", text)
+        assert match, name
+        assert float(match.group(1)) == pytest.approx(preset.met)
+        assert float(match.group(2)) == pytest.approx(preset.walking_speed_m_s)

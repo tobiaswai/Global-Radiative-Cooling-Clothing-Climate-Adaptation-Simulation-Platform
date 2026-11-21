@@ -86,6 +86,8 @@ export type PersonInput = {
   initial_skin_temperature_c: number;
   /** Stage 5 (ADR 0006). */
   position: BodyPosition;
+  /** Stage 13 (ADR 0012): walking speed over the ground, m/s. */
+  walking_speed_m_s?: number;
 };
 
 export type MaterialInput = {

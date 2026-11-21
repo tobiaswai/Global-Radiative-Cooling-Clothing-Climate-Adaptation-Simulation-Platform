@@ -8,6 +8,7 @@ from app.models.global_batch import (
     GlobalBatchJob,
     GlobalCityResult,
 )
+from app.schemas.environment import LEGACY_PRESET, preset_assumptions
 
 def get_attribute(
     obj: Any,
@@ -248,18 +249,9 @@ def build_batch_geojson(
             "heatwave_analysis_available": (
                 heatwave_analysis_available
             ),
-            "mean_radiant_temperature_method": (
-                (request.get("environment_assumptions") or {}).get(
-                    "mean_radiant_temperature_method",
-                    "air_plus_solar_linear",
-                )
-            ),
-            "sky_temperature_method": (
-                (request.get("environment_assumptions") or {}).get(
-                    "sky_temperature_method",
-                    "humidity_offset",
-                )
-            ),
+            "mean_radiant_temperature_method": stored_environment(request)["mean_radiant_temperature_method"],
+            "sky_temperature_method": stored_environment(request)["sky_temperature_method"],
+            "environment_assumptions": stored_environment(request),
         },
         "features": features,
     }
@@ -1260,9 +1252,8 @@ def build_readme_text(
             ),
             (
                 "Environment: "
-                f"{request.get('mean_radiant_temperature_method', 'air_plus_solar_linear')}"
-                f" / "
-                f"{request.get('sky_temperature_method', 'humidity_offset')}"
+                f"{stored_environment(request)['mean_radiant_temperature_method']} / "
+                f"{stored_environment(request)['sky_temperature_method']}"
             ),
             "",
             "Files",
@@ -1373,3 +1364,10 @@ def build_batch_export_zip(
         )
 
     return memory_file.getvalue()
+
+def stored_environment(request: dict[str, Any]) -> dict[str, Any]:
+    """Environment assumptions a batch ran with (ADR 0009: missing -> legacy_stage1)."""
+    stored = request.get("environment_assumptions")
+    if stored:
+        return stored
+    return preset_assumptions(LEGACY_PRESET).model_dump(mode="json")
